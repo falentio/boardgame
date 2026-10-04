@@ -299,10 +299,16 @@ test("POST /api/pusher/auth is 400 for a malformed channel and never signs an ar
 
 test("POST /api/pusher/auth is 503 when realtime is not configured", async () => {
   const host = await signUp("host@example.com");
+  const unconfigured = {
+    ...harness.env,
+    PUSHER_APP_KEY: undefined,
+    PUSHER_HOST: undefined,
+    PUSHER_SECRET: undefined,
+  };
   const response = await callAuth(
     host.cookie,
     { socket_id: "1234.5678", channel_name: "private-room-BAVOKUTI" },
-    harness.env,
+    unconfigured,
   );
   expect(response.status).toBe(503);
 });

@@ -1,2 +1,5 @@
 BETTER_AUTH_SECRET="replace-with-a-random-32-plus-char-secret"
 BETTER_AUTH_URL="http://localhost:3000"
+PUSHER_APP_KEY="your-pusher-app-key"
+PUSHER_HOST="your-pusher-host"
+PUSHER_SECRET="your-pusher-app-secret"

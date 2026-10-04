@@ -6,6 +6,15 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   css: ['~/assets/css/app.css'],
 
+  runtimeConfig: {
+    public: {
+      pusher: {
+        key: process.env.PUSHER_APP_KEY ?? 'boardgame-byc3vc',
+        host: process.env.PUSHER_HOST ?? 'wss.vask.dev',
+      },
+    },
+  },
+
   nitro: {
     preset: 'cloudflare_module',
     // `server/modules/**` is Nitro's reserved local-module directory; this app

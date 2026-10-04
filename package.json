@@ -33,6 +33,7 @@
     "embla-carousel-vue": "^8.6.0",
     "hono": "^4.13.12",
     "nuxt": "^4.5.2",
+    "pusher-js": "^8.6.0",
     "reka-ui": "^2.10.5",
     "shadcn-vue": "^2.8.2",
     "tailwind-merge": "^3.7.0",
