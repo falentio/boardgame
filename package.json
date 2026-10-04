@@ -17,6 +17,7 @@
     "test:watch": "vitest",
     "typecheck": "tsc -p shared/tsconfig.json",
     "typecheck:server": "tsc -p .nuxt/tsconfig.server.json --noEmit",
+    "typecheck:client": "tsc -p tsconfig.client.json --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply boardgame --local",
     "db:migrate:remote": "wrangler d1 migrations apply boardgame --remote",
