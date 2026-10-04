@@ -1,5 +1,6 @@
 import { Hono, type Context } from "hono";
 import { isRoleId, type RoleId } from "../../../shared/core/lockstep/games/g54/roles.ts";
+import type { RoomEvents } from "../../../shared/rooms/events.ts";
 import type { AppAuth } from "../../utils/auth.ts";
 import type { Db } from "../../utils/db.ts";
 import type { RoomEntropy } from "../../../shared/rooms/code.ts";
@@ -22,6 +23,7 @@ export interface RoomAppDeps {
   entropy: RoomEntropy;
   newId: () => RoomId;
   now: () => number;
+  events: RoomEvents;
 }
 
 interface SeatView {
@@ -105,6 +107,7 @@ export const createRoomApp = (deps: RoomAppDeps): Hono => {
     entropy: deps.entropy,
     newId: deps.newId,
     now: deps.now,
+    events: deps.events,
   };
 
   const session = (c: Context) => deps.auth.api.getSession({ headers: c.req.raw.headers });

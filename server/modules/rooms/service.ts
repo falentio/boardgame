@@ -1,5 +1,6 @@
 import type { RoleId } from "../../../shared/core/lockstep/games/g54/roles.ts";
 import { generateCode, type RoomEntropy } from "../../../shared/rooms/code.ts";
+import type { ChangeReason, RoomEvents } from "../../../shared/rooms/events.ts";
 import type { RoomCode, RoomId, UserId } from "../../../shared/rooms/ids.ts";
 import { err, ok, type Result } from "../../../shared/rooms/result.ts";
 import {
@@ -22,6 +23,7 @@ export interface RoomDeps {
   entropy: RoomEntropy;
   newId: () => RoomId;
   now: () => number;
+  events: RoomEvents;
 }
 
 export interface CreateRoomInput {
@@ -50,6 +52,14 @@ export interface DeleteRoomInput {
 
 const notFound: RoomError = { kind: "not-found" };
 
+// The room write is the source of truth; a publish failure must not fail the
+// mutation, and the adapter's swallow is not something the service may rely on.
+const emit = async (deps: RoomDeps, room: Room, reason: ChangeReason): Promise<void> => {
+  try {
+    await deps.events.changed(room, reason);
+  } catch {}
+};
+
 export const createRoom = async (
   deps: RoomDeps,
   input: CreateRoomInput,
@@ -68,7 +78,10 @@ export const createRoom = async (
     });
     if (!built.ok) return built;
     const inserted = await insertRoom(deps.db, built.value);
-    if (inserted === "ok") return ok(built.value);
+    if (inserted === "ok") {
+      await emit(deps, built.value, "created");
+      return ok(built.value);
+    }
     lastError = { kind: "conflict" };
   }
   return err(lastError);
@@ -82,6 +95,7 @@ export const getRoom = async (deps: RoomDeps, code: RoomCode): Promise<Result<Ro
 const mutate = async (
   deps: RoomDeps,
   code: RoomCode,
+  reason: ChangeReason,
   apply: (room: Room) => Result<Room, RoomError>,
 ): Promise<Result<Room, RoomError>> => {
   for (let attempt = 0; attempt < CAS_ATTEMPTS; attempt += 1) {
@@ -89,7 +103,10 @@ const mutate = async (
     if (loaded === null) return err(notFound);
     const next = apply(loaded.room);
     if (!next.ok) return next;
-    if (await saveRoom(deps.db, next.value, loaded.revision)) return ok(next.value);
+    if (await saveRoom(deps.db, next.value, loaded.revision)) {
+      await emit(deps, next.value, reason);
+      return ok(next.value);
+    }
   }
   return err({ kind: "conflict" });
 };
@@ -98,13 +115,13 @@ export const joinRoom = (
   deps: RoomDeps,
   input: JoinRoomInput,
 ): Promise<Result<Room, RoomError>> =>
-  mutate(deps, input.code, (room) => applyJoin(room, { user: input.user, now: deps.now() }));
+  mutate(deps, input.code, "joined", (room) => applyJoin(room, { user: input.user, now: deps.now() }));
 
 export const updateRoom = (
   deps: RoomDeps,
   input: UpdateRoomInput,
 ): Promise<Result<Room, RoomError>> =>
-  mutate(deps, input.code, (room) => {
+  mutate(deps, input.code, "updated", (room) => {
     let next: Result<Room, RoomError> = ok(room);
     if (input.name !== undefined) {
       next = renameRoom(room, { actor: input.actor, name: input.name, now: deps.now() });
@@ -126,5 +143,6 @@ export const deleteRoom = async (
   const denied = requireHost(loaded.room, input.actor);
   if (denied !== null) return err(denied);
   await removeRoom(deps.db, loaded.room);
+  await emit(deps, loaded.room, "deleted");
   return ok(undefined);
 };

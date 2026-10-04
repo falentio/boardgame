@@ -8,6 +8,7 @@ import { authFromEnv } from "../../../utils/auth.ts";
 import { createRoomApp } from "../http.ts";
 import * as store from "../store.ts";
 import { createTestDb, type TestDb } from "./d1-harness.ts";
+import { recordingEvents } from "./recording-events.ts";
 
 const ORIGIN = "http://localhost:3000";
 
@@ -22,6 +23,7 @@ beforeEach(async () => {
     entropy: makeRandom(seed("00000000000000ff")),
     newId: () => roomId("room-1"),
     now: () => 1000,
+    events: recordingEvents().events,
   });
 });
 

@@ -15,15 +15,18 @@ import {
   type RoomDeps,
 } from "../service.ts";
 import { createTestDb, type TestDb } from "./d1-harness.ts";
+import { recordingEvents, throwingEvents, type RecordingEvents } from "./recording-events.ts";
 
 const HOST = userId("user-host");
 const GUEST = userId("user-guest");
 const THIRD = userId("user-third");
 
 let harness: TestDb;
+let recorder: RecordingEvents;
 
 beforeEach(async () => {
   harness = await createTestDb();
+  recorder = recordingEvents();
   const people = [
     ["user-host", "host@example.com"],
     ["user-guest", "guest@example.com"],
@@ -69,11 +72,13 @@ const scriptedEntropy = (codes: readonly string[]): RoomEntropy => {
 };
 
 let idCounter = 0;
+
 const deps = (overrides: Partial<RoomDeps> = {}): RoomDeps => ({
   db: harness.db,
   entropy: makeRandom(seed("00000000000000ff")),
   newId: () => roomId(`room-${String((idCounter += 1))}`),
   now: () => 1000,
+  events: recorder.events,
   ...overrides,
 });
 
@@ -230,4 +235,100 @@ test("joinRoom reports conflict when the compare-and-swap retries are exhausted"
     user: GUEST,
   });
   expect(joined).toEqual({ ok: false, error: { kind: "conflict" } });
+});
+
+test("createRoom emits one room-changed with reason created", async () => {
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+
+  expect(recorder.changes).toHaveLength(1);
+  expect(recorder.changes[0]!.reason).toBe("created");
+  expect(recorder.changes[0]!.room).toEqual(created.value);
+});
+
+test("joinRoom emits one room-changed with reason joined", async () => {
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+  recorder.changes.length = 0;
+
+  const joined = await joinRoom(deps(), { code: created.value.code, user: GUEST });
+  if (!joined.ok) throw new Error(`expected a join, got ${joined.error.kind}`);
+
+  expect(recorder.changes).toHaveLength(1);
+  expect(recorder.changes[0]!.reason).toBe("joined");
+  expect(recorder.changes[0]!.room).toEqual(joined.value);
+});
+
+test("updateRoom emits one room-changed with reason updated", async () => {
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+  recorder.changes.length = 0;
+
+  const updated = await updateRoom(deps(), { code: created.value.code, actor: HOST, name: "Beta" });
+  if (!updated.ok) throw new Error(`expected an update, got ${updated.error.kind}`);
+
+  expect(recorder.changes).toHaveLength(1);
+  expect(recorder.changes[0]!.reason).toBe("updated");
+  expect(recorder.changes[0]!.room).toEqual(updated.value);
+});
+
+test("deleteRoom emits one room-changed with reason deleted", async () => {
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+  recorder.changes.length = 0;
+
+  const removed = await deleteRoom(deps(), { code: created.value.code, actor: HOST });
+  expect(removed.ok).toBe(true);
+
+  expect(recorder.changes).toHaveLength(1);
+  expect(recorder.changes[0]!.reason).toBe("deleted");
+  expect(recorder.changes[0]!.room.code).toBe(created.value.code);
+});
+
+test("no emit fires on an error path: not-found, denied, already-seated, room-full", async () => {
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 1, roles: STARTER_ROLES });
+  if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+  recorder.changes.length = 0;
+
+  await joinRoom(deps(), { code: roomCode("BAKUDIRU"), user: GUEST });
+  await joinRoom(deps(), { code: created.value.code, user: HOST });
+  await joinRoom(deps(), { code: created.value.code, user: GUEST });
+  await updateRoom(deps(), { code: created.value.code, actor: GUEST, name: "Beta" });
+  await deleteRoom(deps(), { code: created.value.code, actor: GUEST });
+
+  expect(recorder.changes).toEqual([]);
+});
+
+test("a lost compare-and-swap emits exactly once, after the retry lands", async () => {
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+  recorder.changes.length = 0;
+
+  const joined = await joinRoom(deps({ db: loseNextCas(harness.db) }), {
+    code: created.value.code,
+    user: GUEST,
+  });
+  if (!joined.ok) throw new Error(`expected the retry to succeed, got ${joined.error.kind}`);
+
+  expect(recorder.changes).toHaveLength(1);
+  expect(recorder.changes[0]!.reason).toBe("joined");
+});
+
+test("a thrown events.changed does not fail the mutation", async () => {
+  const created = await createRoom(deps({ events: throwingEvents(new Error("transport down")) }), {
+    host: HOST,
+    name: "Alpha",
+    seats: 3,
+    roles: STARTER_ROLES,
+  });
+  if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+
+  const joined = await joinRoom(deps({ events: throwingEvents(new Error("transport down")) }), {
+    code: created.value.code,
+    user: GUEST,
+  });
+  expect(joined.ok).toBe(true);
+
+  const reloaded = await getRoom(deps(), created.value.code);
+  expect(reloaded.ok && reloaded.value.seats[1]!.occupant).toBe(GUEST);
 });
