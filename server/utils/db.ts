@@ -48,6 +48,14 @@ export function cloudflareEnv(event: H3Event): CloudflareEnv {
     });
   }
 
+  if (!env.BETTER_AUTH_URL) {
+    throw createError({
+      statusCode: 500,
+      statusMessage:
+        "Missing BETTER_AUTH_URL. Set it in .dev.vars locally and via `wrangler secret put BETTER_AUTH_URL` in production.",
+    });
+  }
+
   return env;
 }
 

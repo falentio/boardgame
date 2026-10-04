@@ -57,7 +57,7 @@ pnpm drizzle-kit generate
 pnpm exec wrangler d1 migrations apply boardgame --local
 ```
 
-For production, run the same commands against the remote database with `--remote`.
+For production, run the same commands against the remote database with `--remote`. That path needs a real `database_id` in `wrangler.jsonc`: replace the all-zero placeholder with the id from `wrangler d1 create boardgame` first.
 
 ## Configuration
 

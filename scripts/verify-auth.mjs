@@ -92,6 +92,19 @@ const main = async () => {
     return;
   }
 
+  const meRes = await fetch(`${BASE}/api/me`, { headers: { cookie } });
+  const me = await meRes.json();
+  if (meRes.status !== 200 || me?.email !== EMAIL) {
+    fail(`/api/me (requireSession) failed: ${meRes.status} ${JSON.stringify(me)}`);
+    return;
+  }
+
+  const anonRes = await fetch(`${BASE}/api/me`);
+  if (anonRes.status !== 401) {
+    fail(`/api/me without a cookie should be 401, got ${anonRes.status}`);
+    return;
+  }
+
   const rows = d1(`SELECT email FROM user WHERE email = '${EMAIL}'`);
   const found = rows?.[0]?.results ?? [];
   if (found.length !== 1) {
@@ -101,6 +114,7 @@ const main = async () => {
 
   console.log(`PASS: signed up ${EMAIL}`);
   console.log(`PASS: get-session returned user ${session.user.id}`);
+  console.log(`PASS: requireSession returned the user via /api/me, and 401 without a cookie`);
   console.log(`PASS: user row present in local D1 (${found.length} row)`);
 };
 
