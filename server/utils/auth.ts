@@ -26,14 +26,17 @@ export type AuthSession = NonNullable<
 // instance, so one instance per immutable env object is safe to share.
 const authCache = new WeakMap<CloudflareEnv, AppAuth>();
 
-export function getAuth(event: H3Event): AppAuth {
-  const env = cloudflareEnv(event);
+export function authFromEnv(env: CloudflareEnv): AppAuth {
   let auth = authCache.get(env);
   if (!auth) {
     auth = createAuth(env);
     authCache.set(env, auth);
   }
   return auth;
+}
+
+export function getAuth(event: H3Event): AppAuth {
+  return authFromEnv(cloudflareEnv(event));
 }
 
 export async function getAuthSession(

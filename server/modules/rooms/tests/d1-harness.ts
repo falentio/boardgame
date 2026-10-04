@@ -1,6 +1,7 @@
-import { drizzle, type AnyD1Database, type DrizzleD1Database } from "drizzle-orm/d1";
+import { drizzle, type DrizzleD1Database } from "drizzle-orm/d1";
 import { getPlatformProxy } from "wrangler";
 import { schema, type AppSchema } from "../../../db/schema.ts";
+import type { CloudflareEnv } from "../../../utils/db.ts";
 
 declare global {
   // `vite/client` is path-mapped in the server tsconfig but is not a module and
@@ -15,6 +16,7 @@ declare global {
 
 export interface TestDb {
   readonly db: DrizzleD1Database<AppSchema>;
+  readonly env: CloudflareEnv;
   dispose(): Promise<void>;
 }
 
@@ -35,7 +37,7 @@ const migrationStatements = (): readonly string[] =>
     );
 
 export const createTestDb = async (): Promise<TestDb> => {
-  const proxy = await getPlatformProxy<{ DB: AnyD1Database }>({
+  const proxy = await getPlatformProxy<CloudflareEnv>({
     configPath: "wrangler.jsonc",
     persist: false,
   });
@@ -44,6 +46,7 @@ export const createTestDb = async (): Promise<TestDb> => {
   }
   return {
     db: drizzle(proxy.env.DB, { schema }),
+    env: proxy.env,
     dispose: () => proxy.dispose(),
   };
 };
