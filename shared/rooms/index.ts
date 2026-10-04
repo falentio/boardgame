@@ -1,0 +1,38 @@
+export {
+  RoomIdError,
+  isRoomCode,
+  roomCode,
+  roomId,
+  seatId,
+  userId,
+  type RoomCode,
+  type RoomId,
+  type SeatId,
+  type UserId,
+} from "./ids.ts";
+export {
+  CODE_LENGTH,
+  CODE_SPACE_SIZE,
+  CONSONANTS,
+  VOWELS,
+  generateCode,
+  parseRoomCode,
+  type RoomEntropy,
+} from "./code.ts";
+export { err, ok, type Result } from "./result.ts";
+export {
+  MAX_NAME_LENGTH,
+  MAX_SEATS,
+  createRoom,
+  joinRoom,
+  renameRoom,
+  requireHost,
+  setRoles,
+  type JoinCommand,
+  type NewRoom,
+  type RenameCommand,
+  type Room,
+  type RoomError,
+  type Seat,
+  type SetRolesCommand,
+} from "./room.ts";
