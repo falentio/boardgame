@@ -1,4 +1,6 @@
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import type { G54Setup } from "../../shared/core/lockstep/games/g54/setup.ts";
+import type { Seat } from "../../shared/rooms/room.ts";
 
 export const user = sqliteTable("user", {
   id: text("id").primaryKey(),
@@ -56,6 +58,20 @@ export const verification = sqliteTable("verification", {
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 });
 
-export const schema = { user, session, account, verification };
+export const room = sqliteTable("room", {
+  id: text("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  hostId: text("host_id")
+    .notNull()
+    .references(() => user.id),
+  name: text("name").notNull(),
+  setup: text("setup", { mode: "json" }).$type<G54Setup>().notNull(),
+  seats: text("seats", { mode: "json" }).$type<Seat[]>().notNull(),
+  revision: integer("revision").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+export const schema = { user, session, account, verification, room };
 
 export type AppSchema = typeof schema;
