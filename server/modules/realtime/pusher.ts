@@ -23,7 +23,10 @@ export interface PublisherOptions {
   readonly fetch?: typeof fetch;
   readonly now?: () => number;
   readonly log?: (message: string) => void;
+  readonly timeoutMs?: number;
 }
+
+const DEFAULT_TIMEOUT_MS = 5000;
 
 const seconds = (): number => Math.floor(Date.now() / 1000);
 
@@ -67,6 +70,7 @@ export const pusherPublisher = (
   const doFetch = opts.fetch ?? fetch;
   const clock = opts.now ?? seconds;
   const log = opts.log ?? ((message: string) => console.error(message));
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
   return async (channel, event, data) => {
     const body = JSON.stringify({
@@ -80,6 +84,7 @@ export const pusherPublisher = (
         method: request.method,
         headers: request.headers,
         body: request.body,
+        signal: AbortSignal.timeout(timeoutMs),
       });
       if (!response.ok) {
         log(`pusher trigger to ${channel} failed with ${String(response.status)}`);

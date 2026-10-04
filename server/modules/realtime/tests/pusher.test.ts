@@ -107,6 +107,29 @@ test("pusherPublisher swallows a network error and logs it", async () => {
   expect(logged).toHaveLength(1);
 });
 
+test("pusherPublisher aborts a hung request at the timeout and swallows it", async () => {
+  let sawSignal = false;
+  const impl = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+    sawSignal = init?.signal instanceof AbortSignal;
+    return await new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(new Error("aborted")));
+    });
+  }) as typeof fetch;
+  const logged: string[] = [];
+  const publish = pusherPublisher(CONFIG, {
+    fetch: impl,
+    now: () => NOW,
+    timeoutMs: 20,
+    log: (message) => logged.push(message),
+  });
+
+  await expect(
+    publish("private-room-BAVOKUTI", "room-changed", { code: "BAVOKUTI", reason: "joined" }),
+  ).resolves.toBeUndefined();
+  expect(sawSignal).toBe(true);
+  expect(logged).toHaveLength(1);
+});
+
 test("pusherConfigFromEnv returns the config when every var is present", () => {
   expect(
     pusherConfigFromEnv({
