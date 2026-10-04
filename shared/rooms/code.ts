@@ -17,5 +17,7 @@ export const generateCode = (entropy: RoomEntropy): RoomCode => {
   return roomCode(raw);
 };
 
-export const parseRoomCode = (raw: string): RoomCode | null =>
-  isRoomCode(raw) ? roomCode(raw) : null;
+export const parseRoomCode = (raw: string): RoomCode | null => {
+  const normalized = raw.trim().toUpperCase();
+  return isRoomCode(normalized) ? roomCode(normalized) : null;
+};

@@ -33,9 +33,10 @@ test("the accepted pattern uses exactly the generator alphabet, in CVCVCVCV orde
   expect(isRoomCode([c, c, c, v, c, v, c, v].join(""))).toBe(false);
 });
 
-test("parseRoomCode is total: a valid code comes back branded, anything else is null", () => {
+test("parseRoomCode normalizes case and whitespace, and rejects anything not CVCVCVCV", () => {
   expect(parseRoomCode("GAKUDIRU")).toBe("GAKUDIRU");
-  expect(parseRoomCode("gakudiru")).toBeNull();
+  expect(parseRoomCode("gakudiru")).toBe("GAKUDIRU");
+  expect(parseRoomCode("  gakudiru  ")).toBe("GAKUDIRU");
   expect(parseRoomCode("GAKUDIR")).toBeNull();
   expect(parseRoomCode("GAKUDIRUX")).toBeNull();
   expect(parseRoomCode("GAKUDIR1")).toBeNull();

@@ -180,6 +180,15 @@ test("DELETE /api/rooms/:code removes the room for the host and 403 for others",
   expect(gone.status).toBe(404);
 });
 
+test("GET /api/rooms/:code accepts a lowercase, hand-typed code", async () => {
+  const host = await signUp("host@example.com");
+  const created = await call("/api/rooms", { method: "POST", cookie: host.cookie, body: createBody() });
+  const { room } = (await created.json()) as { room: { code: string } };
+
+  const lower = await call(`/api/rooms/${room.code.toLowerCase()}`, { cookie: host.cookie });
+  expect(lower.status).toBe(200);
+});
+
 test("a room created by one session is invisible to another without its code", async () => {
   const host = await signUp("host@example.com");
   await call("/api/rooms", { method: "POST", cookie: host.cookie, body: createBody() });
