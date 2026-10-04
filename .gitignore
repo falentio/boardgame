@@ -22,3 +22,10 @@ logs
 .env
 .env.*
 !.env.example
+.dev.vars
+
+# Cloudflare local state (D1, KV, R2, cache)
+.wrangler
+
+# Agent working notes
+.audit
