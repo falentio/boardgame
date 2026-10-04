@@ -1,9 +1,10 @@
-import { afterEach, beforeEach, expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { STARTER_ROLES } from "../../../../shared/core/lockstep/games/g54/roles.ts";
 import { makeRandom } from "../../../../shared/core/lockstep/hash.ts";
 import { seed } from "../../../../shared/core/lockstep/ids.ts";
 import { roomId } from "../../../../shared/rooms/ids.ts";
-import { authFromEnv } from "../../../utils/auth.ts";
+import { authFromEnv, requireSession } from "../../../utils/auth.ts";
+import { cloudflareEnv } from "../../../utils/db.ts";
 import { createRoomApp } from "../http.ts";
 import { createTestDb, type TestDb } from "./d1-harness.ts";
 import { recordingEvents } from "./recording-events.ts";
@@ -33,6 +34,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  vi.unstubAllGlobals();
   await harness.dispose();
 });
 
@@ -196,4 +198,111 @@ test("a room created by one session is invisible to another without its code", a
   await call("/api/rooms", { method: "POST", cookie: host.cookie, body: createBody() });
   const collection = await call("/api/rooms", { cookie: host.cookie });
   expect(collection.status).toBe(404);
+});
+
+const AUTH_APP_KEY = "boardgame-byc3vc";
+const AUTH_HOST = "wss.vask.dev";
+const TEST_SECRET = "test-secret";
+const AUTH_SIGNATURE = "ea7f52379896a24c8041b2e7f1de7fca73ac10040ed1ff8667cb7096dc4cbad6";
+
+const authEnv = (): unknown => ({
+  ...harness.env,
+  PUSHER_APP_KEY: AUTH_APP_KEY,
+  PUSHER_HOST: AUTH_HOST,
+  PUSHER_SECRET: TEST_SECRET,
+});
+
+interface StatusError {
+  statusCode: number;
+}
+
+interface AuthEvent {
+  readonly headers: Headers;
+  readonly context: { cloudflare: { env: unknown }; request: Request };
+}
+
+const authEvent = (cookie: string | null, form: Record<string, string>, env: unknown): AuthEvent => {
+  const headers = new Headers({ "content-type": "application/x-www-form-urlencoded" });
+  if (cookie) headers.set("cookie", cookie);
+  const request = new Request(`${ORIGIN}/api/pusher/auth`, {
+    method: "POST",
+    headers,
+    body: new URLSearchParams(form).toString(),
+  });
+  return { headers: request.headers, context: { cloudflare: { env }, request } };
+};
+
+// The route is a Nitro handler: its h3 plumbing and the auth/db helpers are
+// auto-import globals. Bind the real helpers and minimal stand-ins for the rest.
+const loadAuthRoute = async (): Promise<(event: AuthEvent) => Promise<unknown>> => {
+  vi.stubGlobal("defineEventHandler", (handler: unknown) => handler);
+  vi.stubGlobal("requireSession", requireSession);
+  vi.stubGlobal("cloudflareEnv", cloudflareEnv);
+  vi.stubGlobal("readFormData", (event: AuthEvent) => event.context.request.formData());
+  vi.stubGlobal("createError", (input: { statusCode: number; statusMessage: string }) =>
+    Object.assign(new Error(input.statusMessage), input),
+  );
+  const module = await import("../../../api/pusher/auth.post.ts");
+  const handler: unknown = module.default;
+  if (typeof handler !== "function") throw new Error("auth route is not a handler");
+  return handler as (event: AuthEvent) => Promise<unknown>;
+};
+
+const callAuth = async (
+  cookie: string | null,
+  form: Record<string, string>,
+  env: unknown = authEnv(),
+): Promise<{ status: number; body: unknown }> => {
+  const route = await loadAuthRoute();
+  try {
+    return { status: 200, body: await route(authEvent(cookie, form, env)) };
+  } catch (error) {
+    return { status: (error as StatusError).statusCode, body: null };
+  }
+};
+
+test("POST /api/pusher/auth signs a private-room channel for a session", async () => {
+  const host = await signUp("host@example.com");
+  const response = await callAuth(host.cookie, {
+    socket_id: "1234.5678",
+    channel_name: "private-room-BAVOKUTI",
+  });
+  expect(response.status).toBe(200);
+  expect(response.body).toEqual({ auth: `${AUTH_APP_KEY}:${AUTH_SIGNATURE}` });
+});
+
+test("POST /api/pusher/auth is 401 without a session", async () => {
+  const response = await callAuth(null, {
+    socket_id: "1234.5678",
+    channel_name: "private-room-BAVOKUTI",
+  });
+  expect(response.status).toBe(401);
+});
+
+test("POST /api/pusher/auth is 400 for a malformed channel and never signs an arbitrary one", async () => {
+  const host = await signUp("host@example.com");
+  const malformed = await callAuth(host.cookie, {
+    socket_id: "1234.5678",
+    channel_name: "private-room-nope",
+  });
+  expect(malformed.status).toBe(400);
+
+  const arbitrary = await callAuth(host.cookie, {
+    socket_id: "1234.5678",
+    channel_name: "private-admin",
+  });
+  expect(arbitrary.status).toBe(400);
+
+  const missing = await callAuth(host.cookie, { socket_id: "1234.5678" });
+  expect(missing.status).toBe(400);
+});
+
+test("POST /api/pusher/auth is 503 when realtime is not configured", async () => {
+  const host = await signUp("host@example.com");
+  const response = await callAuth(
+    host.cookie,
+    { socket_id: "1234.5678", channel_name: "private-room-BAVOKUTI" },
+    harness.env,
+  );
+  expect(response.status).toBe(503);
 });
