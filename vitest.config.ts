@@ -6,6 +6,7 @@ export default defineConfig({
       "shared/core/tests/**/*.test.ts",
       "shared/rooms/tests/**/*.test.ts",
       "server/modules/rooms/tests/**/*.test.ts",
+      "server/modules/realtime/tests/**/*.test.ts",
     ],
     environment: "node",
   },
