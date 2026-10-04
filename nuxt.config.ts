@@ -8,6 +8,9 @@ export default defineNuxtConfig({
 
   nitro: {
     preset: 'cloudflare_module',
+    // `server/modules/**` is Nitro's reserved local-module directory; this app
+    // keeps its own modules there, so stop Nitro from importing them as modules.
+    ignore: ['modules/**'],
   },
 
   vite: {
