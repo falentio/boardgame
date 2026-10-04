@@ -10,6 +10,11 @@ export interface CloudflareEnv {
   DB: AnyD1Database;
   BETTER_AUTH_SECRET: string;
   BETTER_AUTH_URL: string;
+  // Optional: a missing Pusher var must not 500 the app; pusherConfigFromEnv
+  // returns null and realtime degrades to a no-op.
+  PUSHER_APP_KEY?: string;
+  PUSHER_HOST?: string;
+  PUSHER_SECRET?: string;
 }
 
 export type Db = DrizzleD1Database<AppSchema>;
