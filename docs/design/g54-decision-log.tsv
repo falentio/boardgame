@@ -1,0 +1,25 @@
+decision	unit	verdict	evidence
+Frames over per-action log	architecture	VERIFIED	docs/design/p2p-lockstep.md; arena picked frame spine over C1 event-log after cross-judge found the same-seq tie-break unsound
+State digest in the seed chain	architecture	VERIFIED	tests/lockstep/convergence.test.ts (mutant game caught); hash.ts stateDigest
+Seed verified over state on load	core	VERIFIED	tests/lockstep/snapshot.test.ts (tampered seed, headless frame>0)
+Prototype-safe parse boundary	core	VERIFIED	tests/lockstep/json.test.ts; codec.ts field uses Object.hasOwn
+Roster invariants at decode	core	VERIFIED	tests/lockstep/snapshot.test.ts (empty/duplicate/uncovered status)
+Empty owed set throws on non-terminal	core	VERIFIED	tests/lockstep/session.test.ts (all-resign)
+Bounded pending, drop bad buffered frame	core	VERIFIED	tests/lockstep/session.test.ts (forged frame ahead, MAX_PENDING_AHEAD)
+Window machine as data-driven stack	game	VERIFIED	games/g54/windows.ts RESOLVERS; tests/lockstep/g54/windows.test.ts
+Setup: 1/1/1/2 draft, 15-card deck, deal 2	game	VERIFIED	tests/lockstep/g54/setup.test.ts
+Starter set plays to terminal	game	VERIFIED	tests/lockstep/g54/fullgame.test.ts (3 and 6 seats)
+Role effects as a registry	game	VERIFIED	games/g54/effects.ts ROLE_EFFECTS/EXTRA_EFFECTS; all 25 roles
+All 25 roles implemented	game	VERIFIED	tests/lockstep/g54/{finance,force,comms,special,roles}.test.ts
+Tokens: Treaty, Peacekeeping, Disappear, Tax	game	VERIFIED	tests/lockstep/g54/tokens.test.ts
+Reactive windows: Missionary, Intellectual, Lawyer	game	VERIFIED	tests/lockstep/g54/reactive.test.ts
+Void windows on gone seats (review)	game	VERIFIED	tests/lockstep/g54/defects.test.ts; windows.ts voidWindow/drain
+Resign mid-turn conserves cards (review)	game	VERIFIED	tests/lockstep/g54/defects.test.ts; windows.ts resignActive
+Terminal peer seals no empty frame (review)	core	VERIFIED	tests/lockstep/session.test.ts
+Capitalist secondary claim taxed (review)	game	VERIFIED	tests/lockstep/g54/defects.test.ts
+Lawyer failure passes to next claimant (review)	game	VERIFIED	tests/lockstep/g54/defects.test.ts
+Crime Boss kill gated on 5 coins (review)	game	VERIFIED	tests/lockstep/g54/defects.test.ts
+Challenge-and-block policy reaches terminal	game	VERIFIED	tests/lockstep/g54/sets.test.ts
+Coin + deck conservation every frame	game	VERIFIED	tests/lockstep/g54/sets.test.ts
+Two peers converge on a full chaos game	game	VERIFIED	tests/lockstep/g54/sets.test.ts
+Whole-repo check + tests green	gate	VERIFIED	vp check (76 files); vp test (229)
