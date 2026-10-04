@@ -162,7 +162,7 @@ test("requireHost accepts the host and rejects everyone else", () => {
 
 test("transitions are pure: inputs are untouched and equal inputs give equal outputs", () => {
   const room = created();
-  const before = structuredClone(room);
+  const before = JSON.parse(JSON.stringify(room)) as Room;
   const first = joinRoom(room, { user: GUEST, now: 2000 });
   const second = joinRoom(room, { user: GUEST, now: 2000 });
   expect(room).toEqual(before);
