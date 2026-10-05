@@ -67,6 +67,7 @@ test("parseRoom returns null on a missing or malformed code", () => {
 
 test("parseRoom returns null when seats is not an array or a seat is malformed", () => {
   expect(parseRoom(wireRoom({ seats: "seats" }))).toBeNull();
+  expect(parseRoom(wireRoom({ seats: [] }))).toBeNull();
   expect(parseRoom(wireRoom({ seats: [{ id: "seat-0", occupant: 5, joinedAt: 1 }] }))).toBeNull();
   expect(parseRoom(wireRoom({ seats: [{ id: "", occupant: null, joinedAt: null }] }))).toBeNull();
 });

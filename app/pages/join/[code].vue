@@ -66,12 +66,12 @@ onMounted(() => {
         </div>
 
         <div v-else class="flex flex-col gap-4">
-          <p class="text-destructive text-sm leading-normal">
+          <p role="alert" class="text-destructive text-sm leading-normal">
             {{ error }}
           </p>
           <div class="flex flex-wrap items-center gap-3">
             <Button v-if="canRetry" type="button" variant="outline" @click="attempt">
-              Try again
+              Retry
             </Button>
             <NuxtLink to="/" class="text-primary text-sm underline-offset-4 hover:underline">
               Back to the dashboard

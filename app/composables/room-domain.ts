@@ -90,7 +90,7 @@ export const parseRoom = (raw: unknown): Room | null => {
   const roles = rawRoles.filter((role): role is RoleId => typeof role === "string" && isRoleId(role));
 
   const rawSeats = fieldOf(raw, "seats");
-  if (!Array.isArray(rawSeats)) return null;
+  if (!Array.isArray(rawSeats) || rawSeats.length === 0) return null;
   const seats: Seat[] = [];
   for (const rawSeat of rawSeats) {
     const seat = parseSeat(rawSeat);

@@ -54,7 +54,7 @@ const pick = (role: RoleId) => {
             <span class="font-medium">{{ role.name }}</span>
             <span
               class="text-xs leading-normal"
-              :class="stateOf(role.id) === 'selected' ? 'text-primary-foreground/80' : 'text-muted-foreground'"
+              :class="stateOf(role.id) === 'selected' ? 'text-primary-foreground' : 'text-muted-foreground'"
             >
               {{ role.summary }}
             </span>

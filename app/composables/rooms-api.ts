@@ -38,7 +38,7 @@ const statusOf = (error: unknown): number | null => {
 const failureReason = (error: unknown): string => {
   const reason = errorReason(error);
   if (reason !== null) return reason;
-  return error instanceof Error ? error.message : "Request failed";
+  return "Couldn't reach the server. Check your connection and try again.";
 };
 
 const roomFrom = (data: unknown): Room | null => {

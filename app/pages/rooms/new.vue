@@ -45,7 +45,9 @@ const focusFirstProblem = () => {
     form.querySelector<HTMLButtonElement>("[data-role-option]:not([disabled])")?.focus()
     return
   }
-  form.querySelector<HTMLInputElement>("#room-name")?.focus()
+  if (errorField.value === "name") {
+    form.querySelector<HTMLInputElement>("#room-name")?.focus()
+  }
 }
 
 const onSubmit = async () => {
@@ -102,8 +104,8 @@ const onSubmit = async () => {
                 v-model="name"
                 maxlength="60"
                 placeholder="Movie night"
-                :aria-invalid="errorField === 'name' || errorField === 'form' ? true : undefined"
-                :aria-describedby="errorField === 'name' || errorField === 'form' ? 'create-error' : undefined"
+                :aria-invalid="errorField === 'name' ? true : undefined"
+                :aria-describedby="errorField === 'name' ? 'create-error' : undefined"
               />
             </Field>
             <Field>
@@ -111,7 +113,7 @@ const onSubmit = async () => {
                 Seats
               </FieldLabel>
               <Select v-model="seats">
-                <SelectTrigger id="seats" class="w-full">
+                <SelectTrigger id="seats" aria-describedby="seats-hint" class="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -120,7 +122,7 @@ const onSubmit = async () => {
                   </SelectItem>
                 </SelectContent>
               </Select>
-              <FieldDescription>
+              <FieldDescription id="seats-hint">
                 Choose 1 to 7 seats, including you as host.
               </FieldDescription>
             </Field>
@@ -134,6 +136,9 @@ const onSubmit = async () => {
               >
                 <p id="roles-label" class="text-sm leading-none font-medium">
                   Roles
+                </p>
+                <p class="text-muted-foreground text-sm leading-normal">
+                  Choose 5 roles: 1 Finance, 1 Communications, 1 Force, 2 Special Interest.
                 </p>
                 <RolePicker v-model:draft="draft" />
                 <p

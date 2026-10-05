@@ -9,13 +9,18 @@ import { parseRoomCode } from "#shared/rooms/code.ts"
 definePageMeta({ layout: "shell" })
 
 const code = ref("")
+const error = ref("")
 
 const parsed = computed(() => parseRoomCode(code.value))
 const invalid = computed(() => code.value.trim().length > 0 && parsed.value === null)
 
 const onJoin = async () => {
+  error.value = ""
   const target = parsed.value
-  if (target === null) return
+  if (target === null) {
+    error.value = "Enter a room code like BAVOKUTI."
+    return
+  }
   await navigateTo("/join/" + target)
 }
 </script>
@@ -58,11 +63,11 @@ const onJoin = async () => {
                   autocapitalize="characters"
                   spellcheck="false"
                   class="uppercase"
-                  :aria-invalid="invalid ? true : undefined"
-                  :aria-describedby="invalid ? 'room-code-hint' : undefined"
+                  :aria-invalid="invalid || error ? true : undefined"
+                  :aria-describedby="invalid || error ? 'room-code-hint' : undefined"
                 />
-                <FieldDescription v-if="invalid" id="room-code-hint" class="text-destructive">
-                  Room codes are 8 letters, like BAVOKUTI.
+                <FieldDescription v-if="invalid || error" id="room-code-hint" class="text-destructive">
+                  {{ error || "Room codes are 8 letters, like BAVOKUTI." }}
                 </FieldDescription>
                 <FieldDescription v-else>
                   Enter the code from a shared link.
@@ -70,7 +75,7 @@ const onJoin = async () => {
               </Field>
               <Field>
                 <div>
-                  <Button type="submit" variant="outline" :disabled="parsed === null">
+                  <Button type="submit" variant="outline">
                     Join room
                   </Button>
                 </div>

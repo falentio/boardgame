@@ -121,6 +121,51 @@ const onJoin = async () => {
             </p>
           </div>
 
+          <div class="flex flex-col gap-3">
+            <template v-if="lobby.amIHost">
+              <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Button
+                  type="button"
+                  :disabled="!lobby.canStart"
+                  :aria-describedby="lobby.status.kind === 'waiting' ? 'start-reason' : undefined"
+                  @click="onStart(lobby.room)"
+                >
+                  Start game
+                </Button>
+                <p
+                  v-if="lobby.status.kind === 'waiting'"
+                  id="start-reason"
+                  class="text-muted-foreground text-sm leading-normal tabular-nums"
+                >
+                  Waiting for {{ lobby.status.total - lobby.status.filled }} more
+                </p>
+              </div>
+              <p v-if="startError" role="alert" class="text-destructive text-sm leading-normal">
+                {{ startError }}
+              </p>
+            </template>
+
+            <p v-else-if="lobby.amISeated" class="text-muted-foreground text-sm leading-normal">
+              Only the host can start the game.
+            </p>
+
+            <template v-else-if="lobby.status.kind === 'waiting'">
+              <div>
+                <Button type="button" :disabled="joining" @click="onJoin">
+                  <Spinner v-if="joining" />
+                  Join room
+                </Button>
+              </div>
+              <p v-if="joinError" role="alert" class="text-destructive text-sm leading-normal">
+                {{ joinError }}
+              </p>
+            </template>
+
+            <p v-else class="text-sm leading-normal">
+              This room is full. Ask the host for a seat.
+            </p>
+          </div>
+
           <ShareLink :link="lobby.room.link" />
 
           <div class="flex flex-col gap-3">
@@ -146,45 +191,6 @@ const onJoin = async () => {
                 </Badge>
               </li>
             </ul>
-          </div>
-
-          <div class="flex flex-col gap-3">
-            <template v-if="lobby.amIHost">
-              <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <Button type="button" :disabled="!lobby.canStart" @click="onStart(lobby.room)">
-                  Start game
-                </Button>
-                <p
-                  v-if="lobby.status.kind === 'waiting'"
-                  class="text-muted-foreground text-sm leading-normal tabular-nums"
-                >
-                  Waiting for {{ lobby.status.total - lobby.status.filled }} more
-                </p>
-              </div>
-              <p v-if="startError" class="text-destructive text-sm leading-normal">
-                {{ startError }}
-              </p>
-            </template>
-
-            <p v-else-if="lobby.amISeated" class="text-muted-foreground text-sm leading-normal">
-              Only the host can start the game.
-            </p>
-
-            <template v-else-if="lobby.status.kind === 'waiting'">
-              <div>
-                <Button type="button" :disabled="joining" @click="onJoin">
-                  <Spinner v-if="joining" />
-                  Join room
-                </Button>
-              </div>
-              <p v-if="joinError" class="text-destructive text-sm leading-normal">
-                {{ joinError }}
-              </p>
-            </template>
-
-            <p v-else class="text-sm leading-normal">
-              This room is full. Ask the host for a seat.
-            </p>
           </div>
         </div>
       </CardContent>

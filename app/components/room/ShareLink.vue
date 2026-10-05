@@ -8,22 +8,30 @@ import { Label } from "@/components/ui/label"
 const props = defineProps<{ link: string }>()
 
 const linkId = useId()
-const copied = ref(false)
+const status = ref<"idle" | "copied" | "failed">("idle")
 let resetTimer: ReturnType<typeof setTimeout> | null = null
+
+const reset = () => {
+  if (resetTimer !== null) clearTimeout(resetTimer)
+  resetTimer = setTimeout(() => {
+    status.value = "idle"
+  }, 2000)
+}
 
 const copy = async () => {
   if (!import.meta.client) return
-  if (!("clipboard" in navigator)) return
+  if (!("clipboard" in navigator)) {
+    status.value = "failed"
+    reset()
+    return
+  }
   try {
     await navigator.clipboard.writeText(props.link)
-    copied.value = true
-    if (resetTimer !== null) clearTimeout(resetTimer)
-    resetTimer = setTimeout(() => {
-      copied.value = false
-    }, 2000)
+    status.value = "copied"
   } catch {
-    copied.value = false
+    status.value = "failed"
   }
+  reset()
 }
 
 const selectLink = (event: FocusEvent) => {
@@ -48,12 +56,12 @@ onUnmounted(() => {
         @focus="selectLink"
       />
       <Button type="button" variant="outline" class="sm:shrink-0" @click="copy">
-        <component :is="copied ? CheckIcon : CopyIcon" />
+        <component :is="status === 'copied' ? CheckIcon : CopyIcon" />
         Copy link
       </Button>
     </div>
     <p role="status" class="min-h-5 text-sm text-muted-foreground">
-      {{ copied ? "Copied" : "" }}
+      {{ status === "copied" ? "Copied" : status === "failed" ? "Copy failed. Select the link and copy it manually." : "" }}
     </p>
   </div>
 </template>
