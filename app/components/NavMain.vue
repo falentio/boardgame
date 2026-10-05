@@ -54,9 +54,9 @@ defineProps<{
               <SidebarMenuSub>
                 <SidebarMenuSubItem v-for="subItem in item.items" :key="subItem.title">
                   <SidebarMenuSubButton as-child>
-                    <a :href="subItem.url">
+                    <NuxtLink :to="subItem.url">
                       <span>{{ subItem.title }}</span>
-                    </a>
+                    </NuxtLink>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
               </SidebarMenuSub>
@@ -65,10 +65,10 @@ defineProps<{
         </Collapsible>
         <SidebarMenuItem v-else>
           <SidebarMenuButton as-child :is-active="item.isActive" :tooltip="item.title">
-            <a :href="item.url">
+            <NuxtLink :to="item.url">
               <component :is="item.icon" v-if="item.icon" />
               <span>{{ item.title }}</span>
-            </a>
+            </NuxtLink>
           </SidebarMenuButton>
         </SidebarMenuItem>
       </template>
