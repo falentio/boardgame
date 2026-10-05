@@ -26,6 +26,7 @@ const props = defineProps<{
 
 const route = useRoute()
 const session = authClient.useSession()
+const name = ref("")
 const email = ref("")
 const password = ref("")
 const error = ref("")
@@ -39,12 +40,13 @@ const onSubmit = async () => {
   error.value = ""
   submitting.value = true
   try {
-    const { error: failure } = await authClient.signIn.email({
+    const { error: failure } = await authClient.signUp.email({
+      name: name.value,
       email: email.value,
       password: password.value,
     })
     if (failure) {
-      error.value = failure.message ?? "Sign in failed"
+      error.value = failure.message ?? "Sign up failed"
       return
     }
     await session.value.refetch()
@@ -60,15 +62,28 @@ const onSubmit = async () => {
     <Card>
       <CardHeader class="text-center">
         <CardTitle class="text-xl">
-          Welcome back
+          Create an account
         </CardTitle>
         <CardDescription>
-          Enter your email and password to sign in
+          Enter your name, email, and a password
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form @submit.prevent="onSubmit">
           <FieldGroup>
+            <Field>
+              <FieldLabel for="name">
+                Name
+              </FieldLabel>
+              <Input
+                id="name"
+                v-model="name"
+                type="text"
+                placeholder="Ada Lovelace"
+                autocomplete="name"
+                required
+              />
+            </Field>
             <Field>
               <FieldLabel for="email">
                 Email
@@ -90,14 +105,17 @@ const onSubmit = async () => {
                 id="password"
                 v-model="password"
                 type="password"
-                autocomplete="current-password"
+                autocomplete="new-password"
                 required
               />
+              <FieldDescription>
+                Use at least 8 characters.
+              </FieldDescription>
             </Field>
             <FieldError :errors="error ? [error] : []" />
             <Field>
               <Button type="submit" :disabled="submitting">
-                {{ submitting ? "Signing in..." : "Sign in" }}
+                {{ submitting ? "Creating account..." : "Create account" }}
               </Button>
             </Field>
           </FieldGroup>
@@ -105,11 +123,7 @@ const onSubmit = async () => {
       </CardContent>
     </Card>
     <FieldDescription class="px-6 text-center">
-      By clicking continue, you agree to our <a href="#">Terms of Service</a>
-      and <a href="#">Privacy Policy</a>.
-    </FieldDescription>
-    <FieldDescription class="px-6 text-center">
-      New here? <NuxtLink to="/signup">Create an account</NuxtLink>
+      Already have an account? <NuxtLink to="/login">Sign in</NuxtLink>
     </FieldDescription>
   </div>
 </template>
