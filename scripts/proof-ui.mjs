@@ -8,7 +8,7 @@
 //
 // Usage: node scripts/proof-ui.mjs [--port 3000] [--keep]
 import { spawn } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
 
 const args = process.argv.slice(2);
@@ -33,6 +33,11 @@ const fail = (msg) => {
 const pass = (msg) => console.log(`PASS: ${msg}`);
 
 mkdirSync(PROOF, { recursive: true });
+
+// A reused profile carries the session cookie from a prior run, so the
+// signed-out assertion would see a still-signed-in browser. Start clean.
+const profileDir = `/tmp/proof-profile-${PORT}-${process.pid}`;
+rmSync(profileDir, { recursive: true, force: true });
 
 const startServer = async () => {
   const server = spawn(
@@ -62,7 +67,7 @@ const connectBrowser = async () => {
       "--no-sandbox",
       "--disable-gpu",
       "--disable-dev-shm-usage",
-      `--user-data-dir=/tmp/proof-profile-${debugPort}`,
+      `--user-data-dir=${profileDir}`,
       `--remote-debugging-port=${debugPort}`,
       "--remote-allow-origins=*",
       "about:blank",
