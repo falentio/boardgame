@@ -29,3 +29,6 @@ logs
 
 # Agent working notes
 .audit
+
+# Agent worktrees
+.worktrees
