@@ -153,15 +153,24 @@ const connectBrowser = async () => {
     },
     // Set the value the way a person does. A synthetic `value` set is reverted
     // by Vue's next patch of the controlled input, so type through CDP instead.
+    // The session fetch can re-render the form mid-type and clear the field, so
+    // confirm the value stuck and retype if it did not.
     async fill(selector, value) {
-      const focused = await page.eval(
-        `(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return false; el.focus(); return document.activeElement === el; })()`,
-      );
-      if (!focused) throw new Error(`fill: no element for ${selector}`);
-      await send("Input.dispatchKeyEvent", { type: "keyDown", key: "a", code: "KeyA", modifiers: 2 }, session);
-      await send("Input.dispatchKeyEvent", { type: "keyUp", key: "a", code: "KeyA", modifiers: 2 }, session);
-      await send("Input.insertText", { text: value }, session);
-      await delay(150);
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const focused = await page.eval(
+          `(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return false; el.focus(); return document.activeElement === el; })()`,
+        );
+        if (!focused) throw new Error(`fill: no element for ${selector}`);
+        await send("Input.dispatchKeyEvent", { type: "keyDown", key: "a", code: "KeyA", modifiers: 2 }, session);
+        await send("Input.dispatchKeyEvent", { type: "keyUp", key: "a", code: "KeyA", modifiers: 2 }, session);
+        await send("Input.insertText", { text: value }, session);
+        await delay(200);
+        const current = await page.eval(
+          `(() => { const el = document.querySelector(${JSON.stringify(selector)}); return el ? el.value : null; })()`,
+        );
+        if (current === value) return;
+      }
+      throw new Error(`fill: value did not stick for ${selector}`);
     },
     async text(selector) {
       return page.eval(
