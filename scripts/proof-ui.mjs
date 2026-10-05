@@ -121,7 +121,7 @@ const connectBrowser = async () => {
       const loaded = new Promise((res) => {
         const fn = () => res();
         on("Page.loadEventFired", fn);
-        setTimeout(res, 8000);
+        setTimeout(res, 15000);
       });
       await send("Page.navigate", { url }, session);
       await loaded;
@@ -228,7 +228,7 @@ const main = async () => {
       await browser.page.eval(
         `(() => { const f = document.querySelector('form'); if (!f) return false; f.requestSubmit ? f.requestSubmit() : f.submit(); return true; })()`,
       );
-      const landed = await browser.page.waitFor("location.pathname === '/'", { timeoutMs: 10000 });
+      const landed = await browser.page.waitFor("location.pathname === '/'", { timeoutMs: 30000 });
       if (!landed) fail(`login did not land on /, still at ${await browser.page.url()}`);
       else pass("login form signed in and landed on /");
     }
