@@ -6,6 +6,11 @@ import type { G54Player, G54State } from "./state.ts";
 export interface G54Setup {
   /** Exactly 5 roles: 1 Finance, 1 Communications, 1 Force, 2 Special Interest. */
   readonly roles: readonly RoleId[];
+  /**
+   * Social Media was drafted: it becomes an extra general action for the whole
+   * game. It is not a role; the extra Communications draw happened in the draft.
+   */
+  readonly socialMedia?: boolean;
 }
 
 /** Three copies of each chosen role; the retail 15-card influence deck. */
@@ -72,6 +77,12 @@ export const genesisState = (setup: G54Setup, roster: Roster, rng: Random): G54S
     treaty: [],
     tax: null,
     disappear: [],
+    bank: 0,
+    socialMedia: setup.socialMedia === true,
+    bomb: null,
+    socialist: null,
+    plantation: null,
+    arms: null,
     resigned: [],
   };
 };

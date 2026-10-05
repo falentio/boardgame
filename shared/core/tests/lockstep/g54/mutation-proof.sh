@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Mutation-proof for shared/core/tests/lockstep/g54/matrix.test.ts.
+# Mutation-proof for the g54 engine.
 #
-# For each mutation it breaks one rule in the g54 engine, runs ONLY the matrix
-# test, and asserts the matrix goes RED. A mutation the matrix survives is a
-# coverage hole: the matrix would pass a broken game. The file is restored after
+# For each mutation it breaks one rule in the g54 engine, runs the whole g54 test
+# suite, and asserts the suite goes RED. A mutation the suite survives is a
+# coverage hole: the suite would pass a broken game. The files are restored after
 # every mutation via the trap, so a Ctrl-C or a crash never leaves the tree dirty.
 #
 # Usage: bash shared/core/tests/lockstep/g54/mutation-proof.sh
@@ -12,17 +12,21 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../.." && pwd)"
 cd "$ROOT"
-MATRIX="shared/core/tests/lockstep/g54/matrix.test.ts"
+SUITE="shared/core/tests/lockstep/g54"
 EFFECTS="shared/core/lockstep/games/g54/effects.ts"
 ROLES="shared/core/lockstep/games/g54/roles.ts"
-[ -f "$MATRIX" ] && [ -f "$EFFECTS" ] && [ -f "$ROLES" ] || {
-  echo "mutation-proof: run from the repo (could not resolve $MATRIX)"; exit 2;
+WINDOWS="shared/core/lockstep/games/g54/windows.ts"
+INDEX="shared/core/lockstep/games/g54/index.ts"
+[ -d "$SUITE" ] && [ -f "$EFFECTS" ] && [ -f "$ROLES" ] && [ -f "$WINDOWS" ] && [ -f "$INDEX" ] || {
+  echo "mutation-proof: run from the repo (could not resolve $SUITE)"; exit 2;
 }
 BACKUP="$(mktemp)"
 
 cp "$EFFECTS" "$BACKUP"
 cp "$ROLES" "$BACKUP.r"
-trap 'cp "$BACKUP" "$EFFECTS"; cp "$BACKUP.r" "$ROLES"; rm -f "$BACKUP" "$BACKUP.r"' EXIT
+cp "$WINDOWS" "$BACKUP.w"
+cp "$INDEX" "$BACKUP.i"
+trap 'cp "$BACKUP" "$EFFECTS"; cp "$BACKUP.r" "$ROLES"; cp "$BACKUP.w" "$WINDOWS"; cp "$BACKUP.i" "$INDEX"; rm -f "$BACKUP" "$BACKUP.r" "$BACKUP.w" "$BACKUP.i"' EXIT
 
 # Each entry: <label>|<file>|<sed expression>. The sed must change exactly one rule.
 MUTATIONS=(
@@ -38,33 +42,47 @@ MUTATIONS=(
   "spy takes 2 not 1|$EFFECTS|s/gainFromTreasury(ctx.state, ctx.claim.claimant, 1), \[/{ gainFromTreasury(ctx.state, ctx.claim.claimant, 2), [/"
   "consular treaty names the wrong seat|$EFFECTS|s/treaty: \[ctx.claim.claimant, ctx.claim.target\]/treaty: [ctx.claim.target, ctx.claim.target]/"
   "guerrilla loses its blockRole|$ROLES|s/blockRole: \"guerrilla\"/blockRole: null/"
+  "anarchist holdless flag dropped|$ROLES|s/holdless: true/holdless: false/"
+  "paramilitary 2-life cost 5 not 3|$ROLES|s/costByTargetLives: { 1: 5, 2: 3 }/costByTargetLives: { 1: 5, 2: 5 }/"
+  "arms dealer pays 2 not 4|$EFFECTS|s/const paid = matched ? gainFromTreasury(ctx.state, ctx.claim.claimant, 4) : ctx.state;/const paid = matched ? gainFromTreasury(ctx.state, ctx.claim.claimant, 2) : ctx.state;/"
+  "financier does not zero the pile|$EFFECTS|s/^        bank: 0,$/        bank: ctx.state.bank,/"
+  "plantation take 2 not 1|$EFFECTS|s/{ ...gainFromTreasury(ctx.state, active, 1), plantation: \[active\] }/{ ...gainFromTreasury(ctx.state, active, 2), plantation: [active] }/"
+  "socialist collects 2 not 1|$WINDOWS|s/return withSteps(transferCoins(state, seat, socialist.seat, 1), rest);/return withSteps(transferCoins(state, seat, socialist.seat, 2), rest);/"
+  "socialist pool leaks to every seat|$INDEX|s/state.socialist !== null \&\& state.socialist.seat === seat/state.socialist !== null/"
+  "paramilitary flat 3 for any target|$ROLES|s/costByTargetLives: { 1: 5, 2: 3 }/costByTargetLives: { 1: 3, 2: 3 }/"
 )
-
 pass=0
 fail=0
-for entry in "${MUTATIONS[@]}"; do
+run_mutation() {
+  local entry="$1"
   label="${entry%%|*}"
   rest="${entry#*|}"
   file="${rest%%|*}"
   expr="${rest#*|}"
-  cp "$BACKUP" "$EFFECTS"; cp "$BACKUP.r" "$ROLES"
+  cp "$BACKUP" "$EFFECTS"; cp "$BACKUP.r" "$ROLES"; cp "$BACKUP.w" "$WINDOWS"; cp "$BACKUP.i" "$INDEX"
   sed -i "$expr" "$file"
   case "$file" in
     *roles.ts) pristine="$BACKUP.r" ;;
+    *windows.ts) pristine="$BACKUP.w" ;;
+    *index.ts) pristine="$BACKUP.i" ;;
     *) pristine="$BACKUP" ;;
   esac
   if diff -q "$pristine" "$file" >/dev/null 2>&1; then
     echo "SKIP  sed did not change the source for: $label"; fail=$((fail + 1))
-    continue
+    return
   fi
-  if npx vitest run "$MATRIX" >/tmp/mutation-out.txt 2>&1; then
-    echo "HOLE  matrix stayed GREEN under: $label"
+  if npx vitest run $SUITE >/tmp/mutation-out.txt 2>&1; then
+    echo "HOLE  stayed GREEN under: $label"
     fail=$((fail + 1))
   else
     echo "caught  $label"
     pass=$((pass + 1))
   fi
-  cp "$BACKUP" "$EFFECTS"; cp "$BACKUP.r" "$ROLES"
+  cp "$BACKUP" "$EFFECTS"; cp "$BACKUP.r" "$ROLES"; cp "$BACKUP.w" "$WINDOWS"; cp "$BACKUP.i" "$INDEX"
+}
+
+for entry in "${MUTATIONS[@]}"; do
+  run_mutation "$entry"
 done
 
 echo "----"

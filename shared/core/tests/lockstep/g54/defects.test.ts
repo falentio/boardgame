@@ -265,6 +265,7 @@ test("Crime Boss does not kill when the claimant cannot cover 5 coins on refusal
       claimant: ANN,
       role: "crime-boss" as const,
       target: BOB,
+      named: null,
       cost: 0,
       costTo: "treasury" as const,
       blockRole: null,

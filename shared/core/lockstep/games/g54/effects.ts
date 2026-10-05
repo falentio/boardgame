@@ -1,4 +1,4 @@
-import type { SeatId } from "../../index.ts";
+import type { Random, SeatId } from "../../index.ts";
 import {
   aliveSeats,
   beginStep,
@@ -8,14 +8,17 @@ import {
   END_TURN,
   gainFromTreasury,
   makeWindow,
+  openSwap,
   otherAlive,
   playerOf,
   poorest,
   priestTargetable,
+  returnToCourt,
   revealStep,
   targetable,
   transferCoins,
   windowStep,
+  withPlayer,
   withSteps,
 } from "./helpers.ts";
 import { type RoleId } from "./roles.ts";
@@ -27,6 +30,7 @@ export interface RoleCtx {
   readonly claim: PendingAction;
   readonly blocked: boolean;
   readonly rest: readonly Step[];
+  readonly rng: Random;
 }
 
 export interface ExtraCtx {
@@ -38,16 +42,6 @@ export interface ExtraCtx {
 
 export type RoleEffect = (ctx: RoleCtx) => G54State;
 export type ExtraEffect = (ctx: ExtraCtx) => G54State;
-
-/** A plain Court swap: draw `count`, keep the hand size, return the rest. */
-const openSwap = (state: G54State, seat: SeatId, count: number): G54State => {
-  const { drawn, court } = courtDraw(state, count);
-  return {
-    ...state,
-    court,
-    draw: { seat, pool: [...drawn], keepSize: playerOf(state, seat).hand.length, target: null },
-  };
-};
 
 /** The three reactive roles have no turn action; a claim on one falls back to Income. */
 const noEffect: RoleEffect = (ctx) => withSteps(ctx.state, [END_TURN, ...ctx.rest]);
@@ -229,6 +223,80 @@ export const ROLE_EFFECTS: Record<RoleId, RoleEffect> = {
       END_TURN,
       ...ctx.rest,
     ]),
+  paramilitary: (ctx) =>
+    withSteps(ctx.state, [...execution(ctx.claim, ctx.blocked), END_TURN, ...ctx.rest]),
+  anarchist: (ctx) => {
+    const target = ctx.claim.target;
+    if (target === null) return withSteps(ctx.state, [END_TURN, ...ctx.rest]);
+    const bomb = { holder: target, prior: [ctx.claim.claimant], move: null };
+    return withSteps({ ...ctx.state, bomb }, [
+      windowStep(makeWindow("bomb", [target])),
+      END_TURN,
+      ...ctx.rest,
+    ]);
+  },
+  financier: (ctx) => {
+    const claimant = playerOf(ctx.state, ctx.claim.claimant);
+    return withSteps(
+      {
+        ...withPlayer(ctx.state, { ...claimant, coins: claimant.coins + ctx.state.bank }),
+        bank: 0,
+      },
+      [END_TURN, ...ctx.rest],
+    );
+  },
+  "plantation-owner": (ctx) => {
+    const active = ctx.state.active;
+    const targets = clockwise(ctx.state, active, otherAlive(ctx.state, active));
+    return withSteps(
+      { ...gainFromTreasury(ctx.state, active, 1), plantation: [active] },
+      [
+        windowStep(makeWindow("capitalist", targets)),
+        windowStep(makeWindow("plantation-payout", [active])),
+        END_TURN,
+        ...ctx.rest,
+      ],
+    );
+  },
+  "arms-dealer": (ctx) => {
+    const requested = ctx.claim.named ?? null;
+    const named =
+      requested !== null && ctx.state.roles.includes(requested)
+        ? requested
+        : (ctx.state.roles[0] ?? "banker");
+    const { drawn, court } = courtDraw(ctx.state, 2);
+    const matched = drawn.includes(named);
+    const paid = matched ? gainFromTreasury(ctx.state, ctx.claim.claimant, 4) : ctx.state;
+    return withSteps(
+      {
+        ...paid,
+        court: returnToCourt({ ...paid, court }, drawn, ctx.rng),
+        arms: { seat: ctx.claim.claimant, named, cards: [...drawn], matched },
+      },
+      [END_TURN, ...ctx.rest],
+    );
+  },
+  socialist: (ctx) => {
+    const active = ctx.state.active;
+    const targets = clockwise(ctx.state, active, otherAlive(ctx.state, active));
+    return withSteps({ ...ctx.state, socialist: { seat: active, givers: [], pool: [] } }, [
+      ...targets.map((target) =>
+        beginStep({
+          kind: "socialist",
+          claimant: active,
+          role: "socialist",
+          target,
+          blockRole: "socialist",
+          blocker: null,
+          challenger: null,
+          blockChallenger: null,
+        }),
+      ),
+      windowStep(makeWindow("socialist-keep", [active])),
+      END_TURN,
+      ...ctx.rest,
+    ]);
+  },
 };
 
 export const EXTRA_EFFECTS: Record<ExtraClaim["kind"], ExtraEffect> = {
@@ -259,6 +327,38 @@ export const EXTRA_EFFECTS: Record<ExtraClaim["kind"], ExtraEffect> = {
       ctx.claim.role === "missionary"
         ? drawIntoHand(ctx.state, ctx.claim.claimant, 1)
         : gainFromTreasury(ctx.state, ctx.claim.claimant, 5),
+      ctx.rest,
+    ),
+  anarchist: (ctx) => {
+    const bomb = ctx.state.bomb;
+    if (bomb === null) return withSteps(ctx.state, ctx.rest);
+    // resolveBomb queued a bomb window after the challenge to catch a failed claim
+    // (via `move`); a surviving claim consumes it and opens the next holder's window.
+    const after = ctx.rest.slice(1);
+    if (bomb.move === "defuse") return withSteps({ ...ctx.state, bomb: null }, after);
+    const next = {
+      holder: ctx.claim.target,
+      prior: [...bomb.prior, ctx.claim.claimant],
+      move: null,
+    };
+    return withSteps({ ...ctx.state, bomb: next }, [
+      windowStep(makeWindow("bomb", [ctx.claim.target])),
+      ...after,
+    ]);
+  },
+  socialist: (ctx) =>
+    ctx.blocked
+      ? withSteps(ctx.state, ctx.rest)
+      : withSteps(ctx.state, [
+          windowStep(makeWindow("socialist-give", [ctx.claim.target])),
+          ...ctx.rest,
+        ]),
+  plantation: (ctx) =>
+    withSteps(
+      {
+        ...ctx.state,
+        plantation: [...(ctx.state.plantation ?? []), ctx.claim.claimant],
+      },
       ctx.rest,
     ),
 };

@@ -10,6 +10,7 @@ import {
   type SeatId,
 } from "../../index.ts";
 import { G54Error } from "./error.ts";
+import type { GeneralActionId } from "./generals.ts";
 import { asRoleId, type RoleId } from "./roles.ts";
 
 export interface G54Player {
@@ -46,7 +47,11 @@ export type WindowPurpose =
   | "customs-mark"
   | "reactive-intellectual"
   | "reactive-missionary"
-  | "lawyer";
+  | "lawyer"
+  | "bomb"
+  | "socialist-give"
+  | "socialist-keep"
+  | "plantation-payout";
 
 /** Why a seat is about to lose one face-down influence; gates reactive windows. */
 export type LossCause = "coup" | "challenge" | "execution";
@@ -66,10 +71,12 @@ export interface Window {
 
 /** The action in flight from its claim until it resolves or fails. */
 export interface PendingAction {
-  readonly kind: "income" | "coup" | "role";
+  readonly kind: "role" | GeneralActionId;
   readonly claimant: SeatId;
   readonly role: RoleId | null;
   readonly target: SeatId | null;
+  /** The role an action names for its own effect (Arms Dealer); null for every other action. */
+  readonly named: RoleId | null;
   readonly cost: number;
   readonly costTo: "treasury" | "target";
   readonly blockRole: RoleId | null;
@@ -91,7 +98,15 @@ export interface PendingAction {
  * resolve it without the main claim's state interfering.
  */
 export interface ExtraClaim {
-  readonly kind: "capitalist" | "general" | "priest" | "lawyer" | "reactive";
+  readonly kind:
+    | "capitalist"
+    | "general"
+    | "priest"
+    | "lawyer"
+    | "reactive"
+    | "anarchist"
+    | "socialist"
+    | "plantation";
   readonly claimant: SeatId;
   readonly role: RoleId;
   /** The seat the claim acts on: the payer, the target, or the eliminated seat. */
@@ -121,6 +136,29 @@ export interface TaxMark {
 export interface DisappearToken {
   readonly target: SeatId;
   readonly turns: number;
+}
+
+/** The Bomb chain: the current holder, the growing prior-holder set, and the named move. */
+export interface BombState {
+  readonly holder: SeatId;
+  readonly prior: readonly SeatId[];
+  /** The move named before the challenge window opened; null while the holder is deciding. */
+  readonly move: "pass" | "defuse" | null;
+}
+
+/** A Socialist sub-turn in progress. */
+export interface SocialistState {
+  readonly seat: SeatId;
+  readonly givers: readonly SeatId[];
+  readonly pool: readonly RoleId[];
+}
+
+/** The public Arms Dealer reveal: the named role, the two flipped cards, and the match. */
+export interface ArmsReveal {
+  readonly seat: SeatId;
+  readonly named: RoleId;
+  readonly cards: readonly RoleId[];
+  readonly matched: boolean;
 }
 
 /**
@@ -160,6 +198,16 @@ export interface G54State {
   readonly treaty: readonly SeatId[];
   readonly tax: TaxMark | null;
   readonly disappear: readonly DisappearToken[];
+  /** The public Bank pile; 0 unless Financier is in play. */
+  readonly bank: number;
+  /** Social Media is an available general action for the whole game. */
+  readonly socialMedia: boolean;
+  readonly bomb: BombState | null;
+  readonly socialist: SocialistState | null;
+  /** Surviving Plantation Owner claimants, or null when no payout is in flight. */
+  readonly plantation: readonly SeatId[] | null;
+  /** The last Arms Dealer reveal, public and view-only. */
+  readonly arms: ArmsReveal | null;
   /**
    * Seats that resigned. The primitive folds a resign into its roster, but the
    * game must fold it too: a single-seat window naming a resigned seat would
@@ -187,6 +235,10 @@ const WINDOW_KIND: Record<WindowPurpose, WindowKind> = {
   "reactive-intellectual": "oneOf",
   "reactive-missionary": "oneOf",
   lawyer: "any",
+  bomb: "oneOf",
+  "socialist-give": "oneOf",
+  "socialist-keep": "oneOf",
+  "plantation-payout": "oneOf",
 };
 
 export const windowKindFor = (purpose: WindowPurpose): WindowKind => WINDOW_KIND[purpose];
@@ -210,6 +262,10 @@ const WINDOW_PURPOSES: readonly WindowPurpose[] = [
   "reactive-intellectual",
   "reactive-missionary",
   "lawyer",
+  "bomb",
+  "socialist-give",
+  "socialist-keep",
+  "plantation-payout",
 ];
 
 const asWindowPurpose = (value: string): WindowPurpose => {
@@ -235,6 +291,9 @@ const EXTRA_KINDS: readonly ExtraClaim["kind"][] = [
   "priest",
   "lawyer",
   "reactive",
+  "anarchist",
+  "socialist",
+  "plantation",
 ];
 
 const asExtraKind = (value: string): ExtraClaim["kind"] => {
@@ -255,6 +314,8 @@ const decodeNullableSeat = (json: Json, what: string): SeatId | null =>
 
 const decodeNullableRole = (json: Json, what: string): RoleId | null =>
   json === null ? null : asRoleId(expectString(json, what));
+
+const GENERAL_ACTION_IDS: readonly GeneralActionId[] = ["income", "coup", "bank", "social-media"];
 
 const expectBoolean = (value: Json, what: string): boolean => {
   if (typeof value !== "boolean") throw new G54Error(`${what}: expected a boolean`);
@@ -292,7 +353,7 @@ const decodePending = (json: Json): PendingAction | null => {
   if (json === null) return null;
   const object = expectObject(json, "pending action");
   const kind = expectString(field(object, "kind"), "pending kind");
-  if (kind !== "income" && kind !== "coup" && kind !== "role") {
+  if (!GENERAL_ACTION_IDS.some((id) => id === kind) && kind !== "role") {
     throw new G54Error(`unknown pending kind: ${kind}`);
   }
   const costTo = expectString(field(object, "costTo"), "pending costTo");
@@ -300,10 +361,11 @@ const decodePending = (json: Json): PendingAction | null => {
     throw new G54Error(`unknown pending costTo: ${costTo}`);
   }
   return {
-    kind,
+    kind: kind as PendingAction["kind"],
     claimant: decodeSeat(field(object, "claimant"), "pending claimant"),
     role: decodeNullableRole(field(object, "role"), "pending role"),
     target: decodeNullableSeat(field(object, "target"), "pending target"),
+    named: decodeNullableRole(field(object, "named"), "pending named"),
     cost: expectInteger(field(object, "cost"), "pending cost"),
     costTo,
     blockRole: decodeNullableRole(field(object, "blockRole"), "pending blockRole"),
@@ -322,6 +384,7 @@ const encodePending = (pending: PendingAction): Json => ({
   claimant: pending.claimant,
   role: pending.role,
   target: pending.target,
+  named: pending.named,
   cost: pending.cost,
   costTo: pending.costTo,
   blockRole: pending.blockRole,
@@ -426,6 +489,65 @@ const decodeDisappear = (json: Json): DisappearToken => {
   };
 };
 
+const decodeBomb = (json: Json): BombState | null => {
+  if (json === null) return null;
+  const object = expectObject(json, "bomb");
+  const move = field(object, "move");
+  const moveValue = move === null ? null : expectString(move, "bomb move");
+  if (moveValue !== null && moveValue !== "pass" && moveValue !== "defuse") {
+    throw new G54Error(`unknown bomb move: ${moveValue}`);
+  }
+  return {
+    holder: decodeSeat(field(object, "holder"), "bomb holder"),
+    prior: expectArray(field(object, "prior"), "bomb prior").map((entry) =>
+      decodeSeat(entry, "bomb prior seat"),
+    ),
+    move: moveValue,
+  };
+};
+
+const encodeBomb = (bomb: BombState): Json => ({
+  holder: bomb.holder,
+  prior: [...bomb.prior],
+  move: bomb.move,
+});
+
+const decodeSocialist = (json: Json): SocialistState | null => {
+  if (json === null) return null;
+  const object = expectObject(json, "socialist");
+  return {
+    seat: decodeSeat(field(object, "seat"), "socialist seat"),
+    givers: expectArray(field(object, "givers"), "socialist givers").map((entry) =>
+      decodeSeat(entry, "socialist giver"),
+    ),
+    pool: decodeRoles(field(object, "pool"), "socialist pool"),
+  };
+};
+
+const encodeSocialist = (socialist: SocialistState): Json => ({
+  seat: socialist.seat,
+  givers: [...socialist.givers],
+  pool: encodeRoles(socialist.pool),
+});
+
+const decodeArms = (json: Json): ArmsReveal | null => {
+  if (json === null) return null;
+  const object = expectObject(json, "arms reveal");
+  return {
+    seat: decodeSeat(field(object, "seat"), "arms seat"),
+    named: asRoleId(expectString(field(object, "named"), "arms named")),
+    cards: decodeRoles(field(object, "cards"), "arms cards"),
+    matched: expectBoolean(field(object, "matched"), "arms matched"),
+  };
+};
+
+const encodeArms = (arms: ArmsReveal): Json => ({
+  seat: arms.seat,
+  named: arms.named,
+  cards: encodeRoles(arms.cards),
+  matched: arms.matched,
+});
+
 export const stateCodec: Codec<G54State> = {
   encode: (state): Json => ({
     roles: encodeRoles(state.roles),
@@ -455,6 +577,12 @@ export const stateCodec: Codec<G54State> = {
     treaty: [...state.treaty],
     tax: state.tax === null ? null : { role: state.tax.role, holder: state.tax.holder },
     disappear: state.disappear.map((token): Json => ({ target: token.target, turns: token.turns })),
+    bank: state.bank,
+    socialMedia: state.socialMedia,
+    bomb: state.bomb === null ? null : encodeBomb(state.bomb),
+    socialist: state.socialist === null ? null : encodeSocialist(state.socialist),
+    plantation: state.plantation === null ? null : [...state.plantation],
+    arms: state.arms === null ? null : encodeArms(state.arms),
     resigned: [...state.resigned],
   }),
   decode: (json): G54State => {
@@ -476,6 +604,17 @@ export const stateCodec: Codec<G54State> = {
       ),
       tax: decodeTax(field(object, "tax")),
       disappear: expectArray(field(object, "disappear"), "disappear").map(decodeDisappear),
+      bank: expectInteger(field(object, "bank"), "bank"),
+      socialMedia: expectBoolean(field(object, "socialMedia"), "socialMedia"),
+      bomb: decodeBomb(field(object, "bomb")),
+      socialist: decodeSocialist(field(object, "socialist")),
+      plantation:
+        field(object, "plantation") === null
+          ? null
+          : expectArray(field(object, "plantation"), "plantation").map((entry) =>
+              decodeSeat(entry, "plantation seat"),
+            ),
+      arms: decodeArms(field(object, "arms")),
       resigned: expectArray(field(object, "resigned"), "resigned").map((entry) =>
         decodeSeat(entry, "resigned seat"),
       ),

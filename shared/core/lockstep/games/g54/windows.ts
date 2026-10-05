@@ -3,9 +3,16 @@ import type { G54Action } from "./actions.ts";
 import { EXTRA_EFFECTS, ROLE_EFFECTS, type ExtraCtx, type RoleCtx } from "./effects.ts";
 import { G54Error } from "./error.ts";
 import {
+  fallbackGeneral,
+  GENERAL_ACTIONS,
+  generalActionsFor,
+  type GeneralActionId,
+} from "./generals.ts";
+import {
   activeClaim,
   aliveSeats,
   beginStep,
+  bombPassable,
   clockwise,
   courtDraw,
   coupTargetable,
@@ -36,8 +43,9 @@ import {
   withPlayer,
   withSteps,
 } from "./helpers.ts";
-import { specOf, type RoleId } from "./roles.ts";
+import { claimCost, isHoldless, specOf, type RoleId } from "./roles.ts";
 import {
+  type BombState,
   type ExtraClaim,
   type G54State,
   type LossCause,
@@ -83,9 +91,13 @@ const keepStep = (seat: SeatId): Step => winStep("keep", [seat]);
 const turnStep = (seat: SeatId): Step => winStep("turn", [seat]);
 
 type Planned =
-  | { readonly kind: "income" }
-  | { readonly kind: "coup"; readonly target: SeatId }
-  | { readonly kind: "role"; readonly role: RoleId; readonly target: SeatId | null };
+  | { readonly kind: GeneralActionId; readonly target: SeatId | null }
+  | {
+      readonly kind: "role";
+      readonly role: RoleId;
+      readonly target: SeatId | null;
+      readonly named: RoleId | null;
+    };
 
 const coupTarget = (state: G54State, requested: SeatId | null): SeatId | null => {
   const candidates = otherAlive(state, state.active).filter((seat) =>
@@ -100,55 +112,72 @@ const legalRole = (
   state: G54State,
   role: RoleId,
   target: SeatId | null,
-): { readonly role: RoleId; readonly target: SeatId | null } | null => {
+  named: RoleId | null,
+): { readonly role: RoleId; readonly target: SeatId | null; readonly named: RoleId | null } | null => {
   const spec = state.roles.includes(role) ? specOf(role) : null;
   const player = playerOf(state, state.active);
-  if (spec === null || spec.reactive || spec.cost > player.coins) return null;
+  if (spec === null || spec.reactive) return null;
   if (spec.id === "communist") {
     const victim = wealthiest(
       state,
       state.active,
       otherAlive(state, state.active).filter((seat) => targetable(state, state.active, seat)),
     );
-    return victim === null ? null : { role: "communist", target: victim };
+    if (victim === null) return null;
+    if (claimCost(spec, playerOf(state, victim).hand.length) > player.coins) return null;
+    return { role: "communist", target: victim, named: null };
   }
   if (spec.needsTarget) {
     if (target === null || !targetable(state, state.active, target)) return null;
-    return { role: spec.id, target };
+    // Anarchist can never name the active player: bombPassable excludes the prior set.
+    if (
+      spec.id === "anarchist" &&
+      !bombPassable(state, { holder: state.active, prior: [], move: null }, target)
+    ) {
+      return null;
+    }
+    if (claimCost(spec, playerOf(state, target).hand.length) > player.coins) return null;
+    return { role: spec.id, target, named };
   }
-  return { role: spec.id, target: null };
+  if (claimCost(spec, 0) > player.coins) return null;
+  return { role: spec.id, target: null, named };
 };
 
 /**
  * Resolve the active seat's reported input to a legal plan. Anything illegal or
- * unaffordable falls back to Income (the always-affordable general action), and
- * at 10+ coins it always becomes a Coup — so `step` is total and the turn never
- * stalls on a hostile or buggy report.
+ * unaffordable falls back to the always-affordable general action (Bank while
+ * Financier is in play, else Income), and at 10+ coins it always becomes a Coup
+ * — so `step` is total and the turn never stalls on a hostile or buggy report.
  */
 const planTurn = (state: G54State, frame: Frame<G54Action>): Planned => {
   const player = playerOf(state, state.active);
   const action = actOf(frame, state.active);
+  const fallback: Planned = { kind: fallbackGeneral(state), target: null };
   if (player.coins >= FORCED_COUP_COINS) {
     const target = coupTarget(state, action?.t === "coup" ? action.target : null);
-    return target === null ? { kind: "income" } : { kind: "coup", target };
+    return target === null ? fallback : { kind: "coup", target };
   }
   if (action?.t === "coup") {
-    if (player.coins < COUP_COST) return { kind: "income" };
+    if (player.coins < COUP_COST) return fallback;
     const target = coupTarget(state, action.target);
-    return target === null ? { kind: "income" } : { kind: "coup", target };
+    return target === null ? fallback : { kind: "coup", target };
+  }
+  if (action?.t === "income" || action?.t === "bank" || action?.t === "social-media") {
+    return generalActionsFor(state).includes(action.t) ? { kind: action.t, target: null } : fallback;
   }
   if (action?.t === "claim") {
-    const legal = legalRole(state, action.role, action.target);
-    if (legal === null) return { kind: "income" };
-    return { kind: "role", role: legal.role, target: legal.target };
+    const legal = legalRole(state, action.role, action.target, action.named ?? null);
+    if (legal === null) return fallback;
+    return { kind: "role", role: legal.role, target: legal.target, named: legal.named };
   }
-  return { kind: "income" };
+  return fallback;
 };
 
 const pendingFor = (state: G54State, planned: Planned): PendingAction => {
   const base = {
     claimant: state.active,
     target: null,
+    named: null,
     cost: 0,
     costTo: "treasury" as const,
     blockRole: null,
@@ -157,25 +186,23 @@ const pendingFor = (state: G54State, planned: Planned): PendingAction => {
     blockChallenger: null,
     funded: false,
   };
-  switch (planned.kind) {
-    case "income":
-      return { ...base, kind: "income", role: null };
-    case "coup":
-      return { ...base, kind: "coup", role: null, target: planned.target, cost: COUP_COST };
-    case "role": {
-      const spec = specOf(planned.role);
-      return {
-        ...base,
-        kind: "role",
-        role: spec.id,
-        target: planned.target,
-        // Crime Boss pays conditionally, inside its pay window, not here.
-        cost: spec.id === "crime-boss" ? 0 : spec.cost,
-        costTo: spec.costTo,
-        blockRole: spec.blockRole,
-      };
-    }
+  if (planned.kind === "role") {
+    const spec = specOf(planned.role);
+    const lives = planned.target === null ? 0 : playerOf(state, planned.target).hand.length;
+    return {
+      ...base,
+      kind: "role",
+      role: spec.id,
+      target: planned.target,
+      named: planned.named,
+      // Crime Boss pays conditionally, inside its pay window, not here.
+      cost: spec.id === "crime-boss" ? 0 : claimCost(spec, lives),
+      costTo: spec.costTo,
+      blockRole: spec.blockRole,
+    };
   }
+  const general = GENERAL_ACTIONS[planned.kind];
+  return { ...base, kind: planned.kind, role: null, target: planned.target, cost: general.cost };
 };
 
 const payCost = (state: G54State, pending: PendingAction): G54State => {
@@ -240,6 +267,8 @@ const openClaim = (state: G54State, planned: Planned, rest: readonly Step[]): G5
   const pending = pendingFor(state, planned);
   if (planned.kind === "role") {
     const next = applyTax({ ...state, pending }, pending);
+    // Anarchist needs no held card, so its claim opens no challenge window.
+    if (isHoldless(specOf(planned.role))) return withSteps(next, [RESOLVE, ...rest]);
     return withSteps(next, [challengeStep(aliveSeats(next)), ...rest]);
   }
   return withSteps({ ...state, pending }, [RESOLVE, ...rest]);
@@ -270,11 +299,24 @@ const resolveSpySecond = (state: G54State, frame: Frame<G54Action>): G54State =>
       ? withSteps(state, [END_TURN, ...rest])
       : openClaim(state, { kind: "coup", target }, rest);
   }
-  if (action?.t === "income") return openClaim(state, { kind: "income" }, rest);
+  if (
+    action?.t === "income" ||
+    action?.t === "bank" ||
+    action?.t === "social-media"
+  ) {
+    if (generalActionsFor(state).includes(action.t)) {
+      return openClaim(state, { kind: action.t, target: null }, rest);
+    }
+  }
   if (action?.t === "claim") {
-    const legal = legalRole(state, action.role, action.target);
-    if (legal !== null)
-      return openClaim(state, { kind: "role", role: legal.role, target: legal.target }, rest);
+    const legal = legalRole(state, action.role, action.target, action.named ?? null);
+    if (legal !== null) {
+      return openClaim(
+        state,
+        { kind: "role", role: legal.role, target: legal.target, named: legal.named },
+        rest,
+      );
+    }
   }
   return withSteps(state, [END_TURN, ...rest]);
 };
@@ -431,7 +473,7 @@ const resolveProofBlock = (state: G54State, frame: Frame<G54Action>, rng: Random
   ]);
 };
 
-const applyResolve = (state: G54State): G54State => {
+const applyResolve = (state: G54State, rng: Random): G54State => {
   const rest = state.steps.slice(1);
   if (hasExtra(state)) {
     const claim = state.extras[state.extras.length - 1];
@@ -447,20 +489,21 @@ const applyResolve = (state: G54State): G54State => {
   const pending = state.pending;
   if (pending === null) return withSteps(state, rest);
   const paid = payCost(state, pending);
-  if (pending.kind === "income") {
-    return withSteps({ ...gainFromTreasury(paid, pending.claimant, 1), pending: null }, [
-      END_TURN,
-      ...rest,
-    ]);
-  }
-  if (pending.kind === "coup") {
-    const head = pending.target !== null ? [revealStep(pending.target, "coup")] : [];
-    return withSteps({ ...paid, pending: null }, [...head, END_TURN, ...rest]);
+  if (pending.kind !== "role") {
+    const cleared = { ...paid, pending: null };
+    const ctx = { state: cleared, claim: pending, rest };
+    return GENERAL_ACTIONS[pending.kind].effect(ctx);
   }
   if (pending.role === null) return withSteps({ ...paid, pending: null }, [END_TURN, ...rest]);
   // A role claim keeps `pending` set so its sub-windows (Crime Boss pay, Protestor
   // funding, Spy's second action) can read the claim; `end-turn` clears it.
-  const ctx: RoleCtx = { state: paid, claim: pending, blocked: pending.blocker !== null, rest };
+  const ctx: RoleCtx = {
+    state: paid,
+    claim: pending,
+    blocked: pending.blocker !== null,
+    rest,
+    rng,
+  };
   return ROLE_EFFECTS[pending.role](ctx);
 };
 
@@ -546,9 +589,18 @@ const resolveFund = (state: G54State, window: Window, frame: Frame<G54Action>): 
   ]);
 };
 
-const resolveCapitalist = (state: G54State, window: Window, frame: Frame<G54Action>): G54State => {
+/** Which extra kind a mass-claim window opens, keyed by the pending role. */
+const MASS_CLAIM_KINDS: Partial<Record<RoleId, ExtraClaim["kind"]>> = {
+  capitalist: "capitalist",
+  "plantation-owner": "plantation",
+};
+
+const resolveMassClaim = (state: G54State, window: Window, frame: Frame<G54Action>): G54State => {
   const rest = state.steps.slice(1);
   const active = state.active;
+  const role = state.pending?.role ?? null;
+  const kind = role === null ? undefined : MASS_CLAIM_KINDS[role];
+  if (role === null || kind === undefined) return withSteps(state, rest);
   const claimants = clockwise(
     state,
     active,
@@ -558,15 +610,15 @@ const resolveCapitalist = (state: G54State, window: Window, frame: Frame<G54Acti
         seat !== active &&
         liveSeat(state, seat) &&
         action?.t === "claim" &&
-        action.role === "capitalist"
+        action.role === role
       );
     }),
   );
   const begins = claimants.map((seat) =>
     beginStep({
-      kind: "capitalist" as const,
+      kind,
       claimant: seat,
-      role: "capitalist" as const,
+      role,
       target: active,
       blockRole: null,
       blocker: null,
@@ -697,6 +749,154 @@ const resolveLawyer = (state: G54State, window: Window, frame: Frame<G54Action>)
   return withSteps(state, [...begins, ...rest]);
 };
 
+const resolvePlantationPayout = (state: G54State, window: Window): G54State => {
+  const rest = state.steps.slice(1);
+  const survivors = state.plantation;
+  if (survivors === null || survivors.length === 0) {
+    return withSteps({ ...state, plantation: null }, rest);
+  }
+  const count = survivors.length;
+  let next: G54State = { ...state, plantation: null };
+  for (const seat of survivors) {
+    if (liveSeat(state, seat)) next = gainFromTreasury(next, seat, count);
+  }
+  return withSteps(next, rest);
+};
+
+const resolveBomb = (state: G54State, window: Window, frame: Frame<G54Action>): G54State => {
+  const rest = state.steps.slice(1);
+  const bomb = state.bomb;
+  if (bomb === null) return withSteps(state, rest);
+  // A live `move` means the pass/defuse claim that named it was caught: the holder
+  // takes the Bomb loss on top of the challenge loss (the double loss).
+  if (bomb.move !== null) {
+    return withSteps({ ...state, bomb: null }, [revealStep(bomb.holder, "execution"), ...rest]);
+  }
+  const holder = window.seats[0];
+  if (holder === undefined || holder !== bomb.holder || !liveSeat(state, holder)) {
+    return withSteps(state, rest);
+  }
+  const action = actOf(frame, holder);
+  if (action?.t === "claim" && action.role === "anarchist") {
+    const target = action.target;
+    const defuse = target === null;
+    const pass = target !== null && bombPassable(state, bomb, target);
+    if (defuse || pass) {
+      const extra: ExtraClaim = {
+        kind: "anarchist",
+        claimant: holder,
+        role: "anarchist",
+        target: target ?? holder,
+        blockRole: null,
+        blocker: null,
+        challenger: null,
+        blockChallenger: null,
+      };
+      const next: G54State = {
+        ...state,
+        bomb: { ...bomb, move: defuse ? "defuse" : "pass" },
+        extras: [...state.extras, extra],
+      };
+      return withSteps(next, [challengeStep(aliveSeats(next)), winStep("bomb", [holder]), ...rest]);
+    }
+  }
+  return withSteps({ ...state, bomb: null }, [revealStep(holder, "execution"), ...rest]);
+};
+
+const resolveSocialistGive = (
+  state: G54State,
+  window: Window,
+  frame: Frame<G54Action>,
+): G54State => {
+  const rest = state.steps.slice(1);
+  const socialist = state.socialist;
+  const seat = window.seats[0];
+  if (socialist === null || seat === undefined || !liveSeat(state, seat)) {
+    return withSteps(state, rest);
+  }
+  const player = playerOf(state, seat);
+  const action = actOf(frame, seat);
+  const wantsCard = action?.t === "give";
+  // Coercion: a seat with no coins must give a card, a seat with no cards must pay.
+  const giveCard = wantsCard ? player.hand.length > 0 : player.coins === 0;
+  if (giveCard) {
+    const requested = action?.t === "give" ? action.index : 0;
+    const index =
+      Number.isInteger(requested) && requested >= 0 && requested < player.hand.length ? requested : 0;
+    const card = player.hand[index];
+    if (card === undefined) return withSteps(state, rest);
+    const next = withPlayer(state, {
+      ...player,
+      hand: player.hand.filter((_, i) => i !== index),
+    });
+    return withSteps(
+      {
+        ...next,
+        socialist: {
+          ...socialist,
+          givers: [...socialist.givers, seat],
+          pool: [...socialist.pool, card],
+        },
+      },
+      rest,
+    );
+  }
+  return withSteps(transferCoins(state, seat, socialist.seat, 1), rest);
+};
+
+const resolveSocialistKeep = (
+  state: G54State,
+  window: Window,
+  frame: Frame<G54Action>,
+  rng: Random,
+): G54State => {
+  const rest = state.steps.slice(1);
+  const socialist = state.socialist;
+  const seat = window.seats[0] ?? socialist?.seat;
+  if (socialist === null || seat === undefined || !liveSeat(state, seat)) {
+    // The actor left mid-sub-turn: the collected cards return to the Court, never vanish.
+    return withSteps(voidSocialist(state, rng), rest);
+  }
+  const player = playerOf(state, seat);
+  const hand = player.hand;
+  const pool = socialist.pool;
+  const combined = [...hand, ...pool];
+  const action = actOf(frame, seat);
+  const requested = action?.t === "keep" ? action.indices : [];
+  const ownRaw = requested[0] ?? 0;
+  const ownIndex = Number.isInteger(ownRaw) && ownRaw >= 0 && ownRaw < hand.length ? ownRaw : 0;
+  const keepRaw = requested[1] ?? 0;
+  let keepIndex =
+    Number.isInteger(keepRaw) && keepRaw >= 0 && keepRaw < combined.length ? keepRaw : 0;
+  // Keeping an own card other than the contributed one would duplicate it; fall back
+  // to the first received card (or the contributed card when the pool is empty).
+  if (keepIndex < hand.length && keepIndex !== ownIndex) {
+    keepIndex = pool.length > 0 ? hand.length : ownIndex;
+  }
+  const ownCard = hand[ownIndex];
+  const kept = combined[keepIndex];
+  const newHand = hand.filter((_, i) => i !== ownIndex);
+  if (kept !== undefined) newHand.push(kept);
+  const remaining = [...pool];
+  if (ownCard !== undefined) remaining.push(ownCard);
+  if (kept !== undefined) {
+    const at = remaining.indexOf(kept);
+    if (at >= 0) remaining.splice(at, 1);
+  }
+  const shuffled = rng.shuffle(remaining);
+  let next = withPlayer(state, { ...player, hand: newHand });
+  for (const [i, giver] of socialist.givers.entries()) {
+    const card = shuffled[i];
+    if (card === undefined) continue;
+    next = withPlayer(next, {
+      ...playerOf(next, giver),
+      hand: [...playerOf(next, giver).hand, card],
+    });
+  }
+  const leftover = shuffled.slice(socialist.givers.length);
+  return withSteps({ ...next, court: returnToCourt(next, leftover, rng), socialist: null }, rest);
+};
+
 const applyBegin = (state: G54State, extra: ExtraClaim): G54State => {
   const rest = state.steps.slice(1);
   if (!liveSeat(state, extra.claimant)) return withSteps(state, rest);
@@ -708,7 +908,7 @@ const applyBegin = (state: G54State, extra: ExtraClaim): G54State => {
   const taxed = extra.kind === "capitalist" ? applyTax(state, extra) : state;
   const next = pushExtra(taxed, extra);
   const first: Step =
-    extra.kind === "general" || extra.kind === "priest"
+    extra.kind === "general" || extra.kind === "priest" || extra.kind === "socialist"
       ? blockStep(extra.target)
       : challengeStep(aliveSeats(next));
   return withSteps(next, [first, ...rest]);
@@ -719,22 +919,39 @@ const applySettle = (state: G54State, seat: SeatId): G54State => {
   return withSteps(expireTreaty(settleNow(state, seat)), rest);
 };
 
-const applyEndTurn = (state: G54State): G54State => {
+/** Return an in-flight Socialist pool to the Court, so a voided sub-turn loses no card. */
+const voidSocialist = (state: G54State, rng: Random): G54State =>
+  state.socialist === null || state.socialist.pool.length === 0
+    ? { ...state, socialist: null }
+    : {
+        ...state,
+        court: returnToCourt(state, state.socialist.pool, rng),
+        socialist: null,
+      };
+
+const applyEndTurn = (state: G54State, rng: Random): G54State => {
   const rest = state.steps.slice(1);
   const ending = state.active;
   const ticked = state.disappear.map((token) =>
     token.target === ending ? { ...token, turns: token.turns - 1 } : token,
   );
   const firing = ticked.filter((token) => token.turns <= 0);
-  const advanced: G54State = expireTreaty({
-    ...state,
-    disappear: ticked.filter((token) => token.turns > 0),
-    active: nextAlive(state, ending),
-    turn: state.turn + 1,
-    pending: null,
-    extras: [],
-    draw: null,
-  });
+  const advanced: G54State = expireTreaty(
+    voidSocialist(
+      {
+        ...state,
+        disappear: ticked.filter((token) => token.turns > 0),
+        active: nextAlive(state, ending),
+        turn: state.turn + 1,
+        pending: null,
+        extras: [],
+        draw: null,
+        bomb: null,
+        plantation: null,
+      },
+      rng,
+    ),
+  );
   if (isTerminal(advanced)) return withSteps(advanced, []);
   return withSteps(advanced, [
     ...firing.map(() => revealStep(ending, "execution")),
@@ -765,7 +982,7 @@ const RESOLVERS: Record<WindowPurpose, WindowResolver> = {
   reveal: (state, window, frame) => resolveReveal(state, window, frame),
   keep: (state, window, frame, rng) => resolveKeep(state, window, frame, rng),
   "crime-pay": (state, window, frame) => resolveCrimePay(state, window, frame),
-  capitalist: (state, window, frame) => resolveCapitalist(state, window, frame),
+  capitalist: (state, window, frame) => resolveMassClaim(state, window, frame),
   "spy-second": (state, _window, frame) => resolveSpySecond(state, frame),
   "protestor-fund": (state, window, frame) => resolveFund(state, window, frame),
   "producer-give": (state, window, frame, rng) => resolveProducerGive(state, window, frame, rng),
@@ -776,6 +993,10 @@ const RESOLVERS: Record<WindowPurpose, WindowResolver> = {
   "reactive-missionary": (state, window, frame) =>
     resolveReactive(state, window, frame, "missionary"),
   lawyer: (state, window, frame) => resolveLawyer(state, window, frame),
+  bomb: (state, window, frame) => resolveBomb(state, window, frame),
+  "socialist-give": (state, window, frame) => resolveSocialistGive(state, window, frame),
+  "socialist-keep": (state, window, frame, rng) => resolveSocialistKeep(state, window, frame, rng),
+  "plantation-payout": (state, window) => resolvePlantationPayout(state, window),
 };
 
 const resolveProducerGive = (
@@ -804,12 +1025,12 @@ const resolveProducerGive = (
   ]);
 };
 
-const applyImmediate = (state: G54State, step: Step): G54State => {
+const applyImmediate = (state: G54State, step: Step, rng: Random): G54State => {
   switch (step.kind) {
     case "resolve":
-      return applyResolve(state);
+      return applyResolve(state, rng);
     case "end-turn":
-      return applyEndTurn(state);
+      return applyEndTurn(state, rng);
     case "begin":
       return applyBegin(state, step.extra);
     case "settle":
@@ -827,7 +1048,7 @@ const drain = (state: G54State, rng: Random): G54State => {
     const top = next.steps[0];
     if (top === undefined) {
       // Voiding windows emptied the stack mid-turn: end the turn cleanly.
-      next = applyEndTurn({ ...next, steps: [END_TURN] });
+      next = applyEndTurn({ ...next, steps: [END_TURN] }, rng);
       continue;
     }
     if (top.kind === "window") {
@@ -836,7 +1057,7 @@ const drain = (state: G54State, rng: Random): G54State => {
       next = voidWindow(next, rng);
       continue;
     }
-    next = applyImmediate(next, top);
+    next = applyImmediate(next, top, rng);
   }
 };
 
@@ -851,7 +1072,12 @@ const owedSeats = (state: G54State, window: Window): readonly SeatId[] => {
  * hand the turn to the next live seat with a fresh window, never an empty stack.
  */
 const resignActive = (state: G54State, rng: Random): G54State => {
-  const court = state.draw === null ? state.court : returnToCourt(state, state.draw.pool, rng);
+  const court =
+    state.draw === null
+      ? state.socialist === null || state.socialist.pool.length === 0
+        ? state.court
+        : returnToCourt(state, state.socialist.pool, rng)
+      : returnToCourt(state, [...state.draw.pool, ...(state.socialist?.pool ?? [])], rng);
   const active = nextAlive(state, state.active);
   return {
     ...state,
@@ -860,6 +1086,9 @@ const resignActive = (state: G54State, rng: Random): G54State => {
     pending: null,
     extras: [],
     draw: null,
+    bomb: null,
+    socialist: null,
+    plantation: null,
     steps: [turnStep(active)],
   };
 };

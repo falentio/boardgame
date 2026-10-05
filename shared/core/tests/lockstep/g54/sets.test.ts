@@ -41,6 +41,14 @@ const CHAOS_SET: readonly RoleId[] = [
   "priest",
   "protestor",
 ];
+/** An Anarchy set: Financier (Bank), Anarchist (the Bomb), Arms Dealer, Socialist. */
+const ANARCHY_SET: readonly RoleId[] = [
+  "financier",
+  "director",
+  "anarchist",
+  "arms-dealer",
+  "socialist",
+];
 
 const RECOMMENDED: readonly (readonly [string, readonly RoleId[]])[] = [
   ["starter", STARTER_SET],
@@ -73,11 +81,33 @@ const policy = (seat: SeatId, view: G54View) => {
       if (target === undefined) return null;
       if (coins >= 7) return { t: "coup" as const, target };
       const force = view.roles.filter((r) =>
-        ["guerrilla", "judge", "mercenary", "crime-boss", "general", "protestor"].includes(r),
+        ["guerrilla", "judge", "mercenary", "crime-boss", "general", "protestor", "anarchist"].includes(
+          r,
+        ),
       )[0];
-      if (force !== undefined && coins >= 3) return { t: "claim" as const, role: force, target };
+      if (force !== undefined && coins >= 3) {
+        return { t: "claim" as const, role: force, target };
+      }
+      // Anarchy sets have no cheap attacker: an Arms Dealer gamble or a Financier
+      // sweep generates the coins that fund one, so the game still terminates.
+      if (view.roles.includes("arms-dealer")) {
+        return { t: "claim" as const, role: "arms-dealer" as const, target: null, named: view.roles[0] };
+      }
+      if (view.roles.includes("financier") && view.bank > 0) {
+        return { t: "claim" as const, role: "financier" as const, target: null };
+      }
+      if (view.roles.includes("socialist")) {
+        return { t: "claim" as const, role: "socialist" as const, target: null };
+      }
       return { t: "income" as const };
     }
+    case "bomb":
+      // Decline to pass or defuse: the holder takes the Bomb loss.
+      return null;
+    case "socialist-give":
+      return { t: "pay" as const };
+    case "socialist-keep":
+      return { t: "keep" as const, indices: [0, 0] };
     case "protestor-fund":
       return coins >= 3 ? { t: "pay" as const } : null;
     case "crime-pay":
@@ -148,6 +178,33 @@ test("a full game of every recommended set conserves the deck and the coins", ()
     }
     expect(g54.isTerminal(state), name).toBe(true);
   }
+});
+
+test("a full Anarchy game conserves the 15-card deck and the 50-coin supply", () => {
+  let state = rawGenesis(ANARCHY_SET, SEATS6, "conserve-anarchy");
+  let steps = 0;
+  while (!g54.isTerminal(state) && steps < 40_000) {
+    state = advance(state, rawPolicy);
+    steps += 1;
+    // The Bank pile is part of the coin supply; the Socialist pool is part of the deck.
+    expect(totalCards(state)).toBe(15);
+    expect(totalCoins(state)).toBe(COIN_SUPPLY);
+  }
+  expect(g54.isTerminal(state)).toBe(true);
+  expect(totalCards(state)).toBe(15);
+  expect(totalCoins(state)).toBe(COIN_SUPPLY);
+});
+
+test("the Anarchy set reaches terminal for 3 seats too", () => {
+  const table = tableOf(ANARCHY_SET, SEATS3, "anarchy-3");
+  let guard = 0;
+  while (!at(table, ANN).terminal && guard < 40_000) {
+    driveFrame(table, policy);
+    guard += 1;
+  }
+  const view = at(table, ANN).view();
+  expect(view.terminal).toBe(true);
+  expect(view.winner).not.toBeNull();
 });
 
 test("two independent peers folding a full chaos game reach identical views", () => {

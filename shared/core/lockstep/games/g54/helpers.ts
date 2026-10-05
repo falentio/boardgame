@@ -3,6 +3,7 @@ import { G54Error } from "./error.ts";
 import type { RoleId } from "./roles.ts";
 import {
   windowKindFor,
+  type BombState,
   type ExtraClaim,
   type G54Player,
   type G54State,
@@ -30,11 +31,14 @@ export const isResigned = (state: G54State, seat: SeatId): boolean => state.resi
 
 /**
  * A seat is in play when it holds face-down influence. A Producer exchange
- * transiently leaves its partner with zero cards before returning one, so the
- * in-flight partner stays in play until the exchange closes.
+ * transiently leaves its partner with zero cards before returning one, and a
+ * Socialist card-giver is cardless between giving and the redistribution, so
+ * both stay in play until their sub-turn closes.
  */
 export const isInPlay = (state: G54State, player: G54Player): boolean =>
-  isAlive(player) || state.draw?.target === player.seat;
+  isAlive(player) ||
+  state.draw?.target === player.seat ||
+  (state.socialist?.givers.includes(player.seat) ?? false);
 
 export const aliveSeats = (state: G54State): readonly SeatId[] =>
   state.players.filter((p) => isInPlay(state, p) && !isResigned(state, p.seat)).map((p) => p.seat);
@@ -88,6 +92,17 @@ export const targetable = (state: G54State, claimant: SeatId, seat: SeatId): boo
 export const coupTargetable = (state: G54State, claimant: SeatId, seat: SeatId): boolean =>
   seat !== claimant && isAlive(playerOf(state, seat)) && !isAlly(state, claimant, seat);
 
+/**
+ * A legal next Bomb holder: alive, not resigned, and not the current holder or
+ * any prior holder (the prior set includes the active player, who can never be
+ * re-named).
+ */
+export const bombPassable = (state: G54State, bomb: BombState, target: SeatId): boolean =>
+  target !== bomb.holder &&
+  !bomb.prior.includes(target) &&
+  isAlive(playerOf(state, target)) &&
+  !isResigned(state, target);
+
 /** Priest has no target selection, so it reaches allies but still spares the Peacekeeper. */
 export const priestTargetable = (state: G54State, claimant: SeatId, seat: SeatId): boolean =>
   seat !== claimant && isAlive(playerOf(state, seat)) && state.peacekeeping !== seat;
@@ -129,6 +144,22 @@ export const courtDraw = (
 ): { readonly drawn: readonly RoleId[]; readonly court: readonly RoleId[] } => {
   const n = Math.max(0, Math.min(count, state.court.length));
   return { drawn: state.court.slice(0, n), court: state.court.slice(n) };
+};
+
+/** A plain Court swap: draw `count`, keep the hand size, return the rest. */
+export const openSwap = (state: G54State, seat: SeatId, count: number): G54State => {
+  const { drawn, court } = courtDraw(state, count);
+  return {
+    ...state,
+    court,
+    draw: { seat, pool: [...drawn], keepSize: playerOf(state, seat).hand.length, target: null },
+  };
+};
+
+/** Take 1 coin from the Treasury and add it to the public Bank pile (partial when short). */
+export const bankDeposit = (state: G54State): G54State => {
+  const moved = Math.min(1, state.treasury);
+  return { ...state, treasury: state.treasury - moved, bank: state.bank + moved };
 };
 
 export const returnToCourt = (
@@ -173,6 +204,7 @@ export const clearTokensFor = (state: G54State, seat: SeatId): G54State => ({
   treaty: state.treaty.includes(seat) ? [] : state.treaty,
   disappear: state.disappear.filter((token) => token.target !== seat),
   tax: state.tax !== null && state.tax.holder === seat ? null : state.tax,
+  bomb: state.bomb !== null && state.bomb.holder === seat ? null : state.bomb,
 });
 
 /** Return an eliminated seat's coins to the Treasury and drop its tokens. */
