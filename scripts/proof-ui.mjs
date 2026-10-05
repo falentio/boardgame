@@ -173,6 +173,17 @@ const connectBrowser = async () => {
       }
       return false;
     },
+    // A dev server hydrates Vue several seconds after the first paint. Filling
+    // or submitting before then fires the native form action instead of the
+    // Vue handler, because @submit is not bound yet. Wait for the marker.
+    async waitForHydration({ timeoutMs = 30000 } = {}) {
+      const ok = await page.waitFor(
+        "document.querySelector('#__nuxt') && document.querySelector('#__nuxt').__vue_app__",
+        { timeoutMs },
+      );
+      if (!ok) throw new Error("Vue never hydrated");
+      return true;
+    },
     async screenshot(name) {
       const { result } = await send("Page.captureScreenshot", { format: "png" }, session);
       const path = `${PROOF}${name}.png`;
@@ -207,6 +218,7 @@ const main = async () => {
     }
     console.log(`screenshot: ${await browser.page.screenshot("01-login")}`);
 
+    await browser.page.waitForHydration();
     const emailInput = await browser.page.waitFor("document.querySelector('input[type=email], input#email')");
     if (!emailInput) {
       fail("login page has no email input");
