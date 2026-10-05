@@ -2,6 +2,7 @@ import { computed } from "vue"
 import { authClient } from "../lib/auth-client"
 
 export interface AuthUser {
+  id: string
   name: string
   email: string
   image: string | null
@@ -19,6 +20,7 @@ export async function useAuthSession() {
     const current = session.value?.user
     if (!current) return null
     return {
+      id: current.id,
       name: current.name,
       email: current.email,
       image: current.image ?? null,
