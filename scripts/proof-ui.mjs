@@ -22,6 +22,7 @@ const BASE = `http://localhost:${PORT}`;
 const ROOT = new URL("..", import.meta.url).pathname;
 const PROOF = new URL("../.audit/proof/", import.meta.url).pathname;
 const EMAIL = `proof+${Date.now()}@example.com`;
+const SIGNUP_EMAIL = `proof-signup+${Date.now()}@example.com`;
 const PASSWORD = "proof-password-123";
 const NAME = "Proof User";
 
@@ -120,6 +121,7 @@ const connectBrowser = async () => {
   const session = attached.sessionId;
   await send("Page.enable", {}, session);
   await send("Runtime.enable", {}, session);
+  await send("Network.enable", {}, session);
 
   const page = {
     async goto(url, { waitMs = 1200 } = {}) {
@@ -143,6 +145,9 @@ const connectBrowser = async () => {
     },
     async url() {
       return page.eval("location.pathname");
+    },
+    async clearCookies() {
+      await send("Network.clearBrowserCookies", {}, session);
     },
     async click(selector) {
       const ok = await page.eval(
@@ -278,6 +283,67 @@ const main = async () => {
       await delay(800);
       console.log(`screenshot: ${await browser.page.screenshot("03-shell-collapsed")}`);
     }
+
+    await browser.page.clearCookies();
+    await browser.page.goto(`${BASE}/signup`);
+    const signupPath = await browser.page.url();
+    if (signupPath !== "/signup") {
+      fail(`signed-out /signup should render the signup page, landed on ${signupPath}`);
+    } else {
+      pass("signed-out /signup rendered the signup page");
+    }
+    await browser.page.waitForHydration();
+    const signupReady = await browser.page.waitFor(
+      "document.querySelector('#name') && document.querySelector('#email') && document.querySelector('#password')",
+      { timeoutMs: 15000 },
+    );
+    if (!signupReady) {
+      fail("the signup page did not render the name, email, and password fields");
+    } else {
+      pass("the signup page rendered the name, email, and password fields");
+    }
+    const passwordAutocomplete = await browser.page.eval(
+      "document.querySelector('#password')?.getAttribute('autocomplete')",
+    );
+    if (passwordAutocomplete !== "new-password") {
+      fail(`the password field should use autocomplete=new-password, got ${passwordAutocomplete}`);
+    } else {
+      pass("the password field uses autocomplete=new-password");
+    }
+    console.log(`screenshot: ${await browser.page.screenshot("04-signup")}`);
+
+    const nameSel = "#name";
+    const signupEmailSel = "#email";
+    const signupPassSel = "#password";
+    let signupFilled = false;
+    for (let attempt = 0; attempt < 6 && !signupFilled; attempt++) {
+      await browser.page.fill(nameSel, NAME);
+      await browser.page.fill(signupEmailSel, SIGNUP_EMAIL);
+      await browser.page.fill(signupPassSel, PASSWORD);
+      signupFilled = await browser.page.eval(
+        `(() => { const n = document.querySelector(${JSON.stringify(nameSel)}); const e = document.querySelector(${JSON.stringify(signupEmailSel)}); const p = document.querySelector(${JSON.stringify(signupPassSel)}); return !!n && !!e && !!p && n.value === ${JSON.stringify(NAME)} && e.value === ${JSON.stringify(SIGNUP_EMAIL)} && p.value === ${JSON.stringify(PASSWORD)}; })()`,
+      );
+    }
+    if (!signupFilled) fail("signup fields would not hold the typed values");
+    await browser.page.eval(
+      `(() => { const f = document.querySelector('form'); if (!f) return false; f.requestSubmit ? f.requestSubmit() : f.submit(); return true; })()`,
+    );
+    const signupLanded = await browser.page.waitFor("location.pathname === '/'", { timeoutMs: 30000 });
+    if (!signupLanded) fail(`signup did not land on /, still at ${await browser.page.url()}`);
+    else pass("the signup form created the account and landed on /");
+    const signupBody = await browser.page.bodyText();
+    if (!signupBody.includes(SIGNUP_EMAIL)) fail(`shell does not show the new account email ${SIGNUP_EMAIL}`);
+    else pass(`shell shows the new account email ${SIGNUP_EMAIL}`);
+    console.log(`screenshot: ${await browser.page.screenshot("05-signup-signed-in")}`);
+
+    await browser.page.clearCookies();
+    await browser.page.goto(`${BASE}/login`);
+    await browser.page.waitForHydration();
+    const loginLink = await browser.page.eval(
+      `(() => { const a = Array.from(document.querySelectorAll('a')).find((el) => el.textContent.trim() === 'Create an account'); return a ? a.getAttribute('href') : null; })()`,
+    );
+    if (loginLink !== "/signup") fail(`the login page should link to /signup, got ${loginLink}`);
+    else pass("the login page links to /signup");
   } finally {
     browser.close();
     server.kill("SIGTERM");

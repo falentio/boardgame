@@ -65,7 +65,7 @@ const onSubmit = async () => {
           Create an account
         </CardTitle>
         <CardDescription>
-          Enter your email and choose a password
+          Enter your name, email, and a password
         </CardDescription>
       </CardHeader>
       <CardContent>
