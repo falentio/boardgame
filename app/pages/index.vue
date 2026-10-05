@@ -1,10 +1,14 @@
 <script setup lang="ts">
-const { user, signOut } = await useAuthSession()
+definePageMeta({ layout: "shell" })
 </script>
 
 <template>
-  <main class="flex min-h-svh flex-col items-start justify-center gap-4 p-8">
-    <h1 class="text-2xl font-medium">Hello, {{ user?.name }}</h1>
-    <Button variant="outline" @click="signOut">Sign out</Button>
-  </main>
+  <div class="flex flex-1 flex-col gap-4 p-4 pt-0">
+    <div class="grid auto-rows-min gap-4 md:grid-cols-3">
+      <div class="bg-muted/50 aspect-video rounded-xl" />
+      <div class="bg-muted/50 aspect-video rounded-xl" />
+      <div class="bg-muted/50 aspect-video rounded-xl" />
+    </div>
+    <div class="bg-muted/50 min-h-[100vh] flex-1 rounded-xl md:min-h-min" />
+  </div>
 </template>
