@@ -108,5 +108,8 @@ const onSubmit = async () => {
       By clicking continue, you agree to our <a href="#">Terms of Service</a>
       and <a href="#">Privacy Policy</a>.
     </FieldDescription>
+    <FieldDescription class="px-6 text-center">
+      New here? <NuxtLink to="/signup">Create an account</NuxtLink>
+    </FieldDescription>
   </div>
 </template>
