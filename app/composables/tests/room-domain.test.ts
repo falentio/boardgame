@@ -21,15 +21,23 @@ const wireRoom = (overrides: Record<string, unknown> = {}): Record<string, unkno
   name: "New room",
   setup: { roles: ["banker", "director", "guerrilla", "politician", "peacekeeper"] },
   seats: [
-    { id: "seat-0", occupant: "user-host", joinedAt: 1 },
-    { id: "seat-1", occupant: null, joinedAt: null },
+    { id: "seat-0", occupant: "user-host", name: "Host Person", image: null, joinedAt: 1 },
+    { id: "seat-1", occupant: null, name: null, image: null, joinedAt: null },
   ],
   createdAt: 1,
   updatedAt: 1,
   ...overrides,
 });
 
-const loadedRoom = (seats: readonly { id: string; occupant: string | null; joinedAt: number | null }[]): Room => ({
+interface LoadedSeat {
+  id: string;
+  occupant: string | null;
+  name?: string | null;
+  image?: string | null;
+  joinedAt: number | null;
+}
+
+const loadedRoom = (seats: readonly LoadedSeat[]): Room => ({
   code: CODE,
   name: "New room",
   host: HOST,
@@ -38,6 +46,8 @@ const loadedRoom = (seats: readonly { id: string; occupant: string | null; joine
   seats: seats.map((seat) => ({
     id: seat.id,
     occupant: seat.occupant === null ? null : userId(seat.occupant),
+    name: seat.name ?? null,
+    image: seat.image ?? null,
     joinedAt: seat.joinedAt,
   })),
 });
@@ -49,9 +59,41 @@ test("parseRoom reads a valid wire object", () => {
   expect(room?.host).toBe("user-host");
   expect(room?.roles).toEqual(["banker", "director", "guerrilla", "politician", "peacekeeper"]);
   expect(room?.seats).toEqual([
-    { id: "seat-0", occupant: "user-host", joinedAt: 1 },
-    { id: "seat-1", occupant: null, joinedAt: null },
+    { id: "seat-0", occupant: "user-host", name: "Host Person", image: null, joinedAt: 1 },
+    { id: "seat-1", occupant: null, name: null, image: null, joinedAt: null },
   ]);
+});
+
+test("parseRoom degrades a malformed identity field to null without failing the load", () => {
+  const room = parseRoom(
+    wireRoom({
+      seats: [
+        { id: "seat-0", occupant: "user-host", name: 42, image: { url: "x" }, joinedAt: 1 },
+        { id: "seat-1", occupant: null, name: null, image: null, joinedAt: null },
+      ],
+    }),
+  );
+  expect(room).not.toBeNull();
+  expect(room?.seats[0]).toEqual({
+    id: "seat-0",
+    occupant: "user-host",
+    name: null,
+    image: null,
+    joinedAt: 1,
+  });
+});
+
+test("parseRoom degrades an absent identity field to null", () => {
+  const room = parseRoom(
+    wireRoom({ seats: [{ id: "seat-0", occupant: "user-host", joinedAt: 1 }] }),
+  );
+  expect(room?.seats[0]).toEqual({
+    id: "seat-0",
+    occupant: "user-host",
+    name: null,
+    image: null,
+    joinedAt: 1,
+  });
 });
 
 test("parseRoom drops unknown role ids and keeps the known ones", () => {
@@ -127,6 +169,41 @@ test("lobbyOf detects the host by occupant equality, not by seat index", () => {
   expect(lobby.seats.map((seat) => seat.isMe)).toEqual([false, true]);
   expect(lobby.amIHost).toBe(true);
   expect(lobby.amISeated).toBe(true);
+});
+
+test("lobbyOf projects a filled seat into occupant/name/image and drops filled", () => {
+  const lobby = lobbyOf(
+    { kind: "loaded", room: loadedRoom([
+      { id: "seat-0", occupant: "user-host", name: "Host Person", image: null, joinedAt: 1 },
+      { id: "seat-1", occupant: null, joinedAt: null },
+    ]) },
+    HOST,
+  );
+  if (lobby.kind !== "room") throw new Error("expected room");
+  const [filled, open] = lobby.seats;
+  expect(filled).toEqual({
+    index: 0,
+    occupant: "user-host",
+    name: "Host Person",
+    image: "https://api.dicebear.com/10.x/clay/svg?seed=user-host",
+    isHost: true,
+    isMe: true,
+  });
+  expect(filled).not.toHaveProperty("filled");
+  expect(open).toEqual({ index: 1, occupant: null, isHost: false, isMe: false });
+});
+
+test("lobbyOf keeps a renderable avatar when the occupant has no name or image", () => {
+  const lobby = lobbyOf(
+    { kind: "loaded", room: loadedRoom([{ id: "seat-0", occupant: "user-host", joinedAt: 1 }]) },
+    HOST,
+  );
+  if (lobby.kind !== "room") throw new Error("expected room");
+  expect(lobby.seats[0]).toMatchObject({
+    occupant: "user-host",
+    name: null,
+    image: "https://api.dicebear.com/10.x/clay/svg?seed=user-host",
+  });
 });
 
 test("lobbyOf marks a non-seated viewer and never lets them start", () => {

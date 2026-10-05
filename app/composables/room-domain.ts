@@ -1,10 +1,13 @@
 import { isRoleId, type RoleId } from "#shared/core/lockstep/games/g54/roles.ts";
 import { isRoomCode, roomCode, userId, type RoomCode, type UserId } from "#shared/rooms/ids.ts";
 import type { RoomError } from "#shared/rooms/room.ts";
+import { resolveUserImage } from "#shared/users/avatar.ts";
 
 export interface Seat {
   id: string;
   occupant: UserId | null;
+  name: string | null;
+  image: string | null;
   joinedAt: number | null;
 }
 
@@ -28,12 +31,21 @@ export type LobbyStatus =
   | { kind: "waiting"; filled: number; total: number }
   | { kind: "full"; filled: number; total: number };
 
-export interface SeatRow {
-  index: number;
-  filled: boolean;
-  isHost: boolean;
-  isMe: boolean;
-}
+export type SeatRow =
+  | {
+      readonly index: number;
+      readonly occupant: null;
+      readonly isHost: false;
+      readonly isMe: false;
+    }
+  | {
+      readonly index: number;
+      readonly occupant: UserId;
+      readonly name: string | null;
+      readonly image: string;
+      readonly isHost: boolean;
+      readonly isMe: boolean;
+    };
 
 export type Lobby =
   | { kind: "loading" }
@@ -65,9 +77,14 @@ const parseSeat = (raw: unknown): Seat | null => {
   const joinedAt = fieldOf(raw, "joinedAt");
   if (joinedAt !== null && typeof joinedAt !== "number") return null;
 
+  const name = fieldOf(raw, "name");
+  const image = fieldOf(raw, "image");
+
   return {
     id,
     occupant: occupant === null ? null : userId(occupant),
+    name: typeof name === "string" ? name : null,
+    image: typeof image === "string" ? image : null,
     joinedAt,
   };
 };
@@ -122,13 +139,17 @@ export const lobbyOf = (load: RoomLoad, viewer: UserId | null): Lobby => {
   const status: LobbyStatus =
     filled === total ? { kind: "full", filled, total } : { kind: "waiting", filled, total };
 
-  const seats = room.seats.map(
-    (seat, index): SeatRow => ({
-      index,
-      filled: seat.occupant !== null,
-      isHost: seat.occupant === room.host,
-      isMe: viewer !== null && seat.occupant === viewer,
-    }),
+  const seats = room.seats.map((seat, index): SeatRow =>
+    seat.occupant === null
+      ? { index, occupant: null, isHost: false, isMe: false }
+      : {
+          index,
+          occupant: seat.occupant,
+          name: seat.name,
+          image: resolveUserImage(seat.image, seat.occupant),
+          isHost: seat.occupant === room.host,
+          isMe: viewer !== null && seat.occupant === viewer,
+        },
   );
 
   const amIHost = viewer !== null && room.host === viewer;
