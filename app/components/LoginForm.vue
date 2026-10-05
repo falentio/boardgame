@@ -18,6 +18,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { sameOriginPath } from "@/composables/safe-redirect"
 
 const props = defineProps<{
   class?: HTMLAttributes["class"]
@@ -32,19 +33,7 @@ const submitting = ref(false)
 
 const ORIGIN = "http://localhost"
 
-const safeRedirect = (value: unknown) => {
-  if (typeof value !== "string" || value === "") return "/"
-  let url: URL
-  try {
-    url = new URL(value, ORIGIN)
-  } catch {
-    return "/"
-  }
-  if (url.origin !== ORIGIN) return "/"
-  const out = `${url.pathname}${url.search}${url.hash}`
-  if (!/^\/(?![/\\])/.test(out)) return "/"
-  return out
-}
+const safeRedirect = (value: unknown) => sameOriginPath(value, ORIGIN)
 
 const onSubmit = async () => {
   error.value = ""
