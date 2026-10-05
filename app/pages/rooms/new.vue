@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue"
+import { computed, ref } from "vue"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
@@ -13,8 +13,9 @@ import {
 } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 import RolePicker from "@/components/room/RolePicker.vue"
-import { completeRoles, defaultDraft, type RoleDraft } from "@/composables/roles"
+import { completeRoles, defaultDraft, toggleRole, type RoleDraft } from "@/composables/roles"
 import { createRoom } from "@/composables/rooms-api"
+import type { RoleId } from "#shared/core/lockstep/games/g54/roles.ts"
 
 definePageMeta({ layout: "shell" })
 
@@ -27,6 +28,13 @@ const submitting = ref(false)
 const error = ref("")
 const errorField = ref<"name" | "roles" | "form" | null>(null)
 const formEl = ref<HTMLFormElement | null>(null)
+
+const roles = computed(() => completeRoles(draft.value))
+const canSubmit = computed(() => roles.value !== null && !submitting.value)
+
+const onToggle = (role: RoleId) => {
+  draft.value = toggleRole(draft.value, role)
+}
 
 const missingSlots = (value: RoleDraft): string[] => {
   const parts: string[] = []
@@ -60,8 +68,8 @@ const onSubmit = async () => {
     return
   }
 
-  const roles = completeRoles(draft.value)
-  if (roles === null) {
+  const selected = roles.value
+  if (selected === null) {
     error.value = `Choose the remaining roles: ${missingSlots(draft.value).join(", ")}.`
     errorField.value = "roles"
     focusFirstProblem()
@@ -70,7 +78,7 @@ const onSubmit = async () => {
 
   submitting.value = true
   try {
-    const outcome = await createRoom({ name: trimmed, seats: seats.value, roles })
+    const outcome = await createRoom({ name: trimmed, seats: seats.value, roles: selected })
     if (outcome.kind === "created") {
       await navigateTo("/rooms/" + outcome.code)
       return
@@ -135,7 +143,7 @@ const onSubmit = async () => {
                 <p id="roles-label" class="text-sm leading-none font-medium">
                   Roles
                 </p>
-                <RolePicker v-model:draft="draft" />
+                <RolePicker :draft="draft" @toggle="onToggle" />
                 <p
                   v-if="missingSlots(draft).length > 0"
                   class="text-muted-foreground text-sm leading-normal"
@@ -146,7 +154,7 @@ const onSubmit = async () => {
             </Field>
             <FieldError id="create-error" :errors="error ? [error] : []" />
             <Field>
-              <Button type="submit" :disabled="submitting">
+              <Button type="submit" :disabled="!canSubmit">
                 <Spinner v-if="submitting" />
                 Create room
               </Button>
