@@ -270,6 +270,7 @@ const main = async () => {
 
     console.log(`screenshot: ${await browser.page.screenshot("02-shell")}`);
 
+    await browser.page.waitForHydration();
     const collapsed = await browser.page.eval(
       `(() => { const t = document.querySelector('[data-slot=sidebar-trigger], [data-sidebar=trigger], button[aria-label*="sidebar" i], button[aria-label*="toggle" i]'); if (!t) return false; t.click(); return true; })()`,
     );
