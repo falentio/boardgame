@@ -91,6 +91,48 @@ test("Capitalist: a failed challenge costs the challenger a life, then the colle
   expect(rawCoins(state, ANN)).toBe(6);
 });
 
+test("Capitalist: two rivals' secondary claims resolve clockwise from the active seat", () => {
+  let state = craftSet(financeSet("capitalist"), [[ANN, ["capitalist", "banker"]]], "cap-multi");
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "capitalist", target: null } : null,
+  );
+  state = advance(state, pass);
+  expect(openPurpose(state)).toBe("capitalist");
+  state = advance(state, (seat) =>
+    seat === BOB || seat === CARA ? { t: "claim", role: "capitalist", target: null } : null,
+  );
+  state = advance(state, pass);
+  expect(rawCoins(state, BOB)).toBe(3);
+  expect(rawCoins(state, CARA)).toBe(2);
+  expect(openPurpose(state)).toBe("challenge-claim");
+  state = advance(state, pass);
+  expect(rawCoins(state, CARA)).toBe(3);
+  expect(rawCoins(state, ANN)).toBe(4);
+});
+
+test("Capitalist: an active purse short of the claimants clamps the secondary transfer", () => {
+  let state = withCoins(
+    craftSet(financeSet("capitalist"), [[ANN, ["capitalist", "banker"]]], "cap-short"),
+    ANN,
+    0,
+  );
+  state = { ...state, treasury: 1 };
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "capitalist", target: null } : null,
+  );
+  state = advance(state, pass);
+  expect(rawCoins(state, ANN)).toBe(1);
+  state = advance(state, (seat) =>
+    seat === BOB || seat === CARA ? { t: "claim", role: "capitalist", target: null } : null,
+  );
+  state = advance(state, pass);
+  state = advance(state, pass);
+  expect(rawCoins(state, ANN)).toBe(0);
+  expect(rawCoins(state, BOB)).toBe(3);
+  expect(rawCoins(state, CARA)).toBe(2);
+  expect(state.treasury).toBe(0);
+});
+
 test("Farmer: take 3, keep 2, give 1 to the chosen player", () => {
   let state = craftSet(financeSet("farmer"), [[ANN, ["farmer", "banker"]]], "farmer-action");
   state = advance(state, (seat, s) =>
@@ -125,6 +167,32 @@ test("Farmer: a failed challenge costs the challenger a life, then the gift land
   expect(rawHand(state, BOB)).toHaveLength(1);
   expect(rawCoins(state, ANN)).toBe(4);
   expect(rawCoins(state, BOB)).toBe(3);
+});
+
+test("Farmer: a short Treasury clamps the take while the gift still lands", () => {
+  let state = craftSet(financeSet("farmer"), [[ANN, ["farmer", "banker"]]], "farmer-short");
+  state = { ...state, treasury: 2 };
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "farmer", target: BOB } : null,
+  );
+  state = advance(state, pass);
+  expect(rawCoins(state, ANN)).toBe(3);
+  expect(rawCoins(state, BOB)).toBe(3);
+  expect(state.treasury).toBe(0);
+});
+
+test("Speculator: a claimant holding no coins takes nothing", () => {
+  let state = withCoins(
+    craftSet(financeSet("speculator"), [[ANN, ["speculator", "banker"]]], "spec-zero"),
+    ANN,
+    0,
+  );
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "speculator", target: null } : null,
+  );
+  state = advance(state, pass);
+  expect(rawCoins(state, ANN)).toBe(0);
+  expect(state.active).toBe(BOB);
 });
 
 test("Speculator: double your coins from the Treasury, capped at 5 taken", () => {

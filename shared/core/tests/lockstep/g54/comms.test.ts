@@ -9,6 +9,7 @@ import {
   rawHand,
   totalCards,
   withCoins,
+  withCourt,
 } from "./driver.ts";
 import type { RoleId } from "./driver.ts";
 
@@ -73,6 +74,25 @@ test("Newscaster: a failed challenge costs the challenger a life, then the swap 
   state = advance(state, pass);
   expect(rawHand(state, BOB)).toHaveLength(1);
   expect(openPurpose(state)).toBe("keep");
+});
+
+test("Newscaster: a short Court clamps the draw while the paid coin stays paid", () => {
+  let state = withCourt(
+    withCoins(
+      craftSet(commsSet("newscaster"), [[ANN, ["newscaster", "banker"]]], "newscaster-short"),
+      ANN,
+      3,
+    ),
+    ["banker"],
+  );
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "newscaster", target: null } : null,
+  );
+  state = advance(state, pass);
+  expect(openPurpose(state)).toBe("keep");
+  expect(state.draw?.pool).toHaveLength(1);
+  expect(state.draw?.keepSize).toBe(2);
+  expect(rawCoins(state, ANN)).toBe(2);
 });
 
 test("Producer: take a Court card and a target card, then return one to each", () => {
@@ -234,6 +254,30 @@ test("Writer: a successful challenge makes the claimant lose a life and the dig 
   state = advance(state, pass);
   expect(rawHand(state, ANN)).toHaveLength(1);
   expect(openPurpose(state)).toBe("turn");
+});
+
+test("Writer: a drained Court stops the pay window mid-dig without refunding", () => {
+  let state = withCourt(
+    withCoins(
+      craftSet(commsSet("writer"), [[ANN, ["writer", "banker"]]], "writer-drain"),
+      ANN,
+      4,
+    ),
+    ["banker", "banker"],
+  );
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "writer", target: null } : null,
+  );
+  state = advance(state, pass);
+  expect(openPurpose(state)).toBe("writer-draw");
+  expect(state.draw?.pool).toHaveLength(1);
+  state = advance(state, (seat, s) => (seat === s.active ? { t: "pay" } : null));
+  expect(state.draw?.pool).toHaveLength(2);
+  expect(state.court).toHaveLength(0);
+  state = advance(state, (seat, s) => (seat === s.active ? { t: "pay" } : null));
+  expect(openPurpose(state)).toBe("keep");
+  expect(state.draw?.pool).toHaveLength(2);
+  expect(rawCoins(state, ANN)).toBe(3);
 });
 
 test("Writer: a failed challenge costs the challenger a life, then the dig opens", () => {

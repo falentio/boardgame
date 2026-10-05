@@ -107,6 +107,50 @@ test("Missionary: a failed challenge costs the challenger a life, then the card 
   expect(rawHand(state, BOB)).toHaveLength(2);
 });
 
+test("Missionary: a conceded challenge opens the window", () => {
+  let state = withCoins(
+    craftSet(
+      reactiveSet("missionary"),
+      [[ANN, ["missionary", "banker"]]],
+      "missionary-concede",
+    ),
+    ANN,
+    4,
+  );
+  // Ann bluffs a Guerrilla she does not hold; Bob challenges and she concedes.
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "guerrilla", target: BOB } : null,
+  );
+  state = advance(state, (seat) => (seat === BOB ? { t: "challenge" } : null));
+  state = advance(state, (seat) => (seat === ANN ? { t: "concede" } : null));
+  expect(openPurpose(state)).toBe("reveal");
+  // Flip the Banker, keeping Missionary face-down.
+  state = advance(state, (seat) => (seat === ANN ? { t: "reveal", index: 1 } : null));
+  expect(openPurpose(state)).toBe("reactive-missionary");
+});
+
+test("Missionary: a Disappear resolution opens the window", () => {
+  let state = withCoins(
+    craftSet(
+      ["banker", "director", "mercenary", "missionary", "politician"],
+      [[ANN, ["mercenary", "banker"]], [BOB, ["banker", "missionary"]]],
+      "missionary-disappear",
+    ),
+    ANN,
+    3,
+  );
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "mercenary", target: BOB } : null,
+  );
+  state = advance(state, pass);
+  state = advance(state, pass);
+  expect(state.active).toBe(BOB);
+  state = advance(state, (seat, s) => (seat === s.active ? { t: "income" } : null));
+  expect(openPurpose(state)).toBe("reveal");
+  state = advance(state, (seat) => (seat === BOB ? { t: "reveal", index: 0 } : null));
+  expect(openPurpose(state)).toBe("reactive-missionary");
+});
+
 test("Intellectual: after any loss the holder may claim to take 5 coins", () => {
   let state = withCoins(
     craftSet(reactiveSet("intellectual"), [[BOB, ["banker", "intellectual"]]], "intel-loss"),
@@ -177,6 +221,49 @@ test("Intellectual: a failed challenge costs the challenger a life, then 5 coins
   expect(rawCoins(state, BOB)).toBe(7);
 });
 
+test("Intellectual: a surviving holder who loses twice in one turn opens a second window", () => {
+  let state = withCoins(
+    craftSet(
+      reactiveSet("intellectual"),
+      [[ANN, ["guerrilla", "banker"]], [BOB, ["banker", "intellectual", "banker"]]],
+      "intel-twice",
+    ),
+    ANN,
+    4,
+  );
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "guerrilla", target: BOB } : null,
+  );
+  state = advance(state, (seat) => (seat === BOB ? { t: "challenge" } : null));
+  state = advance(state, (seat, s) => (seat === s.active ? { t: "show" } : null));
+  state = advance(state, pass);
+  expect(openPurpose(state)).toBe("reactive-intellectual");
+  state = advance(state, pass);
+  state = advance(state, pass);
+  state = advance(state, pass);
+  expect(openPurpose(state)).toBe("reactive-intellectual");
+  expect(rawHand(state, BOB)).toHaveLength(1);
+});
+
+test("Intellectual: a General execution opens the window", () => {
+  let state = withCoins(
+    craftSet(
+      ["banker", "director", "general", "intellectual", "peacekeeper"],
+      [[ANN, ["general", "banker"]], [BOB, ["banker", "intellectual"]]],
+      "intel-general",
+    ),
+    ANN,
+    5,
+  );
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "general", target: null } : null,
+  );
+  state = advance(state, pass);
+  state = advance(state, pass);
+  state = advance(state, pass);
+  expect(openPurpose(state)).toBe("reactive-intellectual");
+});
+
 /** Set up a Coup that eliminates Bob (one card) so the Lawyer window opens. */
 const coupEliminates = (roles: readonly RoleId[], entropy: string) => {
   let state = withCoins(
@@ -241,6 +328,57 @@ test("Lawyer: a failed challenge costs the challenger a life, then the coins lan
   state = advance(state, pass);
   expect(rawHand(state, CARA)).toHaveLength(1);
   expect(rawCoins(state, ANN)).toBe(7);
+});
+
+test("Lawyer: the clockwise-first claimant takes the estate and the later claim is voided", () => {
+  let state = withCoins(
+    craftSet(
+      reactiveSet("lawyer"),
+      [
+        [ANN, ["lawyer", "banker"]],
+        [BOB, ["banker"]],
+        [CARA, ["lawyer", "banker"]],
+      ],
+      "lawyer-clockwise",
+    ),
+    ANN,
+    8,
+  );
+  state = withCoins(state, BOB, 6);
+  state = advance(state, (seat, s) => (seat === s.active ? { t: "coup", target: BOB } : null));
+  state = advance(state, (seat) => (seat === BOB ? { t: "reveal", index: 0 } : null));
+  expect(openPurpose(state)).toBe("lawyer");
+  // Both survivors claim; clockwise from the eliminated seat, Cara resolves first.
+  state = advance(state, (seat) =>
+    seat === ANN || seat === CARA ? { t: "claim", role: "lawyer", target: null } : null,
+  );
+  state = advance(state, pass);
+  expect(rawCoins(state, CARA)).toBe(8);
+  expect(rawCoins(state, ANN)).toBe(1);
+  expect(rawCoins(state, BOB)).toBe(0);
+});
+
+test("Lawyer: a Guerrilla execution that eliminates a seat opens the window", () => {
+  let state = withCoins(
+    craftSet(
+      reactiveSet("lawyer"),
+      [
+        [ANN, ["guerrilla", "banker"]],
+        [BOB, ["banker"]],
+      ],
+      "lawyer-guerrilla",
+    ),
+    ANN,
+    4,
+  );
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "guerrilla", target: BOB } : null,
+  );
+  state = advance(state, pass);
+  state = advance(state, pass);
+  expect(openPurpose(state)).toBe("reveal");
+  state = advance(state, (seat) => (seat === BOB ? { t: "reveal", index: 0 } : null));
+  expect(openPurpose(state)).toBe("lawyer");
 });
 
 test("double life loss: a failed challenge plus the execution costs two lives", () => {

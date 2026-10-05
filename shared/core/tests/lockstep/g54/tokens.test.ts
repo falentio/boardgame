@@ -191,3 +191,52 @@ test("Disappear: the token is discarded if the target is eliminated first", () =
   expect(rawHand(state, BOB)).toHaveLength(0);
   expect(state.disappear).toEqual([]);
 });
+
+test("Disappear: the token still resolves after the target gains Peacekeeping", () => {
+  let state = craftSet(
+    ["banker", "director", "mercenary", "peacekeeper", "politician"],
+    [[ANN, ["mercenary", "banker"]]],
+    "disappear-peace",
+    SEATS3,
+  );
+  state = withCoins(state, ANN, 3);
+  state = { ...state, disappear: [{ target: BOB, turns: 1 }] };
+  state = withPeacekeeping(state, BOB);
+  state = advance(state, (seat, s) => (seat === s.active ? { t: "income" } : null));
+  expect(state.active).toBe(BOB);
+  expect(state.disappear).toEqual([{ target: BOB, turns: 1 }]);
+  state = advance(state, (seat, s) => (seat === s.active ? { t: "income" } : null));
+  expect(openPurpose(state)).toBe("reveal");
+  state = advance(state, pass);
+  expect(rawHand(state, BOB)).toHaveLength(1);
+  expect(state.disappear).toEqual([]);
+});
+
+test("Bomb: the Bomb clears when its holder is eliminated", () => {
+  // A one-card Bomb holder bluffs a pass, is challenged, and concedes: the
+  // challenge loss eliminates him while the Bomb is still set, so the queued
+  // `settle` reaches `clearTokensFor`'s Bomb clause.
+  let state = withCoins(
+    craftSet(
+      ["banker", "director", "anarchist", "peacekeeper", "politician"],
+      [[ANN, ["anarchist", "banker"]], [BOB, ["banker"]]],
+      "bomb-clear",
+      SEATS3,
+    ),
+    ANN,
+    3,
+  );
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "anarchist", target: BOB } : null,
+  );
+  expect(state.bomb).toEqual({ holder: BOB, prior: [ANN], move: null });
+  state = advance(state, (seat) =>
+    seat === BOB ? { t: "claim", role: "anarchist", target: CARA } : null,
+  );
+  state = advance(state, (seat) => (seat === CARA ? { t: "challenge" } : null));
+  state = advance(state, (seat) => (seat === BOB ? { t: "concede" } : null));
+  expect(openPurpose(state)).toBe("reveal");
+  state = advance(state, (seat) => (seat === BOB ? { t: "reveal", index: 0 } : null));
+  expect(rawHand(state, BOB)).toHaveLength(0);
+  expect(state.bomb).toBeNull();
+});

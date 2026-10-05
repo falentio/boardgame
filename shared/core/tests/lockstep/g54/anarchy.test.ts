@@ -9,6 +9,7 @@ import {
   ANN,
   BOB,
   CARA,
+  DAN,
   advance,
   craftSet,
   openPurpose,
@@ -16,6 +17,7 @@ import {
   rawFrame,
   rawHand,
   rawStep,
+  seatsOwedAt,
   totalCards,
   totalCoins,
   withBank,
@@ -109,6 +111,31 @@ test("Bomb: a pass claim that is caught is a double loss and the Bomb clears", (
   expect(state.bomb).toBeNull();
 });
 
+test("Bomb: a caught defuse is a double loss and the Bomb clears", () => {
+  let state = withCoins(
+    craftSet(anarchySet("anarchist"), [[ANN, ["anarchist", "banker"]]], "bomb-defuse-double"),
+    ANN,
+    3,
+  );
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "anarchist", target: BOB } : null,
+  );
+  // Bob lies: he claims to defuse but holds no Anarchist.
+  state = advance(state, (seat) => (seat === BOB ? { t: "claim", role: "anarchist", target: null } : null));
+  state = advance(state, (seat) => (seat === CARA ? { t: "challenge" } : null));
+  state = advance(state, (seat) => (seat === BOB ? { t: "concede" } : null));
+  state = advance(state, pass);
+  expect(openPurpose(state)).toBe("bomb");
+  // The failed claim costs Bob one influence, then the Bomb window resolves the
+  // named defuse: a second life lost and the Bomb cleared.
+  expect(rawHand(state, BOB)).toHaveLength(1);
+  state = advance(state, pass);
+  expect(openPurpose(state)).toBe("reveal");
+  expect(state.bomb).toBeNull();
+  state = advance(state, pass);
+  expect(rawHand(state, BOB)).toHaveLength(0);
+});
+
 test("Bomb: the 3-coin cost stays paid on a defuse", () => {
   let state = withCoins(
     craftSet(anarchySet("anarchist"), [[ANN, ["anarchist", "banker"]]], "bomb-cost"),
@@ -175,6 +202,21 @@ test("Plantation Owner: the active player always counts toward the payout", () =
   expect(rawCoins(state, ANN)).toBe(4);
 });
 
+test("Plantation Owner: the mass-claim window owes every rival clockwise from the active seat", () => {
+  let state = craftSet(
+    anarchySet("plantation-owner"),
+    [[ANN, ["plantation-owner", "banker"]]],
+    "plant-order",
+    [ANN, BOB, CARA, DAN],
+  );
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "plantation-owner", target: null } : null,
+  );
+  state = advance(state, pass);
+  expect(openPurpose(state)).toBe("capitalist");
+  expect(seatsOwedAt(state)).toEqual([BOB, CARA, DAN]);
+});
+
 // ---------------------------------------------------------------------------
 // Arms Dealer
 // ---------------------------------------------------------------------------
@@ -203,6 +245,21 @@ test("Arms Dealer: naming a role not in play coerces to an in-play role", () => 
   );
   state = advance(state, pass);
   expect(state.arms?.named).toBe("financier");
+});
+
+test("Arms Dealer: a short Treasury clamps the payout", () => {
+  let state = withCourt(
+    craftSet(anarchySet("arms-dealer"), [[ANN, ["arms-dealer", "banker"]]], "arms-short"),
+    ["financier", "financier", "director", "guerrilla", "politician", "peacekeeper", "banker", "banker", "banker"],
+  );
+  state = { ...state, treasury: 2 };
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "arms-dealer", target: null, named: "financier" } : null,
+  );
+  state = advance(state, pass);
+  expect(state.arms?.matched).toBe(true);
+  expect(rawCoins(state, ANN)).toBe(4);
+  expect(state.treasury).toBe(0);
 });
 
 // ---------------------------------------------------------------------------
@@ -257,6 +314,30 @@ test("Socialist: a card-giver who is eliminated mid-sub-turn still conserves the
   expect(totalCards(state)).toBe(cards);
 });
 
+test("Socialist: the collected pool is visible only to the actor", () => {
+  let state = craftSet(
+    anarchySet("socialist"),
+    [[ANN, ["socialist", "banker"]], [BOB, ["director", "guerrilla"]], [CARA, ["peacekeeper", "politician"]]],
+    "soc-hidden",
+  );
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "socialist", target: null } : null,
+  );
+  state = advance(state, pass);
+  state = advance(state, pass);
+  state = advance(state, (seat) => (seat === BOB ? { t: "give", index: 0 } : null));
+  state = advance(state, pass);
+  state = advance(state, (seat) => (seat === CARA ? { t: "give", index: 0 } : null));
+  expect(openPurpose(state)).toBe("socialist-keep");
+  // The actor sees the collected cards; a rival sees only hand counts.
+  expect(g54.project(state, ANN).mySocialist).toEqual(state.socialist?.pool);
+  expect(g54.project(state, BOB).mySocialist).toBeNull();
+  for (const player of g54.project(state, BOB).players) {
+    expect(Object.keys(player)).not.toContain("mySocialist");
+    expect(Object.keys(player)).not.toContain("pool");
+  }
+});
+
 test("a Bomb holder who resigns mid-chain still ends the turn with the deck intact", () => {
   const state0 = withCoins(
     craftSet(anarchySet("anarchist"), [[ANN, ["anarchist", "banker"]]], "bomb-resign"),
@@ -309,6 +390,20 @@ test("Social Media: neither challenge nor block window opens", () => {
   expect(openPurpose(state)).toBe("keep");
   state = advance(state, (seat, s) => (seat === s.active ? { t: "keep", indices: [0] } : null));
   expect(openPurpose(state)).toBe("turn");
+});
+
+test("Social Media: the drawn card is visible only to the actor", () => {
+  const state0 = craftSet(
+    ["banker", "director", "guerrilla", "arms-dealer", "socialist"],
+    [[ANN, ["banker", "banker"]]],
+    "sm-redact",
+    undefined,
+    { socialMedia: true },
+  );
+  const state = advance(state0, (seat, s) => (seat === s.active ? { t: "social-media" } : null));
+  expect(openPurpose(state)).toBe("keep");
+  expect(g54.project(state, ANN).myDraw).toHaveLength(1);
+  expect(g54.project(state, BOB).myDraw).toBeNull();
 });
 
 // ---------------------------------------------------------------------------

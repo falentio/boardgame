@@ -17,7 +17,8 @@ MATRIX="shared/core/tests/lockstep/g54/matrix.test.ts"
 EFFECTS="shared/core/lockstep/games/g54/effects.ts"
 ROLES="shared/core/lockstep/games/g54/roles.ts"
 WINDOWS="shared/core/lockstep/games/g54/windows.ts"
-[ -f "$MATRIX" ] && [ -f "$EFFECTS" ] && [ -f "$ROLES" ] && [ -f "$WINDOWS" ] || {
+INDEX="shared/core/lockstep/games/g54/index.ts"
+[ -f "$MATRIX" ] && [ -f "$EFFECTS" ] && [ -f "$ROLES" ] && [ -f "$WINDOWS" ] && [ -f "$INDEX" ] || {
   echo "mutation-proof: run from the repo (could not resolve $MATRIX)"; exit 2;
 }
 BACKUP="$(mktemp)"
@@ -25,7 +26,8 @@ BACKUP="$(mktemp)"
 cp "$EFFECTS" "$BACKUP"
 cp "$ROLES" "$BACKUP.r"
 cp "$WINDOWS" "$BACKUP.w"
-trap 'cp "$BACKUP" "$EFFECTS"; cp "$BACKUP.r" "$ROLES"; cp "$BACKUP.w" "$WINDOWS"; rm -f "$BACKUP" "$BACKUP.r" "$BACKUP.w"' EXIT
+cp "$INDEX" "$BACKUP.i"
+trap 'cp "$BACKUP" "$EFFECTS"; cp "$BACKUP.r" "$ROLES"; cp "$BACKUP.w" "$WINDOWS"; cp "$BACKUP.i" "$INDEX"; rm -f "$BACKUP" "$BACKUP.r" "$BACKUP.w" "$BACKUP.i"' EXIT
 
 # Each entry: <label>|<file>|<sed expression>. The sed must change exactly one rule.
 MUTATIONS=(
@@ -54,6 +56,8 @@ FULL_SUITE=(
   "financier does not zero the pile|$EFFECTS|s/^        bank: 0,$/        bank: ctx.state.bank,/"
   "plantation take 2 not 1|$EFFECTS|s/{ ...gainFromTreasury(ctx.state, active, 1), plantation: \[active\] }/{ ...gainFromTreasury(ctx.state, active, 2), plantation: [active] }/"
   "socialist collects 2 not 1|$WINDOWS|s/return withSteps(transferCoins(state, seat, socialist.seat, 1), rest);/return withSteps(transferCoins(state, seat, socialist.seat, 2), rest);/"
+  "socialist pool leaks to every seat|$INDEX|s/state.socialist !== null \&\& state.socialist.seat === seat/state.socialist !== null/"
+  "paramilitary flat 3 for any target|$ROLES|s/costByTargetLives: { 1: 5, 2: 3 }/costByTargetLives: { 1: 3, 2: 3 }/"
 )
 
 pass=0
@@ -64,11 +68,12 @@ run_mutation() {
   rest="${entry#*|}"
   file="${rest%%|*}"
   expr="${rest#*|}"
-  cp "$BACKUP" "$EFFECTS"; cp "$BACKUP.r" "$ROLES"; cp "$BACKUP.w" "$WINDOWS"
+  cp "$BACKUP" "$EFFECTS"; cp "$BACKUP.r" "$ROLES"; cp "$BACKUP.w" "$WINDOWS"; cp "$BACKUP.i" "$INDEX"
   sed -i "$expr" "$file"
   case "$file" in
     *roles.ts) pristine="$BACKUP.r" ;;
     *windows.ts) pristine="$BACKUP.w" ;;
+    *index.ts) pristine="$BACKUP.i" ;;
     *) pristine="$BACKUP" ;;
   esac
   if diff -q "$pristine" "$file" >/dev/null 2>&1; then
@@ -82,7 +87,7 @@ run_mutation() {
     echo "caught  $label"
     pass=$((pass + 1))
   fi
-  cp "$BACKUP" "$EFFECTS"; cp "$BACKUP.r" "$ROLES"; cp "$BACKUP.w" "$WINDOWS"
+  cp "$BACKUP" "$EFFECTS"; cp "$BACKUP.r" "$ROLES"; cp "$BACKUP.w" "$WINDOWS"; cp "$BACKUP.i" "$INDEX"
 }
 
 for entry in "${MUTATIONS[@]}"; do

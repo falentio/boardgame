@@ -8,7 +8,11 @@ import {
   openPurpose,
   rawCoins,
   rawHand,
+  seatsOwedAt,
   withCoins,
+  withHand,
+  withPeacekeeping,
+  withTreaty,
 } from "./driver.ts";
 import type { RoleId } from "./driver.ts";
 
@@ -57,6 +61,27 @@ test("Crime Boss: refusal costs the claimant 5 and the target a life", () => {
   state = advance(state, pass);
   expect(rawCoins(state, ANN)).toBe(0);
   expect(rawHand(state, BOB)).toHaveLength(1);
+});
+
+test("Crime Boss: a target holding under 2 coins cannot pay, so the report is a refusal", () => {
+  let state = withCoins(
+    craftSet(forceSet("crime-boss"), [[ANN, ["crime-boss", "banker"]]], "cb-short"),
+    ANN,
+    5,
+  );
+  state = withCoins(state, BOB, 1);
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "crime-boss", target: BOB } : null,
+  );
+  state = advance(state, pass);
+  expect(openPurpose(state)).toBe("crime-pay");
+  // Bob holds only 1 coin, so his `pay` cannot cover 2 and is read as a refusal.
+  state = advance(state, (seat) => (seat === BOB ? { t: "pay" } : null));
+  expect(openPurpose(state)).toBe("reveal");
+  state = advance(state, pass);
+  expect(rawCoins(state, BOB)).toBe(1);
+  expect(rawHand(state, BOB)).toHaveLength(1);
+  expect(rawCoins(state, ANN)).toBe(0);
 });
 
 test("Crime Boss: only the target may decide the pay window", () => {
@@ -143,6 +168,75 @@ test("General: a target who blocks with General keeps their life", () => {
   // Bob blocks; Cara does not.
   state = advance(state, (seat) => (seat === BOB ? { t: "block", role: "general" } : null));
   state = advance(state, pass);
+  state = advance(state, pass);
+  state = advance(state, pass);
+  expect(rawHand(state, BOB)).toHaveLength(2);
+  expect(rawHand(state, CARA)).toHaveLength(1);
+});
+
+test("General: two blockers each open their own challenge-block window and resolve independently", () => {
+  let state = withCoins(
+    craftSet(forceSet("general"), [[ANN, ["general", "banker"]]], "general-two-block"),
+    ANN,
+    5,
+  );
+  state = withHand(state, BOB, ["general", "banker"]);
+  state = withHand(state, CARA, ["banker", "banker"]);
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "general", target: null } : null,
+  );
+  state = advance(state, pass);
+  state = advance(state, (seat) => (seat === BOB ? { t: "block", role: "general" } : null));
+  expect(openPurpose(state)).toBe("challenge-block");
+  // Each block is a stacked extra claim, so the two windows resolve one at a time.
+  expect(state.extras.at(-1)?.blocker).toBe(BOB);
+  state = advance(state, pass);
+  expect(openPurpose(state)).toBe("block");
+  state = advance(state, (seat) => (seat === CARA ? { t: "block", role: "general" } : null));
+  expect(openPurpose(state)).toBe("challenge-block");
+  expect(state.extras.at(-1)?.blocker).toBe(CARA);
+  state = advance(state, (seat) => (seat === BOB ? { t: "challenge" } : null));
+  state = advance(state, (seat) => (seat === CARA ? { t: "concede" } : null));
+  state = advance(state, pass);
+  state = advance(state, pass);
+  expect(rawHand(state, BOB)).toHaveLength(2);
+  expect(rawHand(state, CARA)).toHaveLength(0);
+});
+
+test("General: a Peacekeeping holder is excluded and opens no block window", () => {
+  let state = withCoins(
+    craftSet(forceSet("general"), [[ANN, ["general", "banker"]]], "general-peace"),
+    ANN,
+    5,
+  );
+  state = withPeacekeeping(state, BOB);
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "general", target: null } : null,
+  );
+  state = advance(state, pass);
+  // The Peacekeeping holder is never a target, so only Cara owes a block.
+  expect(openPurpose(state)).toBe("block");
+  expect(seatsOwedAt(state)).toEqual([CARA]);
+  state = advance(state, pass);
+  state = advance(state, pass);
+  expect(rawHand(state, BOB)).toHaveLength(2);
+  expect(rawHand(state, CARA)).toHaveLength(1);
+});
+
+test("General: a Treaty ally is excluded and opens no block window", () => {
+  let state = withCoins(
+    craftSet(forceSet("general"), [[ANN, ["general", "banker"]]], "general-ally"),
+    ANN,
+    5,
+  );
+  state = withTreaty(state, [ANN, BOB]);
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "general", target: null } : null,
+  );
+  state = advance(state, pass);
+  // Only Cara is owed a block: Ann and Bob are allies, so Bob is not a target.
+  expect(openPurpose(state)).toBe("block");
+  expect(seatsOwedAt(state)).toEqual([CARA]);
   state = advance(state, pass);
   state = advance(state, pass);
   expect(rawHand(state, BOB)).toHaveLength(2);
@@ -444,6 +538,30 @@ test("Anarchist: a pass advances the chain and excludes every prior holder", () 
   state = advance(state, pass);
   expect(state.bomb).toBeNull();
   expect(openPurpose(state)).toBe("turn");
+});
+
+test("Anarchist: a truthful challenged pass costs the challenger a life and the Bomb moves on", () => {
+  let state = withCoins(
+    craftSet(forceSet("anarchist"), [[ANN, ["anarchist", "banker"]]], "bomb-show"),
+    ANN,
+    3,
+  );
+  state = withHand(state, BOB, ["anarchist", "banker"]);
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "anarchist", target: BOB } : null,
+  );
+  // Bob truthfully passes the Bomb to Cara; the pass opens its own challenge window.
+  state = advance(state, (seat) => (seat === BOB ? { t: "claim", role: "anarchist", target: CARA } : null));
+  expect(openPurpose(state)).toBe("challenge-claim");
+  state = advance(state, (seat) => (seat === CARA ? { t: "challenge" } : null));
+  expect(openPurpose(state)).toBe("proof-claim");
+  state = advance(state, (seat) => (seat === BOB ? { t: "show" } : null));
+  expect(openPurpose(state)).toBe("reveal");
+  state = advance(state, pass);
+  // The challenger pays a life; the shown pass stands and the Bomb continues to Cara.
+  expect(rawHand(state, CARA)).toHaveLength(1);
+  expect(openPurpose(state)).toBe("bomb");
+  expect(state.bomb).toEqual({ holder: CARA, prior: [ANN, BOB], move: null });
 });
 
 test("Anarchist: the active player can never be named as the first Bomb target", () => {

@@ -119,6 +119,56 @@ test("state codec round-trips a defused Bomb and a null sub-state", () => {
   expect(stateCodec.decode(stateCodec.encode(state))).toEqual(state);
 });
 
+test("state codec round-trips every step kind, extras, resigned, draw target, and pending field", () => {
+  const base = rawGenesis(STARTER, SEATS3, "codec-full");
+  const extra = {
+    kind: "capitalist" as const,
+    claimant: BOB,
+    role: "capitalist" as const,
+    target: ANN,
+    blockRole: null,
+    blocker: null,
+    challenger: CARA,
+    blockChallenger: null,
+  };
+  const state = {
+    ...base,
+    extras: [extra],
+    resigned: [CARA],
+    draw: { seat: ANN, pool: ["banker" as const], keepSize: 2, target: BOB },
+    pending: {
+      kind: "role" as const,
+      claimant: ANN,
+      role: "judge" as const,
+      target: BOB,
+      named: "banker" as const,
+      cost: 3,
+      costTo: "target" as const,
+      blockRole: "judge" as const,
+      blocker: null,
+      challenger: null,
+      blockChallenger: null,
+      funded: true,
+    },
+    steps: [
+      {
+        kind: "window" as const,
+        window: {
+          kind: "oneOf" as const,
+          purpose: "reveal" as const,
+          seats: [ANN],
+          cause: "execution" as const,
+        },
+      },
+      { kind: "begin" as const, extra },
+      { kind: "resolve" as const },
+      { kind: "settle" as const, seat: CARA },
+      { kind: "end-turn" as const },
+    ],
+  };
+  expect(stateCodec.decode(stateCodec.encode(state))).toEqual(state);
+});
+
 test("state codec rejects an unknown extra kind and a bad loss cause", () => {
   const good = expectObject(stateCodec.encode(rawGenesis(STARTER, SEATS3, "codec-bad2")), "state");
   expect(() =>
