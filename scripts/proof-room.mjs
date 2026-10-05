@@ -1,10 +1,4 @@
-// Drives the room flow in headless Chrome over CDP and asserts it end to end.
-// Boots `nuxt dev`, creates a host and fillers through the auth API, then
-// proves: the create page's role picker enforces 1/1/1/2, creating lands in the
-// lobby, the lobby shows a live waiting state, a guest joining over the shared
-// link lands in the lobby and never gets the Start control, filling the last
-// seat flips the host's lobby to full and enables the host-only Start, and the
-// Start seam reports it is not wired. Screenshots land in .audit/proof/.
+// Live proof of the room flow: create, shared-link join, and the lobby.
 //
 // The host and port must match BETTER_AUTH_URL in .dev.vars, or better-auth
 // rejects the sign-up with INVALID_ORIGIN.
@@ -190,9 +184,8 @@ const launchBrowser = async (label, debugPort) => {
       if (!ok) throw new Error("Vue never hydrated");
       return true;
     },
-    // A hydration marker appears before a control's listener is live, so a
-    // click fired the instant hydration is detected can be dropped. Retry the
-    // click until the observable effect appears.
+    // A hydration marker appears before a control's listener is live, so the
+    // first click can be dropped; retry until the effect shows.
     async clickUntil(selector, effect, { attempts = 8 } = {}) {
       for (let i = 0; i < attempts; i++) {
         const ok = await page.eval(

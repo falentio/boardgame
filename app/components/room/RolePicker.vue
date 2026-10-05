@@ -6,7 +6,6 @@ import { ROLE_GROUPS, roleOptionState, toggleRole, type RoleDraft } from "@/comp
 const props = defineProps<{ draft: RoleDraft }>()
 
 const emit = defineEmits<{
-  toggle: [role: RoleId]
   "update:draft": [draft: RoleDraft]
 }>()
 
@@ -21,7 +20,6 @@ const variantOf = (state: OptionState) => {
 }
 
 const pick = (role: RoleId) => {
-  emit("toggle", role)
   emit("update:draft", toggleRole(props.draft, role))
 }
 </script>
