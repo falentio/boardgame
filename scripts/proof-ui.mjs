@@ -238,8 +238,17 @@ const main = async () => {
     if (!emailInput) {
       fail("login page has no email input");
     } else {
-      await browser.page.fill("input[type=email], input#email", EMAIL);
-      await browser.page.fill("input[type=password], input#password", PASSWORD);
+      const emailSel = "input[type=email], input#email";
+      const passSel = "input[type=password], input#password";
+      let ready = false;
+      for (let attempt = 0; attempt < 6 && !ready; attempt++) {
+        await browser.page.fill(emailSel, EMAIL);
+        await browser.page.fill(passSel, PASSWORD);
+        ready = await browser.page.eval(
+          `(() => { const e = document.querySelector(${JSON.stringify(emailSel)}); const p = document.querySelector(${JSON.stringify(passSel)}); return !!e && !!p && e.value === ${JSON.stringify(EMAIL)} && p.value === ${JSON.stringify(PASSWORD)}; })()`,
+        );
+      }
+      if (!ready) fail("login fields would not hold the typed values");
       await browser.page.eval(
         `(() => { const f = document.querySelector('form'); if (!f) return false; f.requestSubmit ? f.requestSubmit() : f.submit(); return true; })()`,
       );
