@@ -4,8 +4,8 @@ import {
   roomChannel,
   type ChangeReason,
   type RoomChangedSignal,
-} from "../../shared/rooms/events.ts";
-import type { RoomCode } from "../../shared/rooms/ids.ts";
+} from "#shared/rooms/events.ts";
+import type { RoomCode } from "#shared/rooms/ids.ts";
 
 export interface RoomChannel {
   bind(event: string, handler: (data: unknown) => void): void;

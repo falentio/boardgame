@@ -5,7 +5,7 @@ import {
   type RoleCategory,
   type RoleId,
   type RoleSpec,
-} from "../../shared/core/lockstep/games/g54/roles.ts";
+} from "#shared/core/lockstep/games/g54/roles.ts";
 
 export interface RoleDraft {
   finance: RoleId | null;
