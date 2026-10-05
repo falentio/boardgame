@@ -73,6 +73,8 @@ export interface G54View {
   readonly myHand: readonly RoleId[];
   /** The Court cards drawn for a swap in progress, visible only to the actor. */
   readonly myDraw: readonly RoleId[] | null;
+  /** The cards collected by a Socialist sub-turn, visible only to the actor. */
+  readonly mySocialist: readonly RoleId[] | null;
   readonly courtCount: number;
   readonly treasury: number;
   readonly bank: number;
@@ -151,6 +153,10 @@ export const g54: GameDefinition<G54State, G54Action, G54Setup, G54View> = {
       })),
       myHand: mine === undefined ? [] : [...mine.hand],
       myDraw: state.draw !== null && state.draw.seat === seat ? [...state.draw.pool] : null,
+      mySocialist:
+        state.socialist !== null && state.socialist.seat === seat
+          ? [...state.socialist.pool]
+          : null,
       courtCount: state.court.length,
       treasury: state.treasury,
       bank: state.bank,
