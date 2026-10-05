@@ -228,6 +228,9 @@ const main = async () => {
       fail(`sign-up returned ${signUp.status}: ${await signUp.text()}`);
       return;
     }
+    const signUpBody = await signUp.json();
+    const userId = signUpBody?.user?.id;
+    if (!userId) fail("sign-up response did not include a user id");
     pass(`created the proof user ${EMAIL}`);
 
     await browser.page.goto(`${BASE}/`);
@@ -273,6 +276,15 @@ const main = async () => {
     const body = await browser.page.bodyText();
     if (!body.includes(EMAIL)) fail(`shell body does not show the session email ${EMAIL}`);
     else pass(`shell shows the session email ${EMAIL}`);
+
+    const avatarSrc = await browser.page.eval(
+      "document.querySelector('img[data-slot=avatar-image]')?.getAttribute('src') ?? null",
+    );
+    const avatarBase = "https://api.dicebear.com/10.x/clay/svg";
+    if (!userId) fail("cannot assert the avatar src without the sign-up user id");
+    else if (!avatarSrc || !avatarSrc.startsWith(avatarBase) || !avatarSrc.includes(userId))
+      fail(`sidebar avatar src should be ${avatarBase}?seed=${userId}, got ${avatarSrc}`);
+    else pass(`sidebar avatar src is seeded with the user id (${avatarSrc})`);
 
     console.log(`screenshot: ${await browser.page.screenshot("02-shell")}`);
 

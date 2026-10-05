@@ -1,11 +1,12 @@
 import { computed } from "vue"
+import { resolveUserImage } from "#shared/users/avatar.ts"
 import { authClient } from "../lib/auth-client"
 
 export interface AuthUser {
   id: string
   name: string
   email: string
-  image: string | null
+  image: string
 }
 
 export async function useAuthSession() {
@@ -23,7 +24,7 @@ export async function useAuthSession() {
       id: current.id,
       name: current.name,
       email: current.email,
-      image: current.image ?? null,
+      image: resolveUserImage(current.image, current.id),
     }
   })
 
