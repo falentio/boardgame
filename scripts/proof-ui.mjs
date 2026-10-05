@@ -1,7 +1,8 @@
-// Drives the real app in headless Chrome over CDP and asserts the auth flow.
-// Boots `nuxt dev`, creates a user through the API, then proves: a signed-out
-// visit to / lands on /login, the login form signs in, and the sidebar shell
-// shows the signed-in user's email. Screenshots land in .audit/proof/.
+// Drives the real app in headless Chrome over CDP and asserts the auth flow:
+// a signed-out visit to / lands on /login, the login form signs in, the sidebar
+// shell shows the session email, /signup renders and creates an account that
+// lands signed in, and the login page links to /signup. Screenshots land in
+// .audit/proof/.
 //
 // The host and port must match BETTER_AUTH_URL in .dev.vars, or better-auth
 // rejects the sign-up with INVALID_ORIGIN.
