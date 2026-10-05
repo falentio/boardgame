@@ -31,9 +31,9 @@ const password = ref("")
 const error = ref("")
 const submitting = ref(false)
 
-const ORIGIN = "http://localhost"
+const origin = useRequestURL().origin
 
-const safeRedirect = (value: unknown) => sameOriginPath(value, ORIGIN)
+const safeRedirect = (value: unknown) => sameOriginPath(value, origin)
 
 const onSubmit = async () => {
   error.value = ""
