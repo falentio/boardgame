@@ -7,6 +7,7 @@ export default defineConfig({
       "shared/rooms/tests/**/*.test.ts",
       "shared/users/tests/**/*.test.ts",
       "server/modules/rooms/tests/**/*.test.ts",
+      "server/modules/users/tests/**/*.test.ts",
       "server/modules/realtime/tests/**/*.test.ts",
       "app/composables/tests/**/*.test.ts",
     ],

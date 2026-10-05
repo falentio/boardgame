@@ -78,6 +78,9 @@ test("POST /api/rooms creates a room for the signed-in host", async () => {
   expect(body.room.host).toBe(host.id);
   expect(body.room.link).toBe(`${ORIGIN}/join/${String(body.room.code)}`);
   expect((body.room.setup as { roles: readonly string[] }).roles).toEqual(STARTER_ROLES);
+  const seats = body.room.seats as { occupant: string | null; name: string | null; image: string | null }[];
+  expect(seats[0]).toMatchObject({ occupant: host.id, name: "host@example.com", image: null });
+  expect(seats[0]).not.toHaveProperty("email");
 });
 
 test("POST /api/rooms defaults the name and requires a session", async () => {
@@ -129,8 +132,13 @@ test("POST /api/rooms/:code/join seats a second user and reports 409 for a repea
 
   const joined = await call(`/api/rooms/${room.code}/join`, { method: "POST", cookie: guest.cookie });
   expect(joined.status).toBe(200);
-  const joinedBody = (await joined.json()) as { room: { seats: { occupant: string | null }[] } };
+  const joinedBody = (await joined.json()) as {
+    room: { seats: { occupant: string | null; name: string | null; image: string | null }[] };
+  };
   expect(joinedBody.room.seats[1]!.occupant).toBe(guest.id);
+  expect(joinedBody.room.seats[1]!.name).toBe("guest@example.com");
+  expect(joinedBody.room.seats[1]!.image).toBeNull();
+  expect(joinedBody.room.seats[1]).not.toHaveProperty("email");
 
   const repeat = await call(`/api/rooms/${room.code}/join`, { method: "POST", cookie: guest.cookie });
   expect(repeat.status).toBe(409);
