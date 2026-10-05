@@ -228,11 +228,21 @@ export const handsOf = (table: Table<G54Action, G54View>, seat: SeatId): readonl
 
 export const RAW_SEED = genesisSeed("g54-raw-tests");
 
+export interface RawSetup {
+  readonly socialMedia?: boolean;
+}
+
 export const rawGenesis = (
   roles: readonly RoleId[],
   seats: readonly SeatId[],
   entropy = "g54-raw-tests",
-): G54State => g54.genesis({ roles }, makeRoster(seats), makeRandom(genesisSeed(entropy)));
+  setup: RawSetup = {},
+): G54State =>
+  g54.genesis(
+    { roles, socialMedia: setup.socialMedia === true },
+    makeRoster(seats),
+    makeRandom(genesisSeed(entropy)),
+  );
 
 export const rawRandom = (entropy = "g54-raw-tests") => makeRandom(genesisSeed(entropy));
 
@@ -262,6 +272,8 @@ export const withCourt = (state: G54State, court: readonly RoleId[]): G54State =
   ...state,
   court,
 });
+
+export const withBank = (state: G54State, bank: number): G54State => ({ ...state, bank });
 
 export const withPeacekeeping = (state: G54State, seat: SeatId | null): G54State => ({
   ...state,
@@ -328,8 +340,9 @@ export const craftSet = (
   hands: readonly (readonly [SeatId, readonly RoleId[]])[],
   entropy = "g54-raw-tests",
   seats: readonly SeatId[] = SEATS3,
+  setup: RawSetup = {},
 ): G54State => {
-  let state = rawGenesis(roles, seats, entropy);
+  let state = rawGenesis(roles, seats, entropy, setup);
   for (const [seat, hand] of hands) state = withHand(state, seat, hand);
   return state;
 };
@@ -385,12 +398,13 @@ export const advance = (
 export const totalCards = (state: G54State): number => {
   const inHands = state.players.reduce((n, p) => n + p.hand.length + p.revealed.length, 0);
   const inFlight = state.draw?.pool.length ?? 0;
-  return inHands + state.court.length + inFlight;
+  const socialist = state.socialist?.pool.length ?? 0;
+  return inHands + state.court.length + inFlight + socialist;
 };
 
-/** Total coins in play: every player's purse plus the Treasury (the 50-coin supply). */
+/** Total coins in play: every purse, the Treasury, and the Bank pile (the 50-coin supply). */
 export const totalCoins = (state: G54State): number =>
-  state.players.reduce((n, p) => n + p.coins, 0) + state.treasury;
+  state.players.reduce((n, p) => n + p.coins, 0) + state.treasury + state.bank;
 
 /** Fold a raw game to terminal, checking a per-frame invariant after each step. */
 export const playRaw = (

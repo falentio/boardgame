@@ -18,9 +18,16 @@ import { asRoleId, type RoleId } from "./roles.ts";
  * hostile or buggy report can never throw out of `step`.
  */
 export type G54Action =
-  | { readonly t: "claim"; readonly role: RoleId; readonly target: SeatId | null }
+  | {
+      readonly t: "claim";
+      readonly role: RoleId;
+      readonly target: SeatId | null;
+      readonly named?: RoleId | null;
+    }
   | { readonly t: "income" }
   | { readonly t: "coup"; readonly target: SeatId }
+  | { readonly t: "bank" }
+  | { readonly t: "social-media" }
   | { readonly t: "challenge" }
   | { readonly t: "pass" }
   | { readonly t: "block"; readonly role: RoleId }
@@ -35,7 +42,9 @@ export type G54Action =
 export const encodeAction = (action: G54Action): Json => {
   switch (action.t) {
     case "claim":
-      return { t: "claim", role: action.role, target: action.target };
+      return action.named === undefined
+        ? { t: "claim", role: action.role, target: action.target }
+        : { t: "claim", role: action.role, target: action.target, named: action.named };
     case "coup":
       return { t: "coup", target: action.target };
     case "block":
@@ -47,6 +56,8 @@ export const encodeAction = (action: G54Action): Json => {
     case "give":
       return { t: "give", index: action.index };
     case "income":
+    case "bank":
+    case "social-media":
     case "challenge":
     case "pass":
     case "show":
@@ -68,10 +79,14 @@ export const decodeAction = (json: Json): G54Action => {
   switch (t) {
     case "claim": {
       const targetJson = field(object, "target");
+      const namedJson = object["named"];
       return {
         t: "claim",
         role: asRoleId(expectString(field(object, "role"), "claim role")),
         target: targetJson === null ? null : decodeSeat(targetJson, "claim target"),
+        ...(namedJson === undefined
+          ? {}
+          : { named: namedJson === null ? null : asRoleId(expectString(namedJson, "claim named")) }),
       };
     }
     case "coup":
@@ -85,6 +100,8 @@ export const decodeAction = (json: Json): G54Action => {
     case "give":
       return { t: "give", index: expectInteger(field(object, "index"), "give index") };
     case "income":
+    case "bank":
+    case "social-media":
     case "challenge":
     case "pass":
     case "show":

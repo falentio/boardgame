@@ -13,6 +13,7 @@ import {
 import { G54Error } from "../../../lockstep/games/g54/error.ts";
 import { ROLE_CATALOG, type RoleId } from "../../../lockstep/games/g54/roles.ts";
 import { g54 } from "../../../lockstep/games/g54/index.ts";
+import { genesisSeed, makeRandom, makeRoster } from "../../../index.ts";
 
 test("the deck is 15 cards: three copies of each of the five chosen roles", () => {
   const state = rawGenesis(STARTER, SEATS3, "deck-shape");
@@ -60,16 +61,27 @@ test("role selection enforces 1 Finance + 1 Communications + 1 Force + 2 Special
   ).toThrow(G54Error);
 });
 
-test("the catalog holds all 25 roles in the documented category split", () => {
-  expect(ROLE_CATALOG).toHaveLength(25);
+test("the catalog holds all 31 roles: 25 base + 6 Anarchy", () => {
+  expect(ROLE_CATALOG).toHaveLength(31);
   const byCategory = new Map<string, number>();
   for (const spec of ROLE_CATALOG) {
     byCategory.set(spec.category, (byCategory.get(spec.category) ?? 0) + 1);
   }
-  expect(byCategory.get("finance")).toBe(5);
+  expect(byCategory.get("finance")).toBe(7);
   expect(byCategory.get("communications")).toBe(5);
-  expect(byCategory.get("force")).toBe(5);
-  expect(byCategory.get("special-interest")).toBe(10);
+  expect(byCategory.get("force")).toBe(7);
+  expect(byCategory.get("special-interest")).toBe(12);
+});
+
+test("a Social Media genesis carries the flag; the base game defaults it off", () => {
+  const base = rawGenesis(STARTER, SEATS3, "social-media-off");
+  expect(base.socialMedia).toBe(false);
+  const state = g54.genesis(
+    { roles: STARTER, socialMedia: true },
+    makeRoster(SEATS3),
+    makeRandom(genesisSeed("social-media-on")),
+  );
+  expect(state.socialMedia).toBe(true);
 });
 
 test("the deck is conserved across a whole game: no fabricated cards on an empty Court", () => {

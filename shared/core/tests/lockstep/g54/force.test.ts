@@ -331,3 +331,154 @@ test("Mercenary: a failed challenge costs the challenger a life, then the token 
   state = advance(state, pass);
   expect(state.disappear).toHaveLength(1);
 });
+
+test("Paramilitary: a 2-life target costs 3, a 1-life target costs 5", () => {
+  let full = withCoins(
+    craftSet(forceSet("paramilitary"), [[ANN, ["paramilitary", "banker"]]], "para-2life"),
+    ANN,
+    5,
+  );
+  full = advance(full, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "paramilitary", target: BOB } : null,
+  );
+  full = advance(full, pass);
+  full = advance(full, pass);
+  full = advance(full, pass);
+  expect(rawCoins(full, ANN)).toBe(2);
+  expect(rawHand(full, BOB)).toHaveLength(1);
+
+  let thin = withCoins(
+    craftSet(
+      forceSet("paramilitary"),
+      [[ANN, ["paramilitary", "banker"]]],
+      "para-1life",
+    ),
+    ANN,
+    5,
+  );
+  thin = {
+    ...thin,
+    players: thin.players.map((p) => (p.seat === BOB ? { ...p, hand: ["banker"] } : p)),
+  };
+  thin = advance(thin, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "paramilitary", target: BOB } : null,
+  );
+  thin = advance(thin, pass);
+  thin = advance(thin, pass);
+  thin = advance(thin, pass);
+  expect(rawCoins(thin, ANN)).toBe(0);
+  expect(rawHand(thin, BOB)).toHaveLength(0);
+});
+
+test("Paramilitary: an unaffordable 1-life hit coerces to the fallback general action", () => {
+  let state = withCoins(
+    craftSet(forceSet("paramilitary"), [[ANN, ["paramilitary", "banker"]]], "para-short"),
+    ANN,
+    3,
+  );
+  state = {
+    ...state,
+    players: state.players.map((p) => (p.seat === BOB ? { ...p, hand: ["banker"] } : p)),
+  };
+  // 5 coins are needed for a 1-life target; Ann has 3, so the claim falls back to Income.
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "paramilitary", target: BOB } : null,
+  );
+  expect(rawCoins(state, ANN)).toBe(4);
+  expect(rawHand(state, BOB)).toHaveLength(1);
+});
+
+test("Paramilitary: a block refunds nothing and spares the target", () => {
+  let state = withCoins(
+    craftSet(forceSet("paramilitary"), [[BOB, ["paramilitary", "banker"]]], "para-block"),
+    ANN,
+    5,
+  );
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "paramilitary", target: BOB } : null,
+  );
+  state = advance(state, pass);
+  state = advance(state, (seat) => (seat === BOB ? { t: "block", role: "paramilitary" } : null));
+  state = advance(state, pass);
+  expect(rawHand(state, BOB)).toHaveLength(2);
+  expect(rawCoins(state, ANN)).toBe(2);
+});
+
+test("Anarchist: the Bomb lands and a silent holder loses a life; it returns to the centre", () => {
+  let state = withCoins(
+    craftSet(forceSet("anarchist"), [[ANN, ["anarchist", "banker"]]], "bomb-loss"),
+    ANN,
+    3,
+  );
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "anarchist", target: BOB } : null,
+  );
+  // The claim is holdless: no challenge window, the Bomb window opens directly.
+  expect(openPurpose(state)).toBe("bomb");
+  expect(state.bomb).toEqual({ holder: BOB, prior: [ANN], move: null });
+  state = advance(state, pass);
+  expect(openPurpose(state)).toBe("reveal");
+  state = advance(state, pass);
+  expect(rawHand(state, BOB)).toHaveLength(1);
+  expect(rawCoins(state, ANN)).toBe(0);
+  expect(state.bomb).toBeNull();
+});
+
+test("Anarchist: a pass advances the chain and excludes every prior holder", () => {
+  let state = withCoins(
+    craftSet(forceSet("anarchist"), [[ANN, ["anarchist", "banker"]]], "bomb-pass"),
+    ANN,
+    3,
+  );
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "anarchist", target: BOB } : null,
+  );
+  state = advance(state, (seat) => (seat === BOB ? { t: "claim", role: "anarchist", target: CARA } : null));
+  // A pass opens its own challenge window.
+  expect(openPurpose(state)).toBe("challenge-claim");
+  state = advance(state, pass);
+  expect(openPurpose(state)).toBe("bomb");
+  expect(state.bomb).toEqual({ holder: CARA, prior: [ANN, BOB], move: null });
+  // Cara defuses; the Bomb returns to the centre.
+  state = advance(state, (seat) => (seat === CARA ? { t: "claim", role: "anarchist", target: null } : null));
+  state = advance(state, pass);
+  expect(state.bomb).toBeNull();
+  expect(openPurpose(state)).toBe("turn");
+});
+
+test("Anarchist: the active player can never be named as the first Bomb target", () => {
+  let state = withCoins(
+    craftSet(forceSet("anarchist"), [[ANN, ["anarchist", "banker"]]], "bomb-self"),
+    ANN,
+    3,
+  );
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "anarchist", target: ANN } : null,
+  );
+  // The self-target is illegal, so the claim falls back to Income.
+  expect(rawCoins(state, ANN)).toBe(4);
+  expect(state.bomb).toBeNull();
+});
+
+test("Anarchist: a caught pass is a double life loss and the Bomb clears", () => {
+  let state = withCoins(
+    craftSet(forceSet("anarchist"), [[ANN, ["anarchist", "banker"]]], "bomb-caught"),
+    ANN,
+    3,
+  );
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "anarchist", target: BOB } : null,
+  );
+  // Bob lies: he passes to Cara but holds no Anarchist.
+  state = advance(state, (seat) => (seat === BOB ? { t: "claim", role: "anarchist", target: CARA } : null));
+  state = advance(state, (seat) => (seat === CARA ? { t: "challenge" } : null));
+  state = advance(state, (seat) => (seat === BOB ? { t: "concede" } : null));
+  // The challenge loss lands, then the bomb window resolves the failed claim.
+  state = advance(state, pass);
+  expect(rawHand(state, BOB)).toHaveLength(1);
+  state = advance(state, pass);
+  expect(openPurpose(state)).toBe("reveal");
+  state = advance(state, pass);
+  expect(rawHand(state, BOB)).toHaveLength(0);
+  expect(state.bomb).toBeNull();
+});

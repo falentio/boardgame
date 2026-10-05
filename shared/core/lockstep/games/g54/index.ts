@@ -9,10 +9,13 @@ import {
 } from "../../index.ts";
 import { actionCodec, type G54Action } from "./actions.ts";
 import { G54Error } from "./error.ts";
+import { generalActionsFor, type GeneralActionId } from "./generals.ts";
 import { type RoleId } from "./roles.ts";
 import { genesisState, type G54Setup } from "./setup.ts";
 import {
   stateCodec,
+  type ArmsReveal,
+  type BombState,
   type DisappearToken,
   type G54State,
   type PendingAction,
@@ -25,6 +28,7 @@ export { G54Error } from "./error.ts";
 export type { G54Action } from "./actions.ts";
 export type { G54Setup } from "./setup.ts";
 export type { G54State, G54Player, ExtraClaim, LossCause } from "./state.ts";
+export type { GeneralActionId } from "./generals.ts";
 export { ROLE_CATALOG, STARTER_ROLES, type RoleId, type RoleSpec } from "./roles.ts";
 
 /** The pending claim/target as it appears in a redacted view. */
@@ -33,6 +37,7 @@ export interface PendingView {
   readonly role: RoleId | null;
   readonly target: SeatId | null;
   readonly blocker: SeatId | null;
+  readonly named: RoleId | null;
 }
 
 export interface WindowView {
@@ -52,6 +57,7 @@ export interface TokenView {
   readonly treaty: readonly SeatId[];
   readonly tax: TaxMark | null;
   readonly disappear: readonly DisappearToken[];
+  readonly bomb: BombState | null;
 }
 
 /**
@@ -69,11 +75,17 @@ export interface G54View {
   readonly myDraw: readonly RoleId[] | null;
   readonly courtCount: number;
   readonly treasury: number;
+  readonly bank: number;
   readonly active: SeatId;
   readonly turn: number;
   readonly window: WindowView | null;
   readonly pending: PendingView | null;
   readonly tokens: TokenView;
+  /** The general actions this seat may report from, in menu order. */
+  readonly generalActions: readonly GeneralActionId[];
+  readonly socialMedia: boolean;
+  /** The last Arms Dealer reveal, public and view-only. */
+  readonly arms: ArmsReveal | null;
   readonly winner: SeatId | null;
   readonly terminal: boolean;
 }
@@ -86,11 +98,12 @@ const pendingView = (pending: PendingAction | null): PendingView | null =>
         role: pending.role,
         target: pending.target,
         blocker: pending.blocker,
+        named: pending.named,
       };
 
 export const g54: GameDefinition<G54State, G54Action, G54Setup, G54View> = {
   id: gameId("g54"),
-  version: 3,
+  version: 4,
   state: stateCodec,
   action: actionCodec,
 
@@ -140,6 +153,7 @@ export const g54: GameDefinition<G54State, G54Action, G54Setup, G54View> = {
       myDraw: state.draw !== null && state.draw.seat === seat ? [...state.draw.pool] : null,
       courtCount: state.court.length,
       treasury: state.treasury,
+      bank: state.bank,
       active: state.active,
       turn: state.turn,
       window,
@@ -149,7 +163,11 @@ export const g54: GameDefinition<G54State, G54Action, G54Setup, G54View> = {
         treaty: [...state.treaty],
         tax: state.tax === null ? null : { role: state.tax.role, holder: state.tax.holder },
         disappear: state.disappear.map((token): DisappearToken => ({ ...token })),
+        bomb: state.bomb === null ? null : { ...state.bomb, prior: [...state.bomb.prior] },
       },
+      generalActions: generalActionsFor(state),
+      socialMedia: state.socialMedia,
+      arms: state.arms === null ? null : { ...state.arms, cards: [...state.arms.cards] },
       winner: winnerOf(state),
       terminal: isTerminal(state),
     };

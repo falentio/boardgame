@@ -35,7 +35,13 @@ export type RoleId =
   | "peacekeeper"
   | "politician"
   | "priest"
-  | "protestor";
+  | "protestor"
+  | "anarchist"
+  | "paramilitary"
+  | "financier"
+  | "plantation-owner"
+  | "arms-dealer"
+  | "socialist";
 
 export interface RoleSpec {
   readonly id: RoleId;
@@ -53,6 +59,10 @@ export interface RoleSpec {
    * Missionary act only through the reactive windows a loss or elimination opens.
    */
   readonly reactive: boolean;
+  /** True only for Anarchist: the action needs no held card, so its claim opens no challenge window. */
+  readonly holdless?: boolean;
+  /** Per-life cost override keyed by the target's face-down card count. Paramilitary: {1:5, 2:3}. */
+  readonly costByTargetLives?: Readonly<Record<number, number>>;
   readonly summary: string;
 }
 
@@ -333,6 +343,74 @@ export const ROLE_CATALOG: readonly RoleSpec[] = [
     reactive: false,
     summary: "Pay 2 and target; another player may pay 3 to make the target lose 1 influence.",
   },
+  {
+    id: "anarchist",
+    name: "Anarchist",
+    category: "force",
+    cost: 3,
+    costTo: "treasury",
+    needsTarget: true,
+    blockRole: null,
+    reactive: false,
+    holdless: true,
+    summary: "Pay 3, hand the Bomb to a target; each holder passes or defuses, else loses 1 influence.",
+  },
+  {
+    id: "paramilitary",
+    name: "Paramilitary",
+    category: "force",
+    cost: 3,
+    costTo: "treasury",
+    needsTarget: true,
+    blockRole: "paramilitary",
+    reactive: false,
+    costByTargetLives: { 1: 5, 2: 3 },
+    summary: "Pay 3 (2 lives) or 5 (1 life); the target loses 1 influence unless blocked by Paramilitary.",
+  },
+  {
+    id: "financier",
+    name: "Financier",
+    category: "finance",
+    cost: 0,
+    costTo: "treasury",
+    needsTarget: false,
+    blockRole: null,
+    reactive: false,
+    summary: "Take every coin from the Bank pile. While in play, Bank replaces Income.",
+  },
+  {
+    id: "plantation-owner",
+    name: "Plantation Owner",
+    category: "finance",
+    cost: 0,
+    costTo: "treasury",
+    needsTarget: false,
+    blockRole: null,
+    reactive: false,
+    summary: "Take 1; each rival may claim; every surviving claimant then takes 1 per survivor.",
+  },
+  {
+    id: "arms-dealer",
+    name: "Arms Dealer",
+    category: "special-interest",
+    cost: 0,
+    costTo: "treasury",
+    needsTarget: false,
+    blockRole: null,
+    reactive: false,
+    summary: "Name a role; reveal 2 deck cards; gain 4 if either matches, then reshuffle both back.",
+  },
+  {
+    id: "socialist",
+    name: "Socialist",
+    category: "special-interest",
+    cost: 0,
+    costTo: "treasury",
+    needsTarget: false,
+    blockRole: "socialist",
+    reactive: false,
+    summary: "Each rival gives 1 coin or 1 card; the active then swaps 1 own card for 1 of the pile.",
+  },
 ];
 
 export const STARTER_ROLES: readonly RoleId[] = [
@@ -361,6 +439,13 @@ export const specOf = (role: RoleId): RoleSpec => {
 };
 
 export const categoryOf = (role: RoleId): RoleCategory => specOf(role).category;
+
+/** True only for Anarchist: the action needs no held card, so its claim opens no challenge window. */
+export const isHoldless = (spec: RoleSpec): boolean => spec.holdless === true;
+
+/** The cost of a claim given the target's remaining lives, falling back to the static cost. */
+export const claimCost = (spec: RoleSpec, targetLives: number): number =>
+  spec.costByTargetLives?.[targetLives] ?? spec.cost;
 
 export const categoryCounts = (roles: readonly RoleId[]): ReadonlyMap<RoleCategory, number> => {
   const counts = new Map<RoleCategory, number>();

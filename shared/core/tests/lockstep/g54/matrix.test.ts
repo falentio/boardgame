@@ -39,14 +39,16 @@ import {
   rawHand,
   totalCards,
   totalCoins,
+  withBank,
   withCoins,
+  withCourt,
   withTax,
   withTreaty,
   type G54Action,
   type G54State,
   type RoleId,
 } from "./driver.ts";
-import { ROLE_CATALOG, specOf } from "../../../lockstep/games/g54/roles.ts";
+import { isHoldless, ROLE_CATALOG, specOf, type RoleSpec } from "../../../lockstep/games/g54/roles.ts";
 import { g54 } from "../../../lockstep/games/g54/index.ts";
 import { seatId, type SeatId } from "../../../index.ts";
 
@@ -70,6 +72,8 @@ interface Expectation {
   readonly tax?: { readonly role: RoleId; readonly holder: SeatId } | null;
   /** Absolute Peacekeeping holder. */
   readonly peacekeeping?: SeatId | null;
+  /** Absolute Bank pile after the fold. */
+  readonly bank?: number;
 }
 
 interface RoleRecord {
@@ -87,6 +91,12 @@ interface RoleRecord {
   readonly blockCaraCoins?: number;
   /** The claim target, or null for untargeted roles. */
   readonly target: SeatId | null;
+  /** The role named in the claim (Arms Dealer), or undefined. */
+  readonly named?: RoleId;
+  /** The seed Bank pile (Financier). */
+  readonly bank?: number;
+  /** A forced Court order for the scenario (Arms Dealer). */
+  readonly court?: readonly RoleId[];
   /** BOB's hand for the "blockTruth" scenario (must hold the block role). */
   readonly blockHand: readonly RoleId[];
   /** A seat that funds a Protestor kill in the block scenarios. */
@@ -109,6 +119,18 @@ const seatOf = (key: SeatKey): SeatId => SEATS[key];
 const OTHER_HAND: readonly RoleId[] = ["banker", "banker", "banker"];
 
 const pass = (): null => null;
+
+/**
+ * The scenarios a role's record must declare. A holdless role (Anarchist) opens
+ * no challenge window, so its `lie`/`truth` cells are degenerate and only
+ * `resolve` is forced; a blockable role adds the three block cells.
+ */
+const scenariosFor = (spec: RoleSpec): readonly Scenario[] =>
+  isHoldless(spec)
+    ? ["resolve"]
+    : spec.blockRole !== null
+      ? ["resolve", "lie", "truth", "block", "blockLie", "blockTruth"]
+      : ["resolve", "lie", "truth"];
 
 /** A legal 1/1/1/2 set whose category slot is filled by the role under test. */
 const setFor = (role: RoleId): readonly RoleId[] => {
@@ -741,6 +763,170 @@ export const MATRIX: Readonly<Partial<Record<RoleId, RoleRecord>>> = {
       },
     },
   },
+  "paramilitary": {
+    hand: ["paramilitary", "banker"],
+    lieHand: ["banker", "banker"],
+    coins: 5,
+    target: BOB,
+    blockHand: ["paramilitary", "banker", "banker"],
+    expect: {
+      resolve: {
+        purposes: ["challenge-claim", "block", "reveal", "turn"],
+        coins: { ann: -3 },
+        hands: { bob: -1 },
+      },
+      lie: {
+        purposes: ["challenge-claim", "proof-claim", "reveal", "turn"],
+        hands: { ann: -1 },
+      },
+      truth: {
+        purposes: ["challenge-claim", "proof-claim", "reveal", "block", "reveal", "turn"],
+        coins: { ann: -3 },
+        hands: { bob: -1, cara: -1 },
+      },
+      block: {
+        purposes: ["challenge-claim", "block", "challenge-block", "turn"],
+        coins: { ann: -3 },
+      },
+      blockLie: {
+        purposes: ["challenge-claim", "block", "challenge-block", "proof-block", "reveal", "reveal", "turn"],
+        coins: { ann: -3 },
+        hands: { bob: -2 },
+      },
+      blockTruth: {
+        purposes: ["challenge-claim", "block", "challenge-block", "proof-block", "reveal", "turn"],
+        coins: { ann: -3 },
+        hands: { cara: -1 },
+      },
+    },
+  },
+  "anarchist": {
+    hand: ["banker", "banker"],
+    lieHand: ["banker", "banker"],
+    coins: 3,
+    target: BOB,
+    blockHand: ["banker", "banker", "banker"],
+    expect: {
+      // Holdless: no challenge window; the Bomb lands on BOB, who neither passes
+      // nor defuses, so he loses 1 influence and the Bomb returns to the centre.
+      resolve: {
+        purposes: ["bomb", "reveal", "turn"],
+        coins: { ann: -3 },
+        hands: { bob: -1 },
+      },
+    },
+  },
+  "financier": {
+    hand: ["financier", "banker"],
+    lieHand: ["banker", "banker"],
+    coins: 3,
+    bank: 4,
+    target: null,
+    blockHand: ["banker", "banker", "banker"],
+    expect: {
+      resolve: {
+        purposes: ["challenge-claim", "turn"],
+        coins: { ann: 4 },
+        bank: 0,
+      },
+      lie: {
+        purposes: ["challenge-claim", "proof-claim", "reveal", "turn"],
+        hands: { ann: -1 },
+        bank: 4,
+      },
+      truth: {
+        purposes: ["challenge-claim", "proof-claim", "reveal", "turn"],
+        coins: { ann: 4 },
+        hands: { cara: -1 },
+        bank: 0,
+      },
+    },
+  },
+  "plantation-owner": {
+    hand: ["plantation-owner", "banker"],
+    lieHand: ["banker", "banker"],
+    coins: 3,
+    target: null,
+    blockHand: ["banker", "banker", "banker"],
+    expect: {
+      // Ann takes 1 and is the sole surviving claimant, so the payout is 1.
+      resolve: {
+        purposes: ["challenge-claim", "capitalist", "plantation-payout", "turn"],
+        coins: { ann: 2 },
+      },
+      lie: {
+        purposes: ["challenge-claim", "proof-claim", "reveal", "turn"],
+        hands: { ann: -1 },
+      },
+      truth: {
+        purposes: ["challenge-claim", "proof-claim", "reveal", "capitalist", "plantation-payout", "turn"],
+        coins: { ann: 2 },
+        hands: { cara: -1 },
+      },
+    },
+  },
+  "arms-dealer": {
+    hand: ["arms-dealer", "banker"],
+    lieHand: ["banker", "banker"],
+    coins: 3,
+    named: "banker",
+    // The deck's first two cards both name Banker, so the reveal always matches.
+    court: ["banker", "banker", "director", "guerrilla", "politician", "peacekeeper"],
+    target: null,
+    blockHand: ["banker", "banker", "banker"],
+    expect: {
+      resolve: {
+        purposes: ["challenge-claim", "turn"],
+        coins: { ann: 4 },
+      },
+      lie: {
+        purposes: ["challenge-claim", "proof-claim", "reveal", "turn"],
+        hands: { ann: -1 },
+      },
+      truth: {
+        purposes: ["challenge-claim", "proof-claim", "reveal", "turn"],
+        coins: { ann: 4 },
+        hands: { cara: -1 },
+      },
+    },
+  },
+  "socialist": {
+    hand: ["socialist", "banker"],
+    lieHand: ["banker", "banker"],
+    coins: 3,
+    target: null,
+    blockHand: ["socialist", "banker", "banker"],
+    expect: {
+      // Both rivals pay a coin, then the actor's keep window is a no-op swap.
+      resolve: {
+        purposes: ["challenge-claim", "block", "socialist-give", "block", "socialist-give", "socialist-keep", "turn"],
+        coins: { ann: 2, bob: -1, cara: -1 },
+      },
+      lie: {
+        purposes: ["challenge-claim", "proof-claim", "reveal", "turn"],
+        hands: { ann: -1 },
+      },
+      truth: {
+        purposes: ["challenge-claim", "proof-claim", "reveal", "block", "socialist-give", "block", "socialist-give", "socialist-keep", "turn"],
+        coins: { ann: 2, bob: -1, cara: -1 },
+        hands: { cara: -1 },
+      },
+      block: {
+        purposes: ["challenge-claim", "block", "challenge-block", "block", "socialist-give", "socialist-keep", "turn"],
+        coins: { ann: 1, cara: -1 },
+      },
+      blockLie: {
+        purposes: ["challenge-claim", "block", "challenge-block", "proof-block", "reveal", "socialist-give", "block", "socialist-give", "socialist-keep", "turn"],
+        coins: { ann: 2, bob: -1, cara: -1 },
+        hands: { bob: -1 },
+      },
+      blockTruth: {
+        purposes: ["challenge-claim", "block", "challenge-block", "proof-block", "reveal", "block", "socialist-give", "socialist-keep", "turn"],
+        coins: { ann: 1, cara: -1 },
+        hands: { cara: -1 },
+      },
+    },
+  },
 };
 export const REACTIVE_MATRIX: Readonly<Partial<Record<RoleId, ReactiveRecord>>> = {
   "intellectual": {
@@ -813,6 +999,7 @@ interface Observed {
   readonly treaty: readonly SeatId[];
   readonly tax: { readonly role: RoleId; readonly holder: SeatId } | null;
   readonly peacekeeping: SeatId | null;
+  readonly bank: number;
 }
 
 const coinDelta = (before: G54State, after: G54State, seat: SeatId): number =>
@@ -838,6 +1025,7 @@ const observe = (before: G54State, after: G54State, purposes: readonly string[])
   treaty: [...after.treaty],
   tax: after.tax === null ? null : { role: after.tax.role, holder: after.tax.holder },
   peacekeeping: after.peacekeeping,
+  bank: after.bank,
 });
 
 /**
@@ -872,6 +1060,7 @@ const checkExpectation = (label: string, want: Expectation, got: Observed): void
   expect(got.treaty, `${label} treaty`).toEqual([...(want.treaty ?? [])]);
   expect(got.tax, `${label} tax`).toEqual(want.tax ?? null);
   expect(got.peacekeeping, `${label} peacekeeping`).toBe(want.peacekeeping ?? null);
+  if (want.bank !== undefined) expect(got.bank, `${label} bank`).toBe(want.bank);
 };
 
 const seedRole = (role: RoleId, rec: RoleRecord, scenario: Scenario): G54State => {
@@ -892,6 +1081,8 @@ const seedRole = (role: RoleId, rec: RoleRecord, scenario: Scenario): G54State =
   state = withCoins(state, ANN, rec.coins);
   state = withCoins(state, BOB, rec.bobCoins ?? 2);
   state = withCoins(state, CARA, caraCoins);
+  if (rec.bank !== undefined) state = withBank(state, rec.bank);
+  if (rec.court !== undefined) state = withCourt(state, rec.court);
   return state;
 };
 
@@ -903,7 +1094,14 @@ const roleDriver =
     const blockChallenging = scenario === "blockLie" || scenario === "blockTruth";
     switch (openPurpose(s)) {
       case "turn":
-        return seat === s.active ? { t: "claim", role, target: rec.target } : null;
+        return seat === s.active
+          ? {
+              t: "claim",
+              role,
+              target: rec.target,
+              ...(rec.named === undefined ? {} : { named: rec.named }),
+            }
+          : null;
       case "challenge-claim":
         return seat === CARA && challenging ? { t: "challenge" } : null;
       case "proof-claim":
@@ -930,6 +1128,14 @@ const roleDriver =
         return seat === s.active ? { t: "income" } : null;
       case "keep":
         return seat === s.active ? { t: "keep", indices: [0, 1] } : null;
+      case "socialist-give":
+        return { t: "pay" };
+      case "socialist-keep":
+        return seat === s.active ? { t: "keep", indices: [0, 0] } : null;
+      case "bomb":
+        return null;
+      case "plantation-payout":
+        return null;
       case "producer-give":
         return seat === s.draw?.target ? { t: "give", index: 0 } : null;
       case "writer-draw":
@@ -1029,10 +1235,7 @@ test.each(ROLE_CATALOG.filter((spec) => !spec.reactive).map((spec) => spec.id))(
   "matrix: %s drives every declared scenario",
   (role) => {
     const rec = mustRecord(MATRIX, role);
-    const scenarios: readonly Scenario[] =
-      specOf(role).blockRole !== null
-        ? ["resolve", "lie", "truth", "block", "blockLie", "blockTruth"]
-        : ["resolve", "lie", "truth"];
+    const scenarios = scenariosFor(specOf(role));
     for (const scenario of scenarios) {
       const want = rec.expect[scenario];
       if (want === undefined) throw new Error(`${role} has no expectation for ${scenario}`);
@@ -1074,19 +1277,13 @@ test("oracle: the registry covers the catalog exactly", () => {
   for (const spec of ROLE_CATALOG) {
     if (spec.reactive) continue;
     const declared = Object.keys(MATRIX[spec.id]?.expect ?? {}).sort();
-    const expected = (
-      spec.blockRole !== null
-        ? ["resolve", "lie", "truth", "block", "blockLie", "blockTruth"]
-        : ["resolve", "lie", "truth"]
-    ).sort();
+    const expected = [...scenariosFor(spec)].sort();
     expect(declared, `${spec.id} scenarios`).toEqual(expected);
   }
 
   const cells: string[] = [];
   for (const spec of ROLE_CATALOG) {
-    const scenarios = spec.reactive
-      ? ["resolve", "lie", "truth"]
-      : Object.keys(MATRIX[spec.id]?.expect ?? {});
+    const scenarios = spec.reactive ? ["resolve", "lie", "truth"] : scenariosFor(spec);
     for (const scenario of scenarios) cells.push(`${spec.id}/${scenario}`);
   }
   expect(cells.length).toBeGreaterThan(0);

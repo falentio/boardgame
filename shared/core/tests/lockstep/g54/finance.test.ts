@@ -8,6 +8,7 @@ import {
   openPurpose,
   rawCoins,
   rawHand,
+  withBank,
   withCoins,
 } from "./driver.ts";
 import type { RoleId } from "./driver.ts";
@@ -250,4 +251,122 @@ test("Spy: at 10+ coins the second action must be Coup", () => {
   state = advance(state, pass);
   expect(rawHand(state, BOB)).toHaveLength(1);
   expect(rawCoins(state, ANN)).toBe(3);
+});
+
+test("Financier: the claim sweeps the whole Bank pile", () => {
+  let state = withBank(
+    withCoins(
+      craftSet(financeSet("financier"), [[ANN, ["financier", "banker"]]], "fin-sweep"),
+      ANN,
+      2,
+    ),
+    6,
+  );
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "financier", target: null } : null,
+  );
+  state = advance(state, pass);
+  expect(rawCoins(state, ANN)).toBe(8);
+  expect(state.bank).toBe(0);
+});
+
+test("Financier: Bank replaces Income and grows the pile without touching the purse", () => {
+  let state = withCoins(
+    craftSet(financeSet("financier"), [[ANN, ["financier", "banker"]]], "fin-bank"),
+    ANN,
+    2,
+  );
+  state = advance(state, (seat, s) => (seat === s.active ? { t: "bank" } : null));
+  expect(rawCoins(state, ANN)).toBe(2);
+  expect(state.bank).toBe(1);
+  expect(state.active).toBe(BOB);
+  // An Income report is not a legal general action while Financier is in play: it
+  // coerces to the fallback (Bank), still moving a coin into the pile.
+  state = advance(state, (seat, s) => (seat === s.active ? { t: "income" } : null));
+  expect(rawCoins(state, BOB)).toBe(2);
+  expect(state.bank).toBe(2);
+});
+
+test("Financier: a successful challenge costs a life and the pile is not swept", () => {
+  let state = withBank(
+    craftSet(financeSet("financier"), [[ANN, ["banker", "banker"]]], "fin-lie"),
+    5,
+  );
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "financier", target: null } : null,
+  );
+  state = advance(state, (seat) => (seat === BOB ? { t: "challenge" } : null));
+  state = advance(state, (seat, s) => (seat === s.active ? { t: "concede" } : null));
+  state = advance(state, pass);
+  expect(rawHand(state, ANN)).toHaveLength(1);
+  expect(state.bank).toBe(5);
+});
+
+test("Plantation Owner: take 1, then each survivor gains 1 per survivor", () => {
+  let state = craftSet(
+    financeSet("plantation-owner"),
+    [[ANN, ["plantation-owner", "banker"]]],
+    "plant-payout",
+  );
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "plantation-owner", target: null } : null,
+  );
+  state = advance(state, pass);
+  expect(openPurpose(state)).toBe("capitalist");
+  state = advance(state, (seat) =>
+    seat === BOB ? { t: "claim", role: "plantation-owner", target: null } : null,
+  );
+  state = advance(state, pass);
+  expect(openPurpose(state)).toBe("plantation-payout");
+  state = advance(state, pass);
+  // Payout is 2 per survivor; Ann took 1 first, so Ann ends at 2 + 1 + 2 = 5, Bob at 2 + 2 = 4.
+  expect(rawCoins(state, ANN)).toBe(5);
+  expect(rawCoins(state, BOB)).toBe(4);
+});
+
+test("Plantation Owner: a failed claimant is excluded from the payout", () => {
+  let state = craftSet(
+    financeSet("plantation-owner"),
+    [[ANN, ["plantation-owner", "banker"]]],
+    "plant-fail",
+  );
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "plantation-owner", target: null } : null,
+  );
+  state = advance(state, pass);
+  state = advance(state, (seat) =>
+    seat === BOB ? { t: "claim", role: "plantation-owner", target: null } : null,
+  );
+  state = advance(state, (seat) => (seat === CARA ? { t: "challenge" } : null));
+  state = advance(state, (seat) => (seat === BOB ? { t: "concede" } : null));
+  state = advance(state, pass);
+  expect(openPurpose(state)).toBe("plantation-payout");
+  state = advance(state, pass);
+  // Only Ann survives, so the payout is 1: Ann ends at 2 + 1 + 1 = 4, Bob stays at 2.
+  expect(rawCoins(state, ANN)).toBe(4);
+  expect(rawCoins(state, BOB)).toBe(2);
+  expect(rawHand(state, BOB)).toHaveLength(1);
+});
+
+test("Plantation Owner: a short Treasury pays a partial payout", () => {
+  let state = craftSet(
+    financeSet("plantation-owner"),
+    [[ANN, ["plantation-owner", "banker"]]],
+    "plant-short",
+  );
+  // Treasury of 3: the take-1 leaves 2, then the 2-coin payout runs short.
+  state = { ...state, treasury: 3 };
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "plantation-owner", target: null } : null,
+  );
+  state = advance(state, pass);
+  state = advance(state, (seat) =>
+    seat === BOB ? { t: "claim", role: "plantation-owner", target: null } : null,
+  );
+  state = advance(state, pass);
+  state = advance(state, pass);
+  // Two survivors each owed 2, but only 2 coins remain: Ann is paid, Bob is not.
+  expect(rawCoins(state, ANN)).toBe(5);
+  expect(rawCoins(state, BOB)).toBe(2);
+  expect(state.treasury).toBe(0);
 });
