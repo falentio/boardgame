@@ -188,10 +188,13 @@ const launchBrowser = async (label, debugPort) => {
     // first click can be dropped; retry until the effect shows.
     async clickUntil(selector, effect, { attempts = 8 } = {}) {
       for (let i = 0; i < attempts; i++) {
-        const ok = await page.eval(
-          `(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return false; el.click(); return true; })()`,
+        const present = await page.waitFor(`document.querySelector(${JSON.stringify(selector)})`, {
+          timeoutMs: 10000,
+        });
+        if (!present) throw new Error(`clickUntil: no element for ${selector}`);
+        await page.eval(
+          `(() => { const el = document.querySelector(${JSON.stringify(selector)}); el.click(); return true; })()`,
         );
-        if (!ok) throw new Error(`clickUntil: no element for ${selector}`);
         for (let wait = 0; wait < 6; wait++) {
           if (await page.eval(`!!(${effect})`)) return true;
           await delay(200);
