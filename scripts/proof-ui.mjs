@@ -151,16 +151,17 @@ const connectBrowser = async () => {
       if (!ok) throw new Error(`click: no element for ${selector}`);
       await delay(600);
     },
+    // Set the value the way a person does. A synthetic `value` set is reverted
+    // by Vue's next patch of the controlled input, so type through CDP instead.
     async fill(selector, value) {
-      const ok = await page.eval(
-        `(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return false;
-          const proto = Object.getPrototypeOf(el); const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
-          setter ? setter.call(el, ${JSON.stringify(value)}) : (el.value = ${JSON.stringify(value)});
-          el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true }));
-          return true; })()`,
+      const focused = await page.eval(
+        `(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return false; el.focus(); return document.activeElement === el; })()`,
       );
-      if (!ok) throw new Error(`fill: no element for ${selector}`);
-      await delay(200);
+      if (!focused) throw new Error(`fill: no element for ${selector}`);
+      await send("Input.dispatchKeyEvent", { type: "keyDown", key: "a", code: "KeyA", modifiers: 2 }, session);
+      await send("Input.dispatchKeyEvent", { type: "keyUp", key: "a", code: "KeyA", modifiers: 2 }, session);
+      await send("Input.insertText", { text: value }, session);
+      await delay(150);
     },
     async text(selector) {
       return page.eval(
