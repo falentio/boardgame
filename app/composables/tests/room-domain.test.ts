@@ -77,12 +77,16 @@ test("parseRoom returns null on a malformed host, name, link, or roles container
   expect(parseRoom(wireRoom({ name: 1 }))).toBeNull();
   expect(parseRoom(wireRoom({ link: null }))).toBeNull();
   expect(parseRoom(wireRoom({ setup: { roles: "roles" } }))).toBeNull();
+  expect(parseRoom(wireRoom({ setup: { roles: [] } }))).toBeNull();
+  expect(parseRoom(wireRoom({ setup: { roles: ["not-a-role", "also-not"] } }))).toBeNull();
   expect(parseRoom(null)).toBeNull();
   expect(parseRoom("room")).toBeNull();
 });
 
 test("roomErrorKind reads the Hono error body and ignores a plain error", () => {
   expect(roomErrorKind({ data: { error: { kind: "not-found" } } })).toBe("not-found");
+  expect(roomErrorKind({ data: { error: { kind: "invalid-request" } } })).toBe("invalid-request");
+  expect(roomErrorKind({ data: { error: { kind: "made-up" } } })).toBeNull();
   expect(roomErrorKind(new Error("boom"))).toBeNull();
   expect(roomErrorKind({ data: {} })).toBeNull();
   expect(roomErrorKind(undefined)).toBeNull();

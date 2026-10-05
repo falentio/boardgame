@@ -88,6 +88,7 @@ export const parseRoom = (raw: unknown): Room | null => {
   const rawRoles = fieldOf(fieldOf(raw, "setup"), "roles");
   if (!Array.isArray(rawRoles)) return null;
   const roles = rawRoles.filter((role): role is RoleId => typeof role === "string" && isRoleId(role));
+  if (roles.length === 0) return null;
 
   const rawSeats = fieldOf(raw, "seats");
   if (!Array.isArray(rawSeats) || rawSeats.length === 0) return null;
@@ -108,9 +109,26 @@ export const parseRoom = (raw: unknown): Room | null => {
   };
 };
 
-export const roomErrorKind = (error: unknown): RoomError["kind"] | null => {
+const WIRE_ERROR_KINDS = [
+  "invalid-name",
+  "invalid-seat-count",
+  "invalid-setup",
+  "not-found",
+  "not-host",
+  "already-seated",
+  "room-full",
+  "conflict",
+  "unauthorized",
+  "invalid-request",
+] as const;
+
+export type WireErrorKind = RoomError["kind"] | "unauthorized" | "invalid-request";
+
+export const roomErrorKind = (error: unknown): WireErrorKind | null => {
   const kind = fieldOf(fieldOf(fieldOf(error, "data"), "error"), "kind");
-  return typeof kind === "string" ? (kind as RoomError["kind"]) : null;
+  return typeof kind === "string" && (WIRE_ERROR_KINDS as readonly string[]).includes(kind)
+    ? (kind as WireErrorKind)
+    : null;
 };
 
 export const lobbyOf = (load: RoomLoad, viewer: UserId | null): Lobby => {

@@ -74,9 +74,12 @@ export const createRoom = async (input: {
   } catch (error) {
     const kind = roomErrorKind(error);
     const reason = failureReason(error);
-    return kind !== null && kind.startsWith("invalid")
-      ? { kind: "invalid", reason }
-      : { kind: "failed", reason };
+    const invalid =
+      kind === "invalid-name" ||
+      kind === "invalid-seat-count" ||
+      kind === "invalid-setup" ||
+      kind === "invalid-request";
+    return invalid ? { kind: "invalid", reason } : { kind: "failed", reason };
   }
 };
 

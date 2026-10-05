@@ -22,7 +22,8 @@
     "db:migrate:local": "wrangler d1 migrations apply boardgame --local",
     "db:migrate:remote": "wrangler d1 migrations apply boardgame --remote",
     "verify:auth": "node scripts/verify-auth.mjs",
-    "verify:ui": "node scripts/proof-ui.mjs"
+    "verify:ui": "node scripts/proof-ui.mjs",
+    "verify:room": "node scripts/proof-room.mjs"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.7.7",
