@@ -1,5 +1,5 @@
 import { computed, onMounted, ref, type ComputedRef, type Ref } from "vue";
-import type { RoomCode, UserId } from "../../shared/rooms/ids.ts";
+import type { RoomCode, UserId } from "#shared/rooms/ids.ts";
 import { keepLastGood, lobbyOf, type Lobby, type RoomLoad } from "./room-domain.ts";
 import { createRoomRefresher } from "./room-refresh.ts";
 import { fetchRoom, joinRoom, type JoinOutcome } from "./rooms-api.ts";

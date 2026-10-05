@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { RoleId } from "../../../shared/core/lockstep/games/g54/roles.ts"
+import type { RoleId } from "#shared/core/lockstep/games/g54/roles.ts"
 import { Button } from "@/components/ui/button"
 import { ROLE_GROUPS, roleOptionState, toggleRole, type RoleDraft } from "@/composables/roles"
 

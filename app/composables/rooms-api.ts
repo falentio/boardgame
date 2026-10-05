@@ -1,5 +1,5 @@
-import type { RoleId } from "../../shared/core/lockstep/games/g54/roles.ts";
-import type { RoomCode } from "../../shared/rooms/ids.ts";
+import type { RoleId } from "#shared/core/lockstep/games/g54/roles.ts";
+import type { RoomCode } from "#shared/rooms/ids.ts";
 import { parseRoom, roomErrorKind, type Room, type RoomLoad } from "./room-domain.ts";
 
 export type CreateOutcome =

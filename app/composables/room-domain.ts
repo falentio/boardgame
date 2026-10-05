@@ -1,6 +1,6 @@
-import { isRoleId, type RoleId } from "../../shared/core/lockstep/games/g54/roles.ts";
-import { isRoomCode, roomCode, userId, type RoomCode, type UserId } from "../../shared/rooms/ids.ts";
-import type { RoomError } from "../../shared/rooms/room.ts";
+import { isRoleId, type RoleId } from "#shared/core/lockstep/games/g54/roles.ts";
+import { isRoomCode, roomCode, userId, type RoomCode, type UserId } from "#shared/rooms/ids.ts";
+import type { RoomError } from "#shared/rooms/room.ts";
 
 export interface Seat {
   id: string;

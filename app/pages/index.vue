@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { parseRoomCode } from "../../shared/rooms/code.ts"
+import { parseRoomCode } from "#shared/rooms/code.ts"
 
 definePageMeta({ layout: "shell" })
 

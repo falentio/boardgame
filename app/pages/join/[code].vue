@@ -3,7 +3,7 @@ import { onMounted, ref } from "vue"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
-import { parseRoomCode } from "../../../shared/rooms/code.ts"
+import { parseRoomCode } from "#shared/rooms/code.ts"
 import { joinRoom } from "@/composables/rooms-api"
 
 definePageMeta({ layout: "shell" })
