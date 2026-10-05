@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # Mutation-proof for the g54 engine.
 #
-# For each mutation it breaks one rule in the g54 engine, runs the matrix test
-# (or the whole g54 suite for mechanics the bespoke suites pin), and asserts the
-# suite goes RED. A mutation the suite survives is a coverage hole: the suite
-# would pass a broken game. The files are restored after every mutation via the
-# trap, so a Ctrl-C or a crash never leaves the tree dirty.
+# For each mutation it breaks one rule in the g54 engine, runs the whole g54 test
+# suite, and asserts the suite goes RED. A mutation the suite survives is a
+# coverage hole: the suite would pass a broken game. The files are restored after
+# every mutation via the trap, so a Ctrl-C or a crash never leaves the tree dirty.
 #
 # Usage: bash shared/core/tests/lockstep/g54/mutation-proof.sh
 # Exit 0 = every mutation was caught. Exit 1 = at least one hole.
@@ -13,13 +12,13 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../../.." && pwd)"
 cd "$ROOT"
-MATRIX="shared/core/tests/lockstep/g54/matrix.test.ts"
+SUITE="shared/core/tests/lockstep/g54"
 EFFECTS="shared/core/lockstep/games/g54/effects.ts"
 ROLES="shared/core/lockstep/games/g54/roles.ts"
 WINDOWS="shared/core/lockstep/games/g54/windows.ts"
 INDEX="shared/core/lockstep/games/g54/index.ts"
-[ -f "$MATRIX" ] && [ -f "$EFFECTS" ] && [ -f "$ROLES" ] && [ -f "$WINDOWS" ] && [ -f "$INDEX" ] || {
-  echo "mutation-proof: run from the repo (could not resolve $MATRIX)"; exit 2;
+[ -d "$SUITE" ] && [ -f "$EFFECTS" ] && [ -f "$ROLES" ] && [ -f "$WINDOWS" ] && [ -f "$INDEX" ] || {
+  echo "mutation-proof: run from the repo (could not resolve $SUITE)"; exit 2;
 }
 BACKUP="$(mktemp)"
 
@@ -44,13 +43,6 @@ MUTATIONS=(
   "consular treaty names the wrong seat|$EFFECTS|s/treaty: \[ctx.claim.claimant, ctx.claim.target\]/treaty: [ctx.claim.target, ctx.claim.target]/"
   "guerrilla loses its blockRole|$ROLES|s/blockRole: \"guerrilla\"/blockRole: null/"
   "anarchist holdless flag dropped|$ROLES|s/holdless: true/holdless: false/"
-)
-
-# The matrix alone exercises every catalog id's claim shapes. A few Anarchy
-# mechanics (the Arms Dealer payout, the Bank sweep, the Socialist collection,
-# the Paramilitary per-life cost) are pinned by the bespoke suites, so those
-# mutations run the whole g54 suite.
-FULL_SUITE=(
   "paramilitary 2-life cost 5 not 3|$ROLES|s/costByTargetLives: { 1: 5, 2: 3 }/costByTargetLives: { 1: 5, 2: 5 }/"
   "arms dealer pays 2 not 4|$EFFECTS|s/const paid = matched ? gainFromTreasury(ctx.state, ctx.claim.claimant, 4) : ctx.state;/const paid = matched ? gainFromTreasury(ctx.state, ctx.claim.claimant, 2) : ctx.state;/"
   "financier does not zero the pile|$EFFECTS|s/^        bank: 0,$/        bank: ctx.state.bank,/"
@@ -59,11 +51,10 @@ FULL_SUITE=(
   "socialist pool leaks to every seat|$INDEX|s/state.socialist !== null \&\& state.socialist.seat === seat/state.socialist !== null/"
   "paramilitary flat 3 for any target|$ROLES|s/costByTargetLives: { 1: 5, 2: 3 }/costByTargetLives: { 1: 3, 2: 3 }/"
 )
-
 pass=0
 fail=0
 run_mutation() {
-  local entry="$1" suite="$2"
+  local entry="$1"
   label="${entry%%|*}"
   rest="${entry#*|}"
   file="${rest%%|*}"
@@ -80,7 +71,7 @@ run_mutation() {
     echo "SKIP  sed did not change the source for: $label"; fail=$((fail + 1))
     return
   fi
-  if npx vitest run $suite >/tmp/mutation-out.txt 2>&1; then
+  if npx vitest run $SUITE >/tmp/mutation-out.txt 2>&1; then
     echo "HOLE  stayed GREEN under: $label"
     fail=$((fail + 1))
   else
@@ -91,10 +82,7 @@ run_mutation() {
 }
 
 for entry in "${MUTATIONS[@]}"; do
-  run_mutation "$entry" "$MATRIX"
-done
-for entry in "${FULL_SUITE[@]}"; do
-  run_mutation "$entry" "shared/core/tests/lockstep/g54"
+  run_mutation "$entry"
 done
 
 echo "----"
