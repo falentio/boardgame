@@ -9,7 +9,7 @@ import {
 } from "#shared/core/lockstep/index.ts";
 import { g54, type G54Action, type G54View } from "#shared/core/lockstep/games/g54/index.ts";
 import { seatId, type SeatId } from "#shared/rooms/ids.ts";
-import { boardOf, type SeatIdentity } from "../board-view.ts";
+import { boardOf, purposeLabel, type SeatIdentity } from "../board-view.ts";
 
 const ANN = seatId("ann");
 const BOB = seatId("bob");
@@ -92,4 +92,17 @@ test("a pending claim names the claimant, role, and target", () => {
 test("a missing identity falls back to the seat id rather than dropping the row", () => {
   const board = boardOf(view(), new Map());
   expect(board.seats.map((seat) => seat.name)).toEqual([ANN, BOB, CARA]);
+});
+
+test("the table carries the open window and the seats it owes", () => {
+  const projected = view();
+  const board = boardOf(projected, identities());
+  expect(board.table.window).toEqual(projected.window);
+  expect(board.table.window?.purpose).toBe("turn");
+  expect(board.table.owedSeats).toEqual([...projected.owedSeats]);
+});
+
+test("purposeLabel names every window purpose", () => {
+  expect(purposeLabel("turn")).toBe("Your turn");
+  expect(purposeLabel("challenge-claim")).toBe("Challenge a claim");
 });

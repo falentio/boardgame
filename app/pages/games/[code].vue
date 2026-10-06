@@ -3,10 +3,12 @@ import { computed } from "vue"
 import { Card, CardContent } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
 import GameBoard from "@/components/g54/board/GameBoard.vue"
+import WindowMenu from "@/components/g54/board/WindowMenu.vue"
 import { boardOf, type SeatIdentity } from "@/composables/board-view.ts"
 import { useAuthSession } from "@/composables/useAuthSession"
 import { useGame } from "@/composables/useGame"
 import { useLobby } from "@/composables/useLobby"
+import { act } from "#shared/core/lockstep/index.ts"
 import { g54 } from "#shared/core/lockstep/games/g54/index.ts"
 import { parseRoomCode } from "#shared/rooms/code.ts"
 import { seatId, userId, type SeatId } from "#shared/rooms/ids.ts"
@@ -47,7 +49,7 @@ const identities = computed<ReadonlyMap<SeatId, SeatIdentity>>(() => {
   return map
 })
 
-const { view, status, resign } = useGame({
+const { view, status, report, acted, resign } = useGame({
   game: g54,
   room,
   viewer,
@@ -109,6 +111,12 @@ const board = computed(() => {
 
         <div v-else-if="board" class="flex flex-col gap-4">
           <GameBoard :board="board" />
+          <WindowMenu
+            v-if="board.menu"
+            :menu="board.menu"
+            :busy="acted"
+            @act="report(act($event))"
+          />
           <div>
             <button
               type="button"

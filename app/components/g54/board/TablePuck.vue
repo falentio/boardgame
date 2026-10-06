@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Coins, Layers } from "@lucide/vue"
 import { specOf } from "#shared/core/lockstep/games/g54/roles.ts"
-import type { BoardTable } from "@/composables/board-view.ts"
+import { purposeLabel, type BoardTable } from "@/composables/board-view.ts"
 
 defineProps<{ table: BoardTable }>()
 </script>
@@ -59,6 +59,13 @@ defineProps<{ table: BoardTable }>()
       class="rounded-full bg-muted px-3 py-1 text-center text-xs leading-none font-medium ring-1 ring-foreground/10"
     >
       {{ table.pending }}
+    </p>
+    <p
+      v-if="table.window"
+      role="status"
+      class="rounded-full bg-muted/60 px-3 py-1 text-center text-[0.6875rem] leading-none font-medium text-muted-foreground ring-1 ring-foreground/10"
+    >
+      {{ purposeLabel(table.window.purpose) }}
     </p>
   </div>
 </template>

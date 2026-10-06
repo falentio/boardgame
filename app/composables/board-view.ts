@@ -1,9 +1,42 @@
 import type { SeatId } from "#shared/rooms/ids.ts"
 import type { RoleId } from "#shared/core/lockstep/games/g54/roles.ts"
 import { specOf } from "#shared/core/lockstep/games/g54/roles.ts"
-import type { G54View, PendingView } from "#shared/core/lockstep/games/g54/index.ts"
+import type { WindowPurpose } from "#shared/core/lockstep/games/g54/state.ts"
+import type { G54View, PendingView, WindowView } from "#shared/core/lockstep/games/g54/index.ts"
+import { menuOf, type WindowMenu } from "./window-menu.ts"
 
 export type BoardPhase = "idle" | "acting" | "targeted" | "owed"
+
+/**
+ * Short plain label for the open window's purpose. Exhaustive over every purpose
+ * so a new engine purpose is a compile error, not a blank status line.
+ */
+const PURPOSE_LABELS: Record<WindowPurpose, string> = {
+  turn: "Your turn",
+  "challenge-claim": "Challenge a claim",
+  "proof-claim": "Prove a claim",
+  block: "Block an action",
+  "challenge-block": "Challenge a block",
+  "proof-block": "Prove a block",
+  reveal: "Reveal a card",
+  keep: "Choose cards to keep",
+  "crime-pay": "Crime Boss payment",
+  capitalist: "Capitalist claims",
+  "spy-second": "Second action",
+  "protestor-fund": "Fund the protest",
+  "producer-give": "Give a card",
+  "writer-draw": "Extra draw",
+  "customs-mark": "Mark a role",
+  "reactive-intellectual": "Claim Intellectual",
+  "reactive-missionary": "Claim Missionary",
+  lawyer: "Claim the estate",
+  bomb: "The Bomb",
+  "socialist-give": "Give to the Socialist",
+  "socialist-keep": "Socialist swap",
+  "plantation-payout": "Plantation payout",
+}
+
+export const purposeLabel = (purpose: WindowPurpose): string => PURPOSE_LABELS[purpose]
 
 export interface BoardToken {
   readonly id: string
@@ -34,11 +67,17 @@ export interface BoardTable {
   readonly turn: number
   readonly pending: string | null
   readonly terminal: boolean
+  /** The open window the engine waits on, or null between windows. */
+  readonly window: WindowView | null
+  /** The seats the open window owes input from. */
+  readonly owedSeats: readonly SeatId[]
 }
 
 export interface Board {
   readonly table: BoardTable
   readonly seats: readonly BoardSeat[]
+  /** The controls for the viewer's open window, or null when they owe nothing. */
+  readonly menu: WindowMenu | null
 }
 
 export interface SeatIdentity {
@@ -122,7 +161,10 @@ export const boardOf = (
       turn: view.turn,
       pending: pendingLabel(view.pending, nameOf),
       terminal: view.terminal,
+      window: view.window,
+      owedSeats: [...view.owedSeats],
     },
     seats,
+    menu: menuOf(view, view.seat, nameOf),
   }
 }
