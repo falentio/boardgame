@@ -1,7 +1,3 @@
-// End-to-end proof for the lockstep <-> Vue <-> Pusher bridge. Two real peers
-// each open a real game session over a real WebSocket subscription to
-// private-game-<CODE>, publish through the real server relay, and must converge.
-//
 // Usage: node --experimental-strip-types scripts/verify-game.mjs [--port 3000]
 import { setTimeout as delay } from "node:timers/promises";
 import { g54 } from "../shared/core/lockstep/games/g54/index.ts";
@@ -58,9 +54,6 @@ const api = (path, init = {}) => {
   return fetch(`${BASE}${path}`, { ...rest, headers });
 };
 
-// A GameChannel backed by a real pusher-protocol WebSocket. subscribe() stores
-// the handlers; the socket dispatches `game` payloads to onMessage and the
-// subscription-ack to onConnected.
 const openPeer = async (code, cookie) => {
   const channelName = `private-game-${code}`;
   let onMessage = () => {};
