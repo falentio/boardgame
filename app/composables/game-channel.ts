@@ -16,19 +16,12 @@ export const bindGameChannel = (deps: {
   const name = gameChannel(deps.code);
   const channel = deps.client.subscribe(name);
 
-  const onMessage = (data: unknown): void => {
-    deps.handlers.onMessage(data);
-  };
-  channel.bind(GAME_EVENT, onMessage);
-
-  const onConnected = (): void => {
-    deps.handlers.onConnected();
-  };
-  deps.client.connection.bind("connected", onConnected);
+  channel.bind(GAME_EVENT, deps.handlers.onMessage);
+  channel.bind("pusher:subscription_succeeded", deps.handlers.onConnected);
 
   return () => {
-    channel.unbind(GAME_EVENT, onMessage);
-    deps.client.connection.unbind("connected", onConnected);
+    channel.unbind(GAME_EVENT, deps.handlers.onMessage);
+    channel.unbind("pusher:subscription_succeeded", deps.handlers.onConnected);
     deps.client.unsubscribe(name);
   };
 };

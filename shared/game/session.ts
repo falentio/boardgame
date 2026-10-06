@@ -56,10 +56,12 @@ export const openGameSession = <S, A, Setup, View>(
     deps.genesis,
   );
 
+  const requestSync = (): void => {
+    deps.channel.publish(encodeEnvelope({ kind: "sync" }));
+  };
+
   const teardown = deps.channel.subscribe({
-    onConnected: (): void => {
-      deps.channel.publish(encodeEnvelope({ kind: "sync" }));
-    },
+    onConnected: requestSync,
     onMessage: (data): void => {
       const message = decodeMessage(deps.game, data);
       if (message === null) return;

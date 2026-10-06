@@ -14,21 +14,17 @@ interface FakeChannel {
 interface FakeClient extends RoomChannelClient {
   readonly subscribed: string[];
   readonly unsubscribed: string[];
-  readonly connectionHandlers: Map<string, () => void>;
-  emit(event: string, data: unknown): void;
-  emitConnection(event: string): void;
+  emit(event: string, data?: unknown): void;
 }
 
 const fakeClient = (): FakeClient => {
   const subscribed: string[] = [];
   const unsubscribed: string[] = [];
   const channels = new Map<string, FakeChannel>();
-  const connectionHandlers = new Map<string, () => void>();
 
   return {
     subscribed,
     unsubscribed,
-    connectionHandlers,
     subscribe(name) {
       subscribed.push(name);
       const channel: FakeChannel = { name, handlers: new Map() };
@@ -47,20 +43,13 @@ const fakeClient = (): FakeClient => {
       channels.delete(name);
     },
     connection: {
-      bind(event, handler) {
-        connectionHandlers.set(event, handler);
-      },
-      unbind(event) {
-        connectionHandlers.delete(event);
-      },
+      bind() {},
+      unbind() {},
     },
     emit(event, data) {
       for (const channel of channels.values()) {
         channel.handlers.get(event)?.(data);
       }
-    },
-    emitConnection(event) {
-      connectionHandlers.get(event)?.();
     },
   };
 };
@@ -82,7 +71,7 @@ test("binds game on the private game channel and forwards messages", () => {
   expect(client.unsubscribed).toEqual(["private-game-BAVOKUTI"]);
 });
 
-test("fires onConnected on every connect, including the first", () => {
+test("fires onConnected when the channel subscription succeeds", () => {
   const client = fakeClient();
   let connected = 0;
   bindGameChannel({
@@ -91,12 +80,12 @@ test("fires onConnected on every connect, including the first", () => {
     handlers: { onMessage: () => {}, onConnected: () => (connected += 1) },
   });
 
-  client.emitConnection("connected");
-  client.emitConnection("connected");
+  client.emit("pusher:subscription_succeeded");
+  client.emit("pusher:subscription_succeeded");
   expect(connected).toBe(2);
 });
 
-test("teardown unbinds the connection hook", () => {
+test("teardown unbinds the subscription hook", () => {
   const client = fakeClient();
   let connected = 0;
   const teardown = bindGameChannel({
@@ -106,9 +95,8 @@ test("teardown unbinds the connection hook", () => {
   });
 
   teardown();
-  client.emitConnection("connected");
+  client.emit("pusher:subscription_succeeded");
   expect(connected).toBe(0);
-  expect(client.connectionHandlers.size).toBe(0);
 });
 
 test("createGameChannel publishes through the injected send", () => {
