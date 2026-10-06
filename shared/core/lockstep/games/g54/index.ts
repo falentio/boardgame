@@ -10,6 +10,7 @@ import {
 import { actionCodec, type G54Action } from "./actions.ts";
 import { G54Error } from "./error.ts";
 import { generalActionsFor, type GeneralActionId } from "./generals.ts";
+import { activeClaim } from "./helpers.ts";
 import { type RoleId } from "./roles.ts";
 import { genesisState, type G54Setup } from "./setup.ts";
 import {
@@ -17,6 +18,7 @@ import {
   type ArmsReveal,
   type BombState,
   type DisappearToken,
+  type ExtraClaim,
   type G54State,
   type PendingAction,
   type TaxMark,
@@ -50,6 +52,7 @@ export interface PlayerView {
   readonly coins: number;
   readonly handCount: number;
   readonly revealed: readonly RoleId[];
+  readonly resigned: boolean;
 }
 
 export interface TokenView {
@@ -94,15 +97,24 @@ export interface G54View {
   readonly terminal: boolean;
 }
 
-const pendingView = (pending: PendingAction | null): PendingView | null =>
-  pending === null
+/**
+ * The active claim as it appears in a redacted view. The engine's proof and block
+ * resolvers read `activeClaim` (the top linked extra when one is active), so the
+ * view must follow the same claim or the menu derives the wrong role. `named`
+ * lives only on `PendingAction`, so it is read from the main pending.
+ */
+const pendingView = (
+  claim: PendingAction | ExtraClaim | null,
+  named: RoleId | null,
+): PendingView | null =>
+  claim === null
     ? null
     : {
-        claimant: pending.claimant,
-        role: pending.role,
-        target: pending.target,
-        blocker: pending.blocker,
-        named: pending.named,
+        claimant: claim.claimant,
+        role: claim.role,
+        target: claim.target,
+        blocker: claim.blocker,
+        named,
       };
 
 export const g54: GameDefinition<G54State, G54Action, G54Setup, G54View> = {
@@ -152,6 +164,7 @@ export const g54: GameDefinition<G54State, G54Action, G54Setup, G54View> = {
         coins: p.coins,
         handCount: p.hand.length,
         revealed: [...p.revealed],
+        resigned: state.resigned.includes(p.seat),
       })),
       myHand: mine === undefined ? [] : [...mine.hand],
       myDraw: state.draw !== null && state.draw.seat === seat ? [...state.draw.pool] : null,
@@ -166,7 +179,7 @@ export const g54: GameDefinition<G54State, G54Action, G54Setup, G54View> = {
       owedSeats: [...seatsOwedNow(state)],
       turn: state.turn,
       window,
-      pending: pendingView(state.pending),
+      pending: pendingView(activeClaim(state), state.pending?.named ?? null),
       tokens: {
         peacekeeping: state.peacekeeping,
         treaty: [...state.treaty],

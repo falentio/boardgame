@@ -60,6 +60,14 @@ const board = computed(() => {
   if (current === null) return null
   return boardOf(current, identities.value)
 })
+
+const winner = computed(() => {
+  const current = view.value
+  if (current === null || !current.terminal) return null
+  const seat = current.winner
+  if (seat === null) return "Game over"
+  return `${identities.value.get(seat)?.name ?? seat} wins`
+})
 </script>
 
 <template>
@@ -110,6 +118,14 @@ const board = computed(() => {
         </div>
 
         <div v-else-if="board" class="flex flex-col gap-4">
+          <div
+            v-if="winner"
+            role="status"
+            class="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary"
+            data-slot="winner-banner"
+          >
+            {{ winner }}
+          </div>
           <GameBoard :board="board" />
           <WindowMenu
             v-if="board.menu"

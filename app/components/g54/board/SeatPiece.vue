@@ -131,6 +131,9 @@ const revealedNames = computed(() => props.seat.revealed.map((role) => specOf(ro
         <img v-if="token.art" :src="token.art" :alt="token.label" class="size-6 rounded-full object-cover">
         <Bomb v-else class="text-destructive size-4 ps-0.5" :aria-label="token.label" />
         {{ token.label }}
+        <span v-if="token.detail" class="text-muted-foreground font-normal">
+          {{ token.detail }}
+        </span>
       </span>
     </div>
   </div>

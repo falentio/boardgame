@@ -2,21 +2,34 @@
 import { ref } from "vue"
 import { Button } from "@/components/ui/button"
 import type { G54Action } from "#shared/core/lockstep/games/g54/index.ts"
-import type { MenuOption, MenuSeatChoice, WindowMenu } from "@/composables/window-menu.ts"
+import type {
+  MenuCardChoice,
+  MenuOption,
+  MenuSeatChoice,
+  WindowMenu,
+} from "@/composables/window-menu.ts"
 
 type TargetOption = Extract<MenuOption, { kind: "target" }>
+type CardOption = Extract<MenuOption, { kind: "card" }>
+type CardsOption = Extract<MenuOption, { kind: "cards" }>
 
 const props = defineProps<{ menu: WindowMenu; busy?: boolean }>()
 const emit = defineEmits<{ act: [action: G54Action] }>()
 
 const openId = ref<string | null>(null)
+const picked = ref<readonly number[]>([])
 
 const isDisabled = (option: MenuOption): boolean => props.busy === true || !option.enabled
 
+const toggleOpen = (id: string): void => {
+  openId.value = openId.value === id ? null : id
+  picked.value = []
+}
+
 const choose = (option: MenuOption): void => {
   if (isDisabled(option)) return
-  if (option.kind === "target") {
-    openId.value = openId.value === option.id ? null : option.id
+  if (option.kind === "target" || option.kind === "card" || option.kind === "cards") {
+    toggleOpen(option.id)
     return
   }
   emit("act", option.action())
@@ -27,6 +40,32 @@ const pick = (option: TargetOption, choice: MenuSeatChoice): void => {
   openId.value = null
   emit("act", option.action(choice.seat))
 }
+
+const reveal = (option: CardOption, choice: MenuCardChoice): void => {
+  if (isDisabled(option)) return
+  openId.value = null
+  emit("act", option.action(choice.index))
+}
+
+const toggleCard = (option: CardsOption, choice: MenuCardChoice): void => {
+  if (isDisabled(option)) return
+  const chosen = picked.value.includes(choice.index)
+    ? picked.value.filter((index) => index !== choice.index)
+    : picked.value.length < option.count
+      ? [...picked.value, choice.index]
+      : picked.value
+  picked.value = [...chosen].sort((a, b) => a - b)
+}
+
+const confirmCards = (option: CardsOption): void => {
+  if (isDisabled(option) || picked.value.length !== option.count) return
+  const indices = picked.value
+  openId.value = null
+  picked.value = []
+  emit("act", option.action(indices))
+}
+
+const cardSelected = (choice: MenuCardChoice): boolean => picked.value.includes(choice.index)
 </script>
 
 <template>
@@ -57,7 +96,7 @@ const pick = (option: TargetOption, choice: MenuSeatChoice): void => {
             size="sm"
             variant="outline"
             :disabled="isDisabled(option)"
-            :aria-expanded="option.kind === 'target' ? openId === option.id : undefined"
+            :aria-expanded="option.kind === 'plain' ? undefined : openId === option.id"
             @click="choose(option)"
           >
             {{ option.label }}
@@ -91,6 +130,58 @@ const pick = (option: TargetOption, choice: MenuSeatChoice): void => {
           >
             {{ choice.name }}
           </Button>
+        </div>
+
+        <div
+          v-if="option.kind === 'card' && openId === option.id"
+          class="flex flex-wrap gap-1.5 ps-1"
+          role="group"
+          :aria-label="`${option.label} card`"
+        >
+          <Button
+            v-for="choice in option.choices"
+            :key="choice.index"
+            type="button"
+            size="xs"
+            variant="secondary"
+            @click="reveal(option, choice)"
+          >
+            {{ choice.name }}
+          </Button>
+        </div>
+
+        <div
+          v-if="option.kind === 'cards' && openId === option.id"
+          class="flex flex-col gap-1.5 ps-1"
+          role="group"
+          :aria-label="`${option.label} cards`"
+        >
+          <div class="flex flex-wrap gap-1.5">
+            <Button
+              v-for="choice in option.choices"
+              :key="choice.index"
+              type="button"
+              size="xs"
+              :variant="cardSelected(choice) ? 'default' : 'secondary'"
+              :aria-pressed="cardSelected(choice)"
+              @click="toggleCard(option, choice)"
+            >
+              {{ choice.name }}
+            </Button>
+          </div>
+          <div class="flex items-center gap-2">
+            <Button
+              type="button"
+              size="xs"
+              :disabled="isDisabled(option) || picked.length !== option.count"
+              @click="confirmCards(option)"
+            >
+              Confirm
+            </Button>
+            <span class="text-muted-foreground text-xs leading-none tabular-nums">
+              {{ picked.length }} / {{ option.count }}
+            </span>
+          </div>
         </div>
       </li>
     </ul>

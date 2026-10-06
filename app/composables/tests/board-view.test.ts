@@ -103,6 +103,24 @@ test("the table carries the open window and the seats it owes", () => {
 });
 
 test("purposeLabel names every window purpose", () => {
-  expect(purposeLabel("turn")).toBe("Your turn");
+  expect(purposeLabel("turn")).toBe("Turn");
   expect(purposeLabel("challenge-claim")).toBe("Challenge a claim");
+});
+
+test("a seat's tokens carry the detail the board used to drop", () => {
+  const state = {
+    ...genesis(),
+    disappear: [{ target: CARA, turns: 2 }],
+    treaty: [ANN, BOB],
+    bomb: { holder: ANN, prior: [BOB], move: null },
+  };
+  const board = boardOf(g54.project(state, ANN), identities());
+  const ann = board.seats.find((seat) => seat.seat === ANN)!;
+  const cara = board.seats.find((seat) => seat.seat === CARA)!;
+  const treaty = ann.tokens.find((token) => token.id === "treaty")!;
+  expect(treaty.detail).toBe("with Bo");
+  const bomb = ann.tokens.find((token) => token.id === "bomb")!;
+  expect(bomb.detail).toBe("from Bo");
+  const disappear = cara.tokens.find((token) => token.id === "disappear")!;
+  expect(disappear.detail).toBe("2 turns");
 });

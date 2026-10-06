@@ -130,7 +130,10 @@ test("a seat the open window does not owe gets no menu", () => {
 })
 
 test("a purpose with no handler yet gets no menu", () => {
-  const claimed = fold(genesis(), [ANN, { t: "claim", role: "director", target: null }])
+  const claimed = fold(genesis(["banker", "writer", "guerrilla", "politician", "peacekeeper"]), [
+    ANN,
+    { t: "claim", role: "writer", target: null },
+  ])
   const resolved = fold(
     claimed,
     [ANN, { t: "pass" }],
@@ -138,7 +141,7 @@ test("a purpose with no handler yet gets no menu", () => {
     [CARA, { t: "pass" }],
   )
   const projected = project(resolved, ANN)
-  expect(projected.window?.purpose).toBe("keep")
+  expect(projected.window?.purpose).toBe("writer-draw")
   expect(projected.owedSeats).toContain(ANN)
   expect(menuOf(projected, ANN, nameOf)).toBeNull()
 })
@@ -312,4 +315,89 @@ test("a seat the open proof or block window does not owe gets no menu", () => {
   const block = project(survived, BOB)
   expect(block.owedSeats).toEqual([BOB])
   expect(menuOf(block, ANN, nameOf)).toBeNull()
+})
+
+/** Fold a Guerrilla hit on BOB through the challenge and block windows to his reveal. */
+const toReveal = (): G54State => {
+  const claimed = fold(withCoins(genesis(), ANN, 4), [
+    ANN,
+    { t: "claim", role: "guerrilla", target: BOB },
+  ])
+  const survived = fold(
+    claimed,
+    [ANN, { t: "pass" }],
+    [BOB, { t: "pass" }],
+    [CARA, { t: "pass" }],
+  )
+  return fold(survived, [BOB, { t: "pass" }])
+}
+
+test("reveal offers one choice per hand card and builds a reveal action", () => {
+  const projected = project(toReveal(), BOB)
+  expect(projected.window?.purpose).toBe("reveal")
+  expect(projected.owedSeats).toEqual([BOB])
+  const menu = menuOf(projected, BOB, nameOf)!
+  const option = optionOf(menu.options, "reveal")
+  expect(option.kind).toBe("card")
+  if (option.kind !== "card") throw new Error("expected a card option")
+  expect(option.choices.map((choice) => choice.index)).toEqual(
+    projected.myHand.map((_, index) => index),
+  )
+  expect(option.choices.map((choice) => choice.role)).toEqual([...projected.myHand])
+  expect(option.action(1)).toEqual({ t: "reveal", index: 1 })
+})
+
+test("a seat the reveal window does not owe gets no menu", () => {
+  const projected = project(toReveal(), BOB)
+  expect(menuOf(projected, ANN, nameOf)).toBeNull()
+})
+
+test("keep offers the combined hand and draw pool and builds a keep action", () => {
+  const claimed = fold(genesis(["banker", "director", "guerrilla", "politician", "peacekeeper"]), [
+    ANN,
+    { t: "claim", role: "director", target: null },
+  ])
+  const resolved = fold(
+    claimed,
+    [ANN, { t: "pass" }],
+    [BOB, { t: "pass" }],
+    [CARA, { t: "pass" }],
+  )
+  const projected = project(resolved, ANN)
+  expect(projected.window?.purpose).toBe("keep")
+  expect(projected.myDraw).not.toBeNull()
+  const menu = menuOf(projected, ANN, nameOf)!
+  const option = optionOf(menu.options, "keep")
+  expect(option.kind).toBe("cards")
+  if (option.kind !== "cards") throw new Error("expected a cards option")
+  const combined = [...projected.myHand, ...(projected.myDraw ?? [])]
+  expect(option.choices.map((choice) => choice.role)).toEqual(combined)
+  expect(option.count).toBe(projected.myHand.length)
+  expect(option.action([0, 1])).toEqual({ t: "keep", indices: [0, 1] })
+})
+
+test("an extra claim's proof window derives the extra's role, not the main claim", () => {
+  const roles = ["banker", "director", "guerrilla", "intellectual", "politician"]
+  let state = withCoins(genesis(roles), ANN, 4)
+  state = fold(state, [ANN, { t: "claim", role: "guerrilla", target: BOB }])
+  state = fold(state, [ANN, { t: "pass" }], [BOB, { t: "pass" }], [CARA, { t: "pass" }])
+  state = fold(state, [BOB, { t: "pass" }])
+  state = fold(state, [BOB, { t: "reveal", index: 0 }])
+  state = fold(state, [BOB, { t: "claim", role: "intellectual", target: null }])
+  state = fold(state, [CARA, { t: "challenge" }])
+  const projected = project(state, BOB)
+  expect(projected.window?.purpose).toBe("proof-claim")
+  // The main claim is still the Guerrilla; the reactive extra is the active claim.
+  expect(projected.pending?.role).toBe("intellectual")
+  const show = optionOf(menuOf(projected, BOB, nameOf)!.options, "show")
+  expect(show.detail).toBe("Intellectual")
+})
+
+test("a resigned rival is excluded from every target picker", () => {
+  const resigned: G54State = { ...genesis(), resigned: [BOB] }
+  const menu = menuOf(project(resigned, ANN), ANN, nameOf)!
+  expect(targetOption(menu, "claim-politician").choices.map((choice) => choice.seat)).toEqual([
+    CARA,
+  ])
+  expect(targetOption(menu, "coup").choices.map((choice) => choice.seat)).toEqual([CARA])
 })

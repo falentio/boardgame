@@ -136,7 +136,7 @@ test("g54 project redacts the Court deck and other hands", () => {
   expect(Object.keys(view)).not.toContain("court");
   expect(view.myHand.length).toBe(2);
   for (const player of view.players) {
-    expect(Object.keys(player)).toEqual(["seat", "coins", "handCount", "revealed"]);
+    expect(Object.keys(player)).toEqual(["seat", "coins", "handCount", "revealed", "resigned"]);
   }
 });
 

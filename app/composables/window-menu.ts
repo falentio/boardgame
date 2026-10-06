@@ -1,6 +1,6 @@
 import type { SeatId } from "#shared/rooms/ids.ts"
 import type { G54Action, G54View, PlayerView } from "#shared/core/lockstep/games/g54/index.ts"
-import { claimCost, specOf, type RoleSpec } from "#shared/core/lockstep/games/g54/roles.ts"
+import { claimCost, specOf, type RoleId, type RoleSpec } from "#shared/core/lockstep/games/g54/roles.ts"
 import type { GeneralActionId } from "#shared/core/lockstep/games/g54/generals.ts"
 import { GENERAL_ACTIONS } from "#shared/core/lockstep/games/g54/generals.ts"
 import { COUP_COST, FORCED_COUP_COINS } from "#shared/core/lockstep/games/g54/windows.ts"
@@ -15,6 +15,13 @@ export interface MenuSeatChoice {
   readonly name: string
   readonly enabled: boolean
   readonly reason: string | null
+}
+
+/** One selectable card for a `card` or `cards` option, identified by its position. */
+export interface MenuCardChoice {
+  readonly index: number
+  readonly role: RoleId
+  readonly name: string
 }
 
 /**
@@ -43,6 +50,30 @@ export type MenuOption =
       readonly reason: string | null
       readonly choices: readonly MenuSeatChoice[]
       readonly action: (seat: SeatId) => G54Action
+    }
+  | {
+      readonly id: string
+      readonly kind: "card"
+      readonly label: string
+      readonly detail: string | null
+      readonly enabled: boolean
+      /** Why the option is disabled; null when it is enabled. */
+      readonly reason: string | null
+      readonly choices: readonly MenuCardChoice[]
+      readonly action: (index: number) => G54Action
+    }
+  | {
+      readonly id: string
+      readonly kind: "cards"
+      readonly label: string
+      readonly detail: string | null
+      readonly enabled: boolean
+      /** Why the option is disabled; null when it is enabled. */
+      readonly reason: string | null
+      /** How many cards the engine accepts: the keep size. */
+      readonly count: number
+      readonly choices: readonly MenuCardChoice[]
+      readonly action: (indices: readonly number[]) => G54Action
     }
 
 /** The controls for the open window, or null when the viewer owes nothing here. */
@@ -78,10 +109,9 @@ const isTreatyAlly = (treaty: readonly SeatId[], claimant: SeatId, seat: SeatId)
  * The rivals the engine will accept as a target. `peacekeeperImmune` mirrors the
  * engine split: a general target spares the Peacekeeper, a Coup does not.
  *
- * Three target rules stay in the engine: a seat transiently cardless mid-swap is
- * not told apart from an eliminated one (the view carries only `handCount`),
- * Communist picks its own victim, and the Anarchist prior-holder set is not
- * projected. Each is coerced there rather than offered here.
+ * Two target rules stay in the engine: Communist picks its own victim, and the
+ * Anarchist prior-holder set is not projected. Each is coerced there rather than
+ * offered here.
  */
 const rivalTargets = (
   view: G54View,
@@ -92,6 +122,7 @@ const rivalTargets = (
     (player) =>
       player.seat !== claimant &&
       player.handCount > 0 &&
+      !player.resigned &&
       !isTreatyAlly(view.tokens.treaty, claimant, player.seat) &&
       !(peacekeeperImmune && view.tokens.peacekeeping === player.seat),
   )
@@ -287,10 +318,58 @@ const blockMenu = (view: G54View, nameOf: (seat: SeatId) => string): WindowMenu 
   return { title: "Block or pass", note: claimNote(view, nameOf), options }
 }
 
+const cardChoices = (cards: readonly RoleId[]): readonly MenuCardChoice[] =>
+  cards.map((role, index) => ({ index, role, name: specOf(role).name }))
+
+const revealMenu = (view: G54View): WindowMenu => ({
+  title: "Reveal a card",
+  note: "Flip one of your face-down cards.",
+  options: [
+    {
+      id: "reveal",
+      kind: "card",
+      label: "Reveal",
+      detail: null,
+      enabled: view.myHand.length > 0,
+      reason: view.myHand.length > 0 ? null : "No cards to reveal",
+      choices: cardChoices(view.myHand),
+      action: (index) => ({ t: "reveal", index }),
+    },
+  ],
+})
+
+/**
+ * The keep window. The engine accepts exactly `draw.keepSize` indices into
+ * `hand + draw.pool`. `keepSize` is the actor's hand size before the draw (every
+ * swap opens it that way), which the view carries as `myHand`, so the count is
+ * `view.myHand.length`.
+ */
+const keepMenu = (view: G54View): WindowMenu => {
+  const pool = view.myDraw ?? []
+  const count = view.myHand.length
+  const combined = [...view.myHand, ...pool]
+  return {
+    title: `Keep ${String(count)} ${count === 1 ? "card" : "cards"}`,
+    note: "The rest return to the Court.",
+    options: [
+      {
+        id: "keep",
+        kind: "cards",
+        label: "Keep",
+        detail: null,
+        enabled: combined.length >= count,
+        reason: combined.length >= count ? null : "Not enough cards to keep",
+        count,
+        choices: cardChoices(combined),
+        action: (indices) => ({ t: "keep", indices }),
+      },
+    ],
+  }
+}
+
 /**
  * The controls the open window offers the viewer, or null when no window is open,
- * the viewer is not owed, or the purpose has no handler yet. Units 6–8 add a case
- * each.
+ * the viewer is not owed, or the purpose has no handler yet.
  */
 export const menuOf = (
   view: G54View,
@@ -309,6 +388,10 @@ export const menuOf = (
       return proofMenu(view, view.window.purpose, nameOf)
     case "block":
       return blockMenu(view, nameOf)
+    case "reveal":
+      return revealMenu(view)
+    case "keep":
+      return keepMenu(view)
     default:
       return null
   }

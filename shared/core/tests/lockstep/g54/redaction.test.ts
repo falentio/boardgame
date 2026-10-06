@@ -1,5 +1,17 @@
 import { expect, test } from "vitest";
-import { ANN, BOB, CARA, SEATS3, STARTER, advance, crafted, rawGenesis } from "./driver.ts";
+import {
+  ANN,
+  BOB,
+  CARA,
+  SEATS3,
+  STARTER,
+  advance,
+  craftSet,
+  crafted,
+  openPurpose,
+  rawGenesis,
+  withCoins,
+} from "./driver.ts";
 import { g54 } from "../../../lockstep/games/g54/index.ts";
 import { makeRoster, makeRandom, genesisSeed } from "../../../index.ts";
 
@@ -32,6 +44,32 @@ test("the Director's drawn pool is visible only to the actor", () => {
   // The keep window is open; Ann sees the pool, Bob does not.
   expect(g54.project(state, ANN).myDraw).toHaveLength(2);
   expect(g54.project(state, BOB).myDraw).toBeNull();
+});
+
+test("project follows the active extra claim, not the main pending", () => {
+  const roles = ["banker", "director", "guerrilla", "intellectual", "politician"] as const;
+  let state = withCoins(
+    craftSet(roles, [[BOB, ["banker", "intellectual"]]], "redact-extra"),
+    ANN,
+    4,
+  );
+  // Ann attacks Bob; Bob survives, flips a card, and claims his reactive Intellectual.
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "guerrilla", target: BOB } : null,
+  );
+  state = advance(state, () => null);
+  state = advance(state, () => null);
+  state = advance(state, (seat) => (seat === BOB ? { t: "reveal", index: 0 } : null));
+  expect(openPurpose(state)).toBe("reactive-intellectual");
+  state = advance(state, (seat) =>
+    seat === BOB ? { t: "claim", role: "intellectual", target: null } : null,
+  );
+  state = advance(state, (seat) => (seat === CARA ? { t: "challenge" } : null));
+  expect(openPurpose(state)).toBe("proof-claim");
+  // The main pending is still the guerrilla claim; the extra is the active claim.
+  expect(state.pending?.role).toBe("guerrilla");
+  expect(state.extras.at(-1)?.role).toBe("intellectual");
+  expect(g54.project(state, BOB).pending?.role).toBe("intellectual");
 });
 
 test("project exposes token holders but never hidden hands or the Court order", () => {

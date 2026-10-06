@@ -12,7 +12,7 @@ export type BoardPhase = "idle" | "acting" | "targeted" | "owed"
  * so a new engine purpose is a compile error, not a blank status line.
  */
 const PURPOSE_LABELS: Record<WindowPurpose, string> = {
-  turn: "Your turn",
+  turn: "Turn",
   "challenge-claim": "Challenge a claim",
   "proof-claim": "Prove a claim",
   block: "Block an action",
@@ -42,6 +42,8 @@ export interface BoardToken {
   readonly id: string
   readonly label: string
   readonly art: string | null
+  /** The countdown, ally, or Bomb prior set a token carries beyond its label. */
+  readonly detail: string | null
 }
 
 export interface BoardSeat {
@@ -92,23 +94,50 @@ const TOKEN_ART = {
   disappear: "/g54/role-categories/disappear.webp",
 } as const
 
-const tokensFor = (view: G54View, seat: SeatId): readonly BoardToken[] => {
+const tokensFor = (
+  view: G54View,
+  seat: SeatId,
+  nameOf: (seat: SeatId) => string,
+): readonly BoardToken[] => {
   const tokens: BoardToken[] = []
   const { peacekeeping, treaty, tax, disappear, bomb } = view.tokens
   if (peacekeeping === seat) {
-    tokens.push({ id: "peacekeeping", label: "Peacekeeping", art: TOKEN_ART.peacekeeping })
+    tokens.push({ id: "peacekeeping", label: "Peacekeeping", art: TOKEN_ART.peacekeeping, detail: null })
   }
   if (treaty.includes(seat)) {
-    tokens.push({ id: "treaty", label: "Treaty", art: TOKEN_ART.treaty })
+    const ally = treaty.find((other) => other !== seat)
+    tokens.push({
+      id: "treaty",
+      label: "Treaty",
+      art: TOKEN_ART.treaty,
+      detail: ally === undefined ? null : `with ${nameOf(ally)}`,
+    })
   }
   if (tax !== null && tax.holder === seat) {
-    tokens.push({ id: "tax", label: `Tax ${specOf(tax.role).name}`, art: TOKEN_ART.tax })
+    tokens.push({
+      id: "tax",
+      label: `Tax ${specOf(tax.role).name}`,
+      art: TOKEN_ART.tax,
+      detail: null,
+    })
   }
-  if (disappear.some((token) => token.target === seat)) {
-    tokens.push({ id: "disappear", label: "Disappear", art: TOKEN_ART.disappear })
+  const disappearToken = disappear.find((token) => token.target === seat)
+  if (disappearToken !== undefined) {
+    tokens.push({
+      id: "disappear",
+      label: "Disappear",
+      art: TOKEN_ART.disappear,
+      detail: `${String(disappearToken.turns)} ${disappearToken.turns === 1 ? "turn" : "turns"}`,
+    })
   }
   if (bomb !== null && bomb.holder === seat) {
-    tokens.push({ id: "bomb", label: "Bomb", art: null })
+    const prior = bomb.prior.map(nameOf)
+    tokens.push({
+      id: "bomb",
+      label: "Bomb",
+      art: null,
+      detail: prior.length === 0 ? null : `from ${prior.join(", ")}`,
+    })
   }
   return tokens
 }
@@ -149,7 +178,7 @@ export const boardOf = (
       handCount: isMe ? 0 : player.handCount,
       revealed: [...player.revealed],
       phase: phaseOf(view, player.seat),
-      tokens: tokensFor(view, player.seat),
+      tokens: tokensFor(view, player.seat, nameOf),
     }
   })
   return {
