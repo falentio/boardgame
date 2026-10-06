@@ -1,15 +1,20 @@
 import type { SeatId } from "#shared/rooms/ids.ts"
-import type { G54Action, G54View, WindowView } from "#shared/core/lockstep/games/g54/index.ts"
-import { specOf } from "#shared/core/lockstep/games/g54/roles.ts"
+import type { G54Action, G54View, PlayerView } from "#shared/core/lockstep/games/g54/index.ts"
+import { claimCost, specOf, type RoleSpec } from "#shared/core/lockstep/games/g54/roles.ts"
 import type { GeneralActionId } from "#shared/core/lockstep/games/g54/generals.ts"
 import { GENERAL_ACTIONS } from "#shared/core/lockstep/games/g54/generals.ts"
 import { COUP_COST, FORCED_COUP_COINS } from "#shared/core/lockstep/games/g54/windows.ts"
 
-/** One selectable target for a `target` option. The name is resolved here so the
- *  component never needs the identity map. */
+/**
+ * One selectable target for a `target` option. The name is resolved here so the
+ * component never needs the identity map; `enabled` is false when the engine
+ * would reject this specific target, so the picker can disable it.
+ */
 export interface MenuSeatChoice {
   readonly seat: SeatId
   readonly name: string
+  readonly enabled: boolean
+  readonly reason: string | null
 }
 
 /**
@@ -42,7 +47,6 @@ export type MenuOption =
 
 /** The controls for the open window, or null when the viewer owes nothing here. */
 export interface WindowMenu {
-  readonly purpose: WindowView["purpose"]
   readonly title: string
   readonly note: string | null
   readonly options: readonly MenuOption[]
@@ -66,26 +70,79 @@ const NO_TARGET = "No legal target"
 
 const shortOf = (cost: number): string => `Needs ${String(cost)} coins`
 
+/** Both seats of a two-seat Treaty spare each other, mirroring `isAlly` in the engine. */
+const isTreatyAlly = (treaty: readonly SeatId[], claimant: SeatId, seat: SeatId): boolean =>
+  treaty.length === 2 && treaty.includes(claimant) && treaty.includes(seat)
+
+/**
+ * The rivals the engine will accept as a target. `peacekeeperImmune` mirrors the
+ * engine split: a general target spares the Peacekeeper, a Coup does not.
+ *
+ * Three target rules stay in the engine: a seat transiently cardless mid-swap is
+ * not told apart from an eliminated one (the view carries only `handCount`),
+ * Communist picks its own victim, and the Anarchist prior-holder set is not
+ * projected. Each is coerced there rather than offered here.
+ */
+const rivalTargets = (
+  view: G54View,
+  claimant: SeatId,
+  peacekeeperImmune: boolean,
+): readonly PlayerView[] =>
+  view.players.filter(
+    (player) =>
+      player.seat !== claimant &&
+      player.handCount > 0 &&
+      !isTreatyAlly(view.tokens.treaty, claimant, player.seat) &&
+      !(peacekeeperImmune && view.tokens.peacekeeping === player.seat),
+  )
+
+const targetChoices = (
+  rivals: readonly PlayerView[],
+  nameOf: (seat: SeatId) => string,
+  costOf: (player: PlayerView) => number,
+  coins: number,
+): readonly MenuSeatChoice[] =>
+  rivals.map((player) => {
+    const cost = costOf(player)
+    const affordable = coins >= cost
+    return {
+      seat: player.seat,
+      name: nameOf(player.seat),
+      enabled: affordable,
+      reason: affordable ? null : shortOf(cost),
+    }
+  })
+
+const costDetail = (spec: RoleSpec): string | null => {
+  const byLives = spec.costByTargetLives
+  if (byLives === undefined) return spec.cost > 0 ? `Costs ${String(spec.cost)}` : null
+  const values = Object.values(byLives)
+  return `Costs ${String(Math.min(...values))}–${String(Math.max(...values))}`
+}
+
+const plain = (
+  id: string,
+  label: string,
+  detail: string | null,
+  enabled: boolean,
+  reason: string | null,
+  action: () => G54Action,
+): MenuOption => ({ id, kind: "plain", label, detail, enabled, reason, action })
+
 const turnMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string): WindowMenu => {
   const coins = view.players.find((player) => player.seat === seat)?.coins ?? 0
   const forcedCoup = coins >= FORCED_COUP_COINS
-  // The view does not project `isInPlay`, so exact per-seat targetability
-  // (Peacekeeping, a Treaty ally, a seat mid-sub-turn) is not recoverable here.
-  // Offer every rival that still holds a card and let the engine coerce the rare
-  // illegal target.
-  const choices: readonly MenuSeatChoice[] = view.players
-    .filter((player) => player.seat !== seat && player.handCount > 0)
-    .map((player) => ({ seat: player.seat, name: nameOf(player.seat) }))
-  const hasTarget = choices.length > 0
 
+  const coupChoices = targetChoices(rivalTargets(view, seat, false), nameOf, () => COUP_COST, coins)
+  const coupEnabled = coins >= COUP_COST && coupChoices.some((choice) => choice.enabled)
   const coupOption: MenuOption = {
     id: "coup",
     kind: "target",
     label: GENERAL_LABELS.coup,
     detail: GENERAL_ACTIONS.coup.summary,
-    enabled: coins >= COUP_COST && hasTarget,
-    reason: !hasTarget ? NO_TARGET : coins < COUP_COST ? shortOf(COUP_COST) : null,
-    choices,
+    enabled: coupEnabled,
+    reason: coupChoices.length === 0 ? NO_TARGET : coupEnabled ? null : shortOf(COUP_COST),
+    choices: coupChoices,
     action: (target) => ({ t: "coup", target }),
   }
 
@@ -102,22 +159,31 @@ const turnMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string)
     }
   })
 
+  const rivals = rivalTargets(view, seat, true)
+
   const claims = view.roles
     .map(specOf)
     .filter((spec) => !spec.reactive)
     .map((spec): MenuOption => {
-      const affordable = coins >= spec.cost
-      const enabled = !forcedCoup && affordable && (!spec.needsTarget || hasTarget)
-      const reason = forcedCoup
-        ? FORCED_COUP_REASON
-        : !affordable
-          ? shortOf(spec.cost)
-          : spec.needsTarget && !hasTarget
-            ? NO_TARGET
-            : null
       const label = `Claim ${spec.name}`
-      const detail = spec.cost > 0 ? `Costs ${String(spec.cost)}` : null
+      const detail = costDetail(spec)
       if (spec.needsTarget) {
+        const choices = targetChoices(
+          rivals,
+          nameOf,
+          (player) => claimCost(spec, player.handCount),
+          coins,
+        )
+        const costs = rivals.map((player) => claimCost(spec, player.handCount))
+        const anyAffordable = costs.some((cost) => coins >= cost)
+        const enabled = !forcedCoup && anyAffordable
+        const reason = forcedCoup
+          ? FORCED_COUP_REASON
+          : rivals.length === 0
+            ? NO_TARGET
+            : anyAffordable
+              ? null
+              : shortOf(costs.length === 0 ? spec.cost : Math.min(...costs))
         return {
           id: `claim-${spec.id}`,
           kind: "target",
@@ -129,29 +195,102 @@ const turnMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string)
           action: (target) => ({ t: "claim", role: spec.id, target }),
         }
       }
+      const cost = claimCost(spec, 0)
+      const affordable = coins >= cost
       return {
         id: `claim-${spec.id}`,
         kind: "plain",
         label,
         detail,
-        enabled,
-        reason,
+        enabled: !forcedCoup && affordable,
+        reason: forcedCoup ? FORCED_COUP_REASON : affordable ? null : shortOf(cost),
         action: () => ({ t: "claim", role: spec.id, target: null }),
       }
     })
 
   return {
-    purpose: "turn",
     title: "Your turn",
     note: forcedCoup ? FORCED_COUP_REASON : null,
     options: [...generals, ...claims],
   }
 }
 
+const claimNote = (view: G54View, nameOf: (seat: SeatId) => string): string | null => {
+  const pending = view.pending
+  if (pending === null) return null
+  const actor = nameOf(pending.claimant)
+  if (pending.role === null) return `${actor} acts`
+  const role = specOf(pending.role).name
+  return pending.target === null
+    ? `${actor} claims ${role}`
+    : `${actor} claims ${role} on ${nameOf(pending.target)}`
+}
+
+const challengeMenu = (
+  view: G54View,
+  purpose: "challenge-claim" | "challenge-block",
+  nameOf: (seat: SeatId) => string,
+): WindowMenu => ({
+  title: purpose === "challenge-claim" ? "Challenge the claim" : "Challenge the block",
+  note: claimNote(view, nameOf),
+  options: [
+    plain("challenge", "Challenge", null, true, null, () => ({ t: "challenge" })),
+    plain("pass", "Pass", null, true, null, () => ({ t: "pass" })),
+  ],
+})
+
+/** The card the viewer must hold to show: the claimed role, or the claim's block role. */
+const proofSpec = (view: G54View, purpose: "proof-claim" | "proof-block"): RoleSpec | null => {
+  const pending = view.pending
+  if (pending === null || pending.role === null) return null
+  if (purpose === "proof-claim") return specOf(pending.role)
+  const blockRole = specOf(pending.role).blockRole
+  return blockRole === null ? null : specOf(blockRole)
+}
+
+const proofMenu = (
+  view: G54View,
+  purpose: "proof-claim" | "proof-block",
+  nameOf: (seat: SeatId) => string,
+): WindowMenu => {
+  const spec = proofSpec(view, purpose)
+  const holds = spec !== null && view.myHand.includes(spec.id)
+  const show = plain(
+    "show",
+    "Show",
+    spec === null ? null : spec.name,
+    holds,
+    holds || spec === null ? null : `You do not hold ${spec.name}`,
+    () => ({ t: "show" }),
+  )
+  return {
+    title: purpose === "proof-claim" ? "Prove your claim" : "Prove your block",
+    note: claimNote(view, nameOf),
+    options: [show, plain("concede", "Concede", null, true, null, () => ({ t: "concede" }))],
+  }
+}
+
+const blockMenu = (view: G54View, nameOf: (seat: SeatId) => string): WindowMenu => {
+  const pending = view.pending
+  const blockRole =
+    pending === null || pending.role === null ? null : specOf(pending.role).blockRole
+  const options: MenuOption[] = []
+  if (blockRole !== null) {
+    options.push(
+      plain("block", `Block with ${specOf(blockRole).name}`, null, true, null, () => ({
+        t: "block",
+        role: blockRole,
+      })),
+    )
+  }
+  options.push(plain("pass", "Pass", null, true, null, () => ({ t: "pass" })))
+  return { title: "Block or pass", note: claimNote(view, nameOf), options }
+}
+
 /**
  * The controls the open window offers the viewer, or null when no window is open,
- * the viewer is not owed, or the purpose has no handler yet. Only `turn` is
- * handled; Units 3–8 add a case each.
+ * the viewer is not owed, or the purpose has no handler yet. Units 6–8 add a case
+ * each.
  */
 export const menuOf = (
   view: G54View,
@@ -162,6 +301,14 @@ export const menuOf = (
   switch (view.window.purpose) {
     case "turn":
       return turnMenu(view, seat, nameOf)
+    case "challenge-claim":
+    case "challenge-block":
+      return challengeMenu(view, view.window.purpose, nameOf)
+    case "proof-claim":
+    case "proof-block":
+      return proofMenu(view, view.window.purpose, nameOf)
+    case "block":
+      return blockMenu(view, nameOf)
     default:
       return null
   }

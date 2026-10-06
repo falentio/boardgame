@@ -61,7 +61,7 @@ defineProps<{ table: BoardTable }>()
       {{ table.pending }}
     </p>
     <p
-      v-if="table.window"
+      v-if="!table.terminal && table.window"
       role="status"
       class="rounded-full bg-muted/60 px-3 py-1 text-center text-[0.6875rem] leading-none font-medium text-muted-foreground ring-1 ring-foreground/10"
     >

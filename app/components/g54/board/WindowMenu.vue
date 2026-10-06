@@ -2,8 +2,7 @@
 import { ref } from "vue"
 import { Button } from "@/components/ui/button"
 import type { G54Action } from "#shared/core/lockstep/games/g54/index.ts"
-import type { SeatId } from "#shared/rooms/ids.ts"
-import type { MenuOption, WindowMenu } from "@/composables/window-menu.ts"
+import type { MenuOption, MenuSeatChoice, WindowMenu } from "@/composables/window-menu.ts"
 
 type TargetOption = Extract<MenuOption, { kind: "target" }>
 
@@ -23,10 +22,10 @@ const choose = (option: MenuOption): void => {
   emit("act", option.action())
 }
 
-const pick = (option: TargetOption, seat: SeatId): void => {
-  if (props.busy === true) return
+const pick = (option: TargetOption, choice: MenuSeatChoice): void => {
+  if (isDisabled(option) || !choice.enabled) return
   openId.value = null
-  emit("act", option.action(seat))
+  emit("act", option.action(choice.seat))
 }
 </script>
 
@@ -86,8 +85,9 @@ const pick = (option: TargetOption, seat: SeatId): void => {
             type="button"
             size="xs"
             variant="secondary"
-            :disabled="busy"
-            @click="pick(option, choice.seat)"
+            :disabled="isDisabled(option) || !choice.enabled"
+            :title="choice.reason ?? undefined"
+            @click="pick(option, choice)"
           >
             {{ choice.name }}
           </Button>
