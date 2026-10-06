@@ -59,11 +59,12 @@ const signUp = async (label) => {
   });
   const body = await res.text();
   if (res.status !== 200) throw new Error(`sign-up ${label} returned ${res.status}: ${body}`);
+  const { user } = JSON.parse(body);
   const cookie = res.headers.get("set-cookie");
   if (!cookie) throw new Error(`sign-up ${label} set no cookie`);
   const [pair] = cookie.split(";");
   const eq = pair.indexOf("=");
-  return { email, name: label, cookie: pair, cookieName: pair.slice(0, eq), cookieValue: pair.slice(eq + 1) };
+  return { id: user.id, email, name: label, cookie: pair, cookieName: pair.slice(0, eq), cookieValue: pair.slice(eq + 1) };
 };
 
 const joinAs = async (user, code) => {
@@ -299,9 +300,12 @@ const main = async () => {
     if (!guestInLobby) fail(`the guest link did not land in the lobby, at ${await guestBrowser.page.url()}`);
     else pass("the guest's shared link landed in the lobby");
     await guestBrowser.page.waitForHydration();
-    const guestBody = await guestBrowser.page.bodyText();
-    if (!guestBody.includes("Only the host can start the game.")) {
-      fail(`the guest should not get the Start control, got: ${guestBody.replace(/\n/g, " | ")}`);
+    const guestLobbyReady = await guestBrowser.page.waitFor(
+      "document.body.innerText.includes('Only the host can start the game.')",
+      { timeoutMs: 12000 },
+    );
+    if (!guestLobbyReady) {
+      fail(`the guest should see only the host can start, got: ${(await guestBrowser.page.bodyText()).replace(/\n/g, " | ")}`);
     } else {
       pass("the guest sees only the host can start, no Start control");
     }
@@ -337,6 +341,24 @@ const main = async () => {
     const startEnabled = await hostBrowser.page.eval(buttonDisabled("Start game"));
     if (startEnabled !== false) fail(`Start should be enabled once full, got disabled=${startEnabled}`);
     else pass("the host's Start is enabled once the room is full");
+
+    const hostSeatAvatar = await hostBrowser.page.eval(
+      `(() => { const row = document.querySelector('[data-seat="0"]'); const img = row ? row.querySelector('img') : null; return img ? img.getAttribute('src') : null; })()`,
+    );
+    if (!hostSeatAvatar || !hostSeatAvatar.includes(`seed=${host.id}`)) {
+      fail(`the host's seat should show an identity avatar seeded by their id, got ${String(hostSeatAvatar)}`);
+    } else {
+      pass("the host's seat shows an identity-derived avatar");
+    }
+    const seatsShowNames = await hostBrowser.page.waitFor(
+      `document.body.innerText.includes(${JSON.stringify(host.name)}) && document.body.innerText.includes(${JSON.stringify(guest.name)})`,
+      { timeoutMs: 8000 },
+    );
+    if (!seatsShowNames) {
+      fail(`the lobby should show the seated players' names, got: ${(await hostBrowser.page.bodyText()).replace(/\n/g, " | ")}`);
+    } else {
+      pass("the lobby shows each seated player's display name");
+    }
     console.log(`screenshot: ${await hostBrowser.page.screenshot("06-lobby-full")}`);
 
     await hostBrowser.page.eval(clickButton("Start game"));

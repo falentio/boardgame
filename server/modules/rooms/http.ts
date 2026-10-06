@@ -5,9 +5,13 @@ import type { AppAuth } from "../../utils/auth.ts";
 import type { Db } from "../../utils/db.ts";
 import type { RoomEntropy } from "../../../shared/rooms/code.ts";
 import { parseRoomCode } from "../../../shared/rooms/code.ts";
-import { userId, type RoomCode, type RoomId } from "../../../shared/rooms/ids.ts";
+import { userId, type RoomCode, type RoomId, type UserId } from "../../../shared/rooms/ids.ts";
 import type { Result } from "../../../shared/rooms/result.ts";
-import type { Room, RoomError } from "../../../shared/rooms/room.ts";
+import type { Room, RoomError, Seat } from "../../../shared/rooms/room.ts";
+import {
+  occupantsOf,
+  type OccupantDirectory,
+} from "../users/directory.ts";
 import {
   createRoom,
   deleteRoom,
@@ -29,6 +33,8 @@ export interface RoomAppDeps {
 interface SeatView {
   id: string;
   occupant: string | null;
+  name: string | null;
+  image: string | null;
   joinedAt: number | null;
 }
 
@@ -63,18 +69,31 @@ const statusFor = (kind: RoomError["kind"]): 400 | 403 | 404 | 409 => {
 
 const originOf = (c: Context): string => new URL(c.req.url).origin;
 
-const toView = (room: Room, origin: string): RoomView => ({
+const occupantIdsOf = (seats: readonly Seat[]): UserId[] => {
+  const ids = new Set<UserId>();
+  for (const seat of seats) {
+    if (seat.occupant !== null) ids.add(seat.occupant);
+  }
+  return [...ids];
+};
+
+const toView = (room: Room, origin: string, occupants: OccupantDirectory): RoomView => ({
   id: room.id,
   code: room.code,
   link: `${origin}/join/${room.code}`,
   host: room.host,
   name: room.name,
   setup: { roles: room.setup.roles },
-  seats: room.seats.map((seat) => ({
-    id: seat.id,
-    occupant: seat.occupant,
-    joinedAt: seat.joinedAt,
-  })),
+  seats: room.seats.map((seat) => {
+    const identity = seat.occupant === null ? null : occupants.get(seat.occupant) ?? null;
+    return {
+      id: seat.id,
+      occupant: seat.occupant,
+      name: identity?.name ?? null,
+      image: identity?.image ?? null,
+      joinedAt: seat.joinedAt,
+    };
+  }),
   createdAt: room.createdAt,
   updatedAt: room.updatedAt,
 });
@@ -116,9 +135,14 @@ export const createRoomApp = (deps: RoomAppDeps): Hono => {
   const badRequest = (c: Context, reason: string) =>
     c.json({ error: { kind: "invalid-request", reason } }, 400);
 
-  const respond = (c: Context, result: Result<Room, RoomError>): Response => {
+  const respond = async (
+    c: Context,
+    result: Result<Room, RoomError>,
+    status: 200 | 201 = 200,
+  ): Promise<Response> => {
     if (!result.ok) return c.json({ error: result.error }, statusFor(result.error.kind));
-    return c.json({ room: toView(result.value, originOf(c)) }, 200);
+    const occupants = await occupantsOf(deps.db, occupantIdsOf(result.value.seats));
+    return c.json({ room: toView(result.value, originOf(c), occupants) }, status);
   };
 
   const codeFrom = (c: Context): RoomCode | null => parseRoomCode(c.req.param("code") ?? "");
@@ -141,8 +165,7 @@ export const createRoomApp = (deps: RoomAppDeps): Hono => {
       seats,
       roles,
     });
-    if (!result.ok) return c.json({ error: result.error }, statusFor(result.error.kind));
-    return c.json({ room: toView(result.value, originOf(c)) }, 201);
+    return respond(c, result, 201);
   });
 
   app.get("/:code", async (c) => {
