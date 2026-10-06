@@ -205,6 +205,6 @@ test("g54's public codec accessors are the same objects it folds with", () => {
   expect(g54.state).toBe(stateCodec);
   expect(g54.action).toBe(actionCodec);
   expect(g54.id).toBe("g54");
-  expect(g54.version).toBe(4);
+  expect(g54.version).toBe(5);
   expect(seatsOwedAt(rawGenesis(STARTER, SEATS3, "codec-access"))).toEqual([ANN]);
 });

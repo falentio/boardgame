@@ -119,7 +119,7 @@ const pendingView = (
 
 export const g54: GameDefinition<G54State, G54Action, G54Setup, G54View> = {
   id: gameId("g54"),
-  version: 4,
+  version: 5,
   state: stateCodec,
   action: actionCodec,
 
