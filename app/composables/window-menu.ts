@@ -20,7 +20,6 @@ export interface MenuSeatChoice {
 /** One selectable card for a `card` or `cards` option, identified by its position. */
 export interface MenuCardChoice {
   readonly index: number
-  readonly role: RoleId
   readonly name: string
 }
 
@@ -300,16 +299,27 @@ const claimNote = (view: G54View, nameOf: (seat: SeatId) => string): string | nu
 
 const challengeMenu = (
   view: G54View,
+  seat: SeatId,
   purpose: "challenge-claim" | "challenge-block",
   nameOf: (seat: SeatId) => string,
-): WindowMenu => ({
-  title: purpose === "challenge-claim" ? "Challenge the claim" : "Challenge the block",
-  note: claimNote(view, nameOf),
-  options: [
-    plain("challenge", "Challenge", null, true, null, () => ({ t: "challenge" })),
-    plain("pass", "Pass", null, true, null, () => ({ t: "pass" })),
-  ],
-})
+): WindowMenu => {
+  const pending = view.pending
+  // The engine skips the claimant and the blocker when it picks a challenger, so
+  // their Challenge is ignored; offer them Pass alone.
+  const mayChallenge =
+    pending !== null &&
+    (purpose === "challenge-claim" ? seat !== pending.claimant : seat !== pending.blocker)
+  const options: MenuOption[] = []
+  if (mayChallenge) {
+    options.push(plain("challenge", "Challenge", null, true, null, () => ({ t: "challenge" })))
+  }
+  options.push(plain("pass", "Pass", null, true, null, () => ({ t: "pass" })))
+  return {
+    title: purpose === "challenge-claim" ? "Challenge the claim" : "Challenge the block",
+    note: claimNote(view, nameOf),
+    options,
+  }
+}
 
 /** The card the viewer must hold to show: the claimed role, or the claim's block role. */
 const proofSpec = (view: G54View, purpose: "proof-claim" | "proof-block"): RoleSpec | null => {
@@ -360,7 +370,7 @@ const blockMenu = (view: G54View, nameOf: (seat: SeatId) => string): WindowMenu 
 }
 
 const cardChoices = (cards: readonly RoleId[]): readonly MenuCardChoice[] =>
-  cards.map((role, index) => ({ index, role, name: specOf(role).name }))
+  cards.map((role, index) => ({ index, name: specOf(role).name }))
 
 const revealMenu = (view: G54View): WindowMenu => ({
   title: "Reveal a card",
@@ -539,7 +549,6 @@ const socialistKeepMenu = (view: G54View): WindowMenu => {
   const ownChoices = cardChoices(hand)
   const poolChoices: readonly MenuCardChoice[] = pool.map((role, index) => ({
     index: hand.length + index,
-    role,
     name: specOf(role).name,
   }))
   const enabled = ownChoices.length > 0
@@ -622,6 +631,15 @@ const reactiveMenu = (
  */
 const bombMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string): WindowMenu => {
   const bomb = view.tokens.bomb
+  // A live `move` means the pass or defuse claim was caught; `resolveBomb` then
+  // ignores input and clears the Bomb, so the holder only acknowledges it.
+  if (bomb !== null && bomb.move !== null) {
+    return {
+      title: "The Bomb",
+      note: `Held by ${nameOf(bomb.holder)}.`,
+      options: [plain("continue", "Continue", null, true, null, () => ({ t: "no" }))],
+    }
+  }
   const legal =
     bomb === null
       ? []
@@ -696,7 +714,7 @@ export const menuOf = (
       return spySecondMenu(view, seat, nameOf)
     case "challenge-claim":
     case "challenge-block":
-      return challengeMenu(view, view.window.purpose, nameOf)
+      return challengeMenu(view, seat, view.window.purpose, nameOf)
     case "proof-claim":
     case "proof-block":
       return proofMenu(view, view.window.purpose, nameOf)

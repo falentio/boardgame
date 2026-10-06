@@ -94,12 +94,11 @@ test("a missing identity falls back to the seat id rather than dropping the row"
   expect(board.seats.map((seat) => seat.name)).toEqual([ANN, BOB, CARA]);
 });
 
-test("the table carries the open window and the seats it owes", () => {
+test("the table carries the open window", () => {
   const projected = view();
   const board = boardOf(projected, identities());
   expect(board.table.window).toEqual(projected.window);
   expect(board.table.window?.purpose).toBe("turn");
-  expect(board.table.owedSeats).toEqual([...projected.owedSeats]);
 });
 
 test("purposeLabel names every window purpose", () => {

@@ -13,7 +13,7 @@ import {
   type G54State,
   type G54View,
 } from "#shared/core/lockstep/games/g54/index.ts"
-import type { RoleId } from "#shared/core/lockstep/games/g54/roles.ts"
+import { specOf, type RoleId } from "#shared/core/lockstep/games/g54/roles.ts"
 import { FORCED_COUP_COINS } from "#shared/core/lockstep/games/g54/windows.ts"
 import { seatId, type SeatId } from "#shared/rooms/ids.ts"
 import { menuOf, type MenuOption } from "../window-menu.ts"
@@ -254,19 +254,21 @@ test("a target role prices each target by its lives, not the flat cost", () => {
   expect(paramilitary.enabled).toBe(true)
 })
 
-test("challenge-claim offers Challenge and Pass to every alive seat", () => {
+test("challenge-claim offers Pass alone to the claimant and Challenge to the rest", () => {
   const claimed = fold(genesis(), [ANN, { t: "claim", role: "banker", target: null }])
   const projected = project(claimed, ANN)
   expect(projected.window?.purpose).toBe("challenge-claim")
-  const menu = menuOf(projected, ANN, nameOf)!
-  expect(menu.options.map((option) => option.id)).toEqual(["challenge", "pass"])
-  const challenge = optionOf(menu.options, "challenge")
+  const claimant = menuOf(projected, ANN, nameOf)!
+  expect(claimant.options.map((option) => option.id)).toEqual(["pass"])
+  const rival = menuOf(projected, BOB, nameOf)!
+  expect(rival.options.map((option) => option.id)).toEqual(["challenge", "pass"])
+  const challenge = optionOf(rival.options, "challenge")
   if (challenge.kind !== "plain") throw new Error("expected a plain option")
   expect(challenge.action()).toEqual({ t: "challenge" })
-  expect(optionOf(menu.options, "pass").enabled).toBe(true)
+  expect(optionOf(rival.options, "pass").enabled).toBe(true)
 })
 
-test("challenge-block offers Challenge and Pass to the seats that may challenge a block", () => {
+test("challenge-block offers Pass alone to the blocker and Challenge to the rest", () => {
   const claimed = fold(genesis(), [ANN, { t: "claim", role: "politician", target: BOB }])
   const survived = fold(
     claimed,
@@ -280,10 +282,7 @@ test("challenge-block offers Challenge and Pass to the seats that may challenge 
   expect(projected.owedSeats).toEqual([ANN, BOB, CARA])
   const menu = menuOf(projected, ANN, nameOf)!
   expect(menu.options.map((option) => option.id)).toEqual(["challenge", "pass"])
-  expect(menuOf(projected, BOB, nameOf)?.options.map((option) => option.id)).toEqual([
-    "challenge",
-    "pass",
-  ])
+  expect(menuOf(projected, BOB, nameOf)?.options.map((option) => option.id)).toEqual(["pass"])
 })
 
 test("proof-claim disables Show when the viewer does not hold the claimed card", () => {
@@ -413,7 +412,9 @@ test("reveal offers one choice per hand card and builds a reveal action", () => 
   expect(option.choices.map((choice) => choice.index)).toEqual(
     projected.myHand.map((_, index) => index),
   )
-  expect(option.choices.map((choice) => choice.role)).toEqual([...projected.myHand])
+  expect(option.choices.map((choice) => choice.name)).toEqual(
+    projected.myHand.map((role) => specOf(role).name),
+  )
   expect(option.action(1)).toEqual({ t: "reveal", index: 1 })
 })
 
@@ -441,7 +442,9 @@ test("keep offers the combined hand and draw pool and builds a keep action", () 
   expect(option.kind).toBe("cards")
   if (option.kind !== "cards") throw new Error("expected a cards option")
   const combined = [...projected.myHand, ...(projected.myDraw ?? [])]
-  expect(option.choices.map((choice) => choice.role)).toEqual(combined)
+  expect(option.choices.map((choice) => choice.name)).toEqual(
+    combined.map((role) => specOf(role).name),
+  )
   expect(option.count).toBe(projected.myHand.length)
   expect(option.action([0, 1])).toEqual({ t: "keep", indices: [0, 1] })
 })
@@ -478,10 +481,6 @@ test("a resigned rival is excluded from the menu's role-claim picker", () => {
   const politician = targetOption(menuOf(project(resigned, ANN), ANN, nameOf)!, "claim-politician")
   expect(politician.choices.map((choice) => choice.seat)).not.toContain(BOB)
 })
-
-// ---------------------------------------------------------------------------
-// Unit 8. The role sub-windows.
-// ---------------------------------------------------------------------------
 
 test("crime-pay offers Pay 2 or Refuse to the target only", () => {
   const state = withCoins(
@@ -531,7 +530,9 @@ test("producer-give offers a card picker over the partner's hand", () => {
   expect(projected.window?.purpose).toBe("producer-give")
   const option = cardOption(menuOf(projected, BOB, nameOf)!, "give")
   expect(option.choices.map((choice) => choice.index)).toEqual(projected.myHand.map((_, i) => i))
-  expect(option.choices.map((choice) => choice.role)).toEqual([...projected.myHand])
+  expect(option.choices.map((choice) => choice.name)).toEqual(
+    projected.myHand.map((role) => specOf(role).name),
+  )
   expect(option.action(1)).toEqual({ t: "give", index: 1 })
   expect(menuOf(projected, ANN, nameOf)).toBeNull()
 })
@@ -576,7 +577,9 @@ test("socialist-keep offers a two-card swap with the pool offset past the hand",
     projected.myHand.map((_, i) => i),
   )
   expect(option.poolChoices.map((choice) => choice.index)).toEqual([projected.myHand.length])
-  expect(option.poolChoices.map((choice) => choice.role)).toEqual([...(projected.mySocialist ?? [])])
+  expect(option.poolChoices.map((choice) => choice.name)).toEqual(
+    (projected.mySocialist ?? []).map((role) => specOf(role).name),
+  )
   expect(option.action(0, projected.myHand.length)).toEqual({
     t: "keep",
     indices: [0, projected.myHand.length],
@@ -690,6 +693,26 @@ test("bomb offers the legal next holders and Defuse, mirroring bombPassable", ()
   expect(project(fold(bombed, [BOB, pass.action(CARA)]), BOB).window?.purpose).toBe(
     "challenge-claim",
   )
+})
+
+test("bomb with a live move offers only Continue, since the resolver ignores input", () => {
+  const state = withCoins(
+    genesis(["banker", "director", "anarchist", "peacekeeper", "politician"]),
+    ANN,
+    3,
+  )
+  let s = fold(state, [ANN, { t: "claim", role: "anarchist", target: BOB }])
+  // Bob lies about defusing; Cara challenges and Bob concedes, leaving a live move.
+  s = fold(s, [BOB, { t: "claim", role: "anarchist", target: null }])
+  s = fold(s, [CARA, { t: "challenge" }])
+  s = fold(s, [BOB, { t: "concede" }])
+  s = fold(s, [BOB, { t: "reveal", index: 0 }])
+  const projected = project(s, BOB)
+  expect(projected.window?.purpose).toBe("bomb")
+  expect(projected.tokens.bomb?.move).toBe("defuse")
+  const menu = menuOf(projected, BOB, nameOf)!
+  expect(menu.options.map((option) => option.id)).toEqual(["continue"])
+  expect(plainOption(menu, "continue").action()).toEqual({ t: "no" })
 })
 
 test("spy-second reuses the turn menu and adds a Stop", () => {

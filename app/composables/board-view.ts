@@ -71,8 +71,6 @@ export interface BoardTable {
   readonly terminal: boolean
   /** The open window the engine waits on, or null between windows. */
   readonly window: WindowView | null
-  /** The seats the open window owes input from. */
-  readonly owedSeats: readonly SeatId[]
 }
 
 export interface Board {
@@ -191,7 +189,6 @@ export const boardOf = (
       pending: pendingLabel(view.pending, nameOf),
       terminal: view.terminal,
       window: view.window,
-      owedSeats: [...view.owedSeats],
     },
     seats,
     menu: menuOf(view, view.seat, nameOf),
