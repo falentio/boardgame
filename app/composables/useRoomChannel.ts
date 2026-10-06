@@ -95,6 +95,9 @@ const singleton = (): ((create: () => RoomChannelClient) => Promise<RoomChannelC
 
 const sharedClient = singleton();
 
+export const sharedPusherClient = (config: RoomChannelConfig): Promise<RoomChannelClient> =>
+  sharedClient(() => createPusherClient(config));
+
 const createPusherClient = (config: RoomChannelConfig): RoomChannelClient =>
   new Pusher(config.key, {
     wsHost: config.host,
@@ -107,7 +110,7 @@ const createPusherClient = (config: RoomChannelConfig): RoomChannelClient =>
     authEndpoint: "/api/pusher/auth",
   });
 
-const pusherConfigFrom = (value: unknown): RoomChannelConfig | null => {
+export const pusherConfigFrom = (value: unknown): RoomChannelConfig | null => {
   if (typeof value !== "object" || value === null) return null;
   const key = "key" in value ? value.key : undefined;
   const host = "host" in value ? value.host : undefined;
