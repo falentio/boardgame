@@ -263,7 +263,7 @@ const main = async () => {
     else pass("the picker opened with the 5 starter roles selected");
     console.log(`screenshot: ${await hostBrowser.page.screenshot("04-create")}`);
 
-    const banker = `Array.from(document.querySelectorAll('[data-role-option]')).find((e) => e.textContent.trim().startsWith('Banker'))`;
+    const banker = `document.querySelector('[data-role-option][aria-label^="Banker"]')`;
     const selectedCount = "document.querySelectorAll('[data-role-option][aria-pressed=true]').length";
 
     await hostBrowser.page.clickUntil(
@@ -286,6 +286,30 @@ const main = async () => {
     const restored = await hostBrowser.page.waitFor(`${selectedCount} === 5`, { timeoutMs: 5000 });
     if (!restored) fail(`re-selecting the Finance role should restore 5 selected, got ${await hostBrowser.page.eval(selectedCount)}`);
     else pass("re-selecting the Finance role restores a complete set");
+
+    const noDisabled = await hostBrowser.page.eval(
+      "document.querySelectorAll('[data-role-option][disabled]').length",
+    );
+    if (noDisabled > 0) fail(`${noDisabled} role card(s) are disabled, every role must stay pickable`);
+    else pass("no role card is disabled while the draft is complete");
+
+    await hostBrowser.page.clickUntil(
+      `[data-role-option][aria-label^="Capitalist"]`,
+      `document.querySelector('[data-role-option][aria-label^="Capitalist"]')?.getAttribute('aria-pressed') === 'true'`,
+    );
+    const bankerGone = await hostBrowser.page.eval(
+      `document.querySelector('[data-role-option][aria-label^="Banker"]')?.getAttribute('aria-pressed') === 'false'`,
+    );
+    const stillFive = await hostBrowser.page.eval(selectedCount);
+    if (!bankerGone) fail("replacing Banker with Capitalist should deselect Banker in the same click");
+    else if (stillFive !== 5) fail(`a replacement should keep 5 selected, got ${stillFive}`);
+    else pass("one click replaces a filled Finance slot (Capitalist for Banker)");
+
+    await hostBrowser.page.eval(
+      `(() => { const b = ${banker}; if (b) b.click(); return true; })()`,
+    );
+    const backToBanker = await hostBrowser.page.waitFor(`${selectedCount} === 5 && !!${banker}`, { timeoutMs: 5000 });
+    if (!backToBanker) fail("could not restore the starter Finance role before submitting");
 
     await hostBrowser.page.clickUntil("button[type=submit]", "/^\\/rooms\\/[A-Z]{8}$/.test(location.pathname)");
     const inLobby = await hostBrowser.page.waitFor("/^\\/rooms\\/[A-Z]{8}$/.test(location.pathname)", {

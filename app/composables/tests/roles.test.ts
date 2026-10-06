@@ -4,103 +4,116 @@ import {
   completeRoles,
   defaultDraft,
   emptyDraft,
-  ROLE_GROUPS,
-  roleOptionState,
-  toggleRole,
+  filledCount,
+  isPicked,
+  mergedGroups,
+  missingLabels,
+  pickRole,
+  slotsOf,
   type RoleDraft,
 } from "../roles.ts";
 
-test("toggleRole replaces a single-slot category and clears on re-pick", () => {
-  const first = toggleRole(emptyDraft, "banker");
+test("pickRole replaces a single-slot category and clears on re-pick", () => {
+  const first = pickRole(emptyDraft, "banker");
   expect(first.finance).toBe("banker");
 
-  const replaced = toggleRole(first, "capitalist");
+  const replaced = pickRole(first, "capitalist");
   expect(replaced.finance).toBe("capitalist");
+  expect(filledCount(replaced)).toBe(1);
 
-  const cleared = toggleRole(replaced, "capitalist");
+  const cleared = pickRole(replaced, "capitalist");
   expect(cleared.finance).toBeNull();
 });
 
-test("toggleRole never accumulates within a single-slot category", () => {
-  const draft = toggleRole(toggleRole(emptyDraft, "banker"), "spy");
+test("pickRole never accumulates within a single-slot category", () => {
+  const draft = pickRole(pickRole(emptyDraft, "banker"), "spy");
   expect(draft.finance).toBe("spy");
   expect([draft.finance, draft.communications, draft.force]).toEqual(["spy", null, null]);
 });
 
-test("toggleRole fills special slots, removes on re-pick, and caps at two", () => {
-  const one = toggleRole(emptyDraft, "politician");
+test("pickRole fills both special slots, clears on re-pick, and replaces when full", () => {
+  const one = pickRole(emptyDraft, "politician");
   expect(one.special).toEqual(["politician", null]);
 
-  const two = toggleRole(one, "peacekeeper");
+  const two = pickRole(one, "peacekeeper");
   expect(two.special).toEqual(["politician", "peacekeeper"]);
 
-  const removed = toggleRole(two, "politician");
+  const removed = pickRole(two, "politician");
   expect(removed.special).toEqual([null, "peacekeeper"]);
 
-  const full = toggleRole(two, "communist");
-  expect(full).toBe(two);
-  expect(full.special).toEqual(["politician", "peacekeeper"]);
+  const replaced = pickRole(two, "communist");
+  expect(replaced.special).toEqual(["communist", "peacekeeper"]);
+  expect(filledCount(replaced)).toBe(2);
 });
 
-test("toggleRole never allows the same role twice", () => {
-  const draft = toggleRole(toggleRole(toggleRole(emptyDraft, "banker"), "politician"), "banker");
+test("pickRole never allows the same role twice", () => {
+  const draft = pickRole(pickRole(pickRole(emptyDraft, "banker"), "politician"), "banker");
   const picked = [draft.finance, draft.communications, draft.force, draft.special[0], draft.special[1]];
   const present = picked.filter((role) => role !== null);
   expect(new Set(present).size).toBe(present.length);
 });
 
+test("every role stays pickable: a full draft replaces in one step", () => {
+  const full = defaultDraft();
+  expect(filledCount(full)).toBe(5);
+
+  const swapped = pickRole(full, "capitalist");
+  expect(swapped.finance).toBe("capitalist");
+  expect(isPicked(swapped, "capitalist")).toBe(true);
+  expect(isPicked(swapped, "banker")).toBe(false);
+  expect(filledCount(swapped)).toBe(5);
+});
+
 test("completeRoles is null until every slot is filled", () => {
   expect(completeRoles(emptyDraft)).toBeNull();
 
-  let draft: RoleDraft = toggleRole(emptyDraft, "banker");
+  let draft: RoleDraft = pickRole(emptyDraft, "banker");
   expect(completeRoles(draft)).toBeNull();
 
-  draft = toggleRole(draft, "director");
+  draft = pickRole(draft, "director");
   expect(completeRoles(draft)).toBeNull();
 
-  draft = toggleRole(draft, "guerrilla");
+  draft = pickRole(draft, "guerrilla");
   expect(completeRoles(draft)).toBeNull();
 
-  draft = toggleRole(draft, "politician");
+  draft = pickRole(draft, "politician");
   expect(completeRoles(draft)).toBeNull();
 
-  draft = toggleRole(draft, "peacekeeper");
+  draft = pickRole(draft, "peacekeeper");
   expect(completeRoles(draft)).toEqual(["banker", "director", "guerrilla", "politician", "peacekeeper"]);
 });
 
-test("roleOptionState reports selected, available, and blocked", () => {
-  expect(roleOptionState(emptyDraft, "banker")).toBe("available");
-
-  const withFinance = toggleRole(emptyDraft, "banker");
-  expect(roleOptionState(withFinance, "banker")).toBe("selected");
-  expect(roleOptionState(withFinance, "capitalist")).toBe("blocked");
-
-  const withSpecial = toggleRole(toggleRole(emptyDraft, "politician"), "peacekeeper");
-  expect(roleOptionState(withSpecial, "politician")).toBe("selected");
-  expect(roleOptionState(withSpecial, "communist")).toBe("blocked");
-
-  const oneSpecial = toggleRole(emptyDraft, "politician");
-  expect(roleOptionState(oneSpecial, "communist")).toBe("available");
-});
-
-test("ROLE_GROUPS partitions the catalog with the 1/1/1/2 capacities", () => {
-  expect(ROLE_GROUPS.map((entry) => entry.category)).toEqual([
+test("slotsOf reports five slots with the two specials distinct", () => {
+  const slots = slotsOf(defaultDraft());
+  expect(slots.map((slot) => slot.id)).toEqual([
     "finance",
     "communications",
     "force",
-    "special-interest",
+    "special-1",
+    "special-2",
   ]);
-  expect(ROLE_GROUPS.map((entry) => entry.capacity)).toEqual([1, 1, 1, 2]);
-  expect(ROLE_GROUPS.map((entry) => entry.label)).toEqual([
-    "Finance",
-    "Communications",
-    "Force",
-    "Special Interest",
+  expect(slots[3]?.category).toBe("special-interest");
+  expect(slots[4]?.category).toBe("special-interest");
+});
+
+test("missingLabels names each unfilled slot by category and count", () => {
+  expect(missingLabels(emptyDraft)).toEqual([
+    "1 Finance",
+    "1 Communications",
+    "1 Force",
+    "2 Special Interest",
   ]);
-  for (const entry of ROLE_GROUPS) {
-    expect(entry.roles.every((role) => role.category === entry.category)).toBe(true);
-  }
-  expect(ROLE_GROUPS.reduce((total, entry) => total + entry.roles.length, 0)).toBe(25);
+  expect(missingLabels(defaultDraft())).toEqual([]);
+
+  const oneSpecial = pickRole(defaultDraft(), "politician");
+  expect(missingLabels(oneSpecial)).toEqual(["1 Special Interest"]);
+});
+
+test("mergedGroups partitions the whole catalog into four categories", () => {
+  expect(mergedGroups.map((group) => group.key)).toEqual(["finance", "communications", "force", "special"]);
+  const catalog = mergedGroups.flatMap((group) => group.roles.map((role) => role.id));
+  expect(catalog.length).toBe(31);
+  expect(new Set(catalog).size).toBe(catalog.length);
 });
 
 test("completeRoles(defaultDraft()) passes the shared validateRoles", () => {
@@ -110,26 +123,20 @@ test("completeRoles(defaultDraft()) passes the shared validateRoles", () => {
   expect(() => validateRoles(roles)).not.toThrow();
 });
 
-test("partial drafts are null and the category caps make over-filling impossible", () => {
+test("a partial draft stays null and picking the whole catalog still yields five distinct roles", () => {
   const partials: RoleDraft[] = [
     emptyDraft,
-    toggleRole(emptyDraft, "banker"),
-    toggleRole(toggleRole(emptyDraft, "banker"), "director"),
-    toggleRole(toggleRole(toggleRole(emptyDraft, "banker"), "director"), "guerrilla"),
-    toggleRole(
-      toggleRole(toggleRole(toggleRole(emptyDraft, "banker"), "director"), "guerrilla"),
-      "politician",
-    ),
+    pickRole(emptyDraft, "banker"),
+    pickRole(pickRole(emptyDraft, "banker"), "director"),
+    pickRole(pickRole(pickRole(emptyDraft, "banker"), "director"), "guerrilla"),
+    pickRole(pickRole(pickRole(pickRole(emptyDraft, "banker"), "director"), "guerrilla"), "politician"),
   ];
   for (const draft of partials) {
     expect(completeRoles(draft)).toBeNull();
   }
 
-  const catalog = ROLE_GROUPS.flatMap((entry) => entry.roles.map((role) => role.id));
-  const attempted = catalog.reduce<RoleDraft>((draft, role) => toggleRole(draft, role), emptyDraft);
-  expect(attempted.special).toHaveLength(2);
-  expect(attempted.special[0]).not.toBeNull();
-  expect(attempted.special[1]).not.toBeNull();
+  const catalog = mergedGroups.flatMap((group) => group.roles.map((role) => role.id));
+  const attempted = catalog.reduce<RoleDraft>((draft, role) => pickRole(draft, role), emptyDraft);
   const roles = completeRoles(attempted);
   expect(roles).not.toBeNull();
   if (roles === null) throw new Error("expected a complete set");

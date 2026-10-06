@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 import RolePicker from "@/components/room/RolePicker.vue"
-import { completeRoles, defaultDraft, toggleRole, type RoleDraft } from "@/composables/roles"
+import { completeRoles, defaultDraft, missingLabels, pickRole, type RoleDraft } from "@/composables/roles"
 import { createRoom } from "@/composables/rooms-api"
 import type { RoleId } from "#shared/core/lockstep/games/g54/roles.ts"
 
@@ -32,25 +32,17 @@ const formEl = ref<HTMLFormElement | null>(null)
 const roles = computed(() => completeRoles(draft.value))
 const canSubmit = computed(() => roles.value !== null && !submitting.value)
 
-const onToggle = (role: RoleId) => {
-  draft.value = toggleRole(draft.value, role)
+const onChange = (next: RoleDraft) => {
+  draft.value = next
 }
 
-const missingSlots = (value: RoleDraft): string[] => {
-  const parts: string[] = []
-  if (value.finance === null) parts.push("1 Finance")
-  if (value.communications === null) parts.push("1 Communications")
-  if (value.force === null) parts.push("1 Force")
-  const special = value.special.filter((role) => role === null).length
-  if (special > 0) parts.push(`${special} Special Interest`)
-  return parts
-}
+const missing = computed(() => missingLabels(draft.value))
 
 const focusFirstProblem = () => {
   const form = formEl.value
   if (form === null) return
   if (errorField.value === "roles") {
-    form.querySelector<HTMLButtonElement>("[data-role-option]:not([disabled])")?.focus()
+    form.querySelector<HTMLButtonElement>("[data-role-option]")?.focus()
     return
   }
   form.querySelector<HTMLInputElement>("#room-name")?.focus()
@@ -70,7 +62,7 @@ const onSubmit = async () => {
 
   const selected = roles.value
   if (selected === null) {
-    error.value = `Choose the remaining roles: ${missingSlots(draft.value).join(", ")}.`
+    error.value = `Choose the remaining roles: ${missing.value.join(", ")}.`
     errorField.value = "roles"
     focusFirstProblem()
     return
@@ -143,12 +135,12 @@ const onSubmit = async () => {
                 <p id="roles-label" class="text-sm leading-none font-medium">
                   Roles
                 </p>
-                <RolePicker :draft="draft" @toggle="onToggle" />
+                <RolePicker :draft="draft" @change="onChange" />
                 <p
-                  v-if="missingSlots(draft).length > 0"
+                  v-if="missing.length > 0"
                   class="text-muted-foreground text-sm leading-normal"
                 >
-                  Still to choose: {{ missingSlots(draft).join(", ") }}.
+                  Still to choose: {{ missing.join(", ") }}.
                 </p>
               </div>
             </Field>

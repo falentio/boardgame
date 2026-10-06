@@ -7,6 +7,12 @@ import {
   type RoleSpec,
 } from "#shared/core/lockstep/games/g54/roles.ts";
 
+/**
+ * The role draft domain. A draft is five slots to fill: Finance,
+ * Communications, Force, and two Special Interest. Every role stays pickable at
+ * all times; picking one into a filled slot replaces what was there.
+ */
+
 export interface RoleDraft {
   finance: RoleId | null;
   communications: RoleId | null;
@@ -23,38 +29,82 @@ export const emptyDraft: RoleDraft = {
   special: [null, null],
 };
 
-const inDraft = (draft: RoleDraft, role: RoleId): boolean =>
-  draft.finance === role ||
-  draft.communications === role ||
-  draft.force === role ||
-  draft.special[0] === role ||
-  draft.special[1] === role;
+export type SlotId = "finance" | "communications" | "force" | "special-1" | "special-2";
 
-const toggleSpecial = (
-  special: readonly [RoleId | null, RoleId | null],
-  role: RoleId,
-): readonly [RoleId | null, RoleId | null] => {
-  if (special[0] === role) return [null, special[1]];
-  if (special[1] === role) return [special[0], null];
-  if (special[0] === null) return [role, special[1]];
-  if (special[1] === null) return [special[0], role];
-  return special;
-};
+export interface PickSlot {
+  readonly id: SlotId;
+  readonly category: RoleCategory;
+  readonly label: string;
+  readonly role: RoleId | null;
+}
 
-export const toggleRole = (draft: RoleDraft, role: RoleId): RoleDraft => {
-  switch (categoryOf(role)) {
+const SLOT_META: readonly Omit<PickSlot, "role">[] = [
+  { id: "finance", category: "finance", label: "Finance" },
+  { id: "communications", category: "communications", label: "Communications" },
+  { id: "force", category: "force", label: "Force" },
+  { id: "special-1", category: "special-interest", label: "Special Interest" },
+  { id: "special-2", category: "special-interest", label: "Special Interest" },
+];
+
+const roleAtSlot = (draft: RoleDraft, id: SlotId): RoleId | null => {
+  switch (id) {
     case "finance":
-      return { ...draft, finance: draft.finance === role ? null : role };
+      return draft.finance;
     case "communications":
-      return { ...draft, communications: draft.communications === role ? null : role };
+      return draft.communications;
     case "force":
-      return { ...draft, force: draft.force === role ? null : role };
-    case "special-interest": {
-      const special = toggleSpecial(draft.special, role);
-      return special === draft.special ? draft : { ...draft, special };
-    }
+      return draft.force;
+    case "special-1":
+      return draft.special[0];
+    case "special-2":
+      return draft.special[1];
   }
 };
+
+export const slotsOf = (draft: RoleDraft): readonly PickSlot[] =>
+  SLOT_META.map((meta) => ({ ...meta, role: roleAtSlot(draft, meta.id) }));
+
+export const filledCount = (draft: RoleDraft): number =>
+  slotsOf(draft).filter((slot) => slot.role !== null).length;
+
+export const isPicked = (draft: RoleDraft, role: RoleId): boolean =>
+  slotsOf(draft).some((slot) => slot.role === role);
+
+export const missingLabels = (draft: RoleDraft): readonly string[] => {
+  const counts = new Map<string, number>();
+  for (const slot of slotsOf(draft)) {
+    if (slot.role !== null) continue;
+    counts.set(slot.label, (counts.get(slot.label) ?? 0) + 1);
+  }
+  return [...counts].map(([label, count]) => `${count} ${label}`);
+};
+
+const clear = (draft: RoleDraft, role: RoleId): RoleDraft => {
+  if (draft.finance === role) return { ...draft, finance: null };
+  if (draft.communications === role) return { ...draft, communications: null };
+  if (draft.force === role) return { ...draft, force: null };
+  if (draft.special[0] === role) return { ...draft, special: [null, draft.special[1]] };
+  if (draft.special[1] === role) return { ...draft, special: [draft.special[0], null] };
+  return draft;
+};
+
+const assign = (draft: RoleDraft, role: RoleId): RoleDraft => {
+  switch (categoryOf(role)) {
+    case "finance":
+      return { ...draft, finance: role };
+    case "communications":
+      return { ...draft, communications: role };
+    case "force":
+      return { ...draft, force: role };
+    case "special-interest":
+      if (draft.special[0] === null) return { ...draft, special: [role, draft.special[1]] };
+      if (draft.special[1] === null) return { ...draft, special: [draft.special[0], role] };
+      return { ...draft, special: [role, draft.special[1]] };
+  }
+};
+
+export const pickRole = (draft: RoleDraft, role: RoleId): RoleDraft =>
+  isPicked(draft, role) ? clear(draft, role) : assign(draft, role);
 
 export const completeRoles = (draft: RoleDraft): RoleSet | null => {
   const { finance, communications, force, special } = draft;
@@ -64,43 +114,21 @@ export const completeRoles = (draft: RoleDraft): RoleSet | null => {
   return [finance, communications, force, first, second];
 };
 
-export const roleOptionState = (
-  draft: RoleDraft,
-  role: RoleId,
-): "selected" | "available" | "blocked" => {
-  if (inDraft(draft, role)) return "selected";
-  switch (categoryOf(role)) {
-    case "finance":
-      return draft.finance === null ? "available" : "blocked";
-    case "communications":
-      return draft.communications === null ? "available" : "blocked";
-    case "force":
-      return draft.force === null ? "available" : "blocked";
-    case "special-interest":
-      return draft.special[0] === null || draft.special[1] === null ? "available" : "blocked";
-  }
-};
-
-export interface RoleGroup {
-  category: RoleCategory;
-  label: string;
-  capacity: number;
-  roles: readonly RoleSpec[];
+export interface PickGroup {
+  readonly key: string;
+  readonly label: string;
+  readonly roles: readonly RoleSpec[];
 }
 
-const group = (category: RoleCategory, label: string, capacity: number): RoleGroup => ({
-  category,
-  label,
-  capacity,
-  roles: ROLE_CATALOG.filter((spec) => spec.category === category),
-});
+const rolesIn = (category: RoleCategory): readonly RoleSpec[] =>
+  ROLE_CATALOG.filter((spec) => spec.category === category);
 
-export const ROLE_GROUPS: readonly RoleGroup[] = [
-  group("finance", "Finance", 1),
-  group("communications", "Communications", 1),
-  group("force", "Force", 1),
-  group("special-interest", "Special Interest", 2),
+export const mergedGroups: readonly PickGroup[] = [
+  { key: "finance", label: "Finance", roles: rolesIn("finance") },
+  { key: "communications", label: "Communications", roles: rolesIn("communications") },
+  { key: "force", label: "Force", roles: rolesIn("force") },
+  { key: "special", label: "Special Interest", roles: rolesIn("special-interest") },
 ];
 
 export const defaultDraft = (): RoleDraft =>
-  STARTER_ROLES.reduce<RoleDraft>((draft, role) => toggleRole(draft, role), emptyDraft);
+  STARTER_ROLES.reduce<RoleDraft>((draft, role) => pickRole(draft, role), emptyDraft);
