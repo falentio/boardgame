@@ -4,6 +4,22 @@ import type { H3Event } from "h3";
 import * as schema from "../db/schema";
 import { cloudflareEnv, dbFromEnv, type CloudflareEnv } from "./db";
 
+// Hostnames the app is served from during local dev and previews. `*.localhost`
+// does not match the bare `localhost`, so it is listed separately. For
+// `falentio` only subdomains are trusted (`app.falentio`), never the apex.
+const LOCAL_HOSTNAMES = ["localhost", "*.localhost", "*.falentio"] as const;
+
+// Expands each hostname into better-auth origin patterns: `host` covers the
+// default port and `host:*` any other, for both schemes.
+const localTrustedOrigins: readonly string[] = LOCAL_HOSTNAMES.flatMap(
+  (host) => [
+    `http://${host}`,
+    `http://${host}:*`,
+    `https://${host}`,
+    `https://${host}:*`,
+  ],
+);
+
 function createAuth(env: CloudflareEnv) {
   return betterAuth({
     database: drizzleAdapter(dbFromEnv(env), {
@@ -13,6 +29,7 @@ function createAuth(env: CloudflareEnv) {
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     emailAndPassword: { enabled: true },
+    trustedOrigins: [...localTrustedOrigins],
   });
 }
 

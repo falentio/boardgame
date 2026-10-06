@@ -26,6 +26,14 @@ export default defineNuxtConfig({
     plugins: [
       tailwindcss(),
     ],
+    // The dev server rejects requests whose Host header it doesn't recognise.
+    // Vite already allows `localhost`, `*.localhost` and all IPs, so only the
+    // `falentio` preview domain is added. A leading dot matches the domain and
+    // every subdomain; Vite has no subdomain-only form, so the apex is included
+    // too. Ports are ignored by the check, so any port is covered.
+    server: {
+      allowedHosts: ['.falentio'],
+    },
   },
 
   modules: ['shadcn-nuxt'],
