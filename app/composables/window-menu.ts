@@ -24,6 +24,12 @@ export interface MenuCardChoice {
   readonly name: string
 }
 
+/** One selectable role for a `role` option, identified by its role id. */
+export interface MenuRoleChoice {
+  readonly role: RoleId
+  readonly name: string
+}
+
 /**
  * One control the open window offers the viewer. The `kind` names the control and
  * the arm's `action` takes exactly the value that control produces, so a `target`
@@ -75,6 +81,31 @@ export type MenuOption =
       readonly choices: readonly MenuCardChoice[]
       readonly action: (indices: readonly number[]) => G54Action
     }
+  | {
+      readonly id: string
+      readonly kind: "role"
+      readonly label: string
+      readonly detail: string | null
+      readonly enabled: boolean
+      /** Why the option is disabled; null when it is enabled. */
+      readonly reason: string | null
+      readonly choices: readonly MenuRoleChoice[]
+      readonly action: (role: RoleId) => G54Action
+    }
+  | {
+      readonly id: string
+      readonly kind: "swap"
+      readonly label: string
+      readonly detail: string | null
+      readonly enabled: boolean
+      /** Why the option is disabled; null when it is enabled. */
+      readonly reason: string | null
+      /** The viewer's own hand, indexed into `hand`. */
+      readonly ownChoices: readonly MenuCardChoice[]
+      /** The collected pile, indexed into `hand + pool` as the engine reads it. */
+      readonly poolChoices: readonly MenuCardChoice[]
+      readonly action: (ownIndex: number, keepIndex: number) => G54Action
+    }
 
 /** The controls for the open window, or null when the viewer owes nothing here. */
 export interface WindowMenu {
@@ -99,15 +130,25 @@ const PLAIN_GENERALS: Record<Exclude<GeneralActionId, "coup">, () => G54Action> 
 const FORCED_COUP_REASON = `At ${String(FORCED_COUP_COINS)} coins Coup is forced`
 const NO_TARGET = "No legal target"
 
+const CRIME_PAY_COST = 2
+const FUND_COST = 3
+const WRITER_EXTRA_COST = 1
+
 const shortOf = (cost: number): string => `Needs ${String(cost)} coins`
+
+const coinsOf = (view: G54View, seat: SeatId): number =>
+  view.players.find((player) => player.seat === seat)?.coins ?? 0
 
 /** Both seats of a two-seat Treaty spare each other, mirroring `isAlly` in the engine. */
 const isTreatyAlly = (treaty: readonly SeatId[], claimant: SeatId, seat: SeatId): boolean =>
   treaty.length === 2 && treaty.includes(claimant) && treaty.includes(seat)
 
 /**
- * The rivals the engine will accept as a target. `peacekeeperImmune` mirrors the
- * engine split: a general target spares the Peacekeeper, a Coup does not.
+ * The rivals the engine will accept as a target. A resigned seat is never a
+ * target: the Coup path filters through `otherAlive` (which is `aliveSeats` minus
+ * the actor, and `aliveSeats` drops a resigned seat), and `targetable` itself
+ * rejects one. `peacekeeperImmune` mirrors the engine split: a general target
+ * spares the Peacekeeper, a Coup does not.
  *
  * Two target rules stay in the engine: Communist picks its own victim, and the
  * Anarchist prior-holder set is not projected. Each is coerced there rather than
@@ -161,7 +202,7 @@ const plain = (
 ): MenuOption => ({ id, kind: "plain", label, detail, enabled, reason, action })
 
 const turnMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string): WindowMenu => {
-  const coins = view.players.find((player) => player.seat === seat)?.coins ?? 0
+  const coins = coinsOf(view, seat)
   const forcedCoup = coins >= FORCED_COUP_COINS
 
   const coupChoices = targetChoices(rivalTargets(view, seat, false), nameOf, () => COUP_COST, coins)
@@ -367,9 +408,280 @@ const keepMenu = (view: G54View): WindowMenu => {
   }
 }
 
+/** Crime Boss: the target pays 2 or lets the boss pay 5 to kill it. */
+const crimePayMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string): WindowMenu => {
+  const coins = coinsOf(view, seat)
+  const affordable = coins >= CRIME_PAY_COST
+  return {
+    title: "Pay the Crime Boss",
+    note: claimNote(view, nameOf),
+    options: [
+      plain("pay", `Pay ${String(CRIME_PAY_COST)}`, null, affordable, affordable ? null : shortOf(CRIME_PAY_COST), () => ({
+        t: "pay",
+      })),
+      plain("no", "Refuse", null, true, null, () => ({ t: "no" })),
+    ],
+  }
+}
+
+/** Protestor funding: a third party pays 3 to make the kill land. */
+const fundMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string): WindowMenu => {
+  const coins = coinsOf(view, seat)
+  const affordable = coins >= FUND_COST
+  return {
+    title: "Fund the protest",
+    note: claimNote(view, nameOf),
+    options: [
+      plain("pay", `Fund for ${String(FUND_COST)}`, null, affordable, affordable ? null : shortOf(FUND_COST), () => ({
+        t: "pay",
+      })),
+      plain("no", "Decline", null, true, null, () => ({ t: "no" })),
+    ],
+  }
+}
+
+/** Producer: the partner gives one card from their hand to the exchange. */
+const producerGiveMenu = (view: G54View, nameOf: (seat: SeatId) => string): WindowMenu => {
+  const has = view.myHand.length > 0
+  return {
+    title: "Give a card",
+    note: claimNote(view, nameOf),
+    options: [
+      {
+        id: "give",
+        kind: "card",
+        label: "Give",
+        detail: null,
+        enabled: has,
+        reason: has ? null : "No cards to give",
+        choices: cardChoices(view.myHand),
+        action: (index) => ({ t: "give", index }),
+      },
+    ],
+  }
+}
+
+/** Writer: pay 1 for another Court draw, or keep the pool as it stands. */
+const writerDrawMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string): WindowMenu => {
+  const coins = coinsOf(view, seat)
+  const canPay = coins >= WRITER_EXTRA_COST && view.courtCount > 0
+  const reason =
+    coins < WRITER_EXTRA_COST ? shortOf(WRITER_EXTRA_COST) : view.courtCount === 0 ? "The Court is empty" : null
+  return {
+    title: "Extra draw",
+    note: claimNote(view, nameOf),
+    options: [
+      plain("pay", `Draw another for ${String(WRITER_EXTRA_COST)}`, null, canPay, canPay ? null : reason, () => ({
+        t: "pay",
+      })),
+      plain("no", "Keep", null, true, null, () => ({ t: "no" })),
+    ],
+  }
+}
+
+/** Customs Officer: mark a role in play; a claim of that role then pays the holder 1. */
+const customsMarkMenu = (view: G54View, nameOf: (seat: SeatId) => string): WindowMenu => {
+  const choices: readonly MenuRoleChoice[] = view.roles.map((role) => ({
+    role,
+    name: specOf(role).name,
+  }))
+  return {
+    title: "Mark a role",
+    note: claimNote(view, nameOf),
+    options: [
+      {
+        id: "mark",
+        kind: "role",
+        label: "Mark a role",
+        detail: null,
+        enabled: choices.length > 0,
+        reason: choices.length > 0 ? null : "No roles in play",
+        choices,
+        action: (role) => ({ t: "claim", role, target: null }),
+      },
+    ],
+  }
+}
+
+/** Socialist: the target gives a card or, when cardless, pays 1. */
+const socialistGiveMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string): WindowMenu => {
+  const hasCards = view.myHand.length > 0
+  const hasCoins = coinsOf(view, seat) > 0
+  return {
+    title: "Give to the Socialist",
+    note: claimNote(view, nameOf),
+    options: [
+      {
+        id: "give",
+        kind: "card",
+        label: "Give a card",
+        detail: null,
+        enabled: hasCards,
+        reason: hasCards ? null : "No cards to give",
+        choices: cardChoices(view.myHand),
+        action: (index) => ({ t: "give", index }),
+      },
+      plain("pay", "Pay 1", null, hasCoins, hasCoins ? null : "No coins to pay", () => ({ t: "pay" })),
+    ],
+  }
+}
+
 /**
- * The controls the open window offers the viewer, or null when no window is open,
- * the viewer is not owed, or the purpose has no handler yet.
+ * Socialist swap: give one own card, take one from the collected pile. The engine
+ * indexes `ownIndex` into the viewer's hand and `keepIndex` into `hand + pool`, so
+ * the pool choices carry their absolute offset past the hand. A seat whose rivals
+ * all paid coins faces an empty pool: the engine then treats the swap as a no-op,
+ * so the menu still lets the seat give a card and takes it right back.
+ */
+const socialistKeepMenu = (view: G54View): WindowMenu => {
+  const hand = view.myHand
+  const pool = view.mySocialist ?? []
+  const ownChoices = cardChoices(hand)
+  const poolChoices: readonly MenuCardChoice[] = pool.map((role, index) => ({
+    index: hand.length + index,
+    role,
+    name: specOf(role).name,
+  }))
+  const enabled = ownChoices.length > 0
+  return {
+    title: "Socialist swap",
+    note: enabled
+      ? poolChoices.length === 0
+        ? "No cards were given, so give one and take it back."
+        : "Give one card, take one from the pile."
+      : "Nothing to swap",
+    options: [
+      {
+        id: "keep",
+        kind: "swap",
+        label: "Swap",
+        detail: null,
+        enabled,
+        reason: enabled ? null : "No cards in hand",
+        ownChoices,
+        poolChoices,
+        action: (ownIndex, keepIndex) => ({ t: "keep", indices: [ownIndex, keepIndex] }),
+      },
+    ],
+  }
+}
+
+/** Capitalist or Plantation Owner mass claim: a rival claims the pending role to collect. */
+const massClaimMenu = (view: G54View, nameOf: (seat: SeatId) => string): WindowMenu => {
+  const role = view.pending?.role ?? null
+  const options: MenuOption[] = []
+  if (role !== null) {
+    options.push(
+      plain("claim", "Claim to collect", specOf(role).name, true, null, () => ({
+        t: "claim",
+        role,
+        target: null,
+      })),
+    )
+  }
+  options.push(plain("no", "Pass", null, true, null, () => ({ t: "no" })))
+  return { title: "Mass claim", note: claimNote(view, nameOf), options }
+}
+
+/** Lawyer: any alive seat may claim the estate of an eliminated seat. */
+const lawyerMenu = (view: G54View, nameOf: (seat: SeatId) => string): WindowMenu => ({
+  title: "Claim the estate",
+  note: claimNote(view, nameOf),
+  options: [
+    plain("claim", "Claim the estate", null, true, null, () => ({
+      t: "claim",
+      role: "lawyer",
+      target: null,
+    })),
+    plain("no", "Pass", null, true, null, () => ({ t: "no" })),
+  ],
+})
+
+/** A reactive role claim after a loss: claim the named reactive role, or decline. */
+const reactiveMenu = (
+  view: G54View,
+  role: RoleId,
+  nameOf: (seat: SeatId) => string,
+): WindowMenu => ({
+  title: `Claim ${specOf(role).name}`,
+  note: claimNote(view, nameOf),
+  options: [
+    plain("claim", `Claim ${specOf(role).name}`, null, true, null, () => ({
+      t: "claim",
+      role,
+      target: null,
+    })),
+    plain("no", "Decline", null, true, null, () => ({ t: "no" })),
+  ],
+})
+
+/**
+ * Bomb: the holder passes the Bomb to a legal next holder or defuses. Legal next
+ * holders mirror `bombPassable`: alive, not resigned, not the current holder, and
+ * not any prior holder.
+ */
+const bombMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string): WindowMenu => {
+  const bomb = view.tokens.bomb
+  const legal =
+    bomb === null
+      ? []
+      : view.players.filter(
+          (player) =>
+            player.seat !== bomb.holder &&
+            !bomb.prior.includes(player.seat) &&
+            player.handCount > 0 &&
+            !player.resigned,
+        )
+  const choices: readonly MenuSeatChoice[] = legal.map((player) => ({
+    seat: player.seat,
+    name: nameOf(player.seat),
+    enabled: true,
+    reason: null,
+  }))
+  const holder = bomb?.holder ?? seat
+  return {
+    title: "The Bomb",
+    note: `Held by ${nameOf(holder)}.`,
+    options: [
+      {
+        id: "pass",
+        kind: "target",
+        label: "Pass the Bomb",
+        detail: null,
+        enabled: choices.length > 0,
+        reason: choices.length > 0 ? null : "No legal next holder",
+        choices,
+        action: (target) => ({ t: "claim", role: "anarchist", target }),
+      },
+      plain("defuse", "Defuse", null, true, null, () => ({
+        t: "claim",
+        role: "anarchist",
+        target: null,
+      })),
+    ],
+  }
+}
+
+/** Spy's second action reuses the turn menu, plus a Stop that ends the turn. */
+const spySecondMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string): WindowMenu => {
+  const menu = turnMenu(view, seat, nameOf)
+  return {
+    ...menu,
+    title: "Second action",
+    options: [...menu.options, plain("stop", "Stop", null, true, null, () => ({ t: "pass" }))],
+  }
+}
+
+/** Plantation payout is automatic; the active seat only acknowledges it. */
+const plantationPayoutMenu = (view: G54View, nameOf: (seat: SeatId) => string): WindowMenu => ({
+  title: "Plantation payout",
+  note: claimNote(view, nameOf),
+  options: [plain("continue", "Continue", null, true, null, () => ({ t: "no" }))],
+})
+
+/**
+ * The controls the open window offers the viewer, or null when no window is open
+ * or the viewer is not owed.
  */
 export const menuOf = (
   view: G54View,
@@ -380,6 +692,8 @@ export const menuOf = (
   switch (view.window.purpose) {
     case "turn":
       return turnMenu(view, seat, nameOf)
+    case "spy-second":
+      return spySecondMenu(view, seat, nameOf)
     case "challenge-claim":
     case "challenge-block":
       return challengeMenu(view, view.window.purpose, nameOf)
@@ -392,7 +706,31 @@ export const menuOf = (
       return revealMenu(view)
     case "keep":
       return keepMenu(view)
-    default:
-      return null
+    case "crime-pay":
+      return crimePayMenu(view, seat, nameOf)
+    case "protestor-fund":
+      return fundMenu(view, seat, nameOf)
+    case "producer-give":
+      return producerGiveMenu(view, nameOf)
+    case "writer-draw":
+      return writerDrawMenu(view, seat, nameOf)
+    case "customs-mark":
+      return customsMarkMenu(view, nameOf)
+    case "socialist-give":
+      return socialistGiveMenu(view, seat, nameOf)
+    case "socialist-keep":
+      return socialistKeepMenu(view)
+    case "capitalist":
+      return massClaimMenu(view, nameOf)
+    case "lawyer":
+      return lawyerMenu(view, nameOf)
+    case "reactive-intellectual":
+      return reactiveMenu(view, "intellectual", nameOf)
+    case "reactive-missionary":
+      return reactiveMenu(view, "missionary", nameOf)
+    case "bomb":
+      return bombMenu(view, seat, nameOf)
+    case "plantation-payout":
+      return plantationPayoutMenu(view, nameOf)
   }
 }

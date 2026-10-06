@@ -13,6 +13,7 @@ import {
   type G54State,
   type G54View,
 } from "#shared/core/lockstep/games/g54/index.ts"
+import type { RoleId } from "#shared/core/lockstep/games/g54/roles.ts"
 import { FORCED_COUP_COINS } from "#shared/core/lockstep/games/g54/windows.ts"
 import { seatId, type SeatId } from "#shared/rooms/ids.ts"
 import { menuOf, type MenuOption } from "../window-menu.ts"
@@ -47,6 +48,11 @@ const withCoins = (state: G54State, seat: SeatId, coins: number): G54State => ({
   players: state.players.map((player) => (player.seat === seat ? { ...player, coins } : player)),
 })
 
+const withHand = (state: G54State, seat: SeatId, hand: readonly RoleId[]): G54State => ({
+  ...state,
+  players: state.players.map((player) => (player.seat === seat ? { ...player, hand } : player)),
+})
+
 const richView = (): G54View => {
   const state = genesis()
   const rich: G54State = {
@@ -71,6 +77,58 @@ const targetOption = (
   const option = optionOf(menu!.options, id)
   if (option.kind !== "target") throw new Error(`option ${id} is not a target option`)
   return option
+}
+
+const cardOption = (
+  menu: ReturnType<typeof menuOf>,
+  id: string,
+): Extract<MenuOption, { kind: "card" }> => {
+  const option = optionOf(menu!.options, id)
+  if (option.kind !== "card") throw new Error(`option ${id} is not a card option`)
+  return option
+}
+
+const roleOption = (
+  menu: ReturnType<typeof menuOf>,
+  id: string,
+): Extract<MenuOption, { kind: "role" }> => {
+  const option = optionOf(menu!.options, id)
+  if (option.kind !== "role") throw new Error(`option ${id} is not a role option`)
+  return option
+}
+
+const swapOption = (
+  menu: ReturnType<typeof menuOf>,
+  id: string,
+): Extract<MenuOption, { kind: "swap" }> => {
+  const option = optionOf(menu!.options, id)
+  if (option.kind !== "swap") throw new Error(`option ${id} is not a swap option`)
+  return option
+}
+
+const plainOption = (
+  menu: ReturnType<typeof menuOf>,
+  id: string,
+): Extract<MenuOption, { kind: "plain" }> => {
+  const option = optionOf(menu!.options, id)
+  if (option.kind !== "plain") throw new Error(`option ${id} is not a plain option`)
+  return option
+}
+
+/** Fold a challenge or block window with every seat passing. */
+const allPass = (state: G54State): G54State =>
+  fold(state, [ANN, { t: "pass" }], [BOB, { t: "pass" }], [CARA, { t: "pass" }])
+
+/** Fold a claim through its challenge window with every seat passing. */
+const claimSurvives = (state: G54State, claim: G54Action): G54State =>
+  allPass(fold(state, [ANN, claim]))
+
+/** A Guerrilla hit on BOB driven through the block and execution to his reactive window. */
+const toReactive = (role: string): G54State => {
+  const armed = withCoins(genesis(["banker", "director", "guerrilla", role, "politician"]), ANN, 4)
+  const claimed = claimSurvives(armed, { t: "claim", role: "guerrilla", target: BOB })
+  const blocked = fold(claimed, [BOB, { t: "pass" }])
+  return fold(blocked, [BOB, { t: "reveal", index: 0 }])
 }
 
 test("the turn menu lists the general actions and the non-reactive role claims", () => {
@@ -129,21 +187,33 @@ test("a seat the open window does not owe gets no menu", () => {
   expect(menuOf(projected, BOB, nameOf)).toBeNull()
 })
 
-test("a purpose with no handler yet gets no menu", () => {
+test("writer-draw offers another draw or keep, and disables pay under 1 coin", () => {
   const claimed = fold(genesis(["banker", "writer", "guerrilla", "politician", "peacekeeper"]), [
     ANN,
     { t: "claim", role: "writer", target: null },
   ])
-  const resolved = fold(
-    claimed,
-    [ANN, { t: "pass" }],
-    [BOB, { t: "pass" }],
-    [CARA, { t: "pass" }],
-  )
-  const projected = project(resolved, ANN)
+  const resolved = allPass(claimed)
+  const broke = withCoins(resolved, ANN, 0)
+  const projected = project(broke, ANN)
   expect(projected.window?.purpose).toBe("writer-draw")
   expect(projected.owedSeats).toContain(ANN)
-  expect(menuOf(projected, ANN, nameOf)).toBeNull()
+  const menu = menuOf(projected, ANN, nameOf)!
+  expect(menu.options.map((option) => option.id)).toEqual(["pay", "no"])
+  const pay = plainOption(menu, "pay")
+  expect(pay.action()).toEqual({ t: "pay" })
+  expect(pay.enabled).toBe(false)
+  expect(pay.reason).not.toBeNull()
+  expect(plainOption(menu, "no").action()).toEqual({ t: "no" })
+})
+
+test("writer-draw enables the pay option at 1 coin", () => {
+  const claimed = fold(genesis(["banker", "writer", "guerrilla", "politician", "peacekeeper"]), [
+    ANN,
+    { t: "claim", role: "writer", target: null },
+  ])
+  const resolved = allPass(claimed)
+  const menu = menuOf(project(withCoins(resolved, ANN, 1), ANN), ANN, nameOf)!
+  expect(plainOption(menu, "pay").enabled).toBe(true)
 })
 
 test("a general claim excludes the Peacekeeper but a Coup keeps it", () => {
@@ -401,3 +471,253 @@ test("a resigned rival is excluded from every target picker", () => {
   ])
   expect(targetOption(menu, "coup").choices.map((choice) => choice.seat)).toEqual([CARA])
 })
+
+test("a resigned rival is excluded from the menu's role-claim picker", () => {
+  // The engine's `targetable` now rejects a resigned seat, so the picker must too.
+  const resigned: G54State = { ...genesis(), resigned: [BOB] }
+  const politician = targetOption(menuOf(project(resigned, ANN), ANN, nameOf)!, "claim-politician")
+  expect(politician.choices.map((choice) => choice.seat)).not.toContain(BOB)
+})
+
+// ---------------------------------------------------------------------------
+// Unit 8. The role sub-windows.
+// ---------------------------------------------------------------------------
+
+test("crime-pay offers Pay 2 or Refuse to the target only", () => {
+  const state = withCoins(
+    genesis(["banker", "director", "crime-boss", "peacekeeper", "politician"]),
+    ANN,
+    5,
+  )
+  const resolved = allPass(fold(state, [ANN, { t: "claim", role: "crime-boss", target: BOB }]))
+  expect(project(resolved, BOB).window?.purpose).toBe("crime-pay")
+  const menu = menuOf(project(resolved, BOB), BOB, nameOf)!
+  expect(menu.options.map((option) => option.id)).toEqual(["pay", "no"])
+  expect(plainOption(menu, "pay").action()).toEqual({ t: "pay" })
+  expect(plainOption(menu, "no").action()).toEqual({ t: "no" })
+  expect(menuOf(project(resolved, ANN), ANN, nameOf)).toBeNull()
+  const paid = fold(resolved, [BOB, { t: "pay" }])
+  expect(project(paid, ANN).players.find((player) => player.seat === ANN)?.coins).toBe(7)
+  expect(project(paid, BOB).players.find((player) => player.seat === BOB)?.coins).toBe(0)
+})
+
+test("protestor-fund offers Fund for 3 or Decline to every rival but the target", () => {
+  const state = withCoins(
+    genesis(["banker", "director", "guerrilla", "protestor", "politician"]),
+    ANN,
+    2,
+  )
+  const resolved = allPass(fold(state, [ANN, { t: "claim", role: "protestor", target: BOB }]))
+  const projected = project(resolved, ANN)
+  expect(projected.window?.purpose).toBe("protestor-fund")
+  expect(projected.owedSeats).toEqual([ANN, CARA])
+  const menu = menuOf(projected, ANN, nameOf)!
+  expect(menu.options.map((option) => option.id)).toEqual(["pay", "no"])
+  expect(plainOption(menu, "pay").enabled).toBe(false)
+  expect(plainOption(menu, "pay").action()).toEqual({ t: "pay" })
+  expect(plainOption(menu, "no").action()).toEqual({ t: "no" })
+  expect(menuOf(projected, BOB, nameOf)).toBeNull()
+  const funded = withCoins(resolved, CARA, 3)
+  expect(plainOption(menuOf(project(funded, CARA), CARA, nameOf)!, "pay").enabled).toBe(true)
+  expect(project(fold(funded, [CARA, { t: "pay" }]), ANN).window?.purpose).toBe("block")
+})
+
+test("producer-give offers a card picker over the partner's hand", () => {
+  const state = genesis(["banker", "producer", "guerrilla", "peacekeeper", "politician"])
+  const survived = allPass(fold(state, [ANN, { t: "claim", role: "producer", target: BOB }]))
+  expect(project(survived, BOB).window?.purpose).toBe("block")
+  const give = fold(survived, [BOB, { t: "pass" }])
+  const projected = project(give, BOB)
+  expect(projected.window?.purpose).toBe("producer-give")
+  const option = cardOption(menuOf(projected, BOB, nameOf)!, "give")
+  expect(option.choices.map((choice) => choice.index)).toEqual(projected.myHand.map((_, i) => i))
+  expect(option.choices.map((choice) => choice.role)).toEqual([...projected.myHand])
+  expect(option.action(1)).toEqual({ t: "give", index: 1 })
+  expect(menuOf(projected, ANN, nameOf)).toBeNull()
+})
+
+test("customs-mark offers a role picker and builds a targetless claim", () => {
+  const state = genesis(["banker", "director", "guerrilla", "customs-officer", "politician"])
+  const resolved = allPass(fold(state, [ANN, { t: "claim", role: "customs-officer", target: null }]))
+  const projected = project(resolved, ANN)
+  expect(projected.window?.purpose).toBe("customs-mark")
+  const option = roleOption(menuOf(projected, ANN, nameOf)!, "mark")
+  expect(option.choices.map((choice) => choice.role)).toEqual([...projected.roles])
+  expect(option.action("banker")).toEqual({ t: "claim", role: "banker", target: null })
+  const marked = fold(resolved, [ANN, { t: "claim", role: "banker", target: null }])
+  expect(project(marked, ANN).tokens.tax).toEqual({ role: "banker", holder: ANN })
+})
+
+test("socialist-give offers a card picker and Pay 1 to the target", () => {
+  const state = genesis(["banker", "director", "guerrilla", "socialist", "politician"])
+  const survived = allPass(fold(state, [ANN, { t: "claim", role: "socialist", target: null }]))
+  const give = fold(survived, [BOB, { t: "pass" }])
+  const projected = project(give, BOB)
+  expect(projected.window?.purpose).toBe("socialist-give")
+  const menu = menuOf(projected, BOB, nameOf)!
+  expect(menu.options.map((option) => option.id)).toEqual(["give", "pay"])
+  expect(cardOption(menu, "give").action(0)).toEqual({ t: "give", index: 0 })
+  expect(plainOption(menu, "pay").action()).toEqual({ t: "pay" })
+  expect(menuOf(projected, ANN, nameOf)).toBeNull()
+})
+
+test("socialist-keep offers a two-card swap with the pool offset past the hand", () => {
+  const state = genesis(["banker", "director", "guerrilla", "socialist", "politician"])
+  let s = allPass(fold(state, [ANN, { t: "claim", role: "socialist", target: null }]))
+  s = fold(s, [BOB, { t: "pass" }])
+  s = fold(s, [BOB, { t: "pay" }])
+  s = fold(s, [CARA, { t: "pass" }])
+  s = fold(s, [CARA, { t: "give", index: 0 }])
+  const projected = project(s, ANN)
+  expect(projected.window?.purpose).toBe("socialist-keep")
+  expect(projected.mySocialist).toHaveLength(1)
+  const option = swapOption(menuOf(projected, ANN, nameOf)!, "keep")
+  expect(option.ownChoices.map((choice) => choice.index)).toEqual(
+    projected.myHand.map((_, i) => i),
+  )
+  expect(option.poolChoices.map((choice) => choice.index)).toEqual([projected.myHand.length])
+  expect(option.poolChoices.map((choice) => choice.role)).toEqual([...(projected.mySocialist ?? [])])
+  expect(option.action(0, projected.myHand.length)).toEqual({
+    t: "keep",
+    indices: [0, projected.myHand.length],
+  })
+  expect(menuOf(projected, BOB, nameOf)).toBeNull()
+})
+
+test("socialist-keep stays actionable when both rivals paid coins and the pool is empty", () => {
+  const state = genesis(["banker", "director", "guerrilla", "socialist", "politician"])
+  let s = allPass(fold(state, [ANN, { t: "claim", role: "socialist", target: null }]))
+  s = fold(s, [BOB, { t: "pass" }])
+  s = fold(s, [BOB, { t: "pay" }])
+  s = fold(s, [CARA, { t: "pass" }])
+  s = fold(s, [CARA, { t: "pay" }])
+  const projected = project(s, ANN)
+  expect(projected.window?.purpose).toBe("socialist-keep")
+  expect(projected.mySocialist).toEqual([])
+  const option = swapOption(menuOf(projected, ANN, nameOf)!, "keep")
+  expect(option.enabled).toBe(true)
+  expect(option.poolChoices).toEqual([])
+  expect(option.action(0, 0)).toEqual({ t: "keep", indices: [0, 0] })
+})
+
+test("capitalist offers Claim to collect with the pending role, or Pass", () => {
+  const state = genesis(["capitalist", "director", "guerrilla", "peacekeeper", "politician"])
+  const resolved = allPass(fold(state, [ANN, { t: "claim", role: "capitalist", target: null }]))
+  const projected = project(resolved, BOB)
+  expect(projected.window?.purpose).toBe("capitalist")
+  expect(projected.pending?.role).toBe("capitalist")
+  const menu = menuOf(projected, BOB, nameOf)!
+  expect(menu.options.map((option) => option.id)).toEqual(["claim", "no"])
+  expect(plainOption(menu, "claim").action()).toEqual({
+    t: "claim",
+    role: "capitalist",
+    target: null,
+  })
+  expect(plainOption(menu, "no").action()).toEqual({ t: "no" })
+  expect(menuOf(project(resolved, ANN), ANN, nameOf)).toBeNull()
+  const collected = fold(resolved, [BOB, { t: "claim", role: "capitalist", target: null }])
+  expect(project(collected, ANN).window?.purpose).toBe("challenge-claim")
+})
+
+test("lawyer offers Claim the estate to every alive seat", () => {
+  const state = withCoins(
+    genesis(["banker", "director", "guerrilla", "lawyer", "politician"]),
+    ANN,
+    8,
+  )
+  const armed = withCoins(withHand(state, BOB, ["banker"]), BOB, 6)
+  const coup = fold(armed, [ANN, { t: "coup", target: BOB }])
+  const resolved = fold(coup, [BOB, { t: "reveal", index: 0 }])
+  const projected = project(resolved, ANN)
+  expect(projected.window?.purpose).toBe("lawyer")
+  const menu = menuOf(projected, ANN, nameOf)!
+  expect(menu.options.map((option) => option.id)).toEqual(["claim", "no"])
+  expect(plainOption(menu, "claim").action()).toEqual({ t: "claim", role: "lawyer", target: null })
+  expect(plainOption(menu, "no").action()).toEqual({ t: "no" })
+  expect(menuOf(project(resolved, CARA), CARA, nameOf)?.options.map((option) => option.id)).toEqual([
+    "claim",
+    "no",
+  ])
+})
+
+test("reactive-intellectual offers Claim Intellectual or Decline", () => {
+  const projected = project(toReactive("intellectual"), BOB)
+  expect(projected.window?.purpose).toBe("reactive-intellectual")
+  const menu = menuOf(projected, BOB, nameOf)!
+  expect(menu.options.map((option) => option.id)).toEqual(["claim", "no"])
+  expect(plainOption(menu, "claim").action()).toEqual({
+    t: "claim",
+    role: "intellectual",
+    target: null,
+  })
+  expect(menuOf(projected, ANN, nameOf)).toBeNull()
+})
+
+test("reactive-missionary offers Claim Missionary or Decline", () => {
+  const projected = project(toReactive("missionary"), BOB)
+  expect(projected.window?.purpose).toBe("reactive-missionary")
+  const menu = menuOf(projected, BOB, nameOf)!
+  expect(menu.options.map((option) => option.id)).toEqual(["claim", "no"])
+  expect(plainOption(menu, "claim").action()).toEqual({
+    t: "claim",
+    role: "missionary",
+    target: null,
+  })
+})
+
+test("bomb offers the legal next holders and Defuse, mirroring bombPassable", () => {
+  const state = withCoins(
+    genesis(["banker", "director", "anarchist", "peacekeeper", "politician"]),
+    ANN,
+    3,
+  )
+  const bombed = fold(state, [ANN, { t: "claim", role: "anarchist", target: BOB }])
+  const projected = project(bombed, BOB)
+  expect(projected.window?.purpose).toBe("bomb")
+  expect(projected.tokens.bomb).toEqual({ holder: BOB, prior: [ANN], move: null })
+  const menu = menuOf(projected, BOB, nameOf)!
+  expect(menu.options.map((option) => option.id)).toEqual(["pass", "defuse"])
+  const pass = targetOption(menu, "pass")
+  // Ann is a prior holder, so Cara is the only legal next holder.
+  expect(pass.choices.map((choice) => choice.seat)).toEqual([CARA])
+  expect(pass.action(CARA)).toEqual({ t: "claim", role: "anarchist", target: CARA })
+  expect(plainOption(menu, "defuse").action()).toEqual({
+    t: "claim",
+    role: "anarchist",
+    target: null,
+  })
+  expect(menuOf(projected, ANN, nameOf)).toBeNull()
+  expect(project(fold(bombed, [BOB, pass.action(CARA)]), BOB).window?.purpose).toBe(
+    "challenge-claim",
+  )
+})
+
+test("spy-second reuses the turn menu and adds a Stop", () => {
+  const state = genesis(["spy", "director", "guerrilla", "peacekeeper", "politician"])
+  const resolved = allPass(fold(state, [ANN, { t: "claim", role: "spy", target: null }]))
+  const projected = project(resolved, ANN)
+  expect(projected.window?.purpose).toBe("spy-second")
+  const menu = menuOf(projected, ANN, nameOf)!
+  const ids = menu.options.map((option) => option.id)
+  expect(ids).toContain("income")
+  expect(ids).toContain("coup")
+  expect(ids[ids.length - 1]).toBe("stop")
+  expect(plainOption(menu, "stop").action()).toEqual({ t: "pass" })
+  expect(menuOf(projected, BOB, nameOf)).toBeNull()
+})
+
+test("plantation-payout offers a single Continue acknowledgement", () => {
+  const state = genesis(["plantation-owner", "director", "guerrilla", "peacekeeper", "politician"])
+  const massClaim = allPass(fold(state, [ANN, { t: "claim", role: "plantation-owner", target: null }]))
+  expect(project(massClaim, ANN).window?.purpose).toBe("capitalist")
+  const resolved = allPass(massClaim)
+  const projected = project(resolved, ANN)
+  expect(projected.window?.purpose).toBe("plantation-payout")
+  const menu = menuOf(projected, ANN, nameOf)!
+  expect(menu.options.map((option) => option.id)).toEqual(["continue"])
+  expect(plainOption(menu, "continue").action()).toEqual({ t: "no" })
+  expect(menuOf(projected, BOB, nameOf)).toBeNull()
+  const paid = fold(resolved, [ANN, { t: "no" }])
+  expect(project(paid, ANN).players.find((player) => player.seat === ANN)?.coins).toBe(4)
+})
+

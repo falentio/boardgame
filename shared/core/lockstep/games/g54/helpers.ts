@@ -85,6 +85,7 @@ export const isAlly = (state: G54State, a: SeatId, b: SeatId): boolean =>
 export const targetable = (state: G54State, claimant: SeatId, seat: SeatId): boolean =>
   seat !== claimant &&
   isAlive(playerOf(state, seat)) &&
+  !isResigned(state, seat) &&
   state.peacekeeping !== seat &&
   !isAlly(state, claimant, seat);
 
@@ -105,7 +106,10 @@ export const bombPassable = (state: G54State, bomb: BombState, target: SeatId): 
 
 /** Priest has no target selection, so it reaches allies but still spares the Peacekeeper. */
 export const priestTargetable = (state: G54State, claimant: SeatId, seat: SeatId): boolean =>
-  seat !== claimant && isAlive(playerOf(state, seat)) && state.peacekeeping !== seat;
+  seat !== claimant &&
+  isAlive(playerOf(state, seat)) &&
+  !isResigned(state, seat) &&
+  state.peacekeeping !== seat;
 
 /** Move up to `amount` coins from `from` to `to`; partial when the source is short. */
 export const transferCoins = (
