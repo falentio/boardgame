@@ -1113,10 +1113,13 @@ export const stepState = (state: G54State, frame: Frame<G54Action>, rng: Random)
   return drain(resolver(folded, top.window, frame, rng), rng);
 };
 
-export const seatsOwedFor = (state: G54State, _index: FrameIndex): readonly SeatId[] => {
+export const seatsOwedNow = (state: G54State): readonly SeatId[] => {
   if (isTerminal(state)) return [];
   const top = state.steps[0];
   if (top === undefined || top.kind !== "window") return [state.active];
   const owed = owedSeats(state, top.window);
   return owed.length > 0 ? owed : [state.active];
 };
+
+export const seatsOwedFor = (state: G54State, _index: FrameIndex): readonly SeatId[] =>
+  seatsOwedNow(state);

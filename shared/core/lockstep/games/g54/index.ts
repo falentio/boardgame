@@ -22,7 +22,7 @@ import {
   type TaxMark,
   type Window,
 } from "./state.ts";
-import { isTerminal, seatsOwedFor, stepState, winnerOf } from "./windows.ts";
+import { isTerminal, seatsOwedFor, seatsOwedNow, stepState, winnerOf } from "./windows.ts";
 
 export { G54Error } from "./error.ts";
 export type { G54Action } from "./actions.ts";
@@ -79,6 +79,8 @@ export interface G54View {
   readonly treasury: number;
   readonly bank: number;
   readonly active: SeatId;
+  /** The seats the open window waits on; public information. */
+  readonly owedSeats: readonly SeatId[];
   readonly turn: number;
   readonly window: WindowView | null;
   readonly pending: PendingView | null;
@@ -161,6 +163,7 @@ export const g54: GameDefinition<G54State, G54Action, G54Setup, G54View> = {
       treasury: state.treasury,
       bank: state.bank,
       active: state.active,
+      owedSeats: [...seatsOwedNow(state)],
       turn: state.turn,
       window,
       pending: pendingView(state.pending),
