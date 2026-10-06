@@ -1,49 +1,68 @@
 <script setup lang="ts">
+import { computed } from "vue"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
+import { initialsOf } from "#shared/users/initials.ts"
 import type { SeatRow } from "@/composables/room-domain.ts"
 
-defineProps<{ seats: readonly SeatRow[] }>()
+const props = defineProps<{ seats: readonly SeatRow[] }>()
 
 const labelOf = (seat: SeatRow): string => {
   if (seat.occupant === null) return "Open"
   if (seat.isMe) return "You"
-  if (seat.isHost) return "Host"
   return "Player"
 }
 
-const initialsOf = (name: string | null): string => {
-  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return "?"
-  const first = parts[0]?.[0] ?? ""
-  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : ""
-  return (first + last).toUpperCase()
-}
+const hostSeat = computed(() => props.seats.find((seat) => seat.isHost))
+const others = computed(() => props.seats.filter((seat) => !seat.isHost))
 </script>
 
 <template>
-  <ul class="flex flex-col gap-2">
-    <li
-      v-for="seat in seats"
-      :key="seat.index"
-      class="flex items-center justify-between gap-3 rounded-lg border px-3 py-2"
-      :data-seat="seat.index"
+  <div class="flex flex-col gap-4">
+    <div
+      v-if="hostSeat"
+      class="flex items-center gap-4 rounded-lg border bg-muted/40 p-4"
+      :data-seat="hostSeat.index"
     >
-      <span class="text-sm font-medium tabular-nums">Seat {{ seat.index + 1 }}</span>
-      <div class="flex items-center gap-2">
-        <Avatar v-if="seat.occupant !== null" class="h-8 w-8 rounded-lg">
+      <Avatar class="h-12 w-12 rounded-full">
+        <AvatarImage :src="hostSeat.image" :alt="hostSeat.name ?? 'Host'" />
+        <AvatarFallback class="rounded-full">
+          {{ initialsOf(hostSeat.name) }}
+        </AvatarFallback>
+      </Avatar>
+      <div class="flex min-w-0 flex-col">
+        <span class="truncate text-base leading-tight font-semibold">
+          {{ hostSeat.name ?? "Host" }}
+        </span>
+        <span class="text-muted-foreground text-xs leading-tight">
+          Host<template v-if="hostSeat.isMe"> · You</template>
+        </span>
+      </div>
+    </div>
+
+    <ul class="flex flex-col gap-1">
+      <li
+        v-for="seat in others"
+        :key="seat.index"
+        class="flex min-w-0 items-center gap-3 rounded-lg px-2 py-1.5"
+        :data-seat="seat.index"
+      >
+        <Avatar v-if="seat.occupant !== null" class="h-8 w-8 rounded-full">
           <AvatarImage :src="seat.image" :alt="seat.name ?? labelOf(seat)" />
-          <AvatarFallback class="rounded-lg">
+          <AvatarFallback class="rounded-full">
             {{ initialsOf(seat.name) }}
           </AvatarFallback>
         </Avatar>
-        <span v-if="seat.occupant !== null && seat.name !== null" class="text-sm">
-          {{ seat.name }}
+        <span
+          v-else
+          class="border-muted-foreground/40 text-muted-foreground flex h-8 w-8 items-center justify-center rounded-full border border-dashed text-xs tabular-nums"
+        >
+          {{ seat.index + 1 }}
         </span>
-        <Badge :variant="seat.occupant !== null ? 'secondary' : 'outline'">
-          {{ labelOf(seat) }}
-        </Badge>
-      </div>
-    </li>
-  </ul>
+        <span class="truncate text-sm leading-normal" :class="seat.occupant === null ? 'text-muted-foreground' : ''">
+          {{ seat.occupant === null ? "Open seat" : seat.name ?? labelOf(seat) }}
+        </span>
+        <span v-if="seat.isMe" class="text-muted-foreground ms-auto text-xs leading-none">You</span>
+      </li>
+    </ul>
+  </div>
 </template>
