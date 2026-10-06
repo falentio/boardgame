@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
 import SeatList from "@/components/room/SeatList.vue"
-import SeatDisplayVariants from "@/components/room/variants/SeatDisplayVariants.vue"
 import ShareLink from "@/components/room/ShareLink.vue"
 import { specOf } from "#shared/core/lockstep/games/g54/roles.ts"
 import { parseRoomCode } from "#shared/rooms/code.ts"
@@ -24,8 +23,6 @@ const { user } = await useAuthSession()
 const viewer = computed(() => (user.value ? userId(user.value.id) : null))
 
 const { lobby, refetch, join } = useLobby(code, viewer)
-
-const variantPreview = computed(() => route.query.variant !== undefined)
 
 const startError = ref("")
 const joining = ref(false)
@@ -130,8 +127,7 @@ const onJoin = async () => {
             <p class="text-sm leading-none font-medium">
               Seats
             </p>
-            <SeatDisplayVariants v-if="variantPreview" :seats="lobby.seats" />
-            <SeatList v-else :seats="lobby.seats" />
+            <SeatList :seats="lobby.seats" />
             <p role="status" class="text-muted-foreground text-sm leading-normal tabular-nums">
               {{ lobby.status.kind === "full"
                 ? "All seats filled"

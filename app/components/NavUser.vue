@@ -2,6 +2,7 @@
 import { computed } from "vue"
 import { ChevronsUpDown, LogOut } from "@lucide/vue"
 
+import { initialsOf } from "#shared/users/initials.ts"
 import {
   Avatar,
   AvatarFallback,
@@ -35,12 +36,7 @@ const { isMobile } = useSidebar()
 
 const initials = computed(() => {
   const name = props.user.name.trim()
-  const source = name.length > 0 ? name : props.user.email
-  const parts = source.split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return "?"
-  const first = parts[0]?.[0] ?? ""
-  const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? "" : ""
-  return (first + last).toUpperCase()
+  return initialsOf(name.length > 0 ? name : props.user.email)
 })
 </script>
 
