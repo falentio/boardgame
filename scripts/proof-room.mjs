@@ -31,7 +31,20 @@ const pass = (msg) => console.log(`PASS: ${msg}`);
 
 mkdirSync(PROOF, { recursive: true });
 
+// All worktrees share one node_modules/.vite dep cache, so two dev servers
+// writing it corrupt the cache and the page stops hydrating. Reuse a server
+// that already answers and only spawn one when nothing is listening.
+const serverAnswers = async () => {
+  try {
+    const res = await fetch(`${BASE}/api/auth/ok`);
+    return res.ok;
+  } catch {
+    return false;
+  }
+};
+
 const startServer = async () => {
+  if (await serverAnswers()) return { server: null, reused: true };
   const server = spawn(
     "pnpm",
     ["exec", "nuxt", "dev", "--port", String(PORT), "--host", "localhost"],
@@ -41,10 +54,7 @@ const startServer = async () => {
   server.stdout.on("data", (d) => (log += d));
   server.stderr.on("data", (d) => (log += d));
   for (let i = 0; i < 180; i++) {
-    try {
-      const res = await fetch(`${BASE}/api/auth/ok`);
-      if (res.status < 500) return { server, log: () => log };
-    } catch {}
+    if (await serverAnswers()) return { server, reused: false };
     await delay(1000);
   }
   throw new Error(`dev server never became ready:\n${log}`);
@@ -186,15 +196,22 @@ const launchBrowser = async (label, debugPort) => {
       return true;
     },
     // A hydration marker appears before a control's listener is live, so the
-    // first click can be dropped; retry until the effect shows.
+    // first click can be dropped; retry until the effect shows. A previous
+    // click may already have removed the element, so an effect check first
+    // distinguishes "already done" from "nothing to click".
     async clickUntil(selector, effect, { attempts = 8 } = {}) {
+      const effectMet = () => page.eval(`!!(${effect})`);
       for (let i = 0; i < attempts; i++) {
+        if (await effectMet()) return true;
         const ok = await page.eval(
           `(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return false; el.click(); return true; })()`,
         );
-        if (!ok) throw new Error(`clickUntil: no element for ${selector}`);
+        if (!ok) {
+          if (await effectMet()) return true;
+          throw new Error(`clickUntil: no element for ${selector}`);
+        }
         for (let wait = 0; wait < 6; wait++) {
-          if (await page.eval(`!!(${effect})`)) return true;
+          if (await effectMet()) return true;
           await delay(200);
         }
       }
@@ -220,7 +237,8 @@ const clickButton = (text) =>
   `(() => { const b = ${buttonByText(text)}; if (!b) return false; b.click(); return true; })()`;
 
 const main = async () => {
-  const { server } = await startServer();
+  const { server, reused } = await startServer();
+  if (reused) console.warn("note: reusing an already-running dev server; not validated as this checkout");
   const hostBrowser = await launchBrowser("host", PORT + 1);
   const guestBrowser = await launchBrowser("guest", PORT + 2);
   try {
@@ -234,9 +252,9 @@ const main = async () => {
 
     await hostBrowser.page.goto(`${BASE}/rooms/new`);
     await hostBrowser.page.waitForHydration();
-    const pickerReady = await hostBrowser.page.waitFor("document.querySelectorAll('[data-role-option]').length === 25");
-    if (!pickerReady) fail("the role picker did not render all 25 roles");
-    else pass("the create page rendered the 25-role picker");
+    const pickerReady = await hostBrowser.page.waitFor("document.querySelectorAll('[data-role-option]').length === 31");
+    if (!pickerReady) fail("the role picker did not render every role");
+    else pass("the create page rendered the 31-role picker");
 
     const starterSelected = await hostBrowser.page.eval(
       "document.querySelectorAll('[data-role-option][aria-pressed=true]').length",
@@ -374,9 +392,11 @@ const main = async () => {
   } finally {
     hostBrowser.close();
     guestBrowser.close();
-    server.kill("SIGTERM");
-    await delay(1500);
-    if (!server.killed) server.kill("SIGKILL");
+    if (server) {
+      server.kill("SIGTERM");
+      await delay(1500);
+      if (!server.killed) server.kill("SIGKILL");
+    }
   }
 };
 
