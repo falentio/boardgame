@@ -1,3 +1,5 @@
+import type { GameEnvelope, GameEvents } from "../../../../shared/game/events.ts";
+import type { RoomCode } from "../../../../shared/rooms/ids.ts";
 import type { ChangeReason, RoomEvents } from "../../../../shared/rooms/events.ts";
 import type { Room } from "../../../../shared/rooms/room.ts";
 
@@ -28,3 +30,25 @@ export const throwingEvents = (error: Error): RoomEvents => ({
     throw error;
   },
 });
+
+export interface RecordedPublication {
+  readonly code: RoomCode;
+  readonly envelope: GameEnvelope;
+}
+
+export interface RecordingGameEvents {
+  readonly gameEvents: GameEvents;
+  readonly published: RecordedPublication[];
+}
+
+export const recordingGameEvents = (): RecordingGameEvents => {
+  const published: RecordedPublication[] = [];
+  return {
+    published,
+    gameEvents: {
+      published: async (code, envelope) => {
+        published.push({ code, envelope });
+      },
+    },
+  };
+};

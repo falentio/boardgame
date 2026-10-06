@@ -1,14 +1,17 @@
 import type { Hono } from "hono";
+import type { GameEvents } from "../../../shared/game/events.ts";
 import type { RoomEvents } from "../../../shared/rooms/events.ts";
 import { roomId } from "../../../shared/rooms/ids.ts";
 import { authFromEnv } from "../../utils/auth.ts";
 import { dbFromEnv, type CloudflareEnv } from "../../utils/db.ts";
+import { pusherGameEvents } from "../game/relay.ts";
 import { pusherConfigFromEnv } from "../realtime/config.ts";
 import { cryptoEntropy } from "./code-source.ts";
 import { createRoomApp } from "./http.ts";
 import { pusherRoomEvents } from "./pusher-events.ts";
 
 const noopEvents: RoomEvents = { changed: async () => {} };
+const noopGameEvents: GameEvents = { published: async () => {} };
 
 // Keyed by the env object, which is immutable for an isolate's lifetime, so a
 // cached app can never go stale.
@@ -25,6 +28,7 @@ export const roomAppFor = (env: CloudflareEnv): Hono => {
       newId: () => roomId(crypto.randomUUID()),
       now: () => Date.now(),
       events: config ? pusherRoomEvents(config) : noopEvents,
+      gameEvents: config ? pusherGameEvents(config) : noopGameEvents,
     });
     appCache.set(env, app);
   }

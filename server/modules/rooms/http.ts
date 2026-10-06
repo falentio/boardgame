@@ -1,5 +1,6 @@
 import { Hono, type Context } from "hono";
 import { isRoleId, type RoleId } from "../../../shared/core/lockstep/games/g54/roles.ts";
+import { encodeEnvelope, parseEnvelope, type GameEvents } from "../../../shared/game/events.ts";
 import type { RoomEvents } from "../../../shared/rooms/events.ts";
 import type { AppAuth } from "../../utils/auth.ts";
 import type { Db } from "../../utils/db.ts";
@@ -28,6 +29,7 @@ export interface RoomAppDeps {
   newId: () => RoomId;
   now: () => number;
   events: RoomEvents;
+  gameEvents: GameEvents;
 }
 
 interface SeatView {
@@ -182,6 +184,25 @@ export const createRoomApp = (deps: RoomAppDeps): Hono => {
     const code = codeFrom(c);
     if (code === null) return badRequest(c, "code must be 8 chars CVCVCVCV");
     return respond(c, await joinRoom(serviceDeps, { code, user: userId(auth.user.id) }));
+  });
+
+  app.post("/:code/game", async (c) => {
+    const auth = await session(c);
+    if (!auth) return unauthorized(c);
+    const code = codeFrom(c);
+    if (code === null) return badRequest(c, "code must be 8 chars CVCVCVCV");
+    const body = await readObject(c);
+    if (body === null) return badRequest(c, "body must be a JSON object");
+    const envelope = parseEnvelope(body);
+    if (envelope.kind !== "ok") return badRequest(c, "malformed or stale game message");
+    const room = await getRoom(serviceDeps, code);
+    if (!room.ok) return c.json({ error: room.error }, statusFor(room.error.kind));
+    const sender = userId(auth.user.id);
+    if (!room.value.seats.some((seat) => seat.occupant === sender)) {
+      return c.json({ error: { kind: "not-found" } }, 403);
+    }
+    await deps.gameEvents.published(code, encodeEnvelope(envelope.body));
+    return c.body(null, 204);
   });
 
   app.patch("/:code", async (c) => {

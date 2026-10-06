@@ -7,7 +7,7 @@ import { authFromEnv, requireSession } from "../../../utils/auth.ts";
 import { cloudflareEnv } from "../../../utils/db.ts";
 import { createRoomApp } from "../http.ts";
 import { createTestDb, type TestDb } from "./d1-harness.ts";
-import { recordingEvents } from "./recording-events.ts";
+import { recordingEvents, recordingGameEvents } from "./recording-events.ts";
 
 const ORIGIN = "http://localhost:3000";
 
@@ -19,10 +19,12 @@ interface Account {
 let harness: TestDb;
 let idCounter = 0;
 let app: ReturnType<typeof createRoomApp>;
+let gameEvents: ReturnType<typeof recordingGameEvents>;
 
 beforeEach(async () => {
   harness = await createTestDb();
   idCounter = 0;
+  gameEvents = recordingGameEvents();
   app = createRoomApp({
     db: harness.db,
     auth: authFromEnv(harness.env),
@@ -30,6 +32,7 @@ beforeEach(async () => {
     newId: () => roomId(`room-${String((idCounter += 1))}`),
     now: () => 1000,
     events: recordingEvents().events,
+    gameEvents: gameEvents.gameEvents,
   });
 });
 
@@ -192,6 +195,48 @@ test("DELETE /api/rooms/:code removes the room for the host and 403 for others",
   expect(gone.status).toBe(404);
 });
 
+test("POST /api/rooms/:code/game relays a member's envelope and drops smuggled fields", async () => {
+  const host = await signUp("host@example.com");
+  const created = await call("/api/rooms", { method: "POST", cookie: host.cookie, body: createBody() });
+  const { room } = (await created.json()) as { room: { code: string } };
+
+  const posted = await call(`/api/rooms/${room.code}/game`, {
+    method: "POST",
+    cookie: host.cookie,
+    body: JSON.stringify({ v: 1, body: { kind: "sync" }, smuggled: "drop-me" }),
+  });
+  expect(posted.status).toBe(204);
+  expect(gameEvents.published).toHaveLength(1);
+  expect(gameEvents.published[0]!.envelope).toEqual({ v: 1, body: { kind: "sync" } });
+});
+
+test("POST /api/rooms/:code/game rejects a non-member with 403 and a bad envelope with 400", async () => {
+  const host = await signUp("host@example.com");
+  const outsider = await signUp("outsider@example.com");
+  const created = await call("/api/rooms", { method: "POST", cookie: host.cookie, body: createBody() });
+  const { room } = (await created.json()) as { room: { code: string } };
+
+  const denied = await call(`/api/rooms/${room.code}/game`, {
+    method: "POST",
+    cookie: outsider.cookie,
+    body: JSON.stringify({ v: 1, body: { kind: "sync" } }),
+  });
+  expect(denied.status).toBe(403);
+
+  const stale = await call(`/api/rooms/${room.code}/game`, {
+    method: "POST",
+    cookie: host.cookie,
+    body: JSON.stringify({ v: 2, body: { kind: "sync" } }),
+  });
+  expect(stale.status).toBe(400);
+
+  const anon = await call(`/api/rooms/${room.code}/game`, {
+    method: "POST",
+    body: JSON.stringify({ v: 1, body: { kind: "sync" } }),
+  });
+  expect(anon.status).toBe(401);
+});
+
 test("GET /api/rooms/:code accepts a lowercase, hand-typed code", async () => {
   const host = await signUp("host@example.com");
   const created = await call("/api/rooms", { method: "POST", cookie: host.cookie, body: createBody() });
@@ -303,6 +348,18 @@ test("POST /api/pusher/auth is 400 for a malformed channel and never signs an ar
 
   const missing = await callAuth(host.cookie, { socket_id: "1234.5678" });
   expect(missing.status).toBe(400);
+});
+
+test("POST /api/pusher/auth signs a private-game channel for a session", async () => {
+  const host = await signUp("host@example.com");
+  const response = await callAuth(host.cookie, {
+    socket_id: "1234.5678",
+    channel_name: "private-game-BAVOKUTI",
+  });
+  expect(response.status).toBe(200);
+  const auth = (response.body as { auth: string }).auth;
+  expect(auth.startsWith(`${AUTH_APP_KEY}:`)).toBe(true);
+  expect(auth).not.toBe(`${AUTH_APP_KEY}:${AUTH_SIGNATURE}`);
 });
 
 test("POST /api/pusher/auth is 503 when realtime is not configured", async () => {

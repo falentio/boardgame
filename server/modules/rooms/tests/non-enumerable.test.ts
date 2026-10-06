@@ -8,7 +8,7 @@ import { authFromEnv } from "../../../utils/auth.ts";
 import { createRoomApp } from "../http.ts";
 import * as store from "../store.ts";
 import { createTestDb, type TestDb } from "./d1-harness.ts";
-import { recordingEvents } from "./recording-events.ts";
+import { recordingEvents, recordingGameEvents } from "./recording-events.ts";
 
 const ORIGIN = "http://localhost:3000";
 
@@ -24,6 +24,7 @@ beforeEach(async () => {
     newId: () => roomId("room-1"),
     now: () => 1000,
     events: recordingEvents().events,
+    gameEvents: recordingGameEvents().gameEvents,
   });
 });
 
@@ -35,6 +36,7 @@ const ALLOWED_ROUTES: readonly string[] = [
   "POST /api/rooms",
   "GET /api/rooms/:code",
   "POST /api/rooms/:code/join",
+  "POST /api/rooms/:code/game",
   "PATCH /api/rooms/:code",
   "DELETE /api/rooms/:code",
 ];

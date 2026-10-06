@@ -2,7 +2,7 @@ import { parseRoomCode } from "../../../shared/rooms/code.ts";
 import { pusherConfigFromEnv } from "../../modules/realtime/config.ts";
 import { channelAuth } from "../../modules/realtime/pusher.ts";
 
-const CHANNEL_PREFIX = "private-room-";
+const PREFIXES = ["private-room-", "private-game-"] as const;
 
 export default defineEventHandler(async (event) => {
   await requireSession(event);
@@ -13,11 +13,12 @@ export default defineEventHandler(async (event) => {
   if (typeof socketId !== "string" || typeof channel !== "string") {
     throw createError({ statusCode: 400, statusMessage: "socket_id and channel_name are required" });
   }
-  if (
-    !channel.startsWith(CHANNEL_PREFIX) ||
-    parseRoomCode(channel.slice(CHANNEL_PREFIX.length)) === null
-  ) {
-    throw createError({ statusCode: 400, statusMessage: "channel_name must be private-room-<CODE>" });
+  const prefix = PREFIXES.find((p) => channel.startsWith(p));
+  if (prefix === undefined || parseRoomCode(channel.slice(prefix.length)) === null) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: "channel_name must be private-room-<CODE> or private-game-<CODE>",
+    });
   }
 
   const config = pusherConfigFromEnv(cloudflareEnv(event));
