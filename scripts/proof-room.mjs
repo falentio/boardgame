@@ -297,6 +297,31 @@ const main = async () => {
     else pass(`created the room ${code} and landed in its lobby`);
 
     await hostBrowser.page.waitForHydration();
+    const lobbyRoles = await hostBrowser.page.waitFor(
+      "document.querySelectorAll('[data-slot=role-card]').length === 5",
+      { timeoutMs: 12000 },
+    );
+    if (!lobbyRoles) {
+      fail(`the lobby should show the 5 chosen roles as role cards, found ${await hostBrowser.page.eval("document.querySelectorAll('[data-slot=role-card]').length")}`);
+    } else {
+      pass("the lobby shows the 5 chosen roles as role cards");
+    }
+    const roleStrip = await hostBrowser.page.eval(
+      `(() => {
+        const strip = document.querySelector('[data-slot=role-strip]');
+        if (!strip) return null;
+        const cards = [...strip.querySelectorAll('[data-slot=role-card]')];
+        const topOf = (el) => el.getBoundingClientRect().top;
+        const oneRow = new Set(cards.map(topOf)).size === 1;
+        return { scrolls: strip.scrollWidth > strip.clientWidth, oneRow, count: cards.length };
+      })()`,
+    );
+    if (roleStrip === null) fail("the lobby has no role strip");
+    else if (roleStrip.count !== 5) fail(`the role strip should hold 5 cards, got ${roleStrip.count}`);
+    else if (!roleStrip.oneRow) fail("the role cards should sit on one row, not wrap");
+    else if (!roleStrip.scrolls) fail("the role strip should scroll horizontally when the cards exceed its width");
+    else pass("the role cards sit on one scrollable row");
+
     const waitingShown = await hostBrowser.page.waitFor(
       `document.body.innerText.includes('Waiting for ${String(SEATS - 1)} more players')`,
       { timeoutMs: 12000 },

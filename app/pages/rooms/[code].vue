@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from "vue"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
+import RoleCard from "@/components/g54/RoleCard.vue"
 import SeatList from "@/components/room/SeatList.vue"
 import ShareLink from "@/components/room/ShareLink.vue"
-import { specOf } from "#shared/core/lockstep/games/g54/roles.ts"
 import { parseRoomCode } from "#shared/rooms/code.ts"
 import { userId } from "#shared/rooms/ids.ts"
 import { startGame } from "@/composables/start-game"
@@ -139,13 +138,14 @@ const onJoin = async () => {
             <p class="text-sm leading-none font-medium">
               Roles
             </p>
-            <ul class="flex flex-wrap gap-2">
-              <li v-for="role in lobby.room.roles" :key="role">
-                <Badge variant="outline">
-                  {{ specOf(role).name }}
-                </Badge>
-              </li>
-            </ul>
+            <div data-slot="role-strip" class="flex gap-3 overflow-x-auto pb-2">
+              <RoleCard
+                v-for="role in lobby.room.roles"
+                :key="role"
+                :role="role"
+                class="w-40 shrink-0"
+              />
+            </div>
           </div>
 
           <div class="flex flex-col gap-3">
