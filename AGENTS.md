@@ -1,0 +1,3 @@
+- Manage dev server process using `herdr` (use herdr skills)(only if herdr available)
+- Herdr pane for dev server process should named "DEV $PORT"(where $PORT should be replaced with the dev server PORT number)
+- at most 1 dev server per worktree
