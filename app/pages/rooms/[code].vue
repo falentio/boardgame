@@ -8,7 +8,6 @@ import SeatList from "@/components/room/SeatList.vue"
 import ShareLink from "@/components/room/ShareLink.vue"
 import { parseRoomCode } from "#shared/rooms/code.ts"
 import { userId } from "#shared/rooms/ids.ts"
-import { startGame } from "@/composables/start-game"
 import { useAuthSession } from "@/composables/useAuthSession"
 import { useLobby } from "@/composables/useLobby"
 
@@ -23,18 +22,15 @@ const viewer = computed(() => (user.value ? userId(user.value.id) : null))
 
 const { lobby, refetch, join } = useLobby(code, viewer)
 
-const startError = ref("")
 const joining = ref(false)
 const joinError = ref("")
 
 const plural = (count: number, singular: string): string => (count === 1 ? singular : `${singular}s`)
 
-const onStart = (room: Parameters<typeof startGame>[0]) => {
-  startError.value = ""
-  const outcome = startGame(room)
-  if (outcome.kind === "unavailable") {
-    startError.value = "Starting the game is not wired up yet."
-  }
+const onStart = async () => {
+  const current = lobby.value
+  if (current.kind !== "room") return
+  await navigateTo(`/games/${current.room.code}`)
 }
 
 const onJoin = async () => {
@@ -151,7 +147,7 @@ const onJoin = async () => {
           <div class="flex flex-col gap-3">
             <template v-if="lobby.amIHost">
               <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <Button type="button" :disabled="!lobby.canStart" @click="onStart(lobby.room)">
+                <Button type="button" :disabled="!lobby.canStart" @click="onStart">
                   Start game
                 </Button>
                 <p
@@ -161,9 +157,6 @@ const onJoin = async () => {
                   Waiting for {{ lobby.status.total - lobby.status.filled }} more
                 </p>
               </div>
-              <p v-if="startError" class="text-destructive text-sm leading-normal">
-                {{ startError }}
-              </p>
             </template>
 
             <p v-else-if="lobby.amISeated" class="text-muted-foreground text-sm leading-normal">

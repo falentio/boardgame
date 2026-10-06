@@ -429,14 +429,25 @@ const main = async () => {
     console.log(`screenshot: ${await hostBrowser.page.screenshot("06-lobby-full")}`);
 
     await hostBrowser.page.eval(clickButton("Start game"));
-    const seamShown = await hostBrowser.page.waitFor(
-      "document.body.innerText.includes('Starting the game is not wired up yet.')",
+    const onGame = await hostBrowser.page.waitFor(
+      "/^\\/games\\/[A-Z]{8}$/.test(location.pathname)",
       { timeoutMs: 8000 },
     );
-    if (!seamShown) {
-      fail(`clicking Start should report the seam, got: ${(await hostBrowser.page.bodyText()).replace(/\n/g, " | ")}`);
+    if (!onGame) {
+      fail(`clicking Start should open the game board, at ${await hostBrowser.page.url()}`);
     } else {
-      pass("clicking Start reports the game start is not wired up yet");
+      const boardShown = await hostBrowser.page.waitFor(
+        "!!document.querySelector('[data-slot=game-board]')",
+        { timeoutMs: 10000 },
+      );
+      if (!boardShown) {
+        fail("the game page did not render the board");
+      } else {
+        const seatCount = await hostBrowser.page.eval("document.querySelectorAll('[data-seat]').length");
+        if (seatCount !== SEATS) fail(`the board should show ${SEATS} seats, got ${seatCount}`);
+        else pass("clicking Start opens the game board with one seat per player");
+        console.log(`screenshot: ${await hostBrowser.page.screenshot("07-board")}`);
+      }
     }
   } finally {
     hostBrowser.close();
