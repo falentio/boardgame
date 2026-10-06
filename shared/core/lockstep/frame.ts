@@ -113,7 +113,7 @@ export const buildFrame = <Action>(
 };
 
 /** Encode one seat input for a digest or a snapshot. */
-const encodeInput = <Action>(input: SeatInput<Action>, codec: Codec<Action>): Json => {
+export const encodeSeatInput = <Action>(input: SeatInput<Action>, codec: Codec<Action>): Json => {
   switch (input.kind) {
     case "act":
       return { k: "act", a: codec.encode(input.action) };
@@ -124,7 +124,7 @@ const encodeInput = <Action>(input: SeatInput<Action>, codec: Codec<Action>): Js
   }
 };
 
-const decodeInput = <Action>(json: Json, codec: Codec<Action>): SeatInput<Action> => {
+export const decodeSeatInput = <Action>(json: Json, codec: Codec<Action>): SeatInput<Action> => {
   const object = expectObject(json, "seat input");
   const kind = expectString(field(object, "k"), "seat input kind");
   switch (kind) {
@@ -144,7 +144,7 @@ const decodeInput = <Action>(json: Json, codec: Codec<Action>): SeatInput<Action
  * seat order, so every peer that holds the frame computes the same value.
  */
 export const framePayload = <Action>(frame: Frame<Action>, codec: Codec<Action>): Json =>
-  frame.inputs.map(([seat, input]): Json => ({ seat, input: encodeInput(input, codec) }));
+  frame.inputs.map(([seat, input]): Json => ({ seat, input: encodeSeatInput(input, codec) }));
 
 export const encodeFrame = <Action>(frame: Frame<Action>, codec: Codec<Action>): Json => ({
   index: frame.index,
@@ -159,7 +159,7 @@ export const decodeFrame = <Action>(json: Json, codec: Codec<Action>): Frame<Act
       const pair = expectObject(entry, "frame input");
       return [
         seatId(expectString(field(pair, "seat"), "frame input seat")),
-        decodeInput(field(pair, "input"), codec),
+        decodeSeatInput(field(pair, "input"), codec),
       ];
     },
   );

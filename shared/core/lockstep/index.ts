@@ -15,7 +15,8 @@
  * - **advanced / tooling** — pure primitives for tests, replay, and tooling that
  *   a game or app rarely needs: `advanceFrame`, `foldFrom`, `replayFromGenesis`,
  *   `genesisCheckpoint`, `buildFrame`, `isComplete`, `encodeFrame`/`decodeFrame`,
- *   `framePayload`, `encodeRoster`/`decodeRoster`, `emptyLog`, `appendFrame`,
+ *   `encodeSeatInput`/`decodeSeatInput`, `framePayload`, `encodeRoster`/`decodeRoster`,
+ *   `emptyLog`, `appendFrame`,
  *   `head`, `genesisSeed`, `chainSeed`, `stateDigest`, `canonicalize`, `asJson`,
  *   `makeRandom`, and the `*Error` types.
  *
@@ -75,6 +76,8 @@ export {
   buildFrame,
   encodeFrame,
   decodeFrame,
+  encodeSeatInput,
+  decodeSeatInput,
   framePayload,
   withResigned,
 } from "./frame.ts";
