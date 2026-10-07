@@ -1,0 +1,41 @@
+{
+  "$schema": "https://t3.codes/schema/t3.json",
+  "defaultThreadEnvMode": "worktree",
+  "worktreeSubmodules": "none",
+  "scripts": [
+    {
+      "name": "Setup worktree",
+      "command": "ln -sfn \"$T3CODE_PROJECT_ROOT/node_modules\" node_modules && { test -f .dev.vars || cp \"$T3CODE_PROJECT_ROOT/.dev.vars\" .dev.vars; } && pnpm --config.verifyDepsBeforeRun=false db:migrate:local",
+      "icon": "configure",
+      "runOnWorktreeCreate": true,
+      "async": false
+    },
+    {
+      "name": "Dev server",
+      "command": "pnpm dev",
+      "icon": "play",
+      "previewUrl": "http://localhost:3000",
+      "autoOpenPreview": true
+    },
+    {
+      "name": "Test",
+      "command": "pnpm test",
+      "icon": "test"
+    },
+    {
+      "name": "Typecheck",
+      "command": "pnpm typecheck && pnpm typecheck:server && pnpm typecheck:client",
+      "icon": "lint"
+    },
+    {
+      "name": "Build",
+      "command": "pnpm build",
+      "icon": "build"
+    },
+    {
+      "name": "UI proof",
+      "command": "bash scripts/run-proof.sh",
+      "icon": "debug"
+    }
+  ]
+}
