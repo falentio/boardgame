@@ -35,6 +35,8 @@ const attempt = async () => {
     }
     if (outcome.kind === "full") {
       error.value = "This room is full. Ask the host for a seat."
+    } else if (outcome.kind === "already-started") {
+      error.value = "This game has already started. Ask the host to start a new room."
     } else if (outcome.kind === "missing") {
       error.value = "That room no longer exists. Check the code and try again."
     } else {

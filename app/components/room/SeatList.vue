@@ -1,15 +1,30 @@
 <script setup lang="ts">
 import { computed } from "vue"
+import { UserMinus } from "@lucide/vue"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
 import { initialsOf } from "#shared/users/initials.ts"
 import type { SeatRow } from "@/composables/room-domain.ts"
+import type { UserId } from "#shared/rooms/ids.ts"
 
-const props = defineProps<{ seats: readonly SeatRow[] }>()
+const props = withDefaults(defineProps<{ seats: readonly SeatRow[]; canKick?: boolean }>(), {
+  canKick: false,
+})
+const emit = defineEmits<{ kick: [occupant: UserId] }>()
 
 const labelOf = (seat: SeatRow): string => {
   if (seat.occupant === null) return "Open"
   if (seat.isMe) return "You"
   return "Player"
+}
+
+const showKick = (seat: SeatRow): boolean => props.canKick && seat.occupant !== null && seat.canKick
+
+const kickLabel = (seat: SeatRow): string =>
+  seat.occupant === null ? "Kick player" : `Kick ${seat.name ?? "player"}`
+
+const askKick = (seat: SeatRow): void => {
+  if (seat.occupant !== null) emit("kick", seat.occupant)
 }
 
 const hostSeat = computed(() => props.seats.find((seat) => seat.isHost))
@@ -61,7 +76,18 @@ const others = computed(() => props.seats.filter((seat) => !seat.isHost))
         <span class="truncate text-sm leading-normal" :class="seat.occupant === null ? 'text-muted-foreground' : ''">
           {{ seat.occupant === null ? "Open seat" : seat.name ?? labelOf(seat) }}
         </span>
-        <span v-if="seat.isMe" class="text-muted-foreground ms-auto text-xs leading-none">You</span>
+        <Button
+          v-if="showKick(seat)"
+          type="button"
+          variant="destructive"
+          size="icon-sm"
+          class="ms-auto transition-[color,background-color] duration-150 ease-out"
+          :aria-label="kickLabel(seat)"
+          @click="askKick(seat)"
+        >
+          <UserMinus :stroke-width="1.5" aria-hidden="true" />
+        </Button>
+        <span v-else-if="seat.isMe" class="text-muted-foreground ms-auto text-xs leading-none">You</span>
       </li>
     </ul>
   </div>
