@@ -224,4 +224,22 @@ const confirm = (): void => {
     flex: 1;
   }
 }
+
+[data-slot="window-picker"] {
+  --enter-y: 8px;
+  transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out);
+}
+
+@starting-style {
+  [data-slot="window-picker"] {
+    opacity: 0;
+    transform: translateY(var(--enter-y));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="window-picker"] {
+    --enter-y: 0px;
+  }
+}
 </style>

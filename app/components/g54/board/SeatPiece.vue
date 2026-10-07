@@ -38,7 +38,7 @@ const revealedNames = computed(() => props.seat.revealed.map((role) => specOf(ro
     :data-seat="seat.seat"
   >
     <div class="flex items-center gap-3">
-      <Avatar class="size-11 shrink-0 rounded-full" :class="ringClass">
+      <Avatar class="size-11 shrink-0 rounded-full transition-shadow duration-200 ease-out" :class="ringClass">
         <AvatarImage v-if="seat.image" :src="seat.image" :alt="seat.name" />
         <AvatarFallback class="rounded-full text-xs">
           {{ initialsOf(seat.name) }}
@@ -64,7 +64,7 @@ const revealedNames = computed(() => props.seat.revealed.map((role) => specOf(ro
       </div>
       <span
         v-if="phaseLabel"
-        class="ms-auto shrink-0 rounded-full px-2 py-0.5 text-[0.625rem] leading-none font-semibold tracking-wide uppercase"
+        class="ms-auto shrink-0 rounded-full px-2 py-0.5 text-[0.625rem] leading-none font-semibold tracking-wide uppercase transition-colors duration-150 ease-out"
         :class="phaseClass"
       >
         {{ phaseLabel }}
