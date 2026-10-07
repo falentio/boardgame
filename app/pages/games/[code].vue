@@ -90,83 +90,115 @@ watch(
   <div class="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 p-4 pt-0">
     <Card>
       <CardContent class="pt-4">
-        <div v-if="loadFailed" class="flex flex-col gap-3">
-          <h1 class="text-2xl leading-tight font-semibold">
-            Game
-          </h1>
-          <p class="text-destructive text-sm leading-normal">
-            {{ loadFailed }}
-          </p>
-          <NuxtLink to="/" class="text-primary text-sm underline-offset-4 hover:underline">
-            Back to the dashboard
-          </NuxtLink>
-        </div>
-
-        <div v-else-if="status === 'waiting'" class="flex items-center gap-3">
-          <h1 class="sr-only">
-            Game
-          </h1>
-          <Spinner />
-          <p role="status" class="text-muted-foreground text-sm leading-normal">
-            Waiting for the game to start…
-          </p>
-        </div>
-
-        <div v-else-if="status === 'spectator'" class="flex flex-col gap-3">
-          <h1 class="text-2xl leading-tight font-semibold">
-            Game
-          </h1>
-          <p class="text-muted-foreground text-sm leading-normal">
-            You are not seated in this game, so you cannot see the board.
-          </p>
-          <NuxtLink to="/" class="text-primary text-sm underline-offset-4 hover:underline">
-            Back to the dashboard
-          </NuxtLink>
-        </div>
-
-        <div v-else-if="status === 'diverged'" class="flex flex-col gap-3">
-          <h1 class="text-2xl leading-tight font-semibold">
-            Game
-          </h1>
-          <p class="text-destructive text-sm leading-normal">
-            This game fell out of sync with the other players. Reload the page to resync.
-          </p>
-        </div>
-
-        <div v-else-if="board" class="flex flex-col gap-4">
-          <div
-            v-if="winner"
-            role="status"
-            class="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary"
-            data-slot="winner-banner"
-          >
-            {{ winner }}
+        <Transition name="status" mode="out-in">
+          <div v-if="loadFailed" key="failed" class="flex flex-col gap-3">
+            <h1 class="text-2xl leading-tight font-semibold">
+              Game
+            </h1>
+            <p class="text-destructive text-sm leading-normal">
+              {{ loadFailed }}
+            </p>
+            <NuxtLink to="/" class="text-primary text-sm underline-offset-4 hover:underline">
+              Back to the dashboard
+            </NuxtLink>
           </div>
-          <GameBoard :board="board" />
-          <p
-            v-if="forced"
-            role="status"
-            class="text-muted-foreground text-sm leading-normal"
-          >
-            Waiting for the other players…
-          </p>
-          <WindowPicker
-            v-else-if="board.menu"
-            :menu="board.menu"
-            :busy="acted"
-            @act="report(act($event))"
-          />
-          <div>
-            <button
-              type="button"
-              class="text-muted-foreground text-sm underline-offset-4 hover:underline"
-              @click="resign"
+
+          <div v-else-if="status === 'waiting'" key="waiting" class="flex items-center gap-3">
+            <h1 class="sr-only">
+              Game
+            </h1>
+            <Spinner />
+            <p role="status" class="text-muted-foreground text-sm leading-normal">
+              Waiting for the game to start…
+            </p>
+          </div>
+
+          <div v-else-if="status === 'spectator'" key="spectator" class="flex flex-col gap-3">
+            <h1 class="text-2xl leading-tight font-semibold">
+              Game
+            </h1>
+            <p class="text-muted-foreground text-sm leading-normal">
+              You are not seated in this game, so you cannot see the board.
+            </p>
+            <NuxtLink to="/" class="text-primary text-sm underline-offset-4 hover:underline">
+              Back to the dashboard
+            </NuxtLink>
+          </div>
+
+          <div v-else-if="status === 'diverged'" key="diverged" class="flex flex-col gap-3">
+            <h1 class="text-2xl leading-tight font-semibold">
+              Game
+            </h1>
+            <p class="text-destructive text-sm leading-normal">
+              This game fell out of sync with the other players. Reload the page to resync.
+            </p>
+          </div>
+
+          <div v-else-if="board" key="board" class="flex flex-col gap-4">
+            <div
+              v-if="winner"
+              role="status"
+              class="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary"
+              data-slot="winner-banner"
             >
-              Resign
-            </button>
+              {{ winner }}
+            </div>
+            <GameBoard :board="board" />
+            <p
+              v-if="forced"
+              role="status"
+              class="text-muted-foreground text-sm leading-normal"
+            >
+              Waiting for the other players…
+            </p>
+            <WindowPicker
+              v-else-if="board.menu"
+              :menu="board.menu"
+              :busy="acted"
+              @act="report(act($event))"
+            />
+            <div>
+              <button
+                type="button"
+                class="text-muted-foreground text-sm underline-offset-4 hover:underline transition-transform duration-150 ease-out active:scale-[0.97]"
+                @click="resign"
+              >
+                Resign
+              </button>
+            </div>
           </div>
-        </div>
+        </Transition>
       </CardContent>
     </Card>
   </div>
 </template>
+
+<style scoped>
+.status-enter-active,
+.status-leave-active {
+  transition: opacity 180ms var(--ease-out);
+}
+
+.status-enter-from,
+.status-leave-to {
+  opacity: 0;
+}
+
+[data-slot="winner-banner"] {
+  --enter-y: -6px;
+  transition: opacity 300ms var(--ease-out), transform 300ms var(--ease-out);
+}
+
+@starting-style {
+  [data-slot="winner-banner"] {
+    opacity: 0;
+    transform: translateY(var(--enter-y));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="winner-banner"] {
+    --enter-y: 0px;
+  }
+}
+</style>
