@@ -37,12 +37,14 @@ interface LoadedSeat {
   joinedAt: number | null;
 }
 
-const loadedRoom = (seats: readonly LoadedSeat[]): Room => ({
+const loadedRoom = (seats: readonly LoadedSeat[], startedAt: number | null = null): Room => ({
   code: CODE,
   name: "New room",
   host: HOST,
   link: "https://example.test/join/BAVOKUTI",
   roles: ["banker", "director", "guerrilla", "politician", "peacekeeper"],
+  startedAt,
+  expiresAt: 86_400_001,
   seats: seats.map((seat) => ({
     id: seat.id,
     occupant: seat.occupant === null ? null : userId(seat.occupant),
@@ -122,6 +124,77 @@ test("parseRoom returns null on a malformed host, name, link, or roles container
   expect(parseRoom("room")).toBeNull();
 });
 
+test("parseRoom reads startedAt and expiresAt leniently", () => {
+  const started = parseRoom(wireRoom({ startedAt: 5000, expiresAt: 86_400_001 }));
+  expect(started?.startedAt).toBe(5000);
+  expect(started?.expiresAt).toBe(86_400_001);
+
+  const lobby = parseRoom(wireRoom());
+  expect(lobby?.startedAt).toBeNull();
+  expect(lobby?.expiresAt).toBeNull();
+});
+
+test("parseRoom degrades a non-numeric startedAt or expiresAt to null without failing", () => {
+  const room = parseRoom(wireRoom({ startedAt: "yes", expiresAt: { at: 1 } }));
+  expect(room).not.toBeNull();
+  expect(room?.startedAt).toBeNull();
+  expect(room?.expiresAt).toBeNull();
+});
+
+test("lobbyOf derives started, canStart, canLeave, canKick, and gameRedirect", () => {
+  const lobby = lobbyOf(
+    { kind: "loaded", room: loadedRoom([
+      { id: "seat-0", occupant: "user-host", joinedAt: 1 },
+      { id: "seat-1", occupant: "user-guest", joinedAt: 2 },
+    ], 5000) },
+    HOST,
+  );
+  if (lobby.kind !== "room") throw new Error("expected room");
+  expect(lobby.started).toBe(true);
+  expect(lobby.canStart).toBe(false);
+  expect(lobby.canLeave).toBe(false);
+  expect(lobby.canKick).toBe(false);
+  expect(lobby.gameRedirect).toBe(false);
+  expect(lobby.expiresAt).toBe(86_400_001);
+});
+
+test("lobbyOf lets a seated non-host be redirected and the host kick before start", () => {
+  const seats = [
+    { id: "seat-0", occupant: "user-host", joinedAt: 1 },
+    { id: "seat-1", occupant: "user-guest", joinedAt: 2 },
+  ];
+  const startedLobby = lobbyOf({ kind: "loaded", room: loadedRoom(seats, 5000) }, GUEST);
+  if (startedLobby.kind !== "room") throw new Error("expected room");
+  expect(startedLobby.gameRedirect).toBe(true);
+  expect(startedLobby.canStart).toBe(false);
+
+  const preStart = lobbyOf({ kind: "loaded", room: loadedRoom(seats) }, HOST);
+  if (preStart.kind !== "room") throw new Error("expected room");
+  expect(preStart.started).toBe(false);
+  expect(preStart.canStart).toBe(true);
+  expect(preStart.canKick).toBe(true);
+  expect(preStart.canLeave).toBe(true);
+  const [hostSeat, guestSeat] = preStart.seats;
+  if (hostSeat === undefined || guestSeat === undefined) throw new Error("expected two seats");
+  expect(hostSeat.occupant !== null && hostSeat.canKick).toBe(false);
+  expect(guestSeat.occupant !== null && guestSeat.canKick).toBe(true);
+});
+
+test("lobbyOf never offers a non-host member the kick control", () => {
+  const lobby = lobbyOf(
+    { kind: "loaded", room: loadedRoom([
+      { id: "seat-0", occupant: "user-host", joinedAt: 1 },
+      { id: "seat-1", occupant: "user-guest", joinedAt: 2 },
+    ]) },
+    GUEST,
+  );
+  if (lobby.kind !== "room") throw new Error("expected room");
+  expect(lobby.canKick).toBe(false);
+  for (const seat of lobby.seats) {
+    expect(seat.occupant === null || seat.canKick).toBe(false);
+  }
+});
+
 test("roomErrorKind reads the Hono error body and ignores a plain error", () => {
   expect(roomErrorKind({ data: { error: { kind: "not-found" } } })).toBe("not-found");
   expect(roomErrorKind(new Error("boom"))).toBeNull();
@@ -188,6 +261,7 @@ test("lobbyOf projects a filled seat into occupant/name/image and drops filled",
     image: "https://api.dicebear.com/10.x/clay/svg?seed=user-host",
     isHost: true,
     isMe: true,
+    canKick: false,
   });
   expect(filled).not.toHaveProperty("filled");
   expect(open).toEqual({ index: 1, occupant: null, isHost: false, isMe: false });

@@ -1,5 +1,5 @@
 import type { RoleId } from "#shared/core/lockstep/games/g54/roles.ts";
-import type { RoomCode } from "#shared/rooms/ids.ts";
+import type { RoomCode, UserId } from "#shared/rooms/ids.ts";
 import { parseRoom, roomErrorKind, type Room, type RoomLoad } from "./room-domain.ts";
 
 export type CreateOutcome =
@@ -9,7 +9,28 @@ export type CreateOutcome =
 export type JoinOutcome =
   | { kind: "joined" }
   | { kind: "already-seated" }
+  | { kind: "already-started" }
   | { kind: "full" }
+  | { kind: "missing" }
+  | { kind: "failed"; reason: string };
+
+export type StartOutcome =
+  | { kind: "started" }
+  | { kind: "not-host" }
+  | { kind: "not-full" }
+  | { kind: "missing" }
+  | { kind: "failed"; reason: string };
+
+export type LeaveOutcome =
+  | { kind: "left"; room: Room | null }
+  | { kind: "not-seated" }
+  | { kind: "missing" }
+  | { kind: "failed"; reason: string };
+
+export type KickOutcome =
+  | { kind: "kicked" }
+  | { kind: "not-host" }
+  | { kind: "not-seated" }
   | { kind: "missing" }
   | { kind: "failed"; reason: string };
 
@@ -87,7 +108,49 @@ export const joinRoom = async (code: RoomCode): Promise<JoinOutcome> => {
   } catch (error) {
     const kind = roomErrorKind(error);
     if (kind === "already-seated") return { kind: "already-seated" };
+    if (kind === "already-started") return { kind: "already-started" };
     if (kind === "room-full") return { kind: "full" };
+    if (statusOf(error) === 404 || kind === "not-found") return { kind: "missing" };
+    return { kind: "failed", reason: failureReason(error) };
+  }
+};
+
+export const startRoom = async (code: RoomCode): Promise<StartOutcome> => {
+  try {
+    await $fetch<unknown>(`/api/rooms/${code}/start`, { method: "POST" });
+    return { kind: "started" };
+  } catch (error) {
+    const kind = roomErrorKind(error);
+    if (kind === "not-host") return { kind: "not-host" };
+    if (kind === "room-not-full") return { kind: "not-full" };
+    if (statusOf(error) === 404 || kind === "not-found") return { kind: "missing" };
+    return { kind: "failed", reason: failureReason(error) };
+  }
+};
+
+export const leaveRoom = async (code: RoomCode): Promise<LeaveOutcome> => {
+  try {
+    const data = await $fetch<unknown>(`/api/rooms/${code}/leave`, { method: "POST" });
+    return { kind: "left", room: roomFrom(data) };
+  } catch (error) {
+    const kind = roomErrorKind(error);
+    if (kind === "not-seated") return { kind: "not-seated" };
+    if (statusOf(error) === 404 || kind === "not-found") return { kind: "missing" };
+    return { kind: "failed", reason: failureReason(error) };
+  }
+};
+
+export const kickMember = async (code: RoomCode, target: UserId): Promise<KickOutcome> => {
+  try {
+    await $fetch<unknown>(`/api/rooms/${code}/kick`, {
+      method: "POST",
+      body: { user: target },
+    });
+    return { kind: "kicked" };
+  } catch (error) {
+    const kind = roomErrorKind(error);
+    if (kind === "not-host") return { kind: "not-host" };
+    if (kind === "not-seated") return { kind: "not-seated" };
     if (statusOf(error) === 404 || kind === "not-found") return { kind: "missing" };
     return { kind: "failed", reason: failureReason(error) };
   }

@@ -18,6 +18,8 @@ export interface Room {
   link: string;
   roles: readonly RoleId[];
   seats: readonly Seat[];
+  startedAt: number | null;
+  expiresAt: number | null;
 }
 
 export type RoomLoad =
@@ -45,6 +47,7 @@ export type SeatRow =
       readonly image: string;
       readonly isHost: boolean;
       readonly isMe: boolean;
+      readonly canKick: boolean;
     };
 
 export type Lobby =
@@ -59,7 +62,12 @@ export type Lobby =
       status: LobbyStatus;
       amIHost: boolean;
       amISeated: boolean;
+      started: boolean;
       canStart: boolean;
+      canLeave: boolean;
+      canKick: boolean;
+      gameRedirect: boolean;
+      expiresAt: number | null;
     };
 
 const fieldOf = (source: unknown, key: string): unknown => {
@@ -115,6 +123,9 @@ export const parseRoom = (raw: unknown): Room | null => {
     seats.push(seat);
   }
 
+  const startedAt = fieldOf(raw, "startedAt");
+  const expiresAt = fieldOf(raw, "expiresAt");
+
   return {
     code: roomCode(code),
     name,
@@ -122,6 +133,8 @@ export const parseRoom = (raw: unknown): Room | null => {
     link,
     roles,
     seats,
+    startedAt: typeof startedAt === "number" ? startedAt : null,
+    expiresAt: typeof expiresAt === "number" ? expiresAt : null,
   };
 };
 
@@ -139,21 +152,26 @@ export const lobbyOf = (load: RoomLoad, viewer: UserId | null): Lobby => {
   const status: LobbyStatus =
     filled === total ? { kind: "full", filled, total } : { kind: "waiting", filled, total };
 
-  const seats = room.seats.map((seat, index): SeatRow =>
-    seat.occupant === null
-      ? { index, occupant: null, isHost: false, isMe: false }
-      : {
-          index,
-          occupant: seat.occupant,
-          name: seat.name,
-          image: resolveUserImage(seat.image, seat.occupant),
-          isHost: seat.occupant === room.host,
-          isMe: viewer !== null && seat.occupant === viewer,
-        },
-  );
-
   const amIHost = viewer !== null && room.host === viewer;
   const amISeated = viewer !== null && room.seats.some((seat) => seat.occupant === viewer);
+  const started = room.startedAt !== null;
+  const canKick = amIHost && !started;
+
+  const seats = room.seats.map((seat, index): SeatRow => {
+    if (seat.occupant === null) {
+      return { index, occupant: null, isHost: false, isMe: false };
+    }
+    const isMe = viewer !== null && seat.occupant === viewer;
+    return {
+      index,
+      occupant: seat.occupant,
+      name: seat.name,
+      image: resolveUserImage(seat.image, seat.occupant),
+      isHost: seat.occupant === room.host,
+      isMe,
+      canKick: canKick && !isMe,
+    };
+  });
 
   return {
     kind: "room",
@@ -162,7 +180,12 @@ export const lobbyOf = (load: RoomLoad, viewer: UserId | null): Lobby => {
     status,
     amIHost,
     amISeated,
-    canStart: amIHost && status.kind === "full",
+    started,
+    canStart: amIHost && !started && status.kind === "full",
+    canLeave: amISeated && !started,
+    canKick,
+    gameRedirect: started && amISeated && !amIHost,
+    expiresAt: room.expiresAt,
   };
 };
 
