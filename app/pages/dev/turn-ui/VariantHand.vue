@@ -28,7 +28,9 @@ const onPick = (option: TurnFaceOption, choice: MenuSeatChoice): void => {
       {{ menu.note }}
     </p>
 
-    <div class="flex items-stretch gap-3 overflow-x-auto pb-3">
+    <div
+      class="grid grid-flow-col grid-rows-[auto_auto_auto] items-stretch gap-x-3 gap-y-1.5 overflow-x-auto pb-3"
+    >
       <TurnCard
         v-for="option in cards.general.value"
         :key="option.id"
@@ -41,7 +43,7 @@ const onPick = (option: TurnFaceOption, choice: MenuSeatChoice): void => {
         @pick="onPick(option, $event)"
       />
 
-      <div class="mx-1 w-px shrink-0 self-stretch bg-foreground/15" aria-hidden="true" />
+      <div class="mx-1 row-span-3 w-px shrink-0 self-stretch bg-foreground/15" aria-hidden="true" />
 
       <TurnCard
         v-for="option in cards.roles.value"

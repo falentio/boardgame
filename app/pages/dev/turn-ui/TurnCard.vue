@@ -25,14 +25,18 @@ const onPick = (choice: MenuSeatChoice): void => {
 </script>
 
 <template>
-  <div class="flex min-w-0 flex-col gap-1.5">
+  <!-- A fill card is a subgrid of the strip's card / reason / target rows, so an
+       opened target row takes its own track and cannot shrink the card. -->
+  <div
+    class="min-w-0 gap-1.5"
+    :class="fill ? 'grid grid-rows-subgrid row-span-3' : 'flex flex-col'"
+  >
     <RoleCard
       v-if="option.face?.kind === 'role'"
       :role="option.face.role"
       selectable
       :selected="selected"
       :disabled="disabled()"
-      :class="fill && 'flex-1'"
       @select="emit('choose')"
     />
     <GeneralActionCard
@@ -41,7 +45,6 @@ const onPick = (choice: MenuSeatChoice): void => {
       selectable
       :selected="selected"
       :disabled="disabled()"
-      :class="fill && 'flex-1'"
       @select="emit('choose')"
     />
 
