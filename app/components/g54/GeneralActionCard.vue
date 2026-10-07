@@ -3,6 +3,7 @@ import type { HTMLAttributes } from "vue"
 import type { GeneralActionId } from "#shared/core/lockstep/games/g54/generals.ts"
 import { computed } from "vue"
 import { cn } from "@/lib/utils"
+import { CARD_BADGE_CLASS, CARD_SHELL_CLASS } from "@/composables/card-shell"
 import { generalCardModel } from "@/composables/general-card"
 
 const props = withDefaults(
@@ -43,7 +44,8 @@ const onActivate = () => {
     style="--accent: var(--primary)"
     :class="
       cn(
-        'group/general-card relative flex w-full flex-col overflow-hidden rounded-xl bg-card text-card-foreground text-sm ring-1 ring-foreground/10',
+        'group/general-card',
+        CARD_SHELL_CLASS,
         'focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
         selectable && 'cursor-pointer text-left',
         selected && 'ring-2 ring-primary',
@@ -79,7 +81,7 @@ const onActivate = () => {
 
     <div v-if="model.costLabel !== null" class="mt-auto flex flex-wrap items-center gap-1.5 px-3 pb-3">
       <span
-        class="rounded-full bg-muted px-2 py-0.5 text-[0.6875rem] font-medium text-foreground ring-1 ring-foreground/10"
+        :class="CARD_BADGE_CLASS"
         style="background: color-mix(in oklab, var(--accent) 18%, var(--muted))"
       >
         {{ model.costLabel }}

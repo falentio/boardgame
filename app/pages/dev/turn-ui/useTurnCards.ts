@@ -9,7 +9,6 @@ export interface TurnCards {
   readonly general: ComputedRef<readonly TurnFaceOption[]>
   readonly roles: ComputedRef<readonly TurnFaceOption[]>
   readonly openId: Ref<string | null>
-  readonly isDisabled: (option: TurnFaceOption) => boolean
   readonly choose: (option: TurnFaceOption) => void
   readonly pick: (option: Extract<MenuOption, { kind: "target" }>, choice: MenuSeatChoice) => void
 }
@@ -52,5 +51,5 @@ export const useTurnCards = (
     emit(option.action(choice.seat))
   }
 
-  return { general, roles, openId, isDisabled, choose, pick }
+  return { general, roles, openId, choose, pick }
 }

@@ -181,7 +181,6 @@ test("a plain non-turn option and a bomb target option both carry face null", ()
   expect(plainOption(menu, "defuse").face).toBeNull()
 })
 
-
 test("a target role carries a seat picker whose action builds a targeted claim", () => {
   const menu = menuOf(project(genesis(), ANN), ANN, nameOf)!
   const politician = targetOption(menu, "claim-politician")

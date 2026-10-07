@@ -1,7 +1,7 @@
 import type { GeneralActionId } from "#shared/core/lockstep/games/g54/generals.ts"
 import { GENERAL_ACTIONS } from "#shared/core/lockstep/games/g54/generals.ts"
 
-const GENERAL_LABELS: Record<GeneralActionId, string> = {
+export const GENERAL_LABELS: Record<GeneralActionId, string> = {
   income: "Income",
   coup: "Coup",
   bank: "Bank",

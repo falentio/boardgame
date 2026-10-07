@@ -3,6 +3,7 @@ import type { G54Action, G54View, PlayerView } from "#shared/core/lockstep/games
 import { claimCost, specOf, type RoleId, type RoleSpec } from "#shared/core/lockstep/games/g54/roles.ts"
 import type { GeneralActionId } from "#shared/core/lockstep/games/g54/generals.ts"
 import { GENERAL_ACTIONS } from "#shared/core/lockstep/games/g54/generals.ts"
+import { GENERAL_LABELS } from "./general-card.ts"
 import { COUP_COST, FORCED_COUP_COINS } from "#shared/core/lockstep/games/g54/windows.ts"
 
 /**
@@ -136,13 +137,6 @@ export const isTurnMenu = (menu: WindowMenu): boolean =>
     (option) => (option.kind === "plain" || option.kind === "target") && option.face !== null,
   )
 
-const GENERAL_LABELS: Record<GeneralActionId, string> = {
-  income: "Income",
-  coup: "Coup",
-  bank: "Bank",
-  "social-media": "Social Media",
-}
-
 const PLAIN_GENERALS: Record<Exclude<GeneralActionId, "coup">, () => G54Action> = {
   income: () => ({ t: "income" }),
   bank: () => ({ t: "bank" }),
@@ -221,8 +215,7 @@ const plain = (
   enabled: boolean,
   reason: string | null,
   action: () => G54Action,
-  face: MenuFace | null = null,
-): MenuOption => ({ id, kind: "plain", label, detail, enabled, reason, face, action })
+): MenuOption => ({ id, kind: "plain", label, detail, enabled, reason, face: null, action })
 
 const turnMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string): WindowMenu => {
   const coins = coinsOf(view, seat)

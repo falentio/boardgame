@@ -8,6 +8,7 @@ const props = defineProps<{
   option: TurnFaceOption
   busy?: boolean
   selected: boolean
+  fill?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -31,6 +32,7 @@ const onPick = (choice: MenuSeatChoice): void => {
       selectable
       :selected="selected"
       :disabled="disabled()"
+      :class="fill && 'flex-1'"
       @select="emit('choose')"
     />
     <GeneralActionCard
@@ -39,11 +41,16 @@ const onPick = (choice: MenuSeatChoice): void => {
       selectable
       :selected="selected"
       :disabled="disabled()"
+      :class="fill && 'flex-1'"
       @select="emit('choose')"
     />
 
-    <span v-if="option.reason && !busy" class="text-muted-foreground text-xs leading-none italic">
-      {{ option.reason }}
+    <!-- Reserved on every fill-strip card so a card with a reason is not shorter. -->
+    <span
+      v-if="fill || (option.reason && !busy)"
+      class="text-muted-foreground min-h-3 text-xs leading-none italic"
+    >
+      {{ option.reason && !busy ? option.reason : "" }}
     </span>
 
     <div
