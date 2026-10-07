@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { parseRoomCode } from "#shared/rooms/code.ts"
@@ -27,21 +27,38 @@ const onJoin = async () => {
     <h1 class="text-2xl leading-tight font-semibold">
       Play a game
     </h1>
-    <Card>
-      <CardContent class="pt-4">
-        <FieldGroup class="gap-6">
-          <Field>
-            <div>
-              <Button as-child>
-                <NuxtLink to="/rooms/new">
-                  Create room
-                </NuxtLink>
-              </Button>
-            </div>
-            <FieldDescription>
-              Pick the roles and open a lobby for your friends.
-            </FieldDescription>
-          </Field>
+    <div class="grid gap-4 md:grid-cols-2">
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <h2 class="text-lg leading-snug font-semibold">
+              Create a room
+            </h2>
+          </CardTitle>
+          <CardDescription>
+            Pick the roles and open a lobby for your friends.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button as-child>
+            <NuxtLink to="/rooms/new">
+              Create room
+            </NuxtLink>
+          </Button>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            <h2 class="text-lg leading-snug font-semibold">
+              Join a room
+            </h2>
+          </CardTitle>
+          <CardDescription>
+            Enter the code from a shared link.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
           <form @submit.prevent="onJoin">
             <FieldGroup>
               <Field>
@@ -62,21 +79,16 @@ const onJoin = async () => {
                 <FieldDescription v-if="invalid" id="room-code-hint" class="text-destructive">
                   Room codes are 8 letters, like BAVOKUTI.
                 </FieldDescription>
-                <FieldDescription v-else>
-                  Enter the code from a shared link.
-                </FieldDescription>
               </Field>
               <Field>
-                <div>
-                  <Button type="submit" variant="outline">
-                    Join room
-                  </Button>
-                </div>
+                <Button type="submit" variant="outline">
+                  Join room
+                </Button>
               </Field>
             </FieldGroup>
           </form>
-        </FieldGroup>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   </div>
 </template>
