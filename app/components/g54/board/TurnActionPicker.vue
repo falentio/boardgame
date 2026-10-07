@@ -75,11 +75,12 @@ const pick = (option: FaceOption, choice: MenuSeatChoice): void => {
       class="grid grid-flow-col grid-rows-[auto_auto_auto] items-stretch gap-x-3 gap-y-1.5 overflow-x-auto pb-3"
     >
       <!-- A card spans the strip's three rows and takes its own track for each, so an
-           opened target row cannot shrink the card. -->
+           opened target row cannot shrink the card. Subgrid needs Chrome 117 / Safari 16
+           / Firefox 71; the @supports block below is the pre-subgrid fallback. -->
       <div
         v-for="option in general"
         :key="option.id"
-        class="row-span-3 grid w-40 min-w-0 shrink-0 grid-rows-subgrid gap-1.5"
+        class="turn-card-cell row-span-3 grid w-40 min-w-0 shrink-0 grid-rows-subgrid gap-1.5"
       >
         <GeneralActionCard
           :action="option.face.action"
@@ -119,7 +120,7 @@ const pick = (option: FaceOption, choice: MenuSeatChoice): void => {
       <div
         v-for="option in roles"
         :key="option.id"
-        class="row-span-3 grid w-40 min-w-0 shrink-0 grid-rows-subgrid gap-1.5"
+        class="turn-card-cell row-span-3 grid w-40 min-w-0 shrink-0 grid-rows-subgrid gap-1.5"
       >
         <RoleCard
           :role="option.face.role"
@@ -155,3 +156,18 @@ const pick = (option: FaceOption, choice: MenuSeatChoice): void => {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Pre-subgrid fallback: a browser that drops `grid-rows-subgrid` collapses the shared
+   rows, so the cell becomes a flex column and the card takes the slack instead. */
+@supports not (grid-template-rows: subgrid) {
+  .turn-card-cell {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .turn-card-cell > :first-child {
+    flex: 1;
+  }
+}
+</style>

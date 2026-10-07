@@ -16,7 +16,7 @@ import {
 import { specOf, type RoleId } from "#shared/core/lockstep/games/g54/roles.ts"
 import { FORCED_COUP_COINS } from "#shared/core/lockstep/games/g54/windows.ts"
 import { seatId, type SeatId } from "#shared/rooms/ids.ts"
-import { menuOf, type MenuOption } from "../window-menu.ts"
+import { isTurnMenu, menuOf, type MenuOption } from "../window-menu.ts"
 
 const ANN = seatId("ann")
 const BOB = seatId("bob")
@@ -167,6 +167,28 @@ test("a non-turn window leaves every option face null", () => {
       expect(option.face).toBeNull()
     }
   }
+})
+
+test("isTurnMenu is true for the turn menu, whose every option carries a card", () => {
+  const menu = menuOf(project(genesis(), ANN), ANN, nameOf)!
+  expect(isTurnMenu(menu)).toBe(true)
+})
+
+test("isTurnMenu is false for a challenge-claim window", () => {
+  const claimed = fold(genesis(), [ANN, { t: "claim", role: "banker", target: null }])
+  const projected = project(claimed, BOB)
+  expect(projected.window?.purpose).toBe("challenge-claim")
+  expect(isTurnMenu(menuOf(projected, BOB, nameOf)!)).toBe(false)
+})
+
+test("isTurnMenu is false for spy-second, whose appended Stop carries no card", () => {
+  const state = genesis(["spy", "director", "guerrilla", "peacekeeper", "politician"])
+  const resolved = allPass(fold(state, [ANN, { t: "claim", role: "spy", target: null }]))
+  const projected = project(resolved, ANN)
+  expect(projected.window?.purpose).toBe("spy-second")
+  const menu = menuOf(projected, ANN, nameOf)!
+  expect(plainOption(menu, "stop").face).toBeNull()
+  expect(isTurnMenu(menu)).toBe(false)
 })
 
 test("a plain non-turn option and a bomb target option both carry face null", () => {
