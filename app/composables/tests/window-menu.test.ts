@@ -18,6 +18,7 @@ import { FORCED_COUP_COINS } from "#shared/core/lockstep/games/g54/windows.ts"
 import { seatId, type SeatId } from "#shared/rooms/ids.ts"
 import {
   confirmable,
+  forcedAction,
   menuOf,
   type CardChoice,
   type DirectCard,
@@ -279,6 +280,41 @@ test("challenge-claim offers Pass alone to the claimant and Challenge to the res
   expect(rival.cards.map((card) => card.id)).toEqual(["challenge", "pass"])
   expect(directOf(rival, "challenge").resolve()).toEqual({ t: "challenge" })
   expect(directOf(rival, "pass").enabled).toBe(true)
+})
+
+test("the claimant's one-card challenge window is a forced Pass, not a choice", () => {
+  const claimed = fold(genesis(), [ANN, { t: "claim", role: "banker", target: null }])
+  const claimant = menuOf(project(claimed, ANN), ANN, identityOf)!
+  expect(forcedAction(claimant)).toEqual({ t: "pass" })
+})
+
+test("a challenge window with a real choice is not forced", () => {
+  const claimed = fold(genesis(), [ANN, { t: "claim", role: "banker", target: null }])
+  const rival = menuOf(project(claimed, BOB), BOB, identityOf)!
+  expect(forcedAction(rival)).toBeNull()
+})
+
+test("the turn window is not forced", () => {
+  expect(forcedAction(menuOf(project(genesis(), ANN), ANN, identityOf)!)).toBeNull()
+})
+
+test("an acknowledge-only window is forced", () => {
+  const menu: WindowMenu = {
+    title: "Plantation payout",
+    note: null,
+    cards: [
+      {
+        id: "continue",
+        face: { kind: "action", card: { label: "Continue", summary: "Acknowledge.", art: null, costLabel: null, accessibleName: "Continue" } },
+        enabled: true,
+        reason: null,
+        group: null,
+        target: null,
+        resolve: () => ({ t: "no" }),
+      },
+    ],
+  }
+  expect(forcedAction(menu)).toEqual({ t: "no" })
 })
 
 test("challenge-block offers Pass alone to the blocker and Challenge to the rest", () => {

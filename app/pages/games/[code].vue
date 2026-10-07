@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed } from "vue"
+import { computed, watch } from "vue"
 import { Card, CardContent } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
 import GameBoard from "@/components/g54/board/GameBoard.vue"
 import WindowPicker from "@/components/g54/board/WindowPicker.vue"
 import { boardOf, type SeatIdentity } from "@/composables/board-view.ts"
+import { forcedAction } from "@/composables/window-menu.ts"
 import { useAuthSession } from "@/composables/useAuthSession"
 import { useGame } from "@/composables/useGame"
 import { useLobby } from "@/composables/useLobby"
@@ -68,6 +69,21 @@ const winner = computed(() => {
   if (seat === null) return "Game over"
   return `${identities.value.get(seat)?.name ?? seat} wins`
 })
+
+const forced = computed(() => {
+  const menu = board.value?.menu
+  return menu === null || menu === undefined ? null : forcedAction(menu)
+})
+
+watch(
+  () => board.value?.menu ?? null,
+  (menu) => {
+    if (menu === null) return
+    const action = forcedAction(menu)
+    if (action !== null) report(act(action))
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -127,8 +143,15 @@ const winner = computed(() => {
             {{ winner }}
           </div>
           <GameBoard :board="board" />
+          <p
+            v-if="forced"
+            role="status"
+            class="text-muted-foreground text-sm leading-normal"
+          >
+            Waiting for the other players…
+          </p>
           <WindowPicker
-            v-if="board.menu"
+            v-else-if="board.menu"
             :menu="board.menu"
             :busy="acted"
             @act="report(act($event))"

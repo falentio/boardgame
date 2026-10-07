@@ -177,6 +177,22 @@ export const confirmable = (card: CardChoice, picks: readonly TargetCard[]): boo
   )
 }
 
+/**
+ * The one action a window forces when it offers no real choice: exactly one card,
+ * it is enabled, and it needs no target picks. The challenge windows owe the
+ * claimant (or blocker) a report so the frame can seal, but the engine skips them
+ * as challengers, so their only legal card is Pass. A forced action is not a
+ * choice, so the caller reports it without rendering a one-card picker.
+ */
+export const forcedAction = (menu: WindowMenu): G54Action | null => {
+  if (menu.cards.length !== 1) return null
+  const card = menu.cards[0]
+  if (card === undefined || !card.enabled) return null
+  if (card.target === null) return card.resolve()
+  if (card.target.every((group) => group.count === 0)) return card.resolve([])
+  return null
+}
+
 const targetChoices = (
   rivals: readonly PlayerView[],
   identityOf: (seat: SeatId) => SeatIdentity,

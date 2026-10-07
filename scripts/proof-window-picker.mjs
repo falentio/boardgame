@@ -373,7 +373,24 @@ const main = async () => {
     const shot4 = await guestBrowser.page.screenshot("picker-04-guest-challenge");
     console.log(`screenshot: ${shot4}`);
 
-    console.log(`\nRESULT: host-turn role-cards=${hostState.roleCards} general-cards=${hostState.generalCards} target-stage player-cards=${targetState.playerCards} guest-challenge Challenge=${hasChallenge} Pass=${hasPass}`);
+    // The claimant has no choice in the challenge window: the engine skips them as
+    // a challenger, so their only report is Pass. It must be auto-reported, not shown
+    // as a one-card picker.
+    const hostAuto = await hostBrowser.page.waitFor(
+      `!document.querySelector('${EL.picker}')`,
+      { timeoutMs: 12000 },
+    );
+    const hostWaiting = await hostBrowser.page.eval(
+      `document.body.innerText.includes('Waiting for the other players')`,
+    );
+    if (!hostAuto) fail(`the claimant still sees a one-card picker; body: ${(await hostBrowser.page.bodyText()).replace(/\n/g, " | ")}`);
+    else if (!hostWaiting) fail("the claimant's forced Pass did not show the waiting status");
+    else pass("the claimant's forced Pass is auto-reported; no one-card picker shown");
+
+    const shot5 = await hostBrowser.page.screenshot("picker-05-claimant-waiting");
+    console.log(`screenshot: ${shot5}`);
+
+    console.log(`\nRESULT: host-turn role-cards=${hostState.roleCards} general-cards=${hostState.generalCards} target-stage player-cards=${targetState.playerCards} guest-challenge Challenge=${hasChallenge} Pass=${hasPass} claimant-auto=${hostAuto && hostWaiting}`);
   } finally {
     hostBrowser.close();
     guestBrowser.close();

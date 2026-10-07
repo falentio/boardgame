@@ -368,16 +368,12 @@ const main = async () => {
     else pass("guest selected Pass in the challenge window");
     await guestBrowser.page.clickReal(EL.confirm);
 
-    const hostChallenge = await hostBrowser.page.waitFor(`document.querySelector('[data-slot=window-picker] h2')?.textContent.trim() === 'Challenge the claim'`, { timeoutMs: 15000 });
-    if (!hostChallenge) {
-      const body = await dumpBody(hostBrowser.page, "host challenge (no picker)");
-      throw new Error(`host (claimant) never saw the challenge window; body: ${body}`);
+    const hostChallenge = await hostBrowser.page.waitFor(`document.querySelector('[data-slot=window-picker] h2')?.textContent.trim() === 'Challenge the claim'`, { timeoutMs: 8000 });
+    if (hostChallenge) {
+      fail("the claimant still sees a one-card challenge picker; it should be auto-reported");
+    } else {
+      pass("the claimant's forced Pass is auto-reported; no one-card picker shown");
     }
-    pass("host (claimant) challenge window opened");
-    const hostPass = await hostBrowser.page.clickReal(EL.generalCard("Pass"));
-    if (!hostPass) fail("the host could not select Pass");
-    else pass("host selected Pass in the challenge window");
-    await hostBrowser.page.clickReal(EL.confirm);
     pass("both seats passed the challenge; the keep window should now open for the host");
 
     const keepOpened = await hostBrowser.page.waitFor(
