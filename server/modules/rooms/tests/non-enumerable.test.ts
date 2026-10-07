@@ -36,6 +36,8 @@ const ALLOWED_ROUTES: readonly string[] = [
   "POST /api/rooms",
   "GET /api/rooms/:code",
   "POST /api/rooms/:code/join",
+  "POST /api/rooms/:code/leave",
+  "POST /api/rooms/:code/kick",
   "POST /api/rooms/:code/game",
   "PATCH /api/rooms/:code",
   "DELETE /api/rooms/:code",

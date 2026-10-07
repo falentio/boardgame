@@ -150,6 +150,113 @@ test("POST /api/rooms/:code/join seats a second user and reports 409 for a repea
   expect(missing.status).toBe(404);
 });
 
+test("POST /api/rooms/:code/leave frees the seat, 204 on empty, and 409 for a non-member", async () => {
+  const host = await signUp("host@example.com");
+  const guest = await signUp("guest@example.com");
+  const outsider = await signUp("outsider@example.com");
+  const created = await call("/api/rooms", { method: "POST", cookie: host.cookie, body: createBody() });
+  const { room } = (await created.json()) as { room: { code: string } };
+  await call(`/api/rooms/${room.code}/join`, { method: "POST", cookie: guest.cookie });
+
+  const left = await call(`/api/rooms/${room.code}/leave`, { method: "POST", cookie: guest.cookie });
+  expect(left.status).toBe(200);
+  const leftBody = (await left.json()) as { room: { seats: { occupant: string | null }[] } };
+  expect(leftBody.room.seats[1]!.occupant).toBeNull();
+
+  const notSeated = await call(`/api/rooms/${room.code}/leave`, {
+    method: "POST",
+    cookie: outsider.cookie,
+  });
+  expect(notSeated.status).toBe(409);
+
+  const missing = await call("/api/rooms/BAKUDIRU/leave", { method: "POST", cookie: host.cookie });
+  expect(missing.status).toBe(404);
+
+  const badCode = await call("/api/rooms/nope/leave", { method: "POST", cookie: host.cookie });
+  expect(badCode.status).toBe(400);
+
+  const anon = await call(`/api/rooms/${room.code}/leave`, { method: "POST" });
+  expect(anon.status).toBe(401);
+});
+
+test("POST /api/rooms/:code/leave is 204 when the last occupant leaves", async () => {
+  const host = await signUp("host@example.com");
+  const created = await call("/api/rooms", {
+    method: "POST",
+    cookie: host.cookie,
+    body: createBody({ seats: 1 }),
+  });
+  const { room } = (await created.json()) as { room: { code: string } };
+
+  const left = await call(`/api/rooms/${room.code}/leave`, { method: "POST", cookie: host.cookie });
+  expect(left.status).toBe(204);
+
+  const gone = await call(`/api/rooms/${room.code}`, { cookie: host.cookie });
+  expect(gone.status).toBe(404);
+});
+
+test("POST /api/rooms/:code/kick frees the target and guards host, self, and body", async () => {
+  const host = await signUp("host@example.com");
+  const guest = await signUp("guest@example.com");
+  const outsider = await signUp("outsider@example.com");
+  const created = await call("/api/rooms", { method: "POST", cookie: host.cookie, body: createBody() });
+  const { room } = (await created.json()) as { room: { code: string } };
+  await call(`/api/rooms/${room.code}/join`, { method: "POST", cookie: guest.cookie });
+
+  const kicked = await call(`/api/rooms/${room.code}/kick`, {
+    method: "POST",
+    cookie: host.cookie,
+    body: JSON.stringify({ user: guest.id }),
+  });
+  expect(kicked.status).toBe(200);
+  const kickedBody = (await kicked.json()) as { room: { seats: { occupant: string | null }[] } };
+  expect(kickedBody.room.seats[1]!.occupant).toBeNull();
+
+  const denied = await call(`/api/rooms/${room.code}/kick`, {
+    method: "POST",
+    cookie: outsider.cookie,
+    body: JSON.stringify({ user: host.id }),
+  });
+  expect(denied.status).toBe(403);
+
+  const self = await call(`/api/rooms/${room.code}/kick`, {
+    method: "POST",
+    cookie: host.cookie,
+    body: JSON.stringify({ user: host.id }),
+  });
+  expect(self.status).toBe(400);
+
+  const noBody = await call(`/api/rooms/${room.code}/kick`, { method: "POST", cookie: host.cookie });
+  expect(noBody.status).toBe(400);
+
+  const badUser = await call(`/api/rooms/${room.code}/kick`, {
+    method: "POST",
+    cookie: host.cookie,
+    body: JSON.stringify({ user: "" }),
+  });
+  expect(badUser.status).toBe(400);
+
+  const notSeated = await call(`/api/rooms/${room.code}/kick`, {
+    method: "POST",
+    cookie: host.cookie,
+    body: JSON.stringify({ user: outsider.id }),
+  });
+  expect(notSeated.status).toBe(409);
+
+  const missing = await call("/api/rooms/BAKUDIRU/kick", {
+    method: "POST",
+    cookie: host.cookie,
+    body: JSON.stringify({ user: guest.id }),
+  });
+  expect(missing.status).toBe(404);
+
+  const anon = await call(`/api/rooms/${room.code}/kick`, {
+    method: "POST",
+    body: JSON.stringify({ user: guest.id }),
+  });
+  expect(anon.status).toBe(401);
+});
+
 test("PATCH /api/rooms/:code lets the host rename and set roles; others get 403", async () => {
   const host = await signUp("host@example.com");
   const guest = await signUp("guest@example.com");

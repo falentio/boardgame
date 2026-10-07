@@ -18,6 +18,8 @@ import {
   deleteRoom,
   getRoom,
   joinRoom,
+  kickUser,
+  leaveRoom,
   updateRoom,
   type RoomDeps,
 } from "./service.ts";
@@ -57,6 +59,7 @@ const statusFor = (kind: RoomError["kind"]): 400 | 403 | 404 | 409 => {
     case "invalid-name":
     case "invalid-seat-count":
     case "invalid-setup":
+    case "invalid-kick":
       return 400;
     case "not-found":
       return 404;
@@ -64,6 +67,7 @@ const statusFor = (kind: RoomError["kind"]): 400 | 403 | 404 | 409 => {
       return 403;
     case "already-seated":
     case "room-full":
+    case "not-seated":
     case "conflict":
       return 409;
   }
@@ -139,10 +143,11 @@ export const createRoomApp = (deps: RoomAppDeps): Hono => {
 
   const respond = async (
     c: Context,
-    result: Result<Room, RoomError>,
+    result: Result<Room | null, RoomError>,
     status: 200 | 201 = 200,
   ): Promise<Response> => {
     if (!result.ok) return c.json({ error: result.error }, statusFor(result.error.kind));
+    if (result.value === null) return c.body(null, 204);
     const occupants = await occupantsOf(deps.db, occupantIdsOf(result.value.seats));
     return c.json({ room: toView(result.value, originOf(c), occupants) }, status);
   };
@@ -184,6 +189,31 @@ export const createRoomApp = (deps: RoomAppDeps): Hono => {
     const code = codeFrom(c);
     if (code === null) return badRequest(c, "code must be 8 chars CVCVCVCV");
     return respond(c, await joinRoom(serviceDeps, { code, user: userId(auth.user.id) }));
+  });
+
+  app.post("/:code/leave", async (c) => {
+    const auth = await session(c);
+    if (!auth) return unauthorized(c);
+    const code = codeFrom(c);
+    if (code === null) return badRequest(c, "code must be 8 chars CVCVCVCV");
+    return respond(c, await leaveRoom(serviceDeps, { code, user: userId(auth.user.id) }));
+  });
+
+  app.post("/:code/kick", async (c) => {
+    const auth = await session(c);
+    if (!auth) return unauthorized(c);
+    const code = codeFrom(c);
+    if (code === null) return badRequest(c, "code must be 8 chars CVCVCVCV");
+    const body = await readObject(c);
+    if (body === null) return badRequest(c, "body must be a JSON object");
+    const target = body.user;
+    if (typeof target !== "string" || target.length === 0) {
+      return badRequest(c, "user must be a non-empty string");
+    }
+    return respond(
+      c,
+      await kickUser(serviceDeps, { code, actor: userId(auth.user.id), target: userId(target) }),
+    );
   });
 
   app.post("/:code/game", async (c) => {
