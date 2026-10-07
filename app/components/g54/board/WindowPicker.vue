@@ -1,20 +1,24 @@
 <script setup lang="ts">
 import { computed, ref } from "vue"
-import { Button } from "@/components/ui/button"
 import type { G54Action } from "#shared/core/lockstep/games/g54/index.ts"
+import { specOf } from "#shared/core/lockstep/games/g54/roles.ts"
 import {
   confirmable,
   type CardChoice,
+  type CardFace,
   type TargetCard,
   type TargetGroup,
   type WindowMenu,
 } from "@/composables/window-menu.ts"
+import { Button } from "@/components/ui/button"
 import RoleCard from "@/components/g54/RoleCard.vue"
 import GeneralActionCard from "@/components/g54/GeneralActionCard.vue"
 import PlayerCard from "@/components/g54/PlayerCard.vue"
 
 const props = defineProps<{ menu: WindowMenu; busy?: boolean }>()
 const emit = defineEmits<{ act: [action: G54Action] }>()
+
+const busy = computed(() => props.busy === true)
 
 const selectedCardId = ref<string | null>(null)
 const selectedTargetIds = ref<readonly string[]>([])
@@ -33,16 +37,27 @@ const confirmReady = computed(
   () => selectedCard.value !== null && confirmable(selectedCard.value, selectedTargets.value),
 )
 
-const isCardDisabled = (card: CardChoice): boolean => props.busy === true || !card.enabled
+const faceName = (face: CardFace): string => {
+  if (face.kind === "role") return specOf(face.role).name
+  if (face.kind === "action") return face.card.label
+  return face.name
+}
+
+const confirmLabel = computed<string>(() =>
+  selectedCard.value === null ? "Confirm" : `Confirm ${faceName(selectedCard.value.face)}`,
+)
+
+const isCardDisabled = (card: CardChoice): boolean => busy.value || !card.enabled
 
 const startsGroup = (index: number): boolean => {
-  const previous = props.menu.cards[index - 1]
-  const card = props.menu.cards[index]
+  const cards = props.menu.cards
+  const previous = cards[index - 1]
+  const card = cards[index]
   if (card === undefined || previous === undefined) return false
   return card.group !== previous.group
 }
 
-const selectCard = (card: CardChoice): void => {
+const select = (card: CardChoice): void => {
   if (isCardDisabled(card)) return
   selectedCardId.value = card.id
   selectedTargetIds.value = []
@@ -51,10 +66,11 @@ const selectCard = (card: CardChoice): void => {
 const groupOf = (target: TargetCard): TargetGroup | null =>
   groups.value.find((group) => group.cards.includes(target)) ?? null
 
-const isTargetSelected = (target: TargetCard): boolean => selectedTargetIds.value.includes(target.id)
+const isTargetSelected = (target: TargetCard): boolean =>
+  selectedTargetIds.value.includes(target.id)
 
 const toggleTarget = (target: TargetCard): void => {
-  if (props.busy === true || !target.enabled) return
+  if (busy.value || !target.enabled) return
   if (isTargetSelected(target)) {
     selectedTargetIds.value = selectedTargetIds.value.filter((id) => id !== target.id)
     return
@@ -74,118 +90,125 @@ const confirm = (): void => {
 </script>
 
 <template>
-  <div
-    class="flex flex-col gap-3 rounded-xl border border-foreground/10 bg-card p-4"
+  <section
+    class="flex min-h-[22rem] flex-col overflow-hidden rounded-2xl border border-foreground/10 bg-card shadow-sm"
     data-slot="window-picker"
     role="group"
     :aria-label="menu.title"
   >
-    <div class="flex flex-col gap-0.5">
-      <h2 class="text-sm leading-tight font-semibold">
+    <header class="border-b border-foreground/10 bg-muted/40 px-6 py-4">
+      <h2 class="text-base leading-tight font-semibold">
         {{ menu.title }}
       </h2>
-      <p v-if="menu.note" class="text-muted-foreground text-xs leading-snug">
+      <p v-if="menu.note" class="text-muted-foreground mt-0.5 text-sm leading-snug">
         {{ menu.note }}
       </p>
-    </div>
+    </header>
 
-    <div
-      class="grid grid-flow-col grid-rows-[auto_auto] items-stretch gap-x-3 gap-y-1.5 overflow-x-auto pb-3"
-    >
-      <template v-for="(card, index) in menu.cards" :key="card.id">
+    <div class="flex min-w-0 flex-1 flex-col justify-center px-6 py-5">
+      <div class="flex min-w-0 flex-col gap-2">
         <div
-          v-if="startsGroup(index)"
-          class="row-span-2 w-px self-stretch bg-foreground/15"
-          aria-hidden="true"
-        />
-        <div
-          class="window-card-cell row-span-2 grid w-40 min-w-0 shrink-0 grid-rows-subgrid gap-1.5"
+          class="grid grid-flow-col grid-rows-[auto_auto] items-stretch gap-x-3 gap-y-1.5 overflow-x-auto pb-3"
         >
-          <RoleCard
-            v-if="card.face.kind === 'role'"
-            :role="card.face.role"
-            selectable
-            :selected="card.id === selectedCardId"
-            :disabled="isCardDisabled(card)"
-            @select="selectCard(card)"
-          />
-          <GeneralActionCard
-            v-else-if="card.face.kind === 'action'"
-            :model="card.face.card"
-            selectable
-            :selected="card.id === selectedCardId"
-            :disabled="isCardDisabled(card)"
-            @select="selectCard(card)"
-          />
-          <PlayerCard
-            v-else
-            :seat="card.face.seat"
-            :name="card.face.name"
-            :image="card.face.image"
-            selectable
-            :selected="card.id === selectedCardId"
-            :disabled="isCardDisabled(card)"
-            @select="selectCard(card)"
-          />
-          <span class="text-muted-foreground min-h-3 text-xs leading-none italic">
-            {{ card.reason && !busy ? card.reason : "" }}
-          </span>
+          <template v-for="(card, index) in menu.cards" :key="card.id">
+            <div
+              v-if="startsGroup(index)"
+              class="row-span-2 w-px self-stretch bg-foreground/15"
+              aria-hidden="true"
+            />
+            <div
+              class="window-card-cell row-span-2 grid w-40 min-w-0 shrink-0 grid-rows-subgrid gap-1.5"
+            >
+              <RoleCard
+                v-if="card.face.kind === 'role'"
+                :role="card.face.role"
+                selectable
+                :selected="card.id === selectedCardId"
+                :disabled="isCardDisabled(card)"
+                @select="select(card)"
+              />
+              <GeneralActionCard
+                v-else-if="card.face.kind === 'action'"
+                :model="card.face.card"
+                selectable
+                :selected="card.id === selectedCardId"
+                :disabled="isCardDisabled(card)"
+                @select="select(card)"
+              />
+              <PlayerCard
+                v-else
+                :seat="card.face.seat"
+                :name="card.face.name"
+                :image="card.face.image"
+                selectable
+                :selected="card.id === selectedCardId"
+                :disabled="isCardDisabled(card)"
+                @select="select(card)"
+              />
+              <span class="text-muted-foreground min-h-3 text-xs leading-none italic">
+                {{ card.reason && !busy ? card.reason : "" }}
+              </span>
+            </div>
+          </template>
         </div>
-      </template>
-    </div>
 
-    <div
-      v-if="selectedCard !== null && groups.length > 0"
-      class="flex flex-col gap-2 border-t border-foreground/10 pt-3"
-    >
-      <div
-        v-for="group in groups"
-        :key="group.id"
-        class="grid grid-flow-col grid-rows-[auto_auto] items-stretch gap-x-3 gap-y-1.5 overflow-x-auto pb-3"
-        role="group"
-        aria-label="Target"
-      >
         <div
-          v-for="target in group.cards"
-          :key="target.id"
-          class="window-card-cell row-span-2 grid w-40 min-w-0 shrink-0 grid-rows-subgrid gap-1.5"
+          v-if="selectedCard !== null && groups.length > 0"
+          class="flex flex-col gap-2 border-t border-foreground/10 pt-3"
         >
-          <RoleCard
-            v-if="target.face.kind === 'role'"
-            :role="target.face.role"
-            selectable
-            :selected="isTargetSelected(target)"
-            :disabled="busy === true || !target.enabled"
-            @select="toggleTarget(target)"
-          />
-          <PlayerCard
-            v-else-if="target.face.kind === 'player'"
-            :seat="target.face.seat"
-            :name="target.face.name"
-            :image="target.face.image"
-            selectable
-            :selected="isTargetSelected(target)"
-            :disabled="busy === true || !target.enabled"
-            @select="toggleTarget(target)"
-          />
-          <span class="text-muted-foreground min-h-3 text-xs leading-none italic">
-            {{ target.reason ?? "" }}
-          </span>
+          <div
+            v-for="group in groups"
+            :key="group.id"
+            class="grid grid-flow-col grid-rows-[auto_auto] items-stretch gap-x-3 gap-y-1.5 overflow-x-auto pb-3"
+            role="group"
+            aria-label="Target"
+          >
+            <div
+              v-for="target in group.cards"
+              :key="target.id"
+              class="window-card-cell row-span-2 grid w-40 min-w-0 shrink-0 grid-rows-subgrid gap-1.5"
+            >
+              <RoleCard
+                v-if="target.face.kind === 'role'"
+                :role="target.face.role"
+                selectable
+                :selected="isTargetSelected(target)"
+                :disabled="busy || !target.enabled"
+                @select="toggleTarget(target)"
+              />
+              <PlayerCard
+                v-else-if="target.face.kind === 'player'"
+                :seat="target.face.seat"
+                :name="target.face.name"
+                :image="target.face.image"
+                selectable
+                :selected="isTargetSelected(target)"
+                :disabled="busy || !target.enabled"
+                @select="toggleTarget(target)"
+              />
+              <span class="text-muted-foreground min-h-3 text-xs leading-none italic">
+                {{ target.reason ?? "" }}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="flex items-center gap-2">
+    <footer
+      class="flex items-center justify-end gap-2 border-t border-foreground/10 bg-muted/40 px-6 py-3"
+    >
       <Button
         type="button"
-        size="sm"
-        :disabled="busy === true || !confirmReady"
+        size="lg"
+        :disabled="busy || !confirmReady"
+        :aria-label="confirmLabel"
         @click="confirm"
       >
         Confirm
       </Button>
-    </div>
-  </div>
+    </footer>
+  </section>
 </template>
 
 <style scoped>

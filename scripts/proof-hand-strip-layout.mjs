@@ -225,7 +225,7 @@ const pickerState = (page) => page.eval(`(() => {
 const stripProbe = (page) => page.eval(`(() => {
   const picker = document.querySelector('[data-slot=window-picker]');
   if (!picker) return null;
-  const strips = [...picker.querySelectorAll(':scope > div')].filter((d) => d.classList.contains('overflow-x-auto'));
+  const strips = [...picker.querySelectorAll('div.overflow-x-auto')];
   const strip = strips[0] ?? null;
   if (!strip) return { stripFound: false };
   const cs = getComputedStyle(strip);
