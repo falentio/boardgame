@@ -4,7 +4,9 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
 import GameBoard from "@/components/g54/board/GameBoard.vue"
 import WindowMenu from "@/components/g54/board/WindowMenu.vue"
+import TurnActionPicker from "@/components/g54/board/TurnActionPicker.vue"
 import { boardOf, type SeatIdentity } from "@/composables/board-view.ts"
+import { isTurnMenu } from "@/composables/window-menu.ts"
 import { useAuthSession } from "@/composables/useAuthSession"
 import { useGame } from "@/composables/useGame"
 import { useLobby } from "@/composables/useLobby"
@@ -68,6 +70,11 @@ const winner = computed(() => {
   if (seat === null) return "Game over"
   return `${identities.value.get(seat)?.name ?? seat} wins`
 })
+
+const turnMenuOpen = computed(() => {
+  const menu = board.value?.menu
+  return menu !== null && menu !== undefined && isTurnMenu(menu)
+})
 </script>
 
 <template>
@@ -127,8 +134,14 @@ const winner = computed(() => {
             {{ winner }}
           </div>
           <GameBoard :board="board" />
+          <TurnActionPicker
+            v-if="board.menu && turnMenuOpen"
+            :menu="board.menu"
+            :busy="acted"
+            @act="report(act($event))"
+          />
           <WindowMenu
-            v-if="board.menu"
+            v-else-if="board.menu"
             :menu="board.menu"
             :busy="acted"
             @act="report(act($event))"

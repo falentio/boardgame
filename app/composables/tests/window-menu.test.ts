@@ -146,6 +146,42 @@ test("the turn menu lists the general actions and the non-reactive role claims",
   ])
 })
 
+test("turn options carry the card face that names the general action or the role", () => {
+  const menu = menuOf(project(genesis(), ANN), ANN, nameOf)!
+  expect(plainOption(menu, "income").face).toEqual({ kind: "general", action: "income" })
+  expect(targetOption(menu, "coup").face).toEqual({ kind: "general", action: "coup" })
+  expect(plainOption(menu, "claim-banker").face).toEqual({ kind: "role", role: "banker" })
+  expect(targetOption(menu, "claim-politician").face).toEqual({
+    kind: "role",
+    role: "politician",
+  })
+})
+
+test("a non-turn window leaves every option face null", () => {
+  const claimed = fold(genesis(), [ANN, { t: "claim", role: "banker", target: null }])
+  const projected = project(claimed, BOB)
+  expect(projected.window?.purpose).toBe("challenge-claim")
+  const menu = menuOf(projected, BOB, nameOf)!
+  for (const option of menu.options) {
+    if (option.kind === "plain" || option.kind === "target") {
+      expect(option.face).toBeNull()
+    }
+  }
+})
+
+test("a plain non-turn option and a bomb target option both carry face null", () => {
+  const state = withCoins(
+    genesis(["banker", "director", "anarchist", "peacekeeper", "politician"]),
+    ANN,
+    3,
+  )
+  const bombed = fold(state, [ANN, { t: "claim", role: "anarchist", target: BOB }])
+  const menu = menuOf(project(bombed, BOB), BOB, nameOf)!
+  expect(targetOption(menu, "pass").face).toBeNull()
+  expect(plainOption(menu, "defuse").face).toBeNull()
+})
+
+
 test("a target role carries a seat picker whose action builds a targeted claim", () => {
   const menu = menuOf(project(genesis(), ANN), ANN, nameOf)!
   const politician = targetOption(menu, "claim-politician")

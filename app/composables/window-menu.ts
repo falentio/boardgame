@@ -30,6 +30,14 @@ export interface MenuRoleChoice {
 }
 
 /**
+ * The card identity of a turn option. Only the turn window sets a face; every
+ * other window leaves it null and renders buttons.
+ */
+export type MenuFace =
+  | { readonly kind: "role"; readonly role: RoleId }
+  | { readonly kind: "general"; readonly action: GeneralActionId }
+
+/**
  * One control the open window offers the viewer. The `kind` names the control and
  * the arm's `action` takes exactly the value that control produces, so a `target`
  * option cannot ship an action that ignores its target.
@@ -43,6 +51,8 @@ export type MenuOption =
       readonly enabled: boolean
       /** Why the option is disabled; null when it is enabled. */
       readonly reason: string | null
+      /** The card identity for the turn selector, or null outside the turn window. */
+      readonly face: MenuFace | null
       readonly action: () => G54Action
     }
   | {
@@ -53,6 +63,8 @@ export type MenuOption =
       readonly enabled: boolean
       /** Why the option is disabled; null when it is enabled. */
       readonly reason: string | null
+      /** The card identity for the turn selector, or null outside the turn window. */
+      readonly face: MenuFace | null
       readonly choices: readonly MenuSeatChoice[]
       readonly action: (seat: SeatId) => G54Action
     }
@@ -112,6 +124,17 @@ export interface WindowMenu {
   readonly note: string | null
   readonly options: readonly MenuOption[]
 }
+
+/**
+ * True when every option carries a card face, so the turn selector renders cards.
+ * Only the plain turn window sets a face on each option; every other window leaves
+ * them null, including `spy-second`, whose Stop has no card.
+ */
+export const isTurnMenu = (menu: WindowMenu): boolean =>
+  menu.options.length > 0 &&
+  menu.options.every(
+    (option) => (option.kind === "plain" || option.kind === "target") && option.face !== null,
+  )
 
 const GENERAL_LABELS: Record<GeneralActionId, string> = {
   income: "Income",
@@ -198,7 +221,8 @@ const plain = (
   enabled: boolean,
   reason: string | null,
   action: () => G54Action,
-): MenuOption => ({ id, kind: "plain", label, detail, enabled, reason, action })
+  face: MenuFace | null = null,
+): MenuOption => ({ id, kind: "plain", label, detail, enabled, reason, face, action })
 
 const turnMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string): WindowMenu => {
   const coins = coinsOf(view, seat)
@@ -213,6 +237,7 @@ const turnMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string)
     detail: GENERAL_ACTIONS.coup.summary,
     enabled: coupEnabled,
     reason: coupChoices.length === 0 ? NO_TARGET : coupEnabled ? null : shortOf(COUP_COST),
+    face: { kind: "general", action: "coup" },
     choices: coupChoices,
     action: (target) => ({ t: "coup", target }),
   }
@@ -226,6 +251,7 @@ const turnMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string)
       detail: GENERAL_ACTIONS[id].summary,
       enabled: !forcedCoup,
       reason: forcedCoup ? FORCED_COUP_REASON : null,
+      face: { kind: "general", action: id },
       action: PLAIN_GENERALS[id],
     }
   })
@@ -262,6 +288,7 @@ const turnMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string)
           detail,
           enabled,
           reason,
+          face: { kind: "role", role: spec.id },
           choices,
           action: (target) => ({ t: "claim", role: spec.id, target }),
         }
@@ -275,6 +302,7 @@ const turnMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string)
         detail,
         enabled: !forcedCoup && affordable,
         reason: forcedCoup ? FORCED_COUP_REASON : affordable ? null : shortOf(cost),
+        face: { kind: "role", role: spec.id },
         action: () => ({ t: "claim", role: spec.id, target: null }),
       }
     })
@@ -668,6 +696,7 @@ const bombMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string)
         detail: null,
         enabled: choices.length > 0,
         reason: choices.length > 0 ? null : "No legal next holder",
+        face: null,
         choices,
         action: (target) => ({ t: "claim", role: "anarchist", target }),
       },
