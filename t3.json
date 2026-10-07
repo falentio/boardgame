@@ -12,7 +12,7 @@
     },
     {
       "name": "Dev server",
-      "command": "pnpm dev",
+      "command": "pnpm dev --host 0.0.0.0",
       "icon": "play",
       "previewUrl": "http://localhost:3000",
       "autoOpenPreview": true
