@@ -4,6 +4,7 @@ import { makeRandom } from "../../../../shared/core/lockstep/hash.ts";
 import { seed } from "../../../../shared/core/lockstep/ids.ts";
 import { CONSONANTS, VOWELS, type RoomEntropy } from "../../../../shared/rooms/code.ts";
 import { roomCode, roomId, userId } from "../../../../shared/rooms/ids.ts";
+import { ROOM_TTL_MS } from "../../../../shared/rooms/room.ts";
 import { user } from "../../../db/schema.ts";
 import type { Db } from "../../../utils/db.ts";
 import {
@@ -11,9 +12,12 @@ import {
   deleteRoom,
   getRoom,
   joinRoom,
+  kickUser,
+  leaveRoom,
   updateRoom,
   type RoomDeps,
 } from "../service.ts";
+import { roomByCode } from "../store.ts";
 import { createTestDb, type TestDb } from "./d1-harness.ts";
 import { recordingEvents, throwingEvents, type RecordingEvents } from "./recording-events.ts";
 
@@ -93,6 +97,25 @@ const loseNextCas = (db: Db, count = 1): Db => {
             return { set: () => ({ where: () => ({ returning: async () => [] }) }) };
           }
           return Reflect.apply(target.update, target, args);
+        };
+      }
+      const value = Reflect.get(target, property, receiver);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+};
+
+const loseNextDelete = (db: Db, count = 1): Db => {
+  let remaining = count;
+  return new Proxy(db, {
+    get(target, property, receiver) {
+      if (property === "delete") {
+        return (...args: unknown[]) => {
+          if (remaining > 0) {
+            remaining -= 1;
+            return { where: () => ({ returning: async () => [] }) };
+          }
+          return Reflect.apply(target.delete, target, args);
         };
       }
       const value = Reflect.get(target, property, receiver);
@@ -331,4 +354,137 @@ test("a thrown events.changed does not fail the mutation", async () => {
 
   const reloaded = await getRoom(deps(), created.value.code);
   expect(reloaded.ok && reloaded.value.seats[1]!.occupant).toBe(GUEST);
+});
+
+test("leaveRoom frees the seat and emits one updated", async () => {
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+  await joinRoom(deps(), { code: created.value.code, user: GUEST });
+  recorder.changes.length = 0;
+
+  const left = await leaveRoom(deps(), { code: created.value.code, user: GUEST });
+  if (!left.ok) throw new Error(`expected a leave, got ${left.error.kind}`);
+  if (left.value === null) throw new Error("expected a surviving room");
+  expect(left.value.seats[1]!.occupant).toBeNull();
+  expect(recorder.changes).toHaveLength(1);
+  expect(recorder.changes[0]!.reason).toBe("updated");
+
+  const reloaded = await getRoom(deps(), created.value.code);
+  expect(reloaded.ok && reloaded.value.seats[1]!.occupant).toBeNull();
+});
+
+test("kickUser frees the target's seat and emits one updated", async () => {
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+  await joinRoom(deps(), { code: created.value.code, user: GUEST });
+  recorder.changes.length = 0;
+
+  const kicked = await kickUser(deps(), {
+    code: created.value.code,
+    actor: HOST,
+    target: GUEST,
+  });
+  if (!kicked.ok) throw new Error(`expected a kick, got ${kicked.error.kind}`);
+  if (kicked.value === null) throw new Error("expected a surviving room");
+  expect(kicked.value.seats[1]!.occupant).toBeNull();
+  expect(recorder.changes).toHaveLength(1);
+  expect(recorder.changes[0]!.reason).toBe("updated");
+});
+
+test("the last occupant leaving deletes the row, frees the code, and emits one deleted", async () => {
+  const created = await createRoom(deps({ entropy: scriptedEntropy(["GAKUDIRU"]) }), {
+    host: HOST,
+    name: "Alpha",
+    seats: 1,
+    roles: STARTER_ROLES,
+  });
+  if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+  recorder.changes.length = 0;
+
+  const left = await leaveRoom(deps(), { code: created.value.code, user: HOST });
+  expect(left).toEqual({ ok: true, value: null });
+  expect(await roomByCode(harness.db, created.value.code)).toBeNull();
+  expect(recorder.changes).toHaveLength(1);
+  expect(recorder.changes[0]!.reason).toBe("deleted");
+
+  const reclaimed = await createRoom(deps({ entropy: scriptedEntropy(["GAKUDIRU"]) }), {
+    host: HOST,
+    name: "Beta",
+    seats: 1,
+    roles: STARTER_ROLES,
+  });
+  if (!reclaimed.ok) throw new Error(`expected the code to be free, got ${reclaimed.error.kind}`);
+  expect(reclaimed.value.code).toBe("GAKUDIRU");
+});
+
+test("leave reloads and retries when the delete loses the compare-and-swap", async () => {
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 1, roles: STARTER_ROLES });
+  if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+  recorder.changes.length = 0;
+
+  const left = await leaveRoom(deps({ db: loseNextDelete(harness.db) }), {
+    code: created.value.code,
+    user: HOST,
+  });
+  expect(left).toEqual({ ok: true, value: null });
+  expect(await roomByCode(harness.db, created.value.code)).toBeNull();
+  expect(recorder.changes).toHaveLength(1);
+  expect(recorder.changes[0]!.reason).toBe("deleted");
+});
+
+test("an expired room reads as not-found and refuses joins", async () => {
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+  const expired = deps({ now: () => 1000 + ROOM_TTL_MS });
+
+  expect(await getRoom(expired, created.value.code)).toEqual({
+    ok: false,
+    error: { kind: "not-found" },
+  });
+  expect(await joinRoom(expired, { code: created.value.code, user: GUEST })).toEqual({
+    ok: false,
+    error: { kind: "not-found" },
+  });
+});
+
+test("createRoom reclaims an expired code before it inserts", async () => {
+  const first = await createRoom(deps({ entropy: scriptedEntropy(["GAKUDIRU"]) }), {
+    host: HOST,
+    name: "Alpha",
+    seats: 3,
+    roles: STARTER_ROLES,
+  });
+  if (!first.ok) throw new Error(`expected a room, got ${first.error.kind}`);
+
+  const second = await createRoom(
+    deps({ entropy: scriptedEntropy(["GAKUDIRU"]), now: () => 1000 + ROOM_TTL_MS }),
+    { host: HOST, name: "Beta", seats: 3, roles: STARTER_ROLES },
+  );
+  if (!second.ok) throw new Error(`expected the code to be reclaimed, got ${second.error.kind}`);
+  expect(second.value.code).toBe("GAKUDIRU");
+  expect(second.value.id).not.toBe(first.value.id);
+  expect((await roomByCode(harness.db, second.value.code))!.room.id).toBe(second.value.id);
+});
+
+test("leave and kick emit nothing on their error paths", async () => {
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+  recorder.changes.length = 0;
+
+  expect(await leaveRoom(deps(), { code: created.value.code, user: GUEST })).toEqual({
+    ok: false,
+    error: { kind: "not-seated" },
+  });
+  expect(
+    await kickUser(deps(), { code: created.value.code, actor: GUEST, target: HOST }),
+  ).toEqual({ ok: false, error: { kind: "not-host" } });
+  expect(
+    await kickUser(deps(), { code: created.value.code, actor: HOST, target: GUEST }),
+  ).toEqual({ ok: false, error: { kind: "not-seated" } });
+  expect(await leaveRoom(deps(), { code: roomCode("BAKUDIRU"), user: GUEST })).toEqual({
+    ok: false,
+    error: { kind: "not-found" },
+  });
+
+  expect(recorder.changes).toEqual([]);
 });
