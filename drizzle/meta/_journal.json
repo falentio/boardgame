@@ -15,6 +15,13 @@
       "when": 1791126978225,
       "tag": "0001_illegal_whizzer",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791389976511,
+      "tag": "0002_needy_hemingway",
+      "breakpoints": true
     }
   ]
 }

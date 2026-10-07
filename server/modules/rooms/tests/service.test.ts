@@ -14,6 +14,7 @@ import {
   joinRoom,
   kickUser,
   leaveRoom,
+  startRoom,
   updateRoom,
   type RoomDeps,
 } from "../service.ts";
@@ -389,6 +390,116 @@ test("kickUser frees the target's seat and emits one updated", async () => {
   expect(kicked.value.seats[1]!.occupant).toBeNull();
   expect(recorder.changes).toHaveLength(1);
   expect(recorder.changes[0]!.reason).toBe("updated");
+});
+
+test("startRoom stamps startedAt, persists it, and emits one updated", async () => {
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, roles: STARTER_ROLES });
+  if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+  await joinRoom(deps(), { code: created.value.code, user: GUEST });
+  recorder.changes.length = 0;
+
+  const started = await startRoom(deps({ now: () => 5000 }), {
+    code: created.value.code,
+    actor: HOST,
+  });
+  if (!started.ok) throw new Error(`expected a start, got ${started.error.kind}`);
+  expect(started.value.startedAt).toBe(5000);
+  expect(recorder.changes).toHaveLength(1);
+  expect(recorder.changes[0]!.reason).toBe("updated");
+
+  const reloaded = await getRoom(deps(), created.value.code);
+  expect(reloaded.ok && reloaded.value.startedAt).toBe(5000);
+});
+
+test("startRoom refuses a non-host and an open room", async () => {
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, roles: STARTER_ROLES });
+  if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+
+  const open = await startRoom(deps(), { code: created.value.code, actor: HOST });
+  expect(open).toEqual({ ok: false, error: { kind: "room-not-full" } });
+
+  await joinRoom(deps(), { code: created.value.code, user: GUEST });
+  const denied = await startRoom(deps(), { code: created.value.code, actor: GUEST });
+  expect(denied).toEqual({ ok: false, error: { kind: "not-host" } });
+});
+
+test("a repeated start is idempotent: the first moment survives and nothing churns", async () => {
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, roles: STARTER_ROLES });
+  if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+  await joinRoom(deps(), { code: created.value.code, user: GUEST });
+
+  const first = await startRoom(deps({ now: () => 5000 }), {
+    code: created.value.code,
+    actor: HOST,
+  });
+  if (!first.ok) throw new Error(`expected a start, got ${first.error.kind}`);
+  recorder.changes.length = 0;
+
+  const again = await startRoom(deps({ now: () => 9000 }), {
+    code: created.value.code,
+    actor: HOST,
+  });
+  if (!again.ok) throw new Error(`expected a repeat start, got ${again.error.kind}`);
+  expect(again.value.startedAt).toBe(5000);
+  expect(again.value.updatedAt).toBe(5000);
+  expect(recorder.changes).toEqual([]);
+});
+
+test("joinRoom refuses a room the host has started", async () => {
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, roles: STARTER_ROLES });
+  if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+  await joinRoom(deps(), { code: created.value.code, user: GUEST });
+  await startRoom(deps(), { code: created.value.code, actor: HOST });
+
+  const late = await joinRoom(deps(), { code: created.value.code, user: THIRD });
+  expect(late).toEqual({ ok: false, error: { kind: "already-started" } });
+});
+
+test("a started room refuses leave and kick, so its roster stays full", async () => {
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, roles: STARTER_ROLES });
+  if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+  await joinRoom(deps(), { code: created.value.code, user: GUEST });
+  await startRoom(deps(), { code: created.value.code, actor: HOST });
+  recorder.changes.length = 0;
+
+  expect(await leaveRoom(deps(), { code: created.value.code, user: HOST })).toEqual({
+    ok: false,
+    error: { kind: "already-started" },
+  });
+  expect(
+    await kickUser(deps(), { code: created.value.code, actor: HOST, target: GUEST }),
+  ).toEqual({ ok: false, error: { kind: "already-started" } });
+  expect(recorder.changes).toEqual([]);
+
+  const reloaded = await getRoom(deps(), created.value.code);
+  expect(reloaded.ok && reloaded.value.startedAt).not.toBeNull();
+  expect(reloaded.ok && reloaded.value.seats.every((seat) => seat.occupant !== null)).toBe(true);
+});
+
+test("a start that loses the compare-and-swap retries and keeps the first moment", async () => {
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, roles: STARTER_ROLES });
+  if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+  await joinRoom(deps(), { code: created.value.code, user: GUEST });
+  const first = await startRoom(deps({ now: () => 5000 }), { code: created.value.code, actor: HOST });
+  if (!first.ok) throw new Error(`expected a start, got ${first.error.kind}`);
+
+  const retried = await startRoom(deps({ db: loseNextCas(harness.db), now: () => 9000 }), {
+    code: created.value.code,
+    actor: HOST,
+  });
+  if (!retried.ok) throw new Error(`expected the retry to succeed, got ${retried.error.kind}`);
+  expect(retried.value.startedAt).toBe(5000);
+});
+
+test("updateRoom with no fields writes nothing and emits nothing", async () => {
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+  recorder.changes.length = 0;
+
+  const updated = await updateRoom(deps(), { code: created.value.code, actor: HOST });
+  if (!updated.ok) throw new Error(`expected an update, got ${updated.error.kind}`);
+  expect(updated.value.name).toBe("Alpha");
+  expect(recorder.changes).toEqual([]);
 });
 
 test("the last occupant leaving deletes the row, frees the code, and emits one deleted", async () => {

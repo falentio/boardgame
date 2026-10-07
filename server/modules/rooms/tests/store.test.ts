@@ -35,7 +35,7 @@ afterEach(async () => {
   await harness.dispose();
 });
 
-const aRoom = (overrides: Partial<Parameters<typeof createRoom>[0]> = {}): Room => {
+const aRoom = (overrides: Partial<Omit<Parameters<typeof createRoom>[0], "startedAt">> = {}): Room => {
   const result = createRoom({
     id: roomId("room-1"),
     code: roomCode("GAKUDIRU"),
@@ -58,6 +58,18 @@ test("insertRoom then roomByCode round-trips every field with revision 0", async
   expect(loaded).not.toBeNull();
   expect(loaded!.revision).toBe(0);
   expect(loaded!.room).toEqual(room);
+  expect(loaded!.room.startedAt).toBeNull();
+});
+
+test("saveRoom round-trips a set startedAt", async () => {
+  const room = aRoom();
+  await insertRoom(harness.db, room);
+
+  const started: Room = { ...room, startedAt: 5000, updatedAt: 5000 };
+  expect(await saveRoom(harness.db, started, 0)).toBe(true);
+
+  const after = await roomByCode(harness.db, room.code);
+  expect(after!.room.startedAt).toBe(5000);
 });
 
 test("roomByCode is an exact-match lookup and misses for an unknown code", async () => {

@@ -12,6 +12,7 @@ import {
   renameRoom,
   requireHost,
   setRoles,
+  startRoom as applyStart,
   type Departure,
   type Room,
   type RoomError,
@@ -73,6 +74,11 @@ export interface KickUserInput {
   target: UserId;
 }
 
+export interface StartRoomInput {
+  code: RoomCode;
+  actor: UserId;
+}
+
 const notFound: RoomError = { kind: "not-found" };
 
 const load = async (deps: RoomDeps, code: RoomCode): Promise<LoadedRoom | null> => {
@@ -132,6 +138,9 @@ const mutate = async (
     if (loaded === null) return err(notFound);
     const next = apply(loaded.room);
     if (!next.ok) return next;
+    // A transition that returns the identical room changed nothing; writing it
+    // would bump the revision and publish a signal for no state change.
+    if (next.value === loaded.room) return ok(loaded.room);
     if (await saveRoom(deps.db, next.value, loaded.revision)) {
       await emit(deps, next.value, reason);
       return ok(next.value);
@@ -200,6 +209,14 @@ export const kickUser = (
 ): Promise<Result<Room | null, RoomError>> =>
   depart(deps, input.code, (room) =>
     applyKick(room, { actor: input.actor, target: input.target, now: deps.now() }),
+  );
+
+export const startRoom = (
+  deps: RoomDeps,
+  input: StartRoomInput,
+): Promise<Result<Room, RoomError>> =>
+  mutate(deps, input.code, "updated", (room) =>
+    applyStart(room, { actor: input.actor, now: deps.now() }),
   );
 
 export const deleteRoom = async (

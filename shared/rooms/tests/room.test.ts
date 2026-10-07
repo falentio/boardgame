@@ -8,12 +8,14 @@ import {
   ROOM_TTL_MS,
   createRoom,
   isExpired,
+  isFull,
   joinRoom,
   kickFromRoom,
   leaveRoom,
   renameRoom,
   requireHost,
   setRoles,
+  startRoom,
   type NewRoom,
   type Room,
   type RoomError,
@@ -61,6 +63,7 @@ test("createRoom seats the host at position 0 and opens the rest", () => {
   }
   expect(room.createdAt).toBe(1000);
   expect(room.updatedAt).toBe(1000);
+  expect(room.startedAt).toBeNull();
 });
 
 test("createRoom derives unique non-empty seat ids the engine roster accepts", () => {
@@ -124,6 +127,15 @@ test("joinRoom refuses a repeat join and a full room", () => {
   });
 });
 
+test("joinRoom refuses a room the host has started", () => {
+  const full = withGuests([GUEST], 2);
+  const started = startRoom(full, { actor: HOST, now: 5000 });
+  if (!started.ok) throw new Error("expected a start");
+  expect(failure(joinRoom(started.value, { user: THIRD, now: 6000 }))).toEqual({
+    kind: "already-started",
+  });
+});
+
 test("renameRoom lets the host rename and moves updatedAt, not createdAt", () => {
   const room = created();
   const renamed = renameRoom(room, { actor: HOST, name: "  Beta  ", now: 5000 });
@@ -158,6 +170,67 @@ test("setRoles replaces the setup for the host and validates the selection", () 
   );
 });
 
+test("isFull is true only when every seat is occupied", () => {
+  expect(isFull(created())).toBe(false);
+  expect(isFull(withGuests([GUEST, THIRD]))).toBe(true);
+});
+
+test("startRoom stamps startedAt for the host of a full room", () => {
+  const room = withGuests([GUEST, THIRD]);
+  const started = startRoom(room, { actor: HOST, now: 5000 });
+  if (!started.ok) throw new Error("expected a start");
+  expect(started.value.startedAt).toBe(5000);
+  expect(started.value.updatedAt).toBe(5000);
+  expect(started.value.createdAt).toBe(1000);
+});
+
+test("startRoom is host-only", () => {
+  expect(failure(startRoom(withGuests([GUEST, THIRD]), { actor: GUEST, now: 5000 }))).toEqual({
+    kind: "not-host",
+  });
+});
+
+test("startRoom refuses a room with an open seat", () => {
+  expect(failure(startRoom(created(), { actor: HOST, now: 5000 }))).toEqual({
+    kind: "room-not-full",
+  });
+});
+
+test("startRoom is idempotent and preserves the first start moment", () => {
+  const room = withGuests([GUEST, THIRD]);
+  const first = startRoom(room, { actor: HOST, now: 5000 });
+  if (!first.ok) throw new Error("expected a start");
+  const again = startRoom(first.value, { actor: HOST, now: 9000 });
+  if (!again.ok) throw new Error("expected a repeat start to succeed");
+  expect(again.value).toBe(first.value);
+  expect(again.value.startedAt).toBe(5000);
+  expect(again.value.updatedAt).toBe(5000);
+});
+
+test("startRoom is pure: the input room is untouched", () => {
+  const room = withGuests([GUEST, THIRD]);
+  const before = JSON.parse(JSON.stringify(room)) as Room;
+  startRoom(room, { actor: HOST, now: 5000 });
+  expect(room).toEqual(before);
+});
+
+test("a started room refuses leave, kick, and setRoles so its genesis stays fixed", () => {
+  const started = startRoom(withGuests([GUEST, THIRD]), { actor: HOST, now: 5000 });
+  if (!started.ok) throw new Error("expected a start");
+  const room = started.value;
+
+  expect(failure(leaveRoom(room, { actor: HOST, now: 6000 }))).toEqual({ kind: "already-started" });
+  expect(failure(leaveRoom(room, { actor: GUEST, now: 6000 }))).toEqual({ kind: "already-started" });
+  expect(failure(kickFromRoom(room, { actor: HOST, target: GUEST, now: 6000 }))).toEqual({
+    kind: "already-started",
+  });
+  const roles = ["capitalist", "newscaster", "general", "lawyer", "priest"] as const;
+  expect(failure(setRoles(room, { actor: HOST, roles, now: 6000 }))).toEqual({
+    kind: "already-started",
+  });
+  expect(isFull(room)).toBe(true);
+});
+
 test("requireHost accepts the host and rejects everyone else", () => {
   const room = created();
   expect(requireHost(room, HOST)).toBeNull();
@@ -180,8 +253,8 @@ test("isExpired treats the TTL boundary as expired", () => {
   expect(isExpired(room, 1000 + ROOM_TTL_MS)).toBe(true);
 });
 
-const withGuests = (guests: readonly UserId[]): Room => {
-  let room = created();
+const withGuests = (guests: readonly UserId[], seats = 3): Room => {
+  let room = created({ seats });
   for (const guest of guests) {
     const joined = joinRoom(room, { user: guest, now: 2000 });
     if (!joined.ok) throw new Error(`expected a join, got ${joined.error.kind}`);

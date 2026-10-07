@@ -20,6 +20,7 @@ export const toRoom = (row: RoomRow): LoadedRoom => ({
     seats: row.seats,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt.getTime(),
+    startedAt: row.startedAt === null ? null : row.startedAt.getTime(),
   },
   revision: row.revision,
 });
@@ -34,4 +35,5 @@ export const toRow = (room: Room, revision: number): RoomRow => ({
   revision,
   createdAt: new Date(room.createdAt),
   updatedAt: new Date(room.updatedAt),
+  startedAt: room.startedAt === null ? null : new Date(room.startedAt),
 });

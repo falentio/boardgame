@@ -3,6 +3,7 @@ import { STARTER_ROLES } from "../../../../shared/core/lockstep/games/g54/roles.
 import { makeRandom } from "../../../../shared/core/lockstep/hash.ts";
 import { seed } from "../../../../shared/core/lockstep/ids.ts";
 import { roomId } from "../../../../shared/rooms/ids.ts";
+import { ROOM_TTL_MS } from "../../../../shared/rooms/room.ts";
 import { authFromEnv, requireSession } from "../../../utils/auth.ts";
 import { cloudflareEnv } from "../../../utils/db.ts";
 import { createRoomApp } from "../http.ts";
@@ -255,6 +256,56 @@ test("POST /api/rooms/:code/kick frees the target and guards host, self, and bod
     body: JSON.stringify({ user: guest.id }),
   });
   expect(anon.status).toBe(401);
+});
+
+test("POST /api/rooms/:code/start starts a full room for the host and exposes startedAt", async () => {
+  const host = await signUp("host@example.com");
+  const guest = await signUp("guest@example.com");
+  const created = await call("/api/rooms", { method: "POST", cookie: host.cookie, body: createBody({ seats: 2 }) });
+  const { room } = (await created.json()) as { room: { code: string } };
+  await call(`/api/rooms/${room.code}/join`, { method: "POST", cookie: guest.cookie });
+
+  const started = await call(`/api/rooms/${room.code}/start`, { method: "POST", cookie: host.cookie });
+  expect(started.status).toBe(200);
+  const body = (await started.json()) as { room: { startedAt: number | null; expiresAt: number } };
+  expect(body.room.startedAt).toBe(1000);
+  expect(body.room.expiresAt).toBe(1000 + ROOM_TTL_MS);
+
+  const refetched = await call(`/api/rooms/${room.code}`, { cookie: guest.cookie });
+  const refetchedBody = (await refetched.json()) as { room: { startedAt: number | null } };
+  expect(refetchedBody.room.startedAt).toBe(1000);
+
+  const repeat = await call(`/api/rooms/${room.code}/start`, { method: "POST", cookie: host.cookie });
+  expect(repeat.status).toBe(200);
+
+  const denied = await call(`/api/rooms/${room.code}/start`, { method: "POST", cookie: guest.cookie });
+  expect(denied.status).toBe(403);
+
+  const missing = await call("/api/rooms/BAKUDIRU/start", { method: "POST", cookie: host.cookie });
+  expect(missing.status).toBe(404);
+
+  const badCode = await call("/api/rooms/nope/start", { method: "POST", cookie: host.cookie });
+  expect(badCode.status).toBe(400);
+
+  const anon = await call(`/api/rooms/${room.code}/start`, { method: "POST" });
+  expect(anon.status).toBe(401);
+});
+
+test("POST /api/rooms/:code/start is 409 for an open room and refuses joins once started", async () => {
+  const host = await signUp("host@example.com");
+  const guest = await signUp("guest@example.com");
+  const created = await call("/api/rooms", { method: "POST", cookie: host.cookie, body: createBody({ seats: 2 }) });
+  const { room } = (await created.json()) as { room: { code: string } };
+
+  const open = await call(`/api/rooms/${room.code}/start`, { method: "POST", cookie: host.cookie });
+  expect(open.status).toBe(409);
+
+  await call(`/api/rooms/${room.code}/join`, { method: "POST", cookie: guest.cookie });
+  await call(`/api/rooms/${room.code}/start`, { method: "POST", cookie: host.cookie });
+
+  const third = await signUp("third@example.com");
+  const late = await call(`/api/rooms/${room.code}/join`, { method: "POST", cookie: third.cookie });
+  expect(late.status).toBe(409);
 });
 
 test("PATCH /api/rooms/:code lets the host rename and set roles; others get 403", async () => {

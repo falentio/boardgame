@@ -25,10 +25,13 @@ export interface Room {
   readonly seats: readonly Seat[];
   readonly createdAt: number;
   readonly updatedAt: number;
+  readonly startedAt: number | null;
 }
 
 export const isExpired = (room: Room, now: number): boolean =>
   now >= room.createdAt + ROOM_TTL_MS;
+
+export const isFull = (room: Room): boolean => room.seats.every((s) => s.occupant !== null);
 
 export type RoomError =
   | { kind: "invalid-name"; reason: string }
@@ -40,6 +43,8 @@ export type RoomError =
   | { kind: "room-full" }
   | { kind: "not-seated" }
   | { kind: "invalid-kick"; reason: string }
+  | { kind: "already-started" }
+  | { kind: "room-not-full" }
   | { kind: "conflict" };
 
 export interface NewRoom {
@@ -55,6 +60,11 @@ export interface NewRoom {
 export interface JoinCommand {
   user: UserId;
   now: number;
+}
+
+export interface StartRoomCommand {
+  readonly actor: UserId;
+  readonly now: number;
 }
 
 export interface RenameCommand {
@@ -124,10 +134,12 @@ export const createRoom = (input: NewRoom): Result<Room, RoomError> => {
     seats,
     createdAt: input.now,
     updatedAt: input.now,
+    startedAt: null,
   });
 };
 
 export const joinRoom = (room: Room, cmd: JoinCommand): Result<Room, RoomError> => {
+  if (room.startedAt !== null) return err({ kind: "already-started" });
   if (room.seats.some((seat) => seat.occupant === cmd.user)) {
     return err({ kind: "already-seated" });
   }
@@ -151,6 +163,7 @@ const vacate = (room: Room, index: number, now: number): Departure => {
 };
 
 export const leaveRoom = (room: Room, cmd: LeaveCommand): Result<Departure, RoomError> => {
+  if (room.startedAt !== null) return err({ kind: "already-started" });
   const index = room.seats.findIndex((seat) => seat.occupant === cmd.actor);
   if (index === -1) return err({ kind: "not-seated" });
   return ok(vacate(room, index, cmd.now));
@@ -159,12 +172,21 @@ export const leaveRoom = (room: Room, cmd: LeaveCommand): Result<Departure, Room
 export const kickFromRoom = (room: Room, cmd: KickCommand): Result<Departure, RoomError> => {
   const denied = requireHost(room, cmd.actor);
   if (denied !== null) return err(denied);
+  if (room.startedAt !== null) return err({ kind: "already-started" });
   if (cmd.target === cmd.actor) {
     return err({ kind: "invalid-kick", reason: "the host cannot kick itself" });
   }
   const index = room.seats.findIndex((seat) => seat.occupant === cmd.target);
   if (index === -1) return err({ kind: "not-seated" });
   return ok(vacate(room, index, cmd.now));
+};
+
+export const startRoom = (room: Room, cmd: StartRoomCommand): Result<Room, RoomError> => {
+  const denied = requireHost(room, cmd.actor);
+  if (denied !== null) return err(denied);
+  if (room.startedAt !== null) return ok(room);
+  if (!isFull(room)) return err({ kind: "room-not-full" });
+  return ok({ ...room, startedAt: cmd.now, updatedAt: cmd.now });
 };
 
 export const renameRoom = (room: Room, cmd: RenameCommand): Result<Room, RoomError> => {
@@ -180,6 +202,7 @@ export const renameRoom = (room: Room, cmd: RenameCommand): Result<Room, RoomErr
 export const setRoles = (room: Room, cmd: SetRolesCommand): Result<Room, RoomError> => {
   const denied = requireHost(room, cmd.actor);
   if (denied !== null) return err(denied);
+  if (room.startedAt !== null) return err({ kind: "already-started" });
   try {
     validateRoles(cmd.roles);
   } catch (error) {

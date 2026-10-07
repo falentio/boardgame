@@ -68,6 +68,7 @@ export const room = sqliteTable("room", {
   setup: text("setup", { mode: "json" }).$type<G54Setup>().notNull(),
   seats: text("seats", { mode: "json" }).$type<Seat[]>().notNull(),
   revision: integer("revision").notNull().default(0),
+  startedAt: integer("started_at", { mode: "timestamp_ms" }),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 });

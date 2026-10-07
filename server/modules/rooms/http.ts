@@ -8,7 +8,7 @@ import type { RoomEntropy } from "../../../shared/rooms/code.ts";
 import { parseRoomCode } from "../../../shared/rooms/code.ts";
 import { userId, type RoomCode, type RoomId, type UserId } from "../../../shared/rooms/ids.ts";
 import type { Result } from "../../../shared/rooms/result.ts";
-import type { Room, RoomError, Seat } from "../../../shared/rooms/room.ts";
+import { ROOM_TTL_MS, type Room, type RoomError, type Seat } from "../../../shared/rooms/room.ts";
 import {
   occupantsOf,
   type OccupantDirectory,
@@ -20,6 +20,7 @@ import {
   joinRoom,
   kickUser,
   leaveRoom,
+  startRoom,
   updateRoom,
   type RoomDeps,
 } from "./service.ts";
@@ -52,6 +53,8 @@ interface RoomView {
   seats: readonly SeatView[];
   createdAt: number;
   updatedAt: number;
+  startedAt: number | null;
+  expiresAt: number;
 }
 
 const statusFor = (kind: RoomError["kind"]): 400 | 403 | 404 | 409 => {
@@ -68,6 +71,8 @@ const statusFor = (kind: RoomError["kind"]): 400 | 403 | 404 | 409 => {
     case "already-seated":
     case "room-full":
     case "not-seated":
+    case "already-started":
+    case "room-not-full":
     case "conflict":
       return 409;
   }
@@ -102,6 +107,8 @@ const toView = (room: Room, origin: string, occupants: OccupantDirectory): RoomV
   }),
   createdAt: room.createdAt,
   updatedAt: room.updatedAt,
+  startedAt: room.startedAt,
+  expiresAt: room.createdAt + ROOM_TTL_MS,
 });
 
 const parseRoles = (value: unknown): RoleId[] | null => {
@@ -214,6 +221,14 @@ export const createRoomApp = (deps: RoomAppDeps): Hono => {
       c,
       await kickUser(serviceDeps, { code, actor: userId(auth.user.id), target: userId(target) }),
     );
+  });
+
+  app.post("/:code/start", async (c) => {
+    const auth = await session(c);
+    if (!auth) return unauthorized(c);
+    const code = codeFrom(c);
+    if (code === null) return badRequest(c, "code must be 8 chars CVCVCVCV");
+    return respond(c, await startRoom(serviceDeps, { code, actor: userId(auth.user.id) }));
   });
 
   app.post("/:code/game", async (c) => {
