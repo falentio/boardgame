@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { parseRoomCode } from "#shared/rooms/code.ts"
@@ -9,11 +9,13 @@ import { parseRoomCode } from "#shared/rooms/code.ts"
 definePageMeta({ layout: "shell" })
 
 const code = ref("")
+const submitted = ref(false)
 
 const parsed = computed(() => parseRoomCode(code.value))
-const invalid = computed(() => code.value.trim().length > 0 && parsed.value === null)
+const invalid = computed(() => (submitted.value || code.value.trim().length > 0) && parsed.value === null)
 
 const onJoin = async () => {
+  submitted.value = true
   const target = parsed.value
   if (target === null) return
   await navigateTo("/join/" + target)
@@ -21,16 +23,12 @@ const onJoin = async () => {
 </script>
 
 <template>
-  <div class="flex flex-1 flex-col gap-4 p-4 pt-0">
+  <div class="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-4 pt-0">
+    <h1 class="text-2xl leading-tight font-semibold">
+      Play a game
+    </h1>
     <Card>
-      <CardHeader>
-        <CardTitle>
-          <h1 class="text-balance text-2xl leading-tight font-semibold">
-            Play a game
-          </h1>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+      <CardContent class="pt-4">
         <FieldGroup class="gap-6">
           <Field>
             <div>
@@ -70,7 +68,7 @@ const onJoin = async () => {
               </Field>
               <Field>
                 <div>
-                  <Button type="submit" variant="outline" :disabled="parsed === null">
+                  <Button type="submit" variant="outline">
                     Join room
                   </Button>
                 </div>
@@ -80,11 +78,5 @@ const onJoin = async () => {
         </FieldGroup>
       </CardContent>
     </Card>
-    <div class="grid auto-rows-min gap-4 md:grid-cols-3">
-      <div class="bg-muted/50 aspect-video rounded-xl" />
-      <div class="bg-muted/50 aspect-video rounded-xl" />
-      <div class="bg-muted/50 aspect-video rounded-xl" />
-    </div>
-    <div class="bg-muted/50 min-h-[100vh] flex-1 rounded-xl md:min-h-min" />
   </div>
 </template>
