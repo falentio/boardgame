@@ -17,7 +17,6 @@ export const generalActionArt = (action: GeneralActionId): string =>
  * verb card (Pass, Challenge, Keep, …) has no image and no cost.
  */
 export interface ActionCardModel {
-  readonly id: string
   readonly label: string
   readonly summary: string
   readonly art: string | null
@@ -33,7 +32,6 @@ export const generalCardModel = (action: GeneralActionId): ActionCardModel => {
   const label = GENERAL_LABELS[action]
   const costLabel = spec.cost > 0 ? `Pay ${String(spec.cost)}` : null
   return {
-    id: spec.id,
     label,
     summary: spec.summary,
     art: generalActionArt(action),
@@ -43,8 +41,7 @@ export const generalCardModel = (action: GeneralActionId): ActionCardModel => {
 }
 
 /** A verb (Pass, Challenge, Show, Concede, Block, Pay, Refuse, Fund, Continue, Defuse, Stop, Keep, Swap, Reveal, Give, Mark, Claim) as an action card. */
-export const verbCardModel = (id: string, label: string, summary: string): ActionCardModel => ({
-  id,
+export const verbCardModel = (label: string, summary: string): ActionCardModel => ({
   label,
   summary,
   art: null,

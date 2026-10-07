@@ -35,6 +35,13 @@ const confirmReady = computed(
 
 const isCardDisabled = (card: CardChoice): boolean => props.busy === true || !card.enabled
 
+const startsGroup = (index: number): boolean => {
+  const previous = props.menu.cards[index - 1]
+  const card = props.menu.cards[index]
+  if (card === undefined || previous === undefined) return false
+  return card.group !== previous.group
+}
+
 const selectCard = (card: CardChoice): void => {
   if (isCardDisabled(card)) return
   selectedCardId.value = card.id
@@ -83,43 +90,48 @@ const confirm = (): void => {
     </div>
 
     <div
-      class="grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] items-stretch gap-3"
+      class="grid grid-flow-col grid-rows-[auto_auto] items-stretch gap-x-3 gap-y-1.5 overflow-x-auto pb-3"
     >
-      <div
-        v-for="card in menu.cards"
-        :key="card.id"
-        class="flex min-w-0 flex-col gap-1"
-      >
-        <RoleCard
-          v-if="card.face.kind === 'role'"
-          :role="card.face.role"
-          selectable
-          :selected="card.id === selectedCardId"
-          :disabled="isCardDisabled(card)"
-          @select="selectCard(card)"
+      <template v-for="(card, index) in menu.cards" :key="card.id">
+        <div
+          v-if="startsGroup(index)"
+          class="row-span-2 w-px self-stretch bg-foreground/15"
+          aria-hidden="true"
         />
-        <GeneralActionCard
-          v-else-if="card.face.kind === 'action'"
-          :model="card.face.card"
-          selectable
-          :selected="card.id === selectedCardId"
-          :disabled="isCardDisabled(card)"
-          @select="selectCard(card)"
-        />
-        <PlayerCard
-          v-else
-          :seat="card.face.seat"
-          :name="card.face.name"
-          :image="card.face.image"
-          selectable
-          :selected="card.id === selectedCardId"
-          :disabled="isCardDisabled(card)"
-          @select="selectCard(card)"
-        />
-        <span class="text-muted-foreground min-h-3 text-xs leading-none italic">
-          {{ card.reason && !busy ? card.reason : "" }}
-        </span>
-      </div>
+        <div
+          class="window-card-cell row-span-2 grid w-40 min-w-0 shrink-0 grid-rows-subgrid gap-1.5"
+        >
+          <RoleCard
+            v-if="card.face.kind === 'role'"
+            :role="card.face.role"
+            selectable
+            :selected="card.id === selectedCardId"
+            :disabled="isCardDisabled(card)"
+            @select="selectCard(card)"
+          />
+          <GeneralActionCard
+            v-else-if="card.face.kind === 'action'"
+            :model="card.face.card"
+            selectable
+            :selected="card.id === selectedCardId"
+            :disabled="isCardDisabled(card)"
+            @select="selectCard(card)"
+          />
+          <PlayerCard
+            v-else
+            :seat="card.face.seat"
+            :name="card.face.name"
+            :image="card.face.image"
+            selectable
+            :selected="card.id === selectedCardId"
+            :disabled="isCardDisabled(card)"
+            @select="selectCard(card)"
+          />
+          <span class="text-muted-foreground min-h-3 text-xs leading-none italic">
+            {{ card.reason && !busy ? card.reason : "" }}
+          </span>
+        </div>
+      </template>
     </div>
 
     <div
@@ -129,43 +141,37 @@ const confirm = (): void => {
       <div
         v-for="group in groups"
         :key="group.id"
-        class="flex flex-col gap-1.5"
+        class="grid grid-flow-col grid-rows-[auto_auto] items-stretch gap-x-3 gap-y-1.5 overflow-x-auto pb-3"
         role="group"
-        :aria-label="group.label ?? 'Target'"
+        aria-label="Target"
       >
-        <span
-          v-if="group.label !== null"
-          class="text-muted-foreground text-xs leading-none font-medium"
+        <div
+          v-for="target in group.cards"
+          :key="target.id"
+          class="window-card-cell row-span-2 grid w-40 min-w-0 shrink-0 grid-rows-subgrid gap-1.5"
         >
-          {{ group.label }}
-        </span>
-        <div class="grid grid-cols-[repeat(auto-fill,minmax(7rem,1fr))] gap-2">
-          <template v-for="target in group.cards" :key="target.id">
-            <RoleCard
-              v-if="target.face.kind === 'role'"
-              :role="target.face.role"
-              selectable
-              :selected="isTargetSelected(target)"
-              :disabled="busy === true || !target.enabled"
-              :title="target.reason ?? undefined"
-              @select="toggleTarget(target)"
-            />
-            <PlayerCard
-              v-else-if="target.face.kind === 'player'"
-              :seat="target.face.seat"
-              :name="target.face.name"
-              :image="target.face.image"
-              selectable
-              :selected="isTargetSelected(target)"
-              :disabled="busy === true || !target.enabled"
-              :title="target.reason ?? undefined"
-              @select="toggleTarget(target)"
-            />
-          </template>
+          <RoleCard
+            v-if="target.face.kind === 'role'"
+            :role="target.face.role"
+            selectable
+            :selected="isTargetSelected(target)"
+            :disabled="busy === true || !target.enabled"
+            @select="toggleTarget(target)"
+          />
+          <PlayerCard
+            v-else-if="target.face.kind === 'player'"
+            :seat="target.face.seat"
+            :name="target.face.name"
+            :image="target.face.image"
+            selectable
+            :selected="isTargetSelected(target)"
+            :disabled="busy === true || !target.enabled"
+            @select="toggleTarget(target)"
+          />
+          <span class="text-muted-foreground min-h-3 text-xs leading-none italic">
+            {{ target.reason ?? "" }}
+          </span>
         </div>
-        <span class="text-muted-foreground text-xs leading-none italic">
-          {{ group.cards.find((target) => target.reason !== null)?.reason ?? "" }}
-        </span>
       </div>
     </div>
 
@@ -181,3 +187,18 @@ const confirm = (): void => {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Pre-subgrid fallback: a browser that drops `grid-rows-subgrid` collapses the shared
+   rows, so the cell becomes a flex column and the card takes the slack instead. */
+@supports not (grid-template-rows: subgrid) {
+  .window-card-cell {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .window-card-cell > :first-child {
+    flex: 1;
+  }
+}
+</style>

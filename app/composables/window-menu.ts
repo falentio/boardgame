@@ -27,6 +27,8 @@ interface CardBase {
   readonly face: CardFace
   readonly enabled: boolean
   readonly reason: string | null
+  /** Cards sharing a group are drawn together; the strip rules a divider where it changes. */
+  readonly group: string | null
 }
 
 /** A card in the target stage. `index` is the engine's card position for a hand, pool, or pile slot. */
@@ -37,7 +39,6 @@ export interface TargetCard extends CardBase {
 /** One row of target cards the viewer fills to `count`. */
 export interface TargetGroup {
   readonly id: string
-  readonly label: string | null
   readonly count: number
   readonly cards: readonly TargetCard[]
 }
@@ -65,6 +66,8 @@ export interface WindowMenu {
 
 const FORCED_COUP_REASON = `At ${String(FORCED_COUP_COINS)} coins Coup is forced`
 const NO_TARGET = "No legal target"
+const GENERAL_GROUP = "General actions"
+const CLAIM_GROUP = "Claim a role"
 
 const CRIME_PAY_COST = 2
 const FUND_COST = 3
@@ -107,8 +110,8 @@ const rivalTargets = (
 const roleFace = (role: RoleId): CardFace => ({ kind: "role", role })
 const actionFace = (card: ActionCardModel): CardFace => ({ kind: "action", card })
 
-const verb = (id: string, label: string, summary: string): CardFace =>
-  actionFace(verbCardModel(id, label, summary))
+const verb = (label: string, summary: string): CardFace =>
+  actionFace(verbCardModel(label, summary))
 
 const direct = (
   id: string,
@@ -116,7 +119,8 @@ const direct = (
   resolve: () => G54Action,
   enabled = true,
   reason: string | null = null,
-): DirectCard => ({ id, face, enabled, reason, target: null, resolve })
+  group: string | null = null,
+): DirectCard => ({ id, face, enabled, reason, group, target: null, resolve })
 
 const staged = (
   id: string,
@@ -125,7 +129,8 @@ const staged = (
   resolve: (picks: readonly TargetCard[]) => G54Action,
   enabled = true,
   reason: string | null = null,
-): StagedCard => ({ id, face, enabled, reason, target, resolve })
+  group: string | null = null,
+): StagedCard => ({ id, face, enabled, reason, group, target, resolve })
 
 const playerTarget = (
   player: PlayerView,
@@ -139,6 +144,7 @@ const playerTarget = (
     face: { kind: "player", seat: player.seat, name: identity.name, image: identity.image },
     enabled,
     reason,
+    group: null,
     index: null,
   }
 }
@@ -148,6 +154,7 @@ const roleTarget = (role: RoleId, index: number, id: string): TargetCard => ({
   face: roleFace(role),
   enabled: true,
   reason: null,
+  group: null,
   index,
 })
 
@@ -206,10 +213,11 @@ const turnMenu = (
   const coupCard = staged(
     "coup",
     actionFace(generalCardModel("coup")),
-    [{ id: "target", label: null, count: 1, cards: coupChoices }],
+    [{ id: "target", count: 1, cards: coupChoices }],
     (picks) => ({ t: "coup", target: seatOf(picks[0]!) }),
     coupEnabled,
     coupChoices.length === 0 ? NO_TARGET : coupEnabled ? null : shortOf(COUP_COST),
+    GENERAL_GROUP,
   )
 
   const generals = view.generalActions.map((id): CardChoice => {
@@ -220,6 +228,7 @@ const turnMenu = (
       PLAIN_GENERALS[id],
       !forcedCoup,
       forcedCoup ? FORCED_COUP_REASON : null,
+      GENERAL_GROUP,
     )
   })
 
@@ -250,10 +259,11 @@ const turnMenu = (
         return staged(
           `claim-${spec.id}`,
           face,
-          [{ id: "target", label: null, count: 1, cards: choices }],
+          [{ id: "target", count: 1, cards: choices }],
           (picks) => ({ t: "claim", role: spec.id, target: seatOf(picks[0]!) }),
           enabled,
           reason,
+          CLAIM_GROUP,
         )
       }
       const cost = claimCost(spec, 0)
@@ -264,6 +274,7 @@ const turnMenu = (
         () => ({ t: "claim", role: spec.id, target: null }),
         !forcedCoup && affordable,
         forcedCoup ? FORCED_COUP_REASON : affordable ? null : shortOf(cost),
+        CLAIM_GROUP,
       )
     })
 
@@ -301,12 +312,12 @@ const challengeMenu = (
   const cards: CardChoice[] = []
   if (mayChallenge) {
     cards.push(
-      direct("challenge", verb("challenge", "Challenge", "Call the claim a bluff."), () => ({
+      direct("challenge", verb("Challenge", "Call the claim a bluff."), () => ({
         t: "challenge",
       })),
     )
   }
-  cards.push(direct("pass", verb("pass", "Pass", "Take no action."), () => ({ t: "pass" })))
+  cards.push(direct("pass", verb("Pass", "Take no action."), () => ({ t: "pass" })))
   return {
     title: purpose === "challenge-claim" ? "Challenge the claim" : "Challenge the block",
     note: claimNote(view, identityOf),
@@ -332,7 +343,7 @@ const proofMenu = (
   const holds = spec !== null && view.myHand.includes(spec.id)
   const show = direct(
     "show",
-    verb("show", "Show", spec === null ? "Prove the claimed card." : spec.name),
+    verb("Show", spec === null ? "Prove the claimed card." : spec.name),
     () => ({ t: "show" }),
     holds,
     holds || spec === null ? null : `You do not hold ${spec.name}`,
@@ -340,7 +351,7 @@ const proofMenu = (
   return {
     title: purpose === "proof-claim" ? "Prove your claim" : "Prove your block",
     note: claimNote(view, identityOf),
-    cards: [show, direct("concede", verb("concede", "Concede", "Give up the claim."), () => ({ t: "concede" }))],
+    cards: [show, direct("concede", verb("Concede", "Give up the claim."), () => ({ t: "concede" }))],
   }
 }
 
@@ -353,7 +364,7 @@ const blockMenu = (view: G54View, identityOf: (seat: SeatId) => SeatIdentity): W
       direct("block", roleFace(blockRole), () => ({ t: "block", role: blockRole })),
     )
   }
-  cards.push(direct("pass", verb("pass", "Pass", "Take no action."), () => ({ t: "pass" })))
+  cards.push(direct("pass", verb("Pass", "Take no action."), () => ({ t: "pass" })))
   return { title: "Block or pass", note: claimNote(view, identityOf), cards }
 }
 
@@ -382,8 +393,8 @@ const keepMenu = (view: G54View): WindowMenu => {
     cards: [
       staged(
         "keep",
-        verb("keep", "Keep", "Return the rest to the Court."),
-        [{ id: "keep", label: null, count, cards }],
+        verb("Keep", "Return the rest to the Court."),
+        [{ id: "keep", count, cards }],
         (picks) => ({ t: "keep", indices: indicesOf(picks) }),
         combined.length >= count,
         combined.length >= count ? null : "Not enough cards to keep",
@@ -405,12 +416,12 @@ const crimePayMenu = (
     cards: [
       direct(
         "pay",
-        verb("pay", `Pay ${String(CRIME_PAY_COST)}`, "Pay the Crime Boss."),
+        verb(`Pay ${String(CRIME_PAY_COST)}`, "Pay the Crime Boss."),
         () => ({ t: "pay" }),
         affordable,
         affordable ? null : shortOf(CRIME_PAY_COST),
       ),
-      direct("no", verb("refuse", "Refuse", "Let the Crime Boss act."), () => ({ t: "no" })),
+      direct("no", verb("Refuse", "Let the Crime Boss act."), () => ({ t: "no" })),
     ],
   }
 }
@@ -428,12 +439,12 @@ const fundMenu = (
     cards: [
       direct(
         "pay",
-        verb("fund", "Fund", `Pay ${String(FUND_COST)} to make the kill land.`),
+        verb("Fund", `Pay ${String(FUND_COST)} to make the kill land.`),
         () => ({ t: "pay" }),
         affordable,
         affordable ? null : shortOf(FUND_COST),
       ),
-      direct("no", verb("decline", "Decline", "Take no action."), () => ({ t: "no" })),
+      direct("no", verb("Decline", "Take no action."), () => ({ t: "no" })),
     ],
   }
 }
@@ -467,12 +478,12 @@ const writerDrawMenu = (
     cards: [
       direct(
         "pay",
-        verb("draw", "Draw another", `Pay ${String(WRITER_EXTRA_COST)} for another Court draw.`),
+        verb("Draw another", `Pay ${String(WRITER_EXTRA_COST)} for another Court draw.`),
         () => ({ t: "pay" }),
         canPay,
         canPay ? null : reason,
       ),
-      direct("no", verb("keep", "Keep", "Keep the pool as it stands."), () => ({ t: "no" })),
+      direct("no", verb("Keep", "Keep the pool as it stands."), () => ({ t: "no" })),
     ],
   }
 }
@@ -503,7 +514,7 @@ const socialistGiveMenu = (
       ...giveCards,
       direct(
         "pay",
-        verb("pay", "Pay 1", "Pay the Socialist instead."),
+        verb("Pay 1", "Pay the Socialist instead."),
         () => ({ t: "pay" }),
         hasCoins,
         hasCoins ? null : "No coins to pay",
@@ -538,7 +549,7 @@ const socialistKeepMenu = (view: G54View): WindowMenu => {
       staged(
         `keep-${String(index)}`,
         roleFace(role),
-        [{ id: "take", label: null, count, cards: poolCards }],
+        [{ id: "take", count, cards: poolCards }],
         (picks) => ({ t: "keep", indices: [index, picks[0]?.index ?? index] }),
         enabled,
         enabled ? null : "No cards in hand",
@@ -554,7 +565,7 @@ const massClaimMenu = (view: G54View, identityOf: (seat: SeatId) => SeatIdentity
   if (role !== null) {
     cards.push(direct("claim", roleFace(role), () => ({ t: "claim", role, target: null })))
   }
-  cards.push(direct("no", verb("pass", "Pass", "Take no action."), () => ({ t: "no" })))
+  cards.push(direct("no", verb("Pass", "Take no action."), () => ({ t: "no" })))
   return { title: "Mass claim", note: claimNote(view, identityOf), cards }
 }
 
@@ -564,7 +575,7 @@ const lawyerMenu = (view: G54View, identityOf: (seat: SeatId) => SeatIdentity): 
   note: claimNote(view, identityOf),
   cards: [
     direct("claim", roleFace("lawyer"), () => ({ t: "claim", role: "lawyer", target: null })),
-    direct("no", verb("pass", "Pass", "Take no action."), () => ({ t: "no" })),
+    direct("no", verb("Pass", "Take no action."), () => ({ t: "no" })),
   ],
 })
 
@@ -578,7 +589,7 @@ const reactiveMenu = (
   note: claimNote(view, identityOf),
   cards: [
     direct("claim", roleFace(role), () => ({ t: "claim", role, target: null })),
-    direct("no", verb("decline", "Decline", "Take no action."), () => ({ t: "no" })),
+    direct("no", verb("Decline", "Take no action."), () => ({ t: "no" })),
   ],
 })
 
@@ -600,7 +611,7 @@ const bombMenu = (
     return {
       title: "The Bomb",
       note: `Held by ${nameOf(bomb.holder)}.`,
-      cards: [direct("continue", verb("continue", "Continue", "Acknowledge."), () => ({ t: "no" }))],
+      cards: [direct("continue", verb("Continue", "Acknowledge."), () => ({ t: "no" }))],
     }
   }
   const legal =
@@ -621,15 +632,15 @@ const bombMenu = (
     cards: [
       staged(
         "pass",
-        verb("pass", "Pass the Bomb", "Hand the Bomb to another seat."),
-        [{ id: "target", label: null, count: 1, cards: choices }],
+        verb("Pass the Bomb", "Hand the Bomb to another seat."),
+        [{ id: "target", count: 1, cards: choices }],
         (picks) => ({ t: "claim", role: "anarchist", target: seatOf(picks[0]!) }),
         choices.length > 0,
         choices.length > 0 ? null : "No legal next holder",
       ),
       direct(
         "defuse",
-        verb("defuse", "Defuse", "Disarm the Bomb."),
+        verb("Defuse", "Disarm the Bomb."),
         () => ({ t: "claim", role: "anarchist", target: null }),
       ),
     ],
@@ -648,7 +659,7 @@ const spySecondMenu = (
     title: "Second action",
     cards: [
       ...menu.cards,
-      direct("stop", verb("stop", "Stop", "End your turn."), () => ({ t: "pass" })),
+      direct("stop", verb("Stop", "End your turn."), () => ({ t: "pass" })),
     ],
   }
 }
@@ -657,7 +668,7 @@ const spySecondMenu = (
 const plantationPayoutMenu = (view: G54View, identityOf: (seat: SeatId) => SeatIdentity): WindowMenu => ({
   title: "Plantation payout",
   note: claimNote(view, identityOf),
-  cards: [direct("continue", verb("continue", "Continue", "Acknowledge."), () => ({ t: "no" }))],
+  cards: [direct("continue", verb("Continue", "Acknowledge."), () => ({ t: "no" }))],
 })
 
 /**

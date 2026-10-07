@@ -45,7 +45,6 @@ test("accessible name carries the label, the cost, and the summary", () => {
 test("every general action resolves a complete card model", () => {
   for (const action of ACTIONS) {
     const model = generalCardModel(action)
-    expect(model.id).toBe(action)
     expect(model.label.length).toBeGreaterThan(0)
     expect(model.summary.length).toBeGreaterThan(0)
     expect(model.art).not.toBeNull()
@@ -54,8 +53,7 @@ test("every general action resolves a complete card model", () => {
 })
 
 test("a verb card has no art and no cost, and folds the label and summary into its name", () => {
-  const pass = verbCardModel("pass", "Pass", "Take no action.")
-  expect(pass.id).toBe("pass")
+  const pass = verbCardModel("Pass", "Take no action.")
   expect(pass.label).toBe("Pass")
   expect(pass.summary).toBe("Take no action.")
   expect(pass.art).toBeNull()
