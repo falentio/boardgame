@@ -3,7 +3,7 @@ import type { RoleId } from "#shared/core/lockstep/games/g54/roles.ts"
 import { specOf } from "#shared/core/lockstep/games/g54/roles.ts"
 import type { WindowPurpose } from "#shared/core/lockstep/games/g54/state.ts"
 import type { G54View, PendingView, WindowView } from "#shared/core/lockstep/games/g54/index.ts"
-import { menuOf, type WindowMenu } from "./window-menu.ts"
+import { menuOf, type SeatIdentity, type WindowMenu } from "./window-menu.ts"
 
 export type BoardPhase = "idle" | "acting" | "targeted" | "owed"
 
@@ -80,10 +80,7 @@ export interface Board {
   readonly menu: WindowMenu | null
 }
 
-export interface SeatIdentity {
-  readonly name: string
-  readonly image: string | null
-}
+export type { SeatIdentity } from "./window-menu.ts"
 
 const TOKEN_ART = {
   peacekeeping: "/g54/token/peacekeeping.webp",
@@ -163,6 +160,8 @@ export const boardOf = (
   identities: ReadonlyMap<SeatId, SeatIdentity>,
 ): Board => {
   const nameOf = (seat: SeatId): string => identities.get(seat)?.name ?? seat
+  const identityOf = (seat: SeatId): SeatIdentity =>
+    identities.get(seat) ?? { name: seat, image: null }
   const seats = view.players.map((player): BoardSeat => {
     const identity = identities.get(player.seat)
     const isMe = player.seat === view.seat
@@ -191,6 +190,6 @@ export const boardOf = (
       window: view.window,
     },
     seats,
-    menu: menuOf(view, view.seat, nameOf),
+    menu: menuOf(view, view.seat, identityOf),
   }
 }

@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from "vue"
-import type { GeneralActionId } from "#shared/core/lockstep/games/g54/generals.ts"
-import { computed } from "vue"
 import { cn } from "@/lib/utils"
 import { CARD_BADGE_CLASS, CARD_SHELL_CLASS } from "@/composables/card-shell"
-import { generalCardModel } from "@/composables/general-card"
+import type { ActionCardModel } from "@/composables/general-card"
 
 const props = withDefaults(
   defineProps<{
-    action: GeneralActionId
+    model: ActionCardModel
     selected?: boolean
     disabled?: boolean
     selectable?: boolean
@@ -23,8 +21,6 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{ select: [] }>()
-
-const model = computed(() => generalCardModel(props.action))
 
 const onActivate = () => {
   if (!props.selectable || props.disabled) return
@@ -62,7 +58,11 @@ const onActivate = () => {
       {{ model.label }}
     </span>
 
-    <div class="aspect-square w-full overflow-hidden border-b-2" style="border-color: var(--accent)">
+    <div
+      v-if="model.art !== null"
+      class="aspect-square w-full overflow-hidden border-b-2"
+      style="border-color: var(--accent)"
+    >
       <img
         :src="model.art"
         alt=""

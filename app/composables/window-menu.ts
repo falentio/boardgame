@@ -1,146 +1,66 @@
 import type { SeatId } from "#shared/rooms/ids.ts"
 import type { G54Action, G54View, PlayerView } from "#shared/core/lockstep/games/g54/index.ts"
-import { claimCost, specOf, type RoleId, type RoleSpec } from "#shared/core/lockstep/games/g54/roles.ts"
+import { claimCost, specOf, type RoleId } from "#shared/core/lockstep/games/g54/roles.ts"
 import type { GeneralActionId } from "#shared/core/lockstep/games/g54/generals.ts"
-import { GENERAL_ACTIONS } from "#shared/core/lockstep/games/g54/generals.ts"
-import { GENERAL_LABELS } from "./general-card.ts"
 import { COUP_COST, FORCED_COUP_COINS } from "#shared/core/lockstep/games/g54/windows.ts"
+import { generalCardModel, verbCardModel, type ActionCardModel } from "./general-card.ts"
 
-/**
- * One selectable target for a `target` option. The name is resolved here so the
- * component never needs the identity map; `enabled` is false when the engine
- * would reject this specific target, so the picker can disable it.
- */
-export interface MenuSeatChoice {
-  readonly seat: SeatId
+/** The name and avatar a player card renders; the descriptor has no board access. */
+export interface SeatIdentity {
   readonly name: string
+  readonly image: string | null
+}
+
+/** What a card renders: a role, an action model, or a seat. */
+export type CardFace =
+  | { readonly kind: "role"; readonly role: RoleId }
+  | { readonly kind: "action"; readonly card: ActionCardModel }
+  | {
+      readonly kind: "player"
+      readonly seat: SeatId
+      readonly name: string
+      readonly image: string | null
+    }
+
+interface CardBase {
+  readonly id: string
+  readonly face: CardFace
   readonly enabled: boolean
   readonly reason: string | null
 }
 
-/** One selectable card for a `card` or `cards` option, identified by its position. */
-export interface MenuCardChoice {
-  readonly index: number
-  readonly name: string
+/** A card in the target stage. `index` is the engine's card position for a hand, pool, or pile slot. */
+export interface TargetCard extends CardBase {
+  readonly index: number | null
 }
 
-/** One selectable role for a `role` option, identified by its role id. */
-export interface MenuRoleChoice {
-  readonly role: RoleId
-  readonly name: string
+/** One row of target cards the viewer fills to `count`. */
+export interface TargetGroup {
+  readonly id: string
+  readonly label: string | null
+  readonly count: number
+  readonly cards: readonly TargetCard[]
 }
 
-/**
- * The card identity of a turn option. Only the turn window sets a face; every
- * other window leaves it null and renders buttons.
- */
-export type MenuFace =
-  | { readonly kind: "role"; readonly role: RoleId }
-  | { readonly kind: "general"; readonly action: GeneralActionId }
+/** A select card with no target stage; its action needs nothing more. */
+export interface DirectCard extends CardBase {
+  readonly target: null
+  readonly resolve: () => G54Action
+}
 
-/**
- * One control the open window offers the viewer. The `kind` names the control and
- * the arm's `action` takes exactly the value that control produces, so a `target`
- * option cannot ship an action that ignores its target.
- */
-export type MenuOption =
-  | {
-      readonly id: string
-      readonly kind: "plain"
-      readonly label: string
-      readonly detail: string | null
-      readonly enabled: boolean
-      /** Why the option is disabled; null when it is enabled. */
-      readonly reason: string | null
-      /** The card identity for the turn selector, or null outside the turn window. */
-      readonly face: MenuFace | null
-      readonly action: () => G54Action
-    }
-  | {
-      readonly id: string
-      readonly kind: "target"
-      readonly label: string
-      readonly detail: string | null
-      readonly enabled: boolean
-      /** Why the option is disabled; null when it is enabled. */
-      readonly reason: string | null
-      /** The card identity for the turn selector, or null outside the turn window. */
-      readonly face: MenuFace | null
-      readonly choices: readonly MenuSeatChoice[]
-      readonly action: (seat: SeatId) => G54Action
-    }
-  | {
-      readonly id: string
-      readonly kind: "card"
-      readonly label: string
-      readonly detail: string | null
-      readonly enabled: boolean
-      /** Why the option is disabled; null when it is enabled. */
-      readonly reason: string | null
-      readonly choices: readonly MenuCardChoice[]
-      readonly action: (index: number) => G54Action
-    }
-  | {
-      readonly id: string
-      readonly kind: "cards"
-      readonly label: string
-      readonly detail: string | null
-      readonly enabled: boolean
-      /** Why the option is disabled; null when it is enabled. */
-      readonly reason: string | null
-      /** How many cards the engine accepts: the keep size. */
-      readonly count: number
-      readonly choices: readonly MenuCardChoice[]
-      readonly action: (indices: readonly number[]) => G54Action
-    }
-  | {
-      readonly id: string
-      readonly kind: "role"
-      readonly label: string
-      readonly detail: string | null
-      readonly enabled: boolean
-      /** Why the option is disabled; null when it is enabled. */
-      readonly reason: string | null
-      readonly choices: readonly MenuRoleChoice[]
-      readonly action: (role: RoleId) => G54Action
-    }
-  | {
-      readonly id: string
-      readonly kind: "swap"
-      readonly label: string
-      readonly detail: string | null
-      readonly enabled: boolean
-      /** Why the option is disabled; null when it is enabled. */
-      readonly reason: string | null
-      /** The viewer's own hand, indexed into `hand`. */
-      readonly ownChoices: readonly MenuCardChoice[]
-      /** The collected pile, indexed into `hand + pool` as the engine reads it. */
-      readonly poolChoices: readonly MenuCardChoice[]
-      readonly action: (ownIndex: number, keepIndex: number) => G54Action
-    }
+/** A select card whose target stage must be filled before `resolve` runs. */
+export interface StagedCard extends CardBase {
+  readonly target: readonly TargetGroup[]
+  readonly resolve: (picks: readonly TargetCard[]) => G54Action
+}
 
-/** The controls for the open window, or null when the viewer owes nothing here. */
+export type CardChoice = DirectCard | StagedCard
+
+/** The cards the open window offers, or null when the viewer owes nothing here. */
 export interface WindowMenu {
   readonly title: string
   readonly note: string | null
-  readonly options: readonly MenuOption[]
-}
-
-/**
- * True when every option carries a card face, so the turn selector renders cards.
- * Only the plain turn window sets a face on each option; every other window leaves
- * them null, including `spy-second`, whose Stop has no card.
- */
-export const isTurnMenu = (menu: WindowMenu): boolean =>
-  menu.options.length > 0 &&
-  menu.options.every(
-    (option) => (option.kind === "plain" || option.kind === "target") && option.face !== null,
-  )
-
-const PLAIN_GENERALS: Record<Exclude<GeneralActionId, "coup">, () => G54Action> = {
-  income: () => ({ t: "income" }),
-  bank: () => ({ t: "bank" }),
-  "social-media": () => ({ t: "social-media" }),
+  readonly cards: readonly CardChoice[]
 }
 
 const FORCED_COUP_REASON = `At ${String(FORCED_COUP_COINS)} coins Coup is forced`
@@ -184,69 +104,123 @@ const rivalTargets = (
       !(peacekeeperImmune && view.tokens.peacekeeping === player.seat),
   )
 
+const roleFace = (role: RoleId): CardFace => ({ kind: "role", role })
+const actionFace = (card: ActionCardModel): CardFace => ({ kind: "action", card })
+
+const verb = (id: string, label: string, summary: string): CardFace =>
+  actionFace(verbCardModel(id, label, summary))
+
+const direct = (
+  id: string,
+  face: CardFace,
+  resolve: () => G54Action,
+  enabled = true,
+  reason: string | null = null,
+): DirectCard => ({ id, face, enabled, reason, target: null, resolve })
+
+const staged = (
+  id: string,
+  face: CardFace,
+  target: readonly TargetGroup[],
+  resolve: (picks: readonly TargetCard[]) => G54Action,
+  enabled = true,
+  reason: string | null = null,
+): StagedCard => ({ id, face, enabled, reason, target, resolve })
+
+const playerTarget = (
+  player: PlayerView,
+  identityOf: (seat: SeatId) => SeatIdentity,
+  enabled: boolean,
+  reason: string | null,
+): TargetCard => {
+  const identity = identityOf(player.seat)
+  return {
+    id: `seat-${player.seat}`,
+    face: { kind: "player", seat: player.seat, name: identity.name, image: identity.image },
+    enabled,
+    reason,
+    index: null,
+  }
+}
+
+const roleTarget = (role: RoleId, index: number, id: string): TargetCard => ({
+  id,
+  face: roleFace(role),
+  enabled: true,
+  reason: null,
+  index,
+})
+
+const seatOf = (pick: TargetCard): SeatId => {
+  if (pick.face.kind !== "player") throw new Error(`card ${pick.id} is not a player`)
+  return pick.face.seat
+}
+
+const indicesOf = (picks: readonly TargetCard[]): readonly number[] =>
+  picks.map((pick) => pick.index).filter((index): index is number => index !== null)
+
+/** True when `card` and `picks` satisfy the confirm gate. Reads counts and flags only. */
+export const confirmable = (card: CardChoice, picks: readonly TargetCard[]): boolean => {
+  if (!card.enabled) return false
+  if (card.target === null) return true
+  return card.target.every(
+    (group) =>
+      group.cards.filter((target) => target.enabled && picks.includes(target)).length ===
+      group.count,
+  )
+}
+
 const targetChoices = (
   rivals: readonly PlayerView[],
-  nameOf: (seat: SeatId) => string,
+  identityOf: (seat: SeatId) => SeatIdentity,
   costOf: (player: PlayerView) => number,
   coins: number,
-): readonly MenuSeatChoice[] =>
+): readonly TargetCard[] =>
   rivals.map((player) => {
     const cost = costOf(player)
     const affordable = coins >= cost
-    return {
-      seat: player.seat,
-      name: nameOf(player.seat),
-      enabled: affordable,
-      reason: affordable ? null : shortOf(cost),
-    }
+    return playerTarget(player, identityOf, affordable, affordable ? null : shortOf(cost))
   })
 
-const costDetail = (spec: RoleSpec): string | null => {
-  const byLives = spec.costByTargetLives
-  if (byLives === undefined) return spec.cost > 0 ? `Costs ${String(spec.cost)}` : null
-  const values = Object.values(byLives)
-  return `Costs ${String(Math.min(...values))}–${String(Math.max(...values))}`
+const PLAIN_GENERALS: Record<Exclude<GeneralActionId, "coup">, () => G54Action> = {
+  income: () => ({ t: "income" }),
+  bank: () => ({ t: "bank" }),
+  "social-media": () => ({ t: "social-media" }),
 }
 
-const plain = (
-  id: string,
-  label: string,
-  detail: string | null,
-  enabled: boolean,
-  reason: string | null,
-  action: () => G54Action,
-): MenuOption => ({ id, kind: "plain", label, detail, enabled, reason, face: null, action })
-
-const turnMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string): WindowMenu => {
+const turnMenu = (
+  view: G54View,
+  seat: SeatId,
+  identityOf: (seat: SeatId) => SeatIdentity,
+): WindowMenu => {
   const coins = coinsOf(view, seat)
   const forcedCoup = coins >= FORCED_COUP_COINS
 
-  const coupChoices = targetChoices(rivalTargets(view, seat, false), nameOf, () => COUP_COST, coins)
+  const coupChoices = targetChoices(
+    rivalTargets(view, seat, false),
+    identityOf,
+    () => COUP_COST,
+    coins,
+  )
   const coupEnabled = coins >= COUP_COST && coupChoices.some((choice) => choice.enabled)
-  const coupOption: MenuOption = {
-    id: "coup",
-    kind: "target",
-    label: GENERAL_LABELS.coup,
-    detail: GENERAL_ACTIONS.coup.summary,
-    enabled: coupEnabled,
-    reason: coupChoices.length === 0 ? NO_TARGET : coupEnabled ? null : shortOf(COUP_COST),
-    face: { kind: "general", action: "coup" },
-    choices: coupChoices,
-    action: (target) => ({ t: "coup", target }),
-  }
+  const coupCard = staged(
+    "coup",
+    actionFace(generalCardModel("coup")),
+    [{ id: "target", label: null, count: 1, cards: coupChoices }],
+    (picks) => ({ t: "coup", target: seatOf(picks[0]!) }),
+    coupEnabled,
+    coupChoices.length === 0 ? NO_TARGET : coupEnabled ? null : shortOf(COUP_COST),
+  )
 
-  const generals = view.generalActions.map((id): MenuOption => {
-    if (id === "coup") return coupOption
-    return {
+  const generals = view.generalActions.map((id): CardChoice => {
+    if (id === "coup") return coupCard
+    return direct(
       id,
-      kind: "plain",
-      label: GENERAL_LABELS[id],
-      detail: GENERAL_ACTIONS[id].summary,
-      enabled: !forcedCoup,
-      reason: forcedCoup ? FORCED_COUP_REASON : null,
-      face: { kind: "general", action: id },
-      action: PLAIN_GENERALS[id],
-    }
+      actionFace(generalCardModel(id)),
+      PLAIN_GENERALS[id],
+      !forcedCoup,
+      forcedCoup ? FORCED_COUP_REASON : null,
+    )
   })
 
   const rivals = rivalTargets(view, seat, true)
@@ -254,13 +228,12 @@ const turnMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string)
   const claims = view.roles
     .map(specOf)
     .filter((spec) => !spec.reactive)
-    .map((spec): MenuOption => {
-      const label = `Claim ${spec.name}`
-      const detail = costDetail(spec)
+    .map((spec): CardChoice => {
+      const face = roleFace(spec.id)
       if (spec.needsTarget) {
         const choices = targetChoices(
           rivals,
-          nameOf,
+          identityOf,
           (player) => claimCost(spec, player.handCount),
           coins,
         )
@@ -274,42 +247,37 @@ const turnMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string)
             : anyAffordable
               ? null
               : shortOf(costs.length === 0 ? spec.cost : Math.min(...costs))
-        return {
-          id: `claim-${spec.id}`,
-          kind: "target",
-          label,
-          detail,
+        return staged(
+          `claim-${spec.id}`,
+          face,
+          [{ id: "target", label: null, count: 1, cards: choices }],
+          (picks) => ({ t: "claim", role: spec.id, target: seatOf(picks[0]!) }),
           enabled,
           reason,
-          face: { kind: "role", role: spec.id },
-          choices,
-          action: (target) => ({ t: "claim", role: spec.id, target }),
-        }
+        )
       }
       const cost = claimCost(spec, 0)
       const affordable = coins >= cost
-      return {
-        id: `claim-${spec.id}`,
-        kind: "plain",
-        label,
-        detail,
-        enabled: !forcedCoup && affordable,
-        reason: forcedCoup ? FORCED_COUP_REASON : affordable ? null : shortOf(cost),
-        face: { kind: "role", role: spec.id },
-        action: () => ({ t: "claim", role: spec.id, target: null }),
-      }
+      return direct(
+        `claim-${spec.id}`,
+        face,
+        () => ({ t: "claim", role: spec.id, target: null }),
+        !forcedCoup && affordable,
+        forcedCoup ? FORCED_COUP_REASON : affordable ? null : shortOf(cost),
+      )
     })
 
   return {
     title: "Your turn",
     note: forcedCoup ? FORCED_COUP_REASON : null,
-    options: [...generals, ...claims],
+    cards: [...generals, ...claims],
   }
 }
 
-const claimNote = (view: G54View, nameOf: (seat: SeatId) => string): string | null => {
+const claimNote = (view: G54View, identityOf: (seat: SeatId) => SeatIdentity): string | null => {
   const pending = view.pending
   if (pending === null) return null
+  const nameOf = (seat: SeatId): string => identityOf(seat).name
   const actor = nameOf(pending.claimant)
   if (pending.role === null) return `${actor} acts`
   const role = specOf(pending.role).name
@@ -322,7 +290,7 @@ const challengeMenu = (
   view: G54View,
   seat: SeatId,
   purpose: "challenge-claim" | "challenge-block",
-  nameOf: (seat: SeatId) => string,
+  identityOf: (seat: SeatId) => SeatIdentity,
 ): WindowMenu => {
   const pending = view.pending
   // The engine skips the claimant and the blocker when it picks a challenger, so
@@ -330,20 +298,24 @@ const challengeMenu = (
   const mayChallenge =
     pending !== null &&
     (purpose === "challenge-claim" ? seat !== pending.claimant : seat !== pending.blocker)
-  const options: MenuOption[] = []
+  const cards: CardChoice[] = []
   if (mayChallenge) {
-    options.push(plain("challenge", "Challenge", null, true, null, () => ({ t: "challenge" })))
+    cards.push(
+      direct("challenge", verb("challenge", "Challenge", "Call the claim a bluff."), () => ({
+        t: "challenge",
+      })),
+    )
   }
-  options.push(plain("pass", "Pass", null, true, null, () => ({ t: "pass" })))
+  cards.push(direct("pass", verb("pass", "Pass", "Take no action."), () => ({ t: "pass" })))
   return {
     title: purpose === "challenge-claim" ? "Challenge the claim" : "Challenge the block",
-    note: claimNote(view, nameOf),
-    options,
+    note: claimNote(view, identityOf),
+    cards,
   }
 }
 
 /** The card the viewer must hold to show: the claimed role, or the claim's block role. */
-const proofSpec = (view: G54View, purpose: "proof-claim" | "proof-block"): RoleSpec | null => {
+const proofSpec = (view: G54View, purpose: "proof-claim" | "proof-block") => {
   const pending = view.pending
   if (pending === null || pending.role === null) return null
   if (purpose === "proof-claim") return specOf(pending.role)
@@ -354,60 +326,43 @@ const proofSpec = (view: G54View, purpose: "proof-claim" | "proof-block"): RoleS
 const proofMenu = (
   view: G54View,
   purpose: "proof-claim" | "proof-block",
-  nameOf: (seat: SeatId) => string,
+  identityOf: (seat: SeatId) => SeatIdentity,
 ): WindowMenu => {
   const spec = proofSpec(view, purpose)
   const holds = spec !== null && view.myHand.includes(spec.id)
-  const show = plain(
+  const show = direct(
     "show",
-    "Show",
-    spec === null ? null : spec.name,
+    verb("show", "Show", spec === null ? "Prove the claimed card." : spec.name),
+    () => ({ t: "show" }),
     holds,
     holds || spec === null ? null : `You do not hold ${spec.name}`,
-    () => ({ t: "show" }),
   )
   return {
     title: purpose === "proof-claim" ? "Prove your claim" : "Prove your block",
-    note: claimNote(view, nameOf),
-    options: [show, plain("concede", "Concede", null, true, null, () => ({ t: "concede" }))],
+    note: claimNote(view, identityOf),
+    cards: [show, direct("concede", verb("concede", "Concede", "Give up the claim."), () => ({ t: "concede" }))],
   }
 }
 
-const blockMenu = (view: G54View, nameOf: (seat: SeatId) => string): WindowMenu => {
+const blockMenu = (view: G54View, identityOf: (seat: SeatId) => SeatIdentity): WindowMenu => {
   const pending = view.pending
-  const blockRole =
-    pending === null || pending.role === null ? null : specOf(pending.role).blockRole
-  const options: MenuOption[] = []
+  const blockRole = pending === null || pending.role === null ? null : specOf(pending.role).blockRole
+  const cards: CardChoice[] = []
   if (blockRole !== null) {
-    options.push(
-      plain("block", `Block with ${specOf(blockRole).name}`, null, true, null, () => ({
-        t: "block",
-        role: blockRole,
-      })),
+    cards.push(
+      direct("block", roleFace(blockRole), () => ({ t: "block", role: blockRole })),
     )
   }
-  options.push(plain("pass", "Pass", null, true, null, () => ({ t: "pass" })))
-  return { title: "Block or pass", note: claimNote(view, nameOf), options }
+  cards.push(direct("pass", verb("pass", "Pass", "Take no action."), () => ({ t: "pass" })))
+  return { title: "Block or pass", note: claimNote(view, identityOf), cards }
 }
-
-const cardChoices = (cards: readonly RoleId[]): readonly MenuCardChoice[] =>
-  cards.map((role, index) => ({ index, name: specOf(role).name }))
 
 const revealMenu = (view: G54View): WindowMenu => ({
   title: "Reveal a card",
   note: "Flip one of your face-down cards.",
-  options: [
-    {
-      id: "reveal",
-      kind: "card",
-      label: "Reveal",
-      detail: null,
-      enabled: view.myHand.length > 0,
-      reason: view.myHand.length > 0 ? null : "No cards to reveal",
-      choices: cardChoices(view.myHand),
-      action: (index) => ({ t: "reveal", index }),
-    },
-  ],
+  cards: view.myHand.map((role, index) =>
+    direct(`reveal-${String(index)}`, roleFace(role), () => ({ t: "reveal", index })),
+  ),
 })
 
 /**
@@ -420,139 +375,139 @@ const keepMenu = (view: G54View): WindowMenu => {
   const pool = view.myDraw ?? []
   const count = view.myHand.length
   const combined = [...view.myHand, ...pool]
+  const cards = combined.map((role, index) => roleTarget(role, index, `card-${String(index)}`))
   return {
     title: `Keep ${String(count)} ${count === 1 ? "card" : "cards"}`,
     note: "The rest return to the Court.",
-    options: [
-      {
-        id: "keep",
-        kind: "cards",
-        label: "Keep",
-        detail: null,
-        enabled: combined.length >= count,
-        reason: combined.length >= count ? null : "Not enough cards to keep",
-        count,
-        choices: cardChoices(combined),
-        action: (indices) => ({ t: "keep", indices }),
-      },
+    cards: [
+      staged(
+        "keep",
+        verb("keep", "Keep", "Return the rest to the Court."),
+        [{ id: "keep", label: null, count, cards }],
+        (picks) => ({ t: "keep", indices: indicesOf(picks) }),
+        combined.length >= count,
+        combined.length >= count ? null : "Not enough cards to keep",
+      ),
     ],
   }
 }
 
 /** Crime Boss: the target pays 2 or lets the boss pay 5 to kill it. */
-const crimePayMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string): WindowMenu => {
-  const coins = coinsOf(view, seat)
-  const affordable = coins >= CRIME_PAY_COST
+const crimePayMenu = (
+  view: G54View,
+  seat: SeatId,
+  identityOf: (seat: SeatId) => SeatIdentity,
+): WindowMenu => {
+  const affordable = coinsOf(view, seat) >= CRIME_PAY_COST
   return {
     title: "Pay the Crime Boss",
-    note: claimNote(view, nameOf),
-    options: [
-      plain("pay", `Pay ${String(CRIME_PAY_COST)}`, null, affordable, affordable ? null : shortOf(CRIME_PAY_COST), () => ({
-        t: "pay",
-      })),
-      plain("no", "Refuse", null, true, null, () => ({ t: "no" })),
+    note: claimNote(view, identityOf),
+    cards: [
+      direct(
+        "pay",
+        verb("pay", `Pay ${String(CRIME_PAY_COST)}`, "Pay the Crime Boss."),
+        () => ({ t: "pay" }),
+        affordable,
+        affordable ? null : shortOf(CRIME_PAY_COST),
+      ),
+      direct("no", verb("refuse", "Refuse", "Let the Crime Boss act."), () => ({ t: "no" })),
     ],
   }
 }
 
 /** Protestor funding: a third party pays 3 to make the kill land. */
-const fundMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string): WindowMenu => {
-  const coins = coinsOf(view, seat)
-  const affordable = coins >= FUND_COST
+const fundMenu = (
+  view: G54View,
+  seat: SeatId,
+  identityOf: (seat: SeatId) => SeatIdentity,
+): WindowMenu => {
+  const affordable = coinsOf(view, seat) >= FUND_COST
   return {
     title: "Fund the protest",
-    note: claimNote(view, nameOf),
-    options: [
-      plain("pay", `Fund for ${String(FUND_COST)}`, null, affordable, affordable ? null : shortOf(FUND_COST), () => ({
-        t: "pay",
-      })),
-      plain("no", "Decline", null, true, null, () => ({ t: "no" })),
+    note: claimNote(view, identityOf),
+    cards: [
+      direct(
+        "pay",
+        verb("fund", "Fund", `Pay ${String(FUND_COST)} to make the kill land.`),
+        () => ({ t: "pay" }),
+        affordable,
+        affordable ? null : shortOf(FUND_COST),
+      ),
+      direct("no", verb("decline", "Decline", "Take no action."), () => ({ t: "no" })),
     ],
   }
 }
 
 /** Producer: the partner gives one card from their hand to the exchange. */
-const producerGiveMenu = (view: G54View, nameOf: (seat: SeatId) => string): WindowMenu => {
-  const has = view.myHand.length > 0
-  return {
-    title: "Give a card",
-    note: claimNote(view, nameOf),
-    options: [
-      {
-        id: "give",
-        kind: "card",
-        label: "Give",
-        detail: null,
-        enabled: has,
-        reason: has ? null : "No cards to give",
-        choices: cardChoices(view.myHand),
-        action: (index) => ({ t: "give", index }),
-      },
-    ],
-  }
-}
+const producerGiveMenu = (view: G54View, identityOf: (seat: SeatId) => SeatIdentity): WindowMenu => ({
+  title: "Give a card",
+  note: claimNote(view, identityOf),
+  cards: view.myHand.map((role, index) =>
+    direct(`give-${String(index)}`, roleFace(role), () => ({ t: "give", index })),
+  ),
+})
 
 /** Writer: pay 1 for another Court draw, or keep the pool as it stands. */
-const writerDrawMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string): WindowMenu => {
+const writerDrawMenu = (
+  view: G54View,
+  seat: SeatId,
+  identityOf: (seat: SeatId) => SeatIdentity,
+): WindowMenu => {
   const coins = coinsOf(view, seat)
   const canPay = coins >= WRITER_EXTRA_COST && view.courtCount > 0
   const reason =
-    coins < WRITER_EXTRA_COST ? shortOf(WRITER_EXTRA_COST) : view.courtCount === 0 ? "The Court is empty" : null
+    coins < WRITER_EXTRA_COST
+      ? shortOf(WRITER_EXTRA_COST)
+      : view.courtCount === 0
+        ? "The Court is empty"
+        : null
   return {
     title: "Extra draw",
-    note: claimNote(view, nameOf),
-    options: [
-      plain("pay", `Draw another for ${String(WRITER_EXTRA_COST)}`, null, canPay, canPay ? null : reason, () => ({
-        t: "pay",
-      })),
-      plain("no", "Keep", null, true, null, () => ({ t: "no" })),
+    note: claimNote(view, identityOf),
+    cards: [
+      direct(
+        "pay",
+        verb("draw", "Draw another", `Pay ${String(WRITER_EXTRA_COST)} for another Court draw.`),
+        () => ({ t: "pay" }),
+        canPay,
+        canPay ? null : reason,
+      ),
+      direct("no", verb("keep", "Keep", "Keep the pool as it stands."), () => ({ t: "no" })),
     ],
   }
 }
 
 /** Customs Officer: mark a role in play; a claim of that role then pays the holder 1. */
-const customsMarkMenu = (view: G54View, nameOf: (seat: SeatId) => string): WindowMenu => {
-  const choices: readonly MenuRoleChoice[] = view.roles.map((role) => ({
-    role,
-    name: specOf(role).name,
-  }))
-  return {
-    title: "Mark a role",
-    note: claimNote(view, nameOf),
-    options: [
-      {
-        id: "mark",
-        kind: "role",
-        label: "Mark a role",
-        detail: null,
-        enabled: choices.length > 0,
-        reason: choices.length > 0 ? null : "No roles in play",
-        choices,
-        action: (role) => ({ t: "claim", role, target: null }),
-      },
-    ],
-  }
-}
+const customsMarkMenu = (view: G54View, identityOf: (seat: SeatId) => SeatIdentity): WindowMenu => ({
+  title: "Mark a role",
+  note: claimNote(view, identityOf),
+  cards: view.roles.map((role) =>
+    direct(`mark-${role}`, roleFace(role), () => ({ t: "claim", role, target: null })),
+  ),
+})
 
 /** Socialist: the target gives a card or, when cardless, pays 1. */
-const socialistGiveMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string): WindowMenu => {
-  const hasCards = view.myHand.length > 0
+const socialistGiveMenu = (
+  view: G54View,
+  seat: SeatId,
+  identityOf: (seat: SeatId) => SeatIdentity,
+): WindowMenu => {
   const hasCoins = coinsOf(view, seat) > 0
+  const giveCards = view.myHand.map((role, index) =>
+    direct(`give-${String(index)}`, roleFace(role), () => ({ t: "give", index })),
+  )
   return {
     title: "Give to the Socialist",
-    note: claimNote(view, nameOf),
-    options: [
-      {
-        id: "give",
-        kind: "card",
-        label: "Give a card",
-        detail: null,
-        enabled: hasCards,
-        reason: hasCards ? null : "No cards to give",
-        choices: cardChoices(view.myHand),
-        action: (index) => ({ t: "give", index }),
-      },
-      plain("pay", "Pay 1", null, hasCoins, hasCoins ? null : "No coins to pay", () => ({ t: "pay" })),
+    note: claimNote(view, identityOf),
+    cards: [
+      ...giveCards,
+      direct(
+        "pay",
+        verb("pay", "Pay 1", "Pay the Socialist instead."),
+        () => ({ t: "pay" }),
+        hasCoins,
+        hasCoins ? null : "No coins to pay",
+      ),
     ],
   }
 }
@@ -567,63 +522,49 @@ const socialistGiveMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) =
 const socialistKeepMenu = (view: G54View): WindowMenu => {
   const hand = view.myHand
   const pool = view.mySocialist ?? []
-  const ownChoices = cardChoices(hand)
-  const poolChoices: readonly MenuCardChoice[] = pool.map((role, index) => ({
-    index: hand.length + index,
-    name: specOf(role).name,
-  }))
-  const enabled = ownChoices.length > 0
+  const poolCards = pool.map((role, index) =>
+    roleTarget(role, hand.length + index, `pool-${String(index)}`),
+  )
+  const count = poolCards.length > 0 ? 1 : 0
+  const enabled = hand.length > 0
   return {
     title: "Socialist swap",
     note: enabled
-      ? poolChoices.length === 0
+      ? poolCards.length === 0
         ? "No cards were given, so give one and take it back."
         : "Give one card, take one from the pile."
       : "Nothing to swap",
-    options: [
-      {
-        id: "keep",
-        kind: "swap",
-        label: "Swap",
-        detail: null,
+    cards: hand.map((role, index) =>
+      staged(
+        `keep-${String(index)}`,
+        roleFace(role),
+        [{ id: "take", label: null, count, cards: poolCards }],
+        (picks) => ({ t: "keep", indices: [index, picks[0]?.index ?? index] }),
         enabled,
-        reason: enabled ? null : "No cards in hand",
-        ownChoices,
-        poolChoices,
-        action: (ownIndex, keepIndex) => ({ t: "keep", indices: [ownIndex, keepIndex] }),
-      },
-    ],
+        enabled ? null : "No cards in hand",
+      ),
+    ),
   }
 }
 
 /** Capitalist or Plantation Owner mass claim: a rival claims the pending role to collect. */
-const massClaimMenu = (view: G54View, nameOf: (seat: SeatId) => string): WindowMenu => {
+const massClaimMenu = (view: G54View, identityOf: (seat: SeatId) => SeatIdentity): WindowMenu => {
   const role = view.pending?.role ?? null
-  const options: MenuOption[] = []
+  const cards: CardChoice[] = []
   if (role !== null) {
-    options.push(
-      plain("claim", "Claim to collect", specOf(role).name, true, null, () => ({
-        t: "claim",
-        role,
-        target: null,
-      })),
-    )
+    cards.push(direct("claim", roleFace(role), () => ({ t: "claim", role, target: null })))
   }
-  options.push(plain("no", "Pass", null, true, null, () => ({ t: "no" })))
-  return { title: "Mass claim", note: claimNote(view, nameOf), options }
+  cards.push(direct("no", verb("pass", "Pass", "Take no action."), () => ({ t: "no" })))
+  return { title: "Mass claim", note: claimNote(view, identityOf), cards }
 }
 
 /** Lawyer: any alive seat may claim the estate of an eliminated seat. */
-const lawyerMenu = (view: G54View, nameOf: (seat: SeatId) => string): WindowMenu => ({
+const lawyerMenu = (view: G54View, identityOf: (seat: SeatId) => SeatIdentity): WindowMenu => ({
   title: "Claim the estate",
-  note: claimNote(view, nameOf),
-  options: [
-    plain("claim", "Claim the estate", null, true, null, () => ({
-      t: "claim",
-      role: "lawyer",
-      target: null,
-    })),
-    plain("no", "Pass", null, true, null, () => ({ t: "no" })),
+  note: claimNote(view, identityOf),
+  cards: [
+    direct("claim", roleFace("lawyer"), () => ({ t: "claim", role: "lawyer", target: null })),
+    direct("no", verb("pass", "Pass", "Take no action."), () => ({ t: "no" })),
   ],
 })
 
@@ -631,17 +572,13 @@ const lawyerMenu = (view: G54View, nameOf: (seat: SeatId) => string): WindowMenu
 const reactiveMenu = (
   view: G54View,
   role: RoleId,
-  nameOf: (seat: SeatId) => string,
+  identityOf: (seat: SeatId) => SeatIdentity,
 ): WindowMenu => ({
   title: `Claim ${specOf(role).name}`,
-  note: claimNote(view, nameOf),
-  options: [
-    plain("claim", `Claim ${specOf(role).name}`, null, true, null, () => ({
-      t: "claim",
-      role,
-      target: null,
-    })),
-    plain("no", "Decline", null, true, null, () => ({ t: "no" })),
+  note: claimNote(view, identityOf),
+  cards: [
+    direct("claim", roleFace(role), () => ({ t: "claim", role, target: null })),
+    direct("no", verb("decline", "Decline", "Take no action."), () => ({ t: "no" })),
   ],
 })
 
@@ -650,15 +587,20 @@ const reactiveMenu = (
  * holders mirror `bombPassable`: alive, not resigned, not the current holder, and
  * not any prior holder.
  */
-const bombMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string): WindowMenu => {
+const bombMenu = (
+  view: G54View,
+  seat: SeatId,
+  identityOf: (seat: SeatId) => SeatIdentity,
+): WindowMenu => {
   const bomb = view.tokens.bomb
+  const nameOf = (target: SeatId): string => identityOf(target).name
   // A live `move` means the pass or defuse claim was caught; `resolveBomb` then
   // ignores input and clears the Bomb, so the holder only acknowledges it.
   if (bomb !== null && bomb.move !== null) {
     return {
       title: "The Bomb",
       note: `Held by ${nameOf(bomb.holder)}.`,
-      options: [plain("continue", "Continue", null, true, null, () => ({ t: "no" }))],
+      cards: [direct("continue", verb("continue", "Continue", "Acknowledge."), () => ({ t: "no" }))],
     }
   }
   const legal =
@@ -671,106 +613,105 @@ const bombMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string)
             player.handCount > 0 &&
             !player.resigned,
         )
-  const choices: readonly MenuSeatChoice[] = legal.map((player) => ({
-    seat: player.seat,
-    name: nameOf(player.seat),
-    enabled: true,
-    reason: null,
-  }))
+  const choices = legal.map((player) => playerTarget(player, identityOf, true, null))
   const holder = bomb?.holder ?? seat
   return {
     title: "The Bomb",
     note: `Held by ${nameOf(holder)}.`,
-    options: [
-      {
-        id: "pass",
-        kind: "target",
-        label: "Pass the Bomb",
-        detail: null,
-        enabled: choices.length > 0,
-        reason: choices.length > 0 ? null : "No legal next holder",
-        face: null,
-        choices,
-        action: (target) => ({ t: "claim", role: "anarchist", target }),
-      },
-      plain("defuse", "Defuse", null, true, null, () => ({
-        t: "claim",
-        role: "anarchist",
-        target: null,
-      })),
+    cards: [
+      staged(
+        "pass",
+        verb("pass", "Pass the Bomb", "Hand the Bomb to another seat."),
+        [{ id: "target", label: null, count: 1, cards: choices }],
+        (picks) => ({ t: "claim", role: "anarchist", target: seatOf(picks[0]!) }),
+        choices.length > 0,
+        choices.length > 0 ? null : "No legal next holder",
+      ),
+      direct(
+        "defuse",
+        verb("defuse", "Defuse", "Disarm the Bomb."),
+        () => ({ t: "claim", role: "anarchist", target: null }),
+      ),
     ],
   }
 }
 
 /** Spy's second action reuses the turn menu, plus a Stop that ends the turn. */
-const spySecondMenu = (view: G54View, seat: SeatId, nameOf: (seat: SeatId) => string): WindowMenu => {
-  const menu = turnMenu(view, seat, nameOf)
+const spySecondMenu = (
+  view: G54View,
+  seat: SeatId,
+  identityOf: (seat: SeatId) => SeatIdentity,
+): WindowMenu => {
+  const menu = turnMenu(view, seat, identityOf)
   return {
     ...menu,
     title: "Second action",
-    options: [...menu.options, plain("stop", "Stop", null, true, null, () => ({ t: "pass" }))],
+    cards: [
+      ...menu.cards,
+      direct("stop", verb("stop", "Stop", "End your turn."), () => ({ t: "pass" })),
+    ],
   }
 }
 
 /** Plantation payout is automatic; the active seat only acknowledges it. */
-const plantationPayoutMenu = (view: G54View, nameOf: (seat: SeatId) => string): WindowMenu => ({
+const plantationPayoutMenu = (view: G54View, identityOf: (seat: SeatId) => SeatIdentity): WindowMenu => ({
   title: "Plantation payout",
-  note: claimNote(view, nameOf),
-  options: [plain("continue", "Continue", null, true, null, () => ({ t: "no" }))],
+  note: claimNote(view, identityOf),
+  cards: [direct("continue", verb("continue", "Continue", "Acknowledge."), () => ({ t: "no" }))],
 })
 
 /**
- * The controls the open window offers the viewer, or null when no window is open
- * or the viewer is not owed.
+ * The cards the open window offers the viewer, or null when no window is open or
+ * the viewer is not owed.
  */
 export const menuOf = (
   view: G54View,
   seat: SeatId,
-  nameOf: (seat: SeatId) => string,
+  identityOf: (seat: SeatId) => SeatIdentity,
 ): WindowMenu | null => {
   if (view.window === null || !view.owedSeats.includes(seat)) return null
   switch (view.window.purpose) {
     case "turn":
-      return turnMenu(view, seat, nameOf)
+      return turnMenu(view, seat, identityOf)
     case "spy-second":
-      return spySecondMenu(view, seat, nameOf)
+      return spySecondMenu(view, seat, identityOf)
     case "challenge-claim":
     case "challenge-block":
-      return challengeMenu(view, seat, view.window.purpose, nameOf)
+      return challengeMenu(view, seat, view.window.purpose, identityOf)
     case "proof-claim":
     case "proof-block":
-      return proofMenu(view, view.window.purpose, nameOf)
+      return proofMenu(view, view.window.purpose, identityOf)
     case "block":
-      return blockMenu(view, nameOf)
+      return blockMenu(view, identityOf)
     case "reveal":
       return revealMenu(view)
     case "keep":
       return keepMenu(view)
     case "crime-pay":
-      return crimePayMenu(view, seat, nameOf)
+      return crimePayMenu(view, seat, identityOf)
     case "protestor-fund":
-      return fundMenu(view, seat, nameOf)
+      return fundMenu(view, seat, identityOf)
     case "producer-give":
-      return producerGiveMenu(view, nameOf)
+      return producerGiveMenu(view, identityOf)
     case "writer-draw":
-      return writerDrawMenu(view, seat, nameOf)
+      return writerDrawMenu(view, seat, identityOf)
     case "customs-mark":
-      return customsMarkMenu(view, nameOf)
+      return customsMarkMenu(view, identityOf)
     case "socialist-give":
-      return socialistGiveMenu(view, seat, nameOf)
+      return socialistGiveMenu(view, seat, identityOf)
     case "socialist-keep":
       return socialistKeepMenu(view)
     case "capitalist":
-      return massClaimMenu(view, nameOf)
+      return massClaimMenu(view, identityOf)
     case "lawyer":
-      return lawyerMenu(view, nameOf)
+      return lawyerMenu(view, identityOf)
     case "reactive-intellectual":
-      return reactiveMenu(view, "intellectual", nameOf)
+      return reactiveMenu(view, "intellectual", identityOf)
     case "reactive-missionary":
-      return reactiveMenu(view, "missionary", nameOf)
+      return reactiveMenu(view, "missionary", identityOf)
     case "bomb":
-      return bombMenu(view, seat, nameOf)
+      return bombMenu(view, seat, identityOf)
     case "plantation-payout":
-      return plantationPayoutMenu(view, nameOf)
+      return plantationPayoutMenu(view, identityOf)
   }
 }

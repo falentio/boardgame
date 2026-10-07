@@ -1,6 +1,6 @@
 import { expect, test } from "vitest"
 import { GENERAL_ACTIONS, type GeneralActionId } from "#shared/core/lockstep/games/g54/generals.ts"
-import { generalActionArt, generalCardModel } from "../general-card.ts"
+import { generalActionArt, generalCardModel, verbCardModel } from "../general-card.ts"
 
 const ACTIONS: readonly GeneralActionId[] = ["income", "coup", "bank", "social-media"]
 
@@ -18,10 +18,8 @@ test("summary comes from the general action registry", () => {
 })
 
 test("costLabel is Pay 7 for a nonzero cost, null otherwise", () => {
-  expect(generalCardModel("coup").cost).toBe(7)
   expect(generalCardModel("coup").costLabel).toBe("Pay 7")
   for (const action of ["income", "bank", "social-media"] as const) {
-    expect(generalCardModel(action).cost).toBe(0)
     expect(generalCardModel(action).costLabel).toBeNull()
   }
 })
@@ -50,6 +48,17 @@ test("every general action resolves a complete card model", () => {
     expect(model.id).toBe(action)
     expect(model.label.length).toBeGreaterThan(0)
     expect(model.summary.length).toBeGreaterThan(0)
+    expect(model.art).not.toBeNull()
     expect(model.accessibleName.length).toBeGreaterThan(0)
   }
+})
+
+test("a verb card has no art and no cost, and folds the label and summary into its name", () => {
+  const pass = verbCardModel("pass", "Pass", "Take no action.")
+  expect(pass.id).toBe("pass")
+  expect(pass.label).toBe("Pass")
+  expect(pass.summary).toBe("Take no action.")
+  expect(pass.art).toBeNull()
+  expect(pass.costLabel).toBeNull()
+  expect(pass.accessibleName).toBe("Pass. Take no action.")
 })

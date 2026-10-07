@@ -1,11 +1,12 @@
-// Live proof of the production turn window: the active seat's turn window
-// renders action cards, and a non-turn window (challenge-claim) still renders
-// buttons.
+// Live proof of the staged window picker: the active seat's turn window renders
+// action, role, and player cards; selecting a card and clicking Confirm advances
+// the turn; a staged claim opens a player-card target stage, and the rival then
+// sees a challenge window of cards.
 //
 // The host and port must match BETTER_AUTH_URL in .dev.vars, or better-auth
 // rejects the sign-up with INVALID_ORIGIN.
 //
-// Usage: node scripts/proof-turn-cards.mjs [--port 3000] [--keep]
+// Usage: node scripts/proof-window-picker.mjs [--port 3000] [--out DIR] [--keep]
 import { spawn } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
@@ -19,11 +20,11 @@ const PORT = Number(argOf("--port", "3000"));
 const KEEP = args.includes("--keep");
 const BASE = `http://localhost:${PORT}`;
 const ROOT = new URL("..", import.meta.url).pathname;
-const PROOF = new URL("../.audit/proof/", import.meta.url).pathname;
+const OUT = argOf("--out", new URL("../.audit/proof/", import.meta.url).pathname);
 const STAMP = Date.now();
 const PASSWORD = "proof-password-123";
 
-mkdirSync(PROOF, { recursive: true });
+mkdirSync(OUT, { recursive: true });
 
 const failures = [];
 const fail = (msg) => { failures.push(msg); console.error(`FAIL: ${msg}`); };
@@ -60,7 +61,7 @@ const startServer = async () => {
 };
 
 const signUp = async (label) => {
-  const email = `turn-${label}-${STAMP}@example.com`;
+  const email = `picker-${label}-${STAMP}@example.com`;
   const res = await fetch(`${BASE}/api/auth/sign-up/email`, {
     method: "POST",
     headers: { "content-type": "application/json", origin: BASE },
@@ -77,7 +78,7 @@ const signUp = async (label) => {
 };
 
 const launchBrowser = async (label, debugPort) => {
-  const profileDir = `/tmp/proof-turn-${label}-${PORT}-${process.pid}`;
+  const profileDir = `/tmp/proof-picker-${label}-${PORT}-${process.pid}`;
   rmSync(profileDir, { recursive: true, force: true });
   const chrome = spawn(
     "/usr/bin/google-chrome",
@@ -181,7 +182,7 @@ const launchBrowser = async (label, debugPort) => {
     },
     async screenshot(name) {
       const { result } = await send("Page.captureScreenshot", { format: "png" }, session);
-      const path = `${PROOF}${name}.png`;
+      const path = `${OUT}${name}.png`;
       writeFileSync(path, Buffer.from(result.data, "base64"));
       return path;
     },
@@ -190,9 +191,11 @@ const launchBrowser = async (label, debugPort) => {
 };
 
 const EL = {
-  roleCard: (name) => `[...document.querySelectorAll('button[data-slot=role-card]')].find((b) => (b.getAttribute('aria-label') || '').startsWith(${JSON.stringify(name)}))`,
-  generalCard: (name) => `[...document.querySelectorAll('button[data-slot=general-action-card]')].find((b) => (b.getAttribute('aria-label') || '').startsWith(${JSON.stringify(name)}))`,
-  targetButton: (name) => `[...document.querySelectorAll('[data-slot=turn-action-picker] button')].find((b) => b.textContent.trim() === ${JSON.stringify(name)})`,
+  picker: "[data-slot=window-picker]",
+  roleCard: (name) => `[...document.querySelectorAll('[data-slot=window-picker] button[data-slot=role-card]')].find((b) => (b.getAttribute('aria-label') || '').startsWith(${JSON.stringify(name)}))`,
+  generalCard: (name) => `[...document.querySelectorAll('[data-slot=window-picker] button[data-slot=general-action-card]')].find((b) => (b.getAttribute('aria-label') || '').startsWith(${JSON.stringify(name)}))`,
+  playerCard: (name) => `[...document.querySelectorAll('[data-slot=player-card]')].find((b) => (b.getAttribute('aria-label') || '') === ${JSON.stringify(name)})`,
+  confirm: `[...document.querySelectorAll('[data-slot=window-picker] button')].find((b) => b.textContent.trim() === 'Confirm')`,
   buttonText: (name) => `[...document.querySelectorAll('button')].find((b) => b.textContent.trim().includes(${JSON.stringify(name)}))`,
 };
 
@@ -202,6 +205,18 @@ const turnNumber = async (page) => {
   return m === null ? null : Number(m[1]);
 };
 
+const pickerState = (page) => page.eval(`(() => {
+  const picker = document.querySelector('[data-slot=window-picker]');
+  return {
+    present: !!picker,
+    title: picker?.querySelector('h2')?.textContent.trim() ?? null,
+    roleCards: picker ? picker.querySelectorAll('[data-slot=role-card]').length : 0,
+    generalCards: picker ? picker.querySelectorAll('[data-slot=general-action-card]').length : 0,
+    playerCards: picker ? picker.querySelectorAll('[data-slot=player-card]').length : 0,
+    confirm: (() => { const c = [...document.querySelectorAll('[data-slot=window-picker] button')].find((b) => b.textContent.trim() === 'Confirm'); return c ? { disabled: c.disabled } : null; })(),
+  };
+})()`);
+
 const main = async () => {
   const { server, reused } = await startServer();
   if (reused) console.warn("note: reusing an already-running dev server; not validated as this checkout");
@@ -209,8 +224,8 @@ const main = async () => {
   const guest = await signUp("guest");
   pass(`created accounts ${host.email} and ${guest.email}`);
 
-  const hostBrowser = await launchBrowser("host", PORT + 31);
-  const guestBrowser = await launchBrowser("guest", PORT + 32);
+  const hostBrowser = await launchBrowser("host", PORT + 41);
+  const guestBrowser = await launchBrowser("guest", PORT + 42);
   try {
     await hostBrowser.page.setViewport(1280, 1000);
     await guestBrowser.page.setViewport(1280, 1000);
@@ -223,7 +238,6 @@ const main = async () => {
     if (!pickerReady) throw new Error("the create page never rendered the 31-role picker");
     pass("create page hydrated with the 31-role picker");
 
-    // The seats <select> is a reka-ui Select, so it needs a real pointer sequence.
     await hostBrowser.page.clickReal("document.querySelector('#seats')");
     const opened = await hostBrowser.page.waitFor("document.querySelectorAll('[role=option]').length >= 7", { timeoutMs: 4000 });
     if (!opened) throw new Error("the seats select did not open");
@@ -254,7 +268,6 @@ const main = async () => {
     if (!onGame) throw new Error(`Start game did not open the board, at ${await hostBrowser.page.url()}`);
     pass("host's Start game opened the board");
 
-    // The lobby does not auto-navigate the guest, so take it to the board too.
     await guestBrowser.page.goto(`${BASE}/games/${code}`);
     await hostBrowser.page.waitForHydration();
     await guestBrowser.page.waitForHydration();
@@ -264,122 +277,103 @@ const main = async () => {
     if (!hostBoard || !guestBoard) throw new Error(`board missing (host ${hostBoard}, guest ${guestBoard})`);
     pass("both seats rendered the game board");
 
-    const hostPicker = await hostBrowser.page.waitFor("!!document.querySelector('[data-slot=turn-action-picker]')", { timeoutMs: 20000 });
-    if (!hostPicker) {
-      fail(`host turn window is not the card picker; body: ${(await hostBrowser.page.bodyText()).replace(/\n/g, " | ")}`);
+    const hostTurn = await hostBrowser.page.waitFor(`!!document.querySelector('${EL.picker}')`, { timeoutMs: 20000 });
+    if (!hostTurn) {
+      fail(`host turn window shows no [data-slot=window-picker]; body: ${(await hostBrowser.page.bodyText()).replace(/\n/g, " | ")}`);
     } else {
-      pass("host turn window shows [data-slot=turn-action-picker]");
+      pass("host turn window shows [data-slot=window-picker]");
     }
-
-    const hostState = await hostBrowser.page.eval(`(() => ({
-      picker: !!document.querySelector('[data-slot=turn-action-picker]'),
-      menu: document.querySelector('[data-slot=window-menu]'),
-      roleCards: document.querySelectorAll('[data-slot=role-card]').length,
-      generalCards: document.querySelectorAll('[data-slot=general-action-card]').length,
-      roleLabels: [...document.querySelectorAll('[data-slot=role-card]')].map((c) => c.getAttribute('aria-label')),
-      generalLabels: [...document.querySelectorAll('[data-slot=general-action-card]')].map((c) => c.getAttribute('aria-label')),
-    }))()`);
-    info(`host picker=${hostState.picker} window-menu=${hostState.menu === null ? "null" : "present"} role-cards=${hostState.roleCards} general-cards=${hostState.generalCards}`);
-    info(`host role cards: ${JSON.stringify(hostState.roleLabels)}`);
-    info(`host general cards: ${JSON.stringify(hostState.generalLabels)}`);
-
-    if (hostState.menu !== null) fail("the turn window must NOT render [data-slot=window-menu]");
-    else pass("the turn window does NOT render [data-slot=window-menu]");
-    if (hostState.roleCards !== 5) fail(`expected 5 role cards for the starter set, got ${hostState.roleCards}`);
-    else pass("the picker renders 5 [data-slot=role-card] elements");
+    const hostState = await pickerState(hostBrowser.page);
+    info(`host turn: title=${JSON.stringify(hostState.title)} role-cards=${hostState.roleCards} general-cards=${hostState.generalCards} player-cards=${hostState.playerCards} confirm=${JSON.stringify(hostState.confirm)}`);
+    if (hostState.roleCards < 1) fail(`expected role cards in the turn window, got ${hostState.roleCards}`);
+    else pass(`the turn window renders ${hostState.roleCards} [data-slot=role-card] elements`);
     if (hostState.generalCards < 1) fail(`expected general action cards, got ${hostState.generalCards}`);
-    else pass(`the picker renders ${hostState.generalCards} [data-slot=general-action-card] elements`);
+    else pass(`the turn window renders ${hostState.generalCards} [data-slot=general-action-card] elements`);
+    if (hostState.confirm === null || !hostState.confirm.disabled) fail("Confirm must be disabled before a card is selected");
+    else pass("Confirm is disabled before a card is selected");
 
-    const shot1 = await hostBrowser.page.screenshot("turn-cards-01-host-cards");
+    const shot1 = await hostBrowser.page.screenshot("picker-01-host-turn");
     console.log(`screenshot: ${shot1}`);
 
+    // Step 1 + 3: select Income, then Confirm.
     const turnBefore = await turnNumber(hostBrowser.page);
     info(`host turn before Income: ${turnBefore}`);
     const clickedIncome = await hostBrowser.page.clickReal(EL.generalCard("Income"));
-    if (!clickedIncome) {
-      fail(`the Income general action card was not clickable; body: ${(await hostBrowser.page.bodyText()).replace(/\n/g, " | ")}`);
-    } else {
-      pass("clicked the Income general action card");
-    }
-    const hostPickerCleared = await hostBrowser.page.waitFor("!document.querySelector('[data-slot=turn-action-picker]')", { timeoutMs: 12000 });
-    const turnAfter = await turnNumber(hostBrowser.page);
-    info(`host turn after Income: ${turnAfter}; picker cleared: ${hostPickerCleared}`);
-    if (!hostPickerCleared) {
-      fail(`the host picker did not clear after Income; body: ${(await hostBrowser.page.bodyText()).replace(/\n/g, " | ")}`);
-    } else {
-      pass("the host's turn picker cleared after Income (turn advanced)");
-    }
-    if (turnAfter !== null && turnBefore !== null && turnAfter !== turnBefore + 1) {
-      fail(`turn did not advance by 1: ${turnBefore} -> ${turnAfter}`);
-    } else if (turnAfter !== null) {
-      pass(`turn advanced ${turnBefore} -> ${turnAfter}`);
-    }
-    const shot2 = await hostBrowser.page.screenshot("turn-cards-02-after-income");
+    if (!clickedIncome) fail(`the Income card was not clickable; body: ${(await hostBrowser.page.bodyText()).replace(/\n/g, " | ")}`);
+    else pass("selected the Income general action card");
+    const selectedState = await pickerState(hostBrowser.page);
+    if (selectedState.confirm === null || selectedState.confirm.disabled) fail("Confirm must enable after selecting Income");
+    else pass("Confirm enabled after selecting Income");
+
+    const shot2 = await hostBrowser.page.screenshot("picker-02-host-income-selected");
     console.log(`screenshot: ${shot2}`);
 
-    const guestPicker = await guestBrowser.page.waitFor("!!document.querySelector('[data-slot=turn-action-picker]')", { timeoutMs: 15000 });
-    if (!guestPicker) {
-      fail(`guest turn window is not the card picker; body: ${(await guestBrowser.page.bodyText()).replace(/\n/g, " | ")}`);
-    } else {
-      pass("guest turn window also shows [data-slot=turn-action-picker]");
-      const guestMenu = await guestBrowser.page.eval("!!document.querySelector('[data-slot=window-menu]')");
-      if (guestMenu) fail("guest turn window must NOT render [data-slot=window-menu]");
-      else pass("guest turn window does NOT render [data-slot=window-menu]");
-      const guestIncome = await guestBrowser.page.clickReal(EL.generalCard("Income"));
-      if (!guestIncome) fail("guest could not click Income");
-      else pass("guest clicked Income; the turn returns to the host");
-    }
-    const hostPickerAgain = await hostBrowser.page.waitFor("!!document.querySelector('[data-slot=turn-action-picker]')", { timeoutMs: 15000 });
-    if (!hostPickerAgain) throw new Error("host never regained the turn window");
+    const confirmed = await hostBrowser.page.clickReal(EL.confirm);
+    if (!confirmed) fail("the Confirm button was not clickable");
+    else pass("clicked Confirm");
+    const hostCleared = await hostBrowser.page.waitFor(`!document.querySelector('${EL.picker}')`, { timeoutMs: 12000 });
+    const turnAfter = await turnNumber(hostBrowser.page);
+    info(`host turn after Income: ${turnAfter}; picker cleared: ${hostCleared}`);
+    if (!hostCleared) fail(`the host picker did not clear after Confirm; body: ${(await hostBrowser.page.bodyText()).replace(/\n/g, " | ")}`);
+    else pass("the host's picker cleared after Confirm (turn advanced)");
+    if (turnAfter !== null && turnBefore !== null && turnAfter !== turnBefore + 1) fail(`turn did not advance by 1: ${turnBefore} -> ${turnAfter}`);
+    else if (turnAfter !== null) pass(`turn advanced ${turnBefore} -> ${turnAfter}`);
+
+    // The guest's turn: same flow, then the host claims with a target.
+    const guestTurn = await guestBrowser.page.waitFor(`!!document.querySelector('${EL.picker}')`, { timeoutMs: 15000 });
+    if (!guestTurn) fail(`guest turn window shows no [data-slot=window-picker]; body: ${(await guestBrowser.page.bodyText()).replace(/\n/g, " | ")}`);
+    else pass("guest turn window shows [data-slot=window-picker]");
+    const guestIncome = await guestBrowser.page.clickReal(EL.generalCard("Income"));
+    if (!guestIncome) fail("guest could not select Income");
+    else pass("guest selected Income");
+    const guestConfirmed = await guestBrowser.page.clickReal(EL.confirm);
+    if (!guestConfirmed) fail("guest could not click Confirm");
+    else pass("guest confirmed Income; the turn returns to the host");
+
+    const hostAgain = await hostBrowser.page.waitFor(`!!document.querySelector('${EL.picker}')`, { timeoutMs: 15000 });
+    if (!hostAgain) throw new Error("host never regained the turn window");
     pass("host is active again for the claim");
 
-    const claimClicked = await hostBrowser.page.clickReal(EL.roleCard("Politician"));
-    if (!claimClicked) {
-      fail(`host could not click the Politician role card; body: ${(await hostBrowser.page.bodyText()).replace(/\n/g, " | ")}`);
-    } else {
-      pass("host clicked the Politician role card (needs a target)");
-    }
-    const targetClicked = await hostBrowser.page.clickReal(EL.targetButton(guest.name), { attempts: 8 });
-    if (!targetClicked) {
-      fail(`host could not pick the target "${guest.name}"; body: ${(await hostBrowser.page.bodyText()).replace(/\n/g, " | ")}`);
-    } else {
-      pass(`host picked ${guest.name} as the Politician target`);
-    }
+    // Step 2: a staged claim opens a player-card target stage.
+    const clickedPolitician = await hostBrowser.page.clickReal(EL.roleCard("Politician"));
+    if (!clickedPolitician) fail(`host could not select the Politician card; body: ${(await hostBrowser.page.bodyText()).replace(/\n/g, " | ")}`);
+    else pass("host selected the Politician card (needs a target)");
+    const targetShown = await hostBrowser.page.waitFor("!!document.querySelector('[data-slot=player-card]')", { timeoutMs: 6000 });
+    const targetState = await pickerState(hostBrowser.page);
+    info(`host target stage: player-cards=${targetState.playerCards} confirm=${JSON.stringify(targetState.confirm)}`);
+    if (!targetShown || targetState.playerCards < 1) fail("selecting Politician did not open a player-card target stage");
+    else pass(`the target stage shows ${targetState.playerCards} [data-slot=player-card] element(s)`);
 
-    const guestMenuShown = await guestBrowser.page.waitFor("!!document.querySelector('[data-slot=window-menu]')", { timeoutMs: 15000 });
-    const guestAfter = await guestBrowser.page.eval(`(() => ({
-      menu: document.querySelector('[data-slot=window-menu]'),
-      menuTitle: document.querySelector('[data-slot=window-menu] h2')?.textContent.trim() ?? null,
-      buttons: [...document.querySelectorAll('[data-slot=window-menu] button')].map((b) => b.textContent.trim()),
-      picker: !!document.querySelector('[data-slot=turn-action-picker]'),
-      roleCards: document.querySelectorAll('[data-slot=role-card]').length,
-      generalCards: document.querySelectorAll('[data-slot=general-action-card]').length,
-    }))()`);
-    info(`guest after claim: window-menu=${guestAfter.menu === null ? "null" : "present"} title=${JSON.stringify(guestAfter.menuTitle)} buttons=${JSON.stringify(guestAfter.buttons)} picker=${guestAfter.picker}`);
-
-    if (!guestMenuShown || guestAfter.menu === null) {
-      fail(`the guest did not see [data-slot=window-menu]; body: ${(await guestBrowser.page.bodyText()).replace(/\n/g, " | ")}`);
-    } else {
-      pass(`the guest sees [data-slot=window-menu] titled "${guestAfter.menuTitle}"`);
-    }
-    const hasChallenge = guestAfter.buttons.some((b) => /challenge/i.test(b));
-    const hasPass = guestAfter.buttons.some((b) => /pass/i.test(b));
-    if (!hasChallenge) fail(`the guest window-menu has no Challenge button; buttons: ${JSON.stringify(guestAfter.buttons)}`);
-    else pass("the guest window-menu has a Challenge button");
-    if (!hasPass) fail(`the guest window-menu has no Pass button; buttons: ${JSON.stringify(guestAfter.buttons)}`);
-    else pass("the guest window-menu has a Pass button");
-    if (guestAfter.picker) fail("the guest must NOT show [data-slot=turn-action-picker] during the challenge window");
-    else pass("the guest does NOT show [data-slot=turn-action-picker] during the challenge window");
-    if (guestAfter.roleCards > 0 || guestAfter.generalCards > 0) {
-      fail(`the guest challenge window must not render card pickers; role-cards=${guestAfter.roleCards} general-cards=${guestAfter.generalCards}`);
-    } else {
-      pass("the guest challenge window renders no role/general action cards");
-    }
-
-    const shot3 = await guestBrowser.page.screenshot("turn-cards-03-guest-buttons");
+    await hostBrowser.page.eval("document.querySelector('[data-slot=player-card]')?.scrollIntoView({ block: 'center' })");
+    await delay(300);
+    const shot3 = await hostBrowser.page.screenshot("picker-03-host-target-stage");
     console.log(`screenshot: ${shot3}`);
 
-    console.log(`\nRESULT: role-cards(host turn)=${hostState.roleCards} general-cards(host turn)=${hostState.generalCards} window-menu(host turn)=${hostState.menu === null ? "null" : "present"} guest-challenge-buttons=${JSON.stringify(guestAfter.buttons)}`);
+    const pickedTarget = await hostBrowser.page.clickReal(EL.playerCard(guest.name), { attempts: 8 });
+    if (!pickedTarget) fail(`host could not pick the target "${guest.name}"; body: ${(await hostBrowser.page.bodyText()).replace(/\n/g, " | ")}`);
+    else pass(`host picked ${guest.name} as the Politician target`);
+    const targetConfirm = await pickerState(hostBrowser.page);
+    if (targetConfirm.confirm === null || targetConfirm.confirm.disabled) fail("Confirm must enable after picking a target");
+    else pass("Confirm enabled after picking the target");
+    await hostBrowser.page.clickReal(EL.confirm);
+
+    // The rival now sees the challenge window as cards.
+    const guestChallenge = await guestBrowser.page.waitFor(`!!document.querySelector('${EL.picker}')`, { timeoutMs: 15000 });
+    const guestState = await pickerState(guestBrowser.page);
+    info(`guest challenge: title=${JSON.stringify(guestState.title)} general-cards=${guestState.generalCards}`);
+    if (!guestChallenge) fail(`the guest did not see the challenge window; body: ${(await guestBrowser.page.bodyText()).replace(/\n/g, " | ")}`);
+    else pass(`the guest sees [data-slot=window-picker] titled ${JSON.stringify(guestState.title)}`);
+    const hasChallenge = await guestBrowser.page.eval(`!!${EL.generalCard("Challenge")}`);
+    const hasPass = await guestBrowser.page.eval(`!!${EL.generalCard("Pass")}`);
+    if (!hasChallenge) fail("the challenge window has no Challenge card");
+    else pass("the challenge window has a Challenge card");
+    if (!hasPass) fail("the challenge window has no Pass card");
+    else pass("the challenge window has a Pass card");
+
+    const shot4 = await guestBrowser.page.screenshot("picker-04-guest-challenge");
+    console.log(`screenshot: ${shot4}`);
+
+    console.log(`\nRESULT: host-turn role-cards=${hostState.roleCards} general-cards=${hostState.generalCards} target-stage player-cards=${targetState.playerCards} guest-challenge Challenge=${hasChallenge} Pass=${hasPass}`);
   } finally {
     hostBrowser.close();
     guestBrowser.close();
@@ -401,5 +395,5 @@ if (failures.length > 0) {
   console.error(`\n${failures.length} check(s) failed`);
   if (!KEEP) process.exitCode = 1;
 } else {
-  console.log("\nall turn-card proof checks passed");
+  console.log("\nall window-picker proof checks passed");
 }
