@@ -8,6 +8,7 @@ import type { RoomCode, RoomId, UserId } from "./ids.ts";
 
 export const MAX_NAME_LENGTH = 60;
 export const MAX_SEATS = 7;
+export const ROOM_TTL_MS = 24 * 60 * 60 * 1000;
 
 export interface Seat {
   readonly id: SeatId;
@@ -26,6 +27,9 @@ export interface Room {
   readonly updatedAt: number;
 }
 
+export const isExpired = (room: Room, now: number): boolean =>
+  now >= room.createdAt + ROOM_TTL_MS;
+
 export type RoomError =
   | { kind: "invalid-name"; reason: string }
   | { kind: "invalid-seat-count"; reason: string }
@@ -34,6 +38,8 @@ export type RoomError =
   | { kind: "not-host" }
   | { kind: "already-seated" }
   | { kind: "room-full" }
+  | { kind: "not-seated" }
+  | { kind: "invalid-kick"; reason: string }
   | { kind: "conflict" };
 
 export interface NewRoom {
@@ -61,6 +67,21 @@ export interface SetRolesCommand {
   actor: UserId;
   roles: readonly RoleId[];
   now: number;
+}
+
+export type Departure =
+  | { readonly kind: "room"; readonly room: Room }
+  | { readonly kind: "empty" };
+
+export interface LeaveCommand {
+  readonly actor: UserId;
+  readonly now: number;
+}
+
+export interface KickCommand {
+  readonly actor: UserId;
+  readonly target: UserId;
+  readonly now: number;
 }
 
 const validName = (raw: string): string | null => {
@@ -116,6 +137,34 @@ export const joinRoom = (room: Room, cmd: JoinCommand): Result<Room, RoomError> 
     position === index ? { id: seat.id, occupant: cmd.user, joinedAt: cmd.now } : seat,
   );
   return ok({ ...room, seats, updatedAt: cmd.now });
+};
+
+const vacate = (room: Room, index: number, now: number): Departure => {
+  const leaving = room.seats[index]!.occupant!;
+  const seats = room.seats.map((seat, position) =>
+    position === index ? { id: seat.id, occupant: null, joinedAt: null } : seat,
+  );
+  const remaining = seats.filter((seat) => seat.occupant !== null);
+  if (remaining.length === 0) return { kind: "empty" };
+  const host = leaving === room.host ? remaining[0]!.occupant! : room.host;
+  return { kind: "room", room: { ...room, host, seats, updatedAt: now } };
+};
+
+export const leaveRoom = (room: Room, cmd: LeaveCommand): Result<Departure, RoomError> => {
+  const index = room.seats.findIndex((seat) => seat.occupant === cmd.actor);
+  if (index === -1) return err({ kind: "not-seated" });
+  return ok(vacate(room, index, cmd.now));
+};
+
+export const kickFromRoom = (room: Room, cmd: KickCommand): Result<Departure, RoomError> => {
+  const denied = requireHost(room, cmd.actor);
+  if (denied !== null) return err(denied);
+  if (cmd.target === cmd.actor) {
+    return err({ kind: "invalid-kick", reason: "the host cannot kick itself" });
+  }
+  const index = room.seats.findIndex((seat) => seat.occupant === cmd.target);
+  if (index === -1) return err({ kind: "not-seated" });
+  return ok(vacate(room, index, cmd.now));
 };
 
 export const renameRoom = (room: Room, cmd: RenameCommand): Result<Room, RoomError> => {

@@ -5,8 +5,12 @@ import { STARTER_ROLES } from "../../core/lockstep/games/g54/roles.ts";
 import { roomCode, roomId, userId, type UserId } from "../ids.ts";
 import {
   MAX_NAME_LENGTH,
+  ROOM_TTL_MS,
   createRoom,
+  isExpired,
   joinRoom,
+  kickFromRoom,
+  leaveRoom,
   renameRoom,
   requireHost,
   setRoles,
@@ -168,4 +172,89 @@ test("transitions are pure: inputs are untouched and equal inputs give equal out
   expect(room).toEqual(before);
   expect(first).toEqual(second);
   expect(first.ok && first.value).not.toBe(room);
+});
+
+test("isExpired treats the TTL boundary as expired", () => {
+  const room = created({ now: 1000 });
+  expect(isExpired(room, 1000 + ROOM_TTL_MS - 1)).toBe(false);
+  expect(isExpired(room, 1000 + ROOM_TTL_MS)).toBe(true);
+});
+
+const withGuests = (guests: readonly UserId[]): Room => {
+  let room = created();
+  for (const guest of guests) {
+    const joined = joinRoom(room, { user: guest, now: 2000 });
+    if (!joined.ok) throw new Error(`expected a join, got ${joined.error.kind}`);
+    room = joined.value;
+  }
+  return room;
+};
+
+test("leaveRoom frees the leaver's seat and leaves the host in place", () => {
+  const room = withGuests([GUEST]);
+  const left = leaveRoom(room, { actor: GUEST, now: 3000 });
+  if (!left.ok) throw new Error("expected a departure");
+  if (left.value.kind !== "room") throw new Error("expected a surviving room");
+  expect(left.value.room.host).toBe(HOST);
+  expect(left.value.room.seats[1]).toEqual({
+    id: room.seats[1]!.id,
+    occupant: null,
+    joinedAt: null,
+  });
+  expect(left.value.room.seats[0]!.occupant).toBe(HOST);
+  expect(left.value.room.updatedAt).toBe(3000);
+});
+
+test("leaveRoom reports not-seated for a non-occupant", () => {
+  expect(failure(leaveRoom(created(), { actor: GUEST, now: 3000 }))).toEqual({
+    kind: "not-seated",
+  });
+});
+
+test("leaveRoom transfers host to the lowest-index remaining occupant", () => {
+  const room = withGuests([GUEST, THIRD]);
+  const left = leaveRoom(room, { actor: HOST, now: 3000 });
+  if (!left.ok) throw new Error("expected a departure");
+  if (left.value.kind !== "room") throw new Error("expected a surviving room");
+  expect(left.value.room.host).toBe(GUEST);
+  expect(left.value.room.seats.map((seat) => seat.occupant)).toEqual([null, GUEST, THIRD]);
+});
+
+test("leaveRoom by the last occupant dissolves the room", () => {
+  const left = leaveRoom(created({ seats: 1 }), { actor: HOST, now: 3000 });
+  if (!left.ok) throw new Error("expected a departure");
+  expect(left.value).toEqual({ kind: "empty" });
+});
+
+test("kickFromRoom frees the target's seat and keeps the host", () => {
+  const room = withGuests([GUEST]);
+  const kicked = kickFromRoom(room, { actor: HOST, target: GUEST, now: 3000 });
+  if (!kicked.ok) throw new Error("expected a departure");
+  if (kicked.value.kind !== "room") throw new Error("expected a surviving room");
+  expect(kicked.value.room.host).toBe(HOST);
+  expect(kicked.value.room.seats[1]!.occupant).toBeNull();
+  expect(kicked.value.room.seats[1]!.joinedAt).toBeNull();
+});
+
+test("kickFromRoom refuses a non-host, a self-kick, and a non-occupant", () => {
+  const room = withGuests([GUEST]);
+  expect(failure(kickFromRoom(room, { actor: GUEST, target: HOST, now: 3000 }))).toEqual({
+    kind: "not-host",
+  });
+  expect(failure(kickFromRoom(room, { actor: HOST, target: HOST, now: 3000 }))).toEqual({
+    kind: "invalid-kick",
+    reason: expect.any(String),
+  });
+  expect(failure(kickFromRoom(room, { actor: HOST, target: THIRD, now: 3000 }))).toEqual({
+    kind: "not-seated",
+  });
+});
+
+test("leaveRoom and kickFromRoom are pure: inputs are untouched", () => {
+  const room = withGuests([GUEST]);
+  const before = JSON.parse(JSON.stringify(room)) as Room;
+  const left = leaveRoom(room, { actor: GUEST, now: 3000 });
+  const kicked = kickFromRoom(room, { actor: HOST, target: GUEST, now: 3000 });
+  expect(room).toEqual(before);
+  expect(left.ok && left.value).toEqual(kicked.ok && kicked.value);
 });
