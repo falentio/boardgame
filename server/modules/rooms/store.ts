@@ -1,8 +1,8 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, lte } from "drizzle-orm";
 import type { Db } from "../../utils/db.ts";
 import { room } from "../../db/schema.ts";
-import type { RoomCode } from "../../../shared/rooms/ids.ts";
-import type { Room } from "../../../shared/rooms/room.ts";
+import type { RoomCode, RoomId } from "../../../shared/rooms/ids.ts";
+import { ROOM_TTL_MS, type Room } from "../../../shared/rooms/room.ts";
 import { toRoom, toRow, type LoadedRoom } from "./row.ts";
 
 export type { LoadedRoom } from "./row.ts";
@@ -47,4 +47,24 @@ export const saveRoom = async (
 
 export const removeRoom = async (db: Db, value: Room): Promise<void> => {
   await db.delete(room).where(eq(room.code, value.code));
+};
+
+export const deleteExpiredRooms = async (db: Db, now: number): Promise<number> => {
+  const removed = await db
+    .delete(room)
+    .where(lte(room.createdAt, new Date(now - ROOM_TTL_MS)))
+    .returning({ id: room.id });
+  return removed.length;
+};
+
+export const removeRoomIf = async (
+  db: Db,
+  id: RoomId,
+  expectedRevision: number,
+): Promise<boolean> => {
+  const removed = await db
+    .delete(room)
+    .where(and(eq(room.id, id), eq(room.revision, expectedRevision)))
+    .returning({ id: room.id });
+  return removed.length === 1;
 };

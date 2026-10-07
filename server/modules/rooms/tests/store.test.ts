@@ -4,7 +4,14 @@ import { createRoom, type Room } from "../../../../shared/rooms/room.ts";
 import { STARTER_ROLES } from "../../../../shared/core/lockstep/games/g54/roles.ts";
 import type { G54Setup } from "../../../../shared/core/lockstep/games/g54/setup.ts";
 import { user } from "../../../db/schema.ts";
-import { insertRoom, removeRoom, roomByCode, saveRoom } from "../store.ts";
+import {
+  deleteExpiredRooms,
+  insertRoom,
+  removeRoom,
+  removeRoomIf,
+  roomByCode,
+  saveRoom,
+} from "../store.ts";
 import { createTestDb, type TestDb } from "./d1-harness.ts";
 
 const SETUP: G54Setup = { roles: STARTER_ROLES };
@@ -89,4 +96,29 @@ test("removeRoom deletes the row so the code becomes free again", async () => {
   await removeRoom(harness.db, room);
   expect(await roomByCode(harness.db, room.code)).toBeNull();
   expect(await insertRoom(harness.db, aRoom())).toBe("ok");
+});
+
+test("deleteExpiredRooms removes only rows past the TTL and returns them", async () => {
+  const TTL = 24 * 60 * 60 * 1000;
+  const now = TTL * 3;
+  const dead = aRoom({ id: roomId("room-dead"), code: roomCode("GAKUDIRU"), now: now - TTL });
+  const alive = aRoom({ id: roomId("room-alive"), code: roomCode("BAKUDIRU"), now: now - TTL + 1 });
+  await insertRoom(harness.db, dead);
+  await insertRoom(harness.db, alive);
+
+  expect(await deleteExpiredRooms(harness.db, now)).toBe(1);
+  expect(await roomByCode(harness.db, dead.code)).toBeNull();
+  expect((await roomByCode(harness.db, alive.code))!.room).toEqual(alive);
+
+  expect(await deleteExpiredRooms(harness.db, now)).toBe(0);
+});
+
+test("removeRoomIf deletes only on a matching revision", async () => {
+  const room = aRoom();
+  await insertRoom(harness.db, room);
+
+  expect(await removeRoomIf(harness.db, room.id, 1)).toBe(false);
+  expect(await removeRoomIf(harness.db, room.id, 0)).toBe(true);
+  expect(await roomByCode(harness.db, room.code)).toBeNull();
+  expect(await removeRoomIf(harness.db, room.id, 0)).toBe(false);
 });

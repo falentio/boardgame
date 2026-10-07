@@ -57,9 +57,16 @@ test("GET /api/rooms is a 404: there is no list route to enumerate rooms", async
   expect(response.status).toBe(404);
 });
 
-test("the store export set is frozen to the four named operations, with no list", () => {
+test("the store export set is frozen to the named operations, with no list", () => {
   const exports = Object.keys(store).sort();
-  expect(exports).toEqual(["insertRoom", "removeRoom", "roomByCode", "saveRoom"]);
+  expect(exports).toEqual([
+    "deleteExpiredRooms",
+    "insertRoom",
+    "removeRoom",
+    "removeRoomIf",
+    "roomByCode",
+    "saveRoom",
+  ]);
   for (const name of exports) {
     expect(name.toLowerCase()).not.toContain("list");
     expect(name.toLowerCase()).not.toContain("all");
