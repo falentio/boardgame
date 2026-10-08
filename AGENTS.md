@@ -1,2 +1,0 @@
-- Run the dev server as a tmux DEV session: `devproc start 'pnpm dev --host 0.0.0.0 --port {port}'`. Convention: [tmux-processes.md](/home/kevin/.pi/agent/docs/tmux-processes.md).
-- Inside herdr, name the pane `DEV $PORT` instead of opening a tmux session.
