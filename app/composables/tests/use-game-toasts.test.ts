@@ -66,6 +66,24 @@ const fold = (
 const viewAfter = (frames: readonly Frame<G54Action>[], seat: SeatId = ANN): G54View =>
   fold(genesis(), frames, seat)
 
+/** Events per interval: project after each step, then diff consecutive projections. */
+const intervalEvents = (
+  start: G54State,
+  frames: readonly Frame<G54Action>[],
+  seat: SeatId = ANN,
+): readonly (readonly GameEvent[])[] => {
+  const events: GameEvent[][] = []
+  let state = start
+  let prev = g54.project(state, seat)
+  for (const entry of frames) {
+    state = g54.step(state, entry, makeRandom(SEED))
+    const next = g54.project(state, seat)
+    events.push([...deriveEvents(prev, next)])
+    prev = next
+  }
+  return events
+}
+
 const incomeFrames: readonly Frame<G54Action>[] = [
   frame(0, [[ANN, act<G54Action>({ t: "income" })]]),
 ]
@@ -308,32 +326,23 @@ test("treaty-expired is suppressed on a member's departure but fires on a genuin
   )
 })
 
-test("bomb-defused fires on a real defuse but not on a caught defuse that reveals the holder", () => {
+test("bomb-cleared fires wherever the Bomb leaves the table, real or caught", () => {
   const bombSet: readonly RoleId[] = ["banker", "director", "anarchist", "peacekeeper", "politician"]
   const base = genesisWith(bombSet)
 
-  const realStart = withCoins(
-    withHand(base, BOB, ["anarchist", "banker"]),
-    ANN,
-    3,
-  )
-  const realBefore = fold(realStart, [
-    frame(0, [[ANN, act<G54Action>({ t: "claim", role: "anarchist", target: BOB })]]),
-    frame(1, [[BOB, act<G54Action>({ t: "claim", role: "anarchist", target: null })]]),
-  ], ANN)
-  const realAfter = fold(realStart, [
+  // A real defuse: the Bomb clears in the interval after the defuse claim passes.
+  const realStart = withCoins(withHand(base, BOB, ["anarchist", "banker"]), ANN, 3)
+  const realFrames: readonly Frame<G54Action>[] = [
     frame(0, [[ANN, act<G54Action>({ t: "claim", role: "anarchist", target: BOB })]]),
     frame(1, [[BOB, act<G54Action>({ t: "claim", role: "anarchist", target: null })]]),
     frame(2, [[ANN, pass], [BOB, pass], [CARA, pass]]),
-  ], ANN)
-  expect(realAfter.tokens.bomb).toBeNull()
-  expect(deriveEvents(realBefore, realAfter).map((event) => event.kind)).toContain("bomb-defused")
+  ]
+  const realIntervals = intervalEvents(realStart, realFrames)
+  expect(realIntervals[2]!.map((event) => event.kind)).toContain("bomb-cleared")
 
-  const caughtStart = withCoins(
-    withHand(base, BOB, ["banker", "banker", "banker"]),
-    ANN,
-    3,
-  )
+  // A caught defuse: the reveal lands a frame BEFORE the Bomb clears, so the
+  // clearing interval shows no card loss. The old guard missed exactly here.
+  const caughtStart = withCoins(withHand(base, BOB, ["banker", "banker", "banker"]), ANN, 3)
   const caughtFrames: readonly Frame<G54Action>[] = [
     frame(0, [[ANN, act<G54Action>({ t: "claim", role: "anarchist", target: BOB })]]),
     frame(1, [[BOB, act<G54Action>({ t: "claim", role: "anarchist", target: null })]]),
@@ -342,12 +351,10 @@ test("bomb-defused fires on a real defuse but not on a caught defuse that reveal
     frame(4, [[BOB, act<G54Action>({ t: "reveal", index: 0 })]]),
     frame(5, [[BOB, pass]]),
   ]
-  const caughtBefore = fold(caughtStart, caughtFrames.slice(0, 4), ANN)
-  const caughtAfter = fold(caughtStart, caughtFrames, ANN)
-  expect(caughtAfter.tokens.bomb).toBeNull()
-  const caughtKinds = deriveEvents(caughtBefore, caughtAfter).map((event) => event.kind)
-  expect(caughtKinds).toContain("influence-lost")
-  expect(caughtKinds).not.toContain("bomb-defused")
+  const caughtIntervals = intervalEvents(caughtStart, caughtFrames)
+  expect(caughtIntervals[4]!.map((event) => event.kind)).toContain("influence-lost")
+  expect(caughtIntervals[4]!.map((event) => event.kind)).not.toContain("bomb-cleared")
+  expect(caughtIntervals[5]!.map((event) => event.kind)).toContain("bomb-cleared")
 })
 
 test("claim-blocked fires on a real block but not on a claim swap", () => {
@@ -449,7 +456,7 @@ const ALL_KINDS: Readonly<Record<GameEvent["kind"], true>> = {
   "disappear-placed": true,
   "bomb-placed": true,
   "bomb-passed": true,
-  "bomb-defused": true,
+  "bomb-cleared": true,
 }
 
 test("every GameEvent kind has a catalogue row", () => {

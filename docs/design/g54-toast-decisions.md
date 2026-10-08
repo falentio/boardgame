@@ -65,7 +65,7 @@ without deciding both is a compile error. Severity picks the icon and color the
 | `disappear-placed` | `disappear` gains a target | room | silent | - | - |
 | `bomb-placed` | `bomb` goes null to a value | room | silent | - | - |
 | `bomb-passed` | the Bomb holder changes | room | silent | - | - |
-| `bomb-defused` | `bomb` clears on a defuse, holder kept the card | room | silent | - | - |
+| `bomb-cleared` | `bomb` goes from a value to null | room | silent | - | - |
 
 `arms-reveal` is the only toast added after the first pass. The Arms Dealer
 reveal draws two Court cards and shuffles them straight back, so it describes a
@@ -109,10 +109,14 @@ A treaty that empties because a member left is not an expiry. `expireTreaty`
 is suppressed when a former member was eliminated or resigned in the same
 interval; the `eliminated` or `resigned` toast already reports the cause.
 
-A Bomb that clears is a defuse only when its holder kept the card.
-`bomb-defused` requires `move === "defuse"` and the holder not losing a card. A
-caught defuse claim also clears the Bomb and reveals the holder
-(`resolveBomb` in `windows.ts`), and that explosion is `influence-lost`.
+A Bomb that clears is `bomb-cleared`, and the cause is not knowable from an
+interval diff. A real defuse and a caught defuse that exploded both clear with
+`move === "defuse"` and no reveal in the clearing interval: a caught defuse
+reveals the holder in an earlier frame, and the bomb window clears the Bomb in a
+later one (`resolveBomb` in `windows.ts`), so the diff that sees the Bomb leave
+sees no card loss. The event is therefore deliberately neutral — it reports only
+that the Bomb left the table, and the reveal that a caught defuse also causes
+toasts separately as `influence-lost`.
 
 Two more guards cover the self cues and the mass claim, which stay silent today
 but must detect correctly if promoted. `targeted` fires only when the main claim
@@ -248,7 +252,7 @@ surface to act.
   role, and target.
 - Token changes (`treaty-formed`, `treaty-expired`, `peacekeeping-gained`,
   `tax-marked`, `disappear-placed`, `bomb-placed`, `bomb-passed`,
-  `bomb-defused`). The board renders every token as a chip on its seat, so a toast
+  `bomb-cleared`). The board renders every token as a chip on its seat, so a toast
   repeats ongoing state. These are the strongest promotion candidates; see the
   open questions.
 

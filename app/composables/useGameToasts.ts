@@ -36,7 +36,7 @@ export type GameEvent =
   | { kind: "disappear-placed"; seat: SeatId; turns: number }
   | { kind: "bomb-placed"; seat: SeatId }
   | { kind: "bomb-passed"; to: SeatId; from: SeatId }
-  | { kind: "bomb-defused"; seat: SeatId }
+  | { kind: "bomb-cleared"; seat: SeatId }
 
 export type EventOf<K extends GameEvent["kind"]> = Extract<GameEvent, { kind: K }>
 
@@ -133,7 +133,7 @@ export const CATALOGUE: EventCatalogue = {
   "disappear-placed": { importance: "silent" },
   "bomb-placed": { importance: "silent" },
   "bomb-passed": { importance: "silent" },
-  "bomb-defused": { importance: "silent" },
+  "bomb-cleared": { importance: "silent" },
 }
 
 // --- the diff: typed per-field slices, computed once per interval -----------
@@ -169,8 +169,6 @@ export interface RevealDiff {
   /** Losses that did not empty the hand. */
   readonly losses: readonly CardLoss[]
   readonly eliminated: ReadonlySet<SeatId>
-  /** Every seat that lost a card this interval, eliminated or not. */
-  readonly lostCard: ReadonlySet<SeatId>
 }
 
 /**
@@ -181,16 +179,14 @@ export interface RevealDiff {
 export const revealDiff = (prev: G54View, next: G54View): RevealDiff => {
   const losses: CardLoss[] = []
   const eliminated = new Set<SeatId>()
-  const lostCard = new Set<SeatId>()
   for (const player of next.players) {
     const before = playerOf(prev, player.seat)
     if (before === undefined) continue
     if (player.revealed.length <= before.revealed.length) continue
-    lostCard.add(player.seat)
     if (player.handCount === 0) eliminated.add(player.seat)
     else losses.push({ seat: player.seat, remaining: player.handCount })
   }
-  return { losses, eliminated, lostCard }
+  return { losses, eliminated }
 }
 
 export interface HandDiff {
@@ -289,8 +285,8 @@ export interface DisappearDiff {
 export interface BombDiff {
   readonly placed: SeatId | null
   readonly passed: { readonly to: SeatId; readonly from: SeatId } | null
-  /** The Bomb left the table: who held it and the move it had named. */
-  readonly cleared: { readonly holder: SeatId; readonly move: "pass" | "defuse" | null } | null
+  /** The Bomb left the table: who held it. */
+  readonly cleared: { readonly holder: SeatId } | null
 }
 export interface TokensDiff {
   readonly treaty: TreatyDiff
@@ -337,9 +333,7 @@ export const tokensDiff = (prev: G54View, next: G54View): TokensDiff => {
       ? { to: afterBomb.holder, from: beforeBomb.holder }
       : null
   const bombCleared =
-    beforeBomb !== null && afterBomb === null
-      ? { holder: beforeBomb.holder, move: beforeBomb.move }
-      : null
+    beforeBomb !== null && afterBomb === null ? { holder: beforeBomb.holder } : null
 
   return {
     treaty: { formed, expired },
@@ -525,14 +519,13 @@ export const detectBombPlaced = (bomb: BombDiff): readonly EventOf<"bomb-placed"
 export const detectBombPassed = (bomb: BombDiff): readonly EventOf<"bomb-passed">[] =>
   bomb.passed === null ? [] : [{ kind: "bomb-passed", to: bomb.passed.to, from: bomb.passed.from }]
 
-/** A caught defuse claim also clears the Bomb and reveals the holder; that explosion is `influence-lost`. */
-export const detectBombDefused = (
-  bomb: BombDiff,
-  lostCard: ReadonlySet<SeatId>,
-): readonly EventOf<"bomb-defused">[] =>
-  bomb.cleared !== null && bomb.cleared.move === "defuse" && !lostCard.has(bomb.cleared.holder)
-    ? [{ kind: "bomb-defused", seat: bomb.cleared.holder }]
-    : []
+/**
+ * The Bomb left the table. A pure interval diff cannot know the cause: a real
+ * defuse and a caught defuse that exploded both clear with `move === "defuse"`
+ * and no reveal in the clearing interval, so the event is deliberately neutral.
+ */
+export const detectBombCleared = (bomb: BombDiff): readonly EventOf<"bomb-cleared">[] =>
+  bomb.cleared === null ? [] : [{ kind: "bomb-cleared", seat: bomb.cleared.holder }]
 
 export const detectTaxMarked = (tax: TaxDiff): readonly EventOf<"tax-marked">[] =>
   tax.marked === null
@@ -589,7 +582,7 @@ export const DETECTORS: readonly Detector[] = [
   (diff) => detectPeacekeepingGained(diff.tokens.peacekeeping),
   (diff) => detectBombPlaced(diff.tokens.bomb),
   (diff) => detectBombPassed(diff.tokens.bomb),
-  (diff) => detectBombDefused(diff.tokens.bomb, diff.reveal.lostCard),
+  (diff) => detectBombCleared(diff.tokens.bomb),
   (diff) => detectTaxMarked(diff.tokens.tax),
   (diff) => detectDisappearPlaced(diff.tokens.disappear),
   (diff) => detectArmsReveal(diff.arms),
