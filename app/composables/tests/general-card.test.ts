@@ -24,13 +24,11 @@ test("costLabel is Pay 7 for a nonzero cost, null otherwise", () => {
   }
 })
 
-test("art is a stable picsum seed per action", () => {
+test("art is a local webp per action", () => {
   for (const action of ACTIONS) {
-    expect(generalCardModel(action).art).toBe(
-      `https://picsum.photos/seed/g54-general-${action}/400/400`,
-    )
+    expect(generalCardModel(action).art).toBe(`/g54/general-action/${action}.webp`)
   }
-  expect(generalActionArt("coup")).toBe("https://picsum.photos/seed/g54-general-coup/400/400")
+  expect(generalActionArt("coup")).toBe("/g54/general-action/coup.webp")
 })
 
 test("accessible name carries the label, the cost, and the summary", () => {

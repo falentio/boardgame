@@ -8,12 +8,12 @@ export const GENERAL_LABELS: Record<GeneralActionId, string> = {
   "social-media": "Social Media",
 }
 
-/** Placeholder art until a real general-action image exists; one seed per action. */
+/** Local art for each general action; one webp per action id. */
 export const generalActionArt = (action: GeneralActionId): string =>
-  `https://picsum.photos/seed/g54-general-${action}/400/400`
+  `/g54/general-action/${action}.webp`
 
 /**
- * The data every action card renders. A general action carries its picsum art; a
+ * The data every action card renders. A general action carries its local art; a
  * verb card (Pass, Challenge, Keep, …) has no image and no cost.
  */
 export interface ActionCardModel {
