@@ -242,6 +242,11 @@ const main = async () => {
     }
     if (!opened) throw new Error("the seats select did not open");
     await hostBrowser.page.clickReal(`[...document.querySelectorAll('[role=option]')].find((o) => o.textContent.trim() === '2')`);
+    // Arms Dealer replaces Politician in the special-interest slots so the room can
+    // produce the arms-reveal toast.
+    await hostBrowser.page.clickReal(
+      `[...document.querySelectorAll('[data-role-option]')].find((b) => (b.getAttribute('aria-label') || '').startsWith('Arms Dealer'))`,
+    );
     await hostBrowser.page.clickReal(EL.buttonText("Create room"));
     const inLobby = await hostBrowser.page.waitFor("/^\\/rooms\\/[A-Z]{8}$/.test(location.pathname)", { timeoutMs: 20000 });
     if (!inLobby) throw new Error(`create did not land in the lobby, at ${await hostBrowser.page.url()}`);
@@ -355,6 +360,41 @@ const main = async () => {
     else pass("the card-loss toast rendered as the warning variant");
     console.log(`screenshot: ${await hostBrowser.page.screenshot("toast-02-host-card-loss")}`);
     console.log(`screenshot: ${await guestBrowser.page.screenshot("toast-03-guest-card-loss")}`);
+
+    // The Arms Dealer reveal is the one fact the board never renders, so it is the
+    // only new toast. Both seats must see it (room audience).
+    await clearToasts(hostBrowser.page);
+    await clearToasts(guestBrowser.page);
+    const guestTurnForArms = await guestBrowser.page.waitFor(`!!document.querySelector('${EL.picker}')`, { timeoutMs: 15000 });
+    if (!guestTurnForArms) throw new Error("guest never got the turn window after the failed claim");
+    await guestBrowser.page.clickReal(EL.generalCard("Income"));
+    await guestBrowser.page.clickReal(EL.confirm);
+    const hostTurnAgain = await hostBrowser.page.waitFor(`!!document.querySelector('${EL.picker}')`, { timeoutMs: 15000 });
+    if (!hostTurnAgain) throw new Error("host never got a turn window for the Arms Dealer claim");
+    const armsClaim = await hostBrowser.page.clickReal(EL.roleCard("Arms Dealer"));
+    if (!armsClaim) fail(`host could not select the Arms Dealer card; body: ${(await hostBrowser.page.bodyText()).replace(/\n/g, " | ")}`);
+    else pass("host selected the Arms Dealer claim");
+    await hostBrowser.page.clickReal(EL.confirm);
+
+    const guestArmsChallenge = await guestBrowser.page.waitFor(`!!${EL.generalCard("Pass")}`, { timeoutMs: 15000 });
+    if (!guestArmsChallenge) fail(`guest never saw the Arms Dealer challenge window; body: ${(await guestBrowser.page.bodyText()).replace(/\n/g, " | ")}`);
+    else pass("guest saw the Arms Dealer challenge window");
+    await guestBrowser.page.clickReal(EL.generalCard("Pass"));
+    await guestBrowser.page.clickReal(EL.confirm);
+
+    const armsPattern = "revealed";
+    const hostSawArms = await hostBrowser.page.waitFor(`(${EL.toastTitles}).some((t) => t.includes(${JSON.stringify(armsPattern)}))`, { timeoutMs: 12000 });
+    const guestSawArms = await guestBrowser.page.waitFor(`(${EL.toastTitles}).some((t) => t.includes(${JSON.stringify(armsPattern)}))`, { timeoutMs: 12000 });
+    const hostArmsTitles = await toastTitles(hostBrowser.page);
+    const guestArmsTitles = await toastTitles(guestBrowser.page);
+    const hostArmsTypes = await toastTypes(hostBrowser.page);
+    if (!hostSawArms) fail(`host did not see the arms-reveal toast; titles: ${JSON.stringify(hostArmsTitles)}`);
+    else pass(`host saw the arms-reveal toast: ${JSON.stringify(hostArmsTitles)}`);
+    if (!guestSawArms) fail(`guest did not see the arms-reveal toast; titles: ${JSON.stringify(guestArmsTitles)}`);
+    else pass(`guest saw the arms-reveal toast: ${JSON.stringify(guestArmsTitles)}`);
+    if (!hostArmsTypes.includes("info")) fail(`the arms-reveal toast was not an info variant: ${JSON.stringify(hostArmsTypes)}`);
+    else pass("the arms-reveal toast rendered as the info variant");
+    console.log(`screenshot: ${await hostBrowser.page.screenshot("toast-04-host-arms-reveal")}`);
   } finally {
     hostBrowser.close();
     guestBrowser.close();
