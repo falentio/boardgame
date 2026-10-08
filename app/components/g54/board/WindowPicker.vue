@@ -108,7 +108,7 @@ const confirm = (): void => {
     <div class="flex min-w-0 flex-1 flex-col justify-center px-6 py-5">
       <div class="flex min-w-0 flex-col gap-2">
         <div
-          class="grid grid-flow-col grid-rows-[auto_auto] items-stretch gap-x-3 gap-y-1.5 overflow-x-auto pb-3"
+          class="grid grid-flow-col grid-rows-[auto_auto] -mx-1 -mt-1 items-stretch gap-x-3 gap-y-1.5 overflow-x-auto px-1 pt-1 pb-3"
         >
           <template v-for="(card, index) in menu.cards" :key="card.id">
             <div
@@ -159,7 +159,7 @@ const confirm = (): void => {
           <div
             v-for="group in groups"
             :key="group.id"
-            class="grid grid-flow-col grid-rows-[auto_auto] items-stretch gap-x-3 gap-y-1.5 overflow-x-auto pb-3"
+            class="grid grid-flow-col grid-rows-[auto_auto] -mx-1 -mt-1 items-stretch gap-x-3 gap-y-1.5 overflow-x-auto px-1 pt-1 pb-3"
             role="group"
             aria-label="Target"
           >
