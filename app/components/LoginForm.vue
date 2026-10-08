@@ -18,22 +18,19 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { sameOriginPath } from "@/composables/safe-redirect"
+import { useAuthDestination } from "@/composables/auth-destination"
 
 const props = defineProps<{
   class?: HTMLAttributes["class"]
 }>()
 
-const route = useRoute()
 const session = authClient.useSession()
 const email = ref("")
 const password = ref("")
 const error = ref("")
 const submitting = ref(false)
 
-const origin = useRequestURL().origin
-
-const safeRedirect = (value: unknown) => sameOriginPath(value, origin)
+const { afterAuth, sibling } = useAuthDestination("/signup")
 
 const onSubmit = async () => {
   error.value = ""
@@ -48,7 +45,7 @@ const onSubmit = async () => {
       return
     }
     await session.value.refetch()
-    await navigateTo(safeRedirect(route.query.redirect))
+    await navigateTo(afterAuth)
   } finally {
     submitting.value = false
   }
@@ -109,7 +106,7 @@ const onSubmit = async () => {
       and <a href="#">Privacy Policy</a>.
     </FieldDescription>
     <FieldDescription class="px-6 text-center">
-      New here? <NuxtLink to="/signup">Create an account</NuxtLink>
+      New here? <NuxtLink :to="sibling">Create an account</NuxtLink>
     </FieldDescription>
   </div>
 </template>
