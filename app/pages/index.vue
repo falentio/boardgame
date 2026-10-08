@@ -3,22 +3,28 @@ import { computed, ref } from "vue"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { parseRoomCode } from "#shared/rooms/code.ts"
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group"
+import JoinScanDialog from "@/components/room/JoinScanDialog.vue"
+import type { RoomCode } from "#shared/rooms/ids.ts"
+import { joinPath, parseJoinInput } from "#shared/rooms/link.ts"
 
 definePageMeta({ layout: "shell" })
 
 const code = ref("")
 const submitted = ref(false)
 
-const parsed = computed(() => parseRoomCode(code.value))
+const parsed = computed(() => parseJoinInput(code.value))
 const invalid = computed(() => (submitted.value || code.value.trim().length > 0) && parsed.value === null)
+
+const joinWith = async (target: RoomCode) => {
+  await navigateTo(joinPath(target))
+}
 
 const onJoin = async () => {
   submitted.value = true
   const target = parsed.value
   if (target === null) return
-  await navigateTo("/join/" + target)
+  await joinWith(target)
 }
 </script>
 
@@ -65,19 +71,27 @@ const onJoin = async () => {
                 <FieldLabel for="room-code">
                   Room code
                 </FieldLabel>
-                <Input
-                  id="room-code"
-                  v-model="code"
-                  placeholder="BAVOKUTI"
-                  autocomplete="off"
-                  autocapitalize="characters"
-                  spellcheck="false"
-                  class="uppercase"
-                  :aria-invalid="invalid ? true : undefined"
-                  :aria-describedby="invalid ? 'room-code-hint' : undefined"
-                />
+                <InputGroup>
+                  <InputGroupInput
+                    id="room-code"
+                    v-model="code"
+                    placeholder="BAVOKUTI"
+                    autocomplete="off"
+                    autocapitalize="characters"
+                    spellcheck="false"
+                    class="uppercase"
+                    :aria-invalid="invalid ? true : undefined"
+                    :aria-describedby="invalid ? 'room-code-hint' : undefined"
+                  />
+                  <InputGroupAddon align="inline-end">
+                    <JoinScanDialog @join="joinWith" />
+                  </InputGroupAddon>
+                </InputGroup>
                 <FieldDescription v-if="invalid" id="room-code-hint" class="text-destructive">
                   Room codes are 8 letters, like BAVOKUTI.
+                </FieldDescription>
+                <FieldDescription v-else id="room-code-hint">
+                  Enter the 8-letter code, or scan the QR code from a shared link.
                 </FieldDescription>
               </Field>
               <Field>

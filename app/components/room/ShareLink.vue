@@ -4,6 +4,7 @@ import { CheckIcon, CopyIcon } from "@lucide/vue"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import RoomQr from "@/components/room/RoomQr.vue"
 
 const props = defineProps<{ link: string }>()
 
@@ -51,6 +52,7 @@ onUnmounted(() => {
         <component :is="copied ? CheckIcon : CopyIcon" />
         Copy link
       </Button>
+      <RoomQr :link="link" />
     </div>
     <p role="status" class="min-h-5 text-sm text-muted-foreground">
       {{ copied ? "Copied" : "" }}
