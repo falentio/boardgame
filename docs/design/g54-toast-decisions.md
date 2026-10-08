@@ -50,14 +50,34 @@ without deciding both is a compile error. Severity picks the icon and color the
 | `influence-lost` | `revealed` grows and the hand stays non-empty | room | toast | warning | `Bo lost a card (1 left).` |
 | `eliminated` | a reveal empties the hand | room | toast | error | `Bo is out of the game.` |
 | `resigned` | the `resigned` flag flips | room | toast | warning | `Bo left the game.` |
+| `arms-reveal` | `arms` changes by value | room | toast | info | `Bo revealed Banker, Judge with no match for Banker.` |
 | `card-gained` | a hand count rises | actor | silent | - | - |
 | `turn-started` | `turn` or `active` changes | room | silent | - | - |
 | `claim-opened` | `pending` goes from null to a value | room | silent | - | - |
+| `targeted` | the main claim names a target | actor | silent | - | - |
+| `you-owe-input` | `owedSeats` gains a seat in a private window | actor | silent | - | - |
+| `game-over` | `terminal` flips true | room | silent | - | - |
+| `claim-blocked` | the same claim's `blocker` goes null to a seat | room | silent | - | - |
+| `treaty-formed` | `treaty` goes empty to a pair | room | silent | - | - |
+| `treaty-expired` | `treaty` goes pair to empty, no member left | room | silent | - | - |
+| `peacekeeping-gained` | `peacekeeping` goes null to a seat | room | silent | - | - |
+| `tax-marked` | `tax` gains or moves a mark | room | silent | - | - |
+| `disappear-placed` | `disappear` gains a target | room | silent | - | - |
+| `bomb-placed` | `bomb` goes null to a value | room | silent | - | - |
+| `bomb-passed` | the Bomb holder changes | room | silent | - | - |
+| `bomb-defused` | `bomb` clears on a defuse, holder kept the card | room | silent | - | - |
 
-## The three rules that make detection correct
+`arms-reveal` is the only toast added after the first pass. The Arms Dealer
+reveal draws two Court cards and shuffles them straight back, so it describes a
+transient draw that no board chip can carry: `arms` is the one public field with
+no surface. Every other row is a real diff branch that stays silent because the
+board already draws it every frame. Recording the silences keeps the decision
+reviewable and makes a promotion a one-row edit.
 
-A naive "toast every diff" is wrong. Three engine facts decide what counts as a
-change.
+## The rules that make detection correct
+
+A naive "toast every diff" is wrong. The engine facts below decide what counts as
+a change, and each one is pinned by a test.
 
 A card is lost when `revealed` grows, never when a hand count falls. The give
 windows move a card from a hand into a pool with no reveal
@@ -76,6 +96,30 @@ A transfer moves two ledgers. `transferCoins` (`helpers.ts`) takes from one seat
 and gives to another, so a steal produces a `coins-lost` for the payer and a
 `coins-gained` for the payee. Both are `actor`, so each seat sees only its own
 half.
+
+Three more rules keep the bigger catalogue honest, each pinned by a test.
+
+A blocked claim needs the same claim on both sides. `claim-blocked` fires only
+when the claimant, role, and target match across the interval and the blocker
+goes null to a seat. Without that guard a claim swap, a Spy second action or a
+mass claim's extra, would misfire it.
+
+A treaty that empties because a member left is not an expiry. `expireTreaty`
+(`helpers.ts`) clears the treaty when the table drops to two, so `treaty-expired`
+is suppressed when a former member was eliminated or resigned in the same
+interval; the `eliminated` or `resigned` toast already reports the cause.
+
+A Bomb that clears is a defuse only when its holder kept the card.
+`bomb-defused` requires `move === "defuse"` and the holder not losing a card. A
+caught defuse claim also clears the Bomb and reveals the holder
+(`resolveBomb` in `windows.ts`), and that explosion is `influence-lost`.
+
+Two more guards cover the self cues and the mass claim, which stay silent today
+but must detect correctly if promoted. `targeted` fires only when the main claim
+opens (`prev.pending === null`), because while a mass claim resolves `pending` is
+the active extra and its target walks every touched seat. `you-owe-input` skips
+broadcast windows (`window.kind === "any"`), where every seat is owed and the
+claimant and blocker are auto-passed, so the cue would be false for them.
 
 ## Scenarios
 
@@ -101,6 +145,21 @@ member like everyone else.
 
 - Ann's `coins` rises by 3. Ann sees `coins-gained` (success). Bo and Cy do not.
 - No card changes. No other toast.
+
+### Ann claims Arms Dealer and reveals two Court cards
+
+`ROLE_EFFECTS["arms-dealer"]` draws two cards, checks them against the named
+role, then shuffles them back into the Court (`returnToCourt`). It stores the
+result in `state.arms`.
+
+- `arms` changes by value. Every seat sees `arms-reveal` (info), `Ann revealed
+  Banker, Judge with no match for Banker.`
+- This is the only new toast, because the two cards are gone by the next frame:
+  no board chip can show a draw that was shuffled back, so the toast is the only
+  surface the fact has.
+- A second reveal that draws the identical two cards is invisible, because
+  `arms` is never reset and detection is a value diff. Closing that gap needs a
+  counter in the view, which this change does not add.
 
 ### Bo plays Politician and steals 2 from Cy
 
@@ -172,26 +231,53 @@ for the same reason.
 
 ## What is deliberately not toasted
 
-- The winner. The page renders a winner banner
-  (`[data-slot="winner-banner"]`), so a toast would repeat it.
-- Token changes: Peacekeeping, Treaty, Tax, Disappear, and Bomb. The board
-  renders every token on its seat, so a toast repeats ongoing state. A Treaty
-  formation and a Bomb move change targeting for the whole room and are the
-  strongest candidates to promote to `room` toasts; see the open questions.
-- A challenge or block opening. The window picker and the pending label already
-  show it, and the owed seat gets a control.
-- A claim by another seat. The pending label and the challenge window cover it.
+Every bullet below has a `silent` catalogue row unless it says otherwise, so the
+decision is recorded rather than left implicit. The reason is the same for all of
+them: the board already draws the fact every frame, and the player must read that
+surface to act.
+
+- The winner (`game-over`). The page renders a winner banner
+  (`[data-slot="winner-banner"]`).
+- Your turn (`turn-started`) and you owe input (`you-owe-input`). The acting and
+  owed phase pills mark the seat, the turn counter shows the turn, and the window
+  picker appears in place.
+- You are targeted (`targeted`). The targeted pill marks the seat, and the
+  pending label reads `... on <you>`.
+- A block (`claim-blocked`). The window pill flips to "Challenge a block".
+- A claim by another seat (`claim-opened`). The pending label shows claimant,
+  role, and target.
+- Token changes (`treaty-formed`, `treaty-expired`, `peacekeeping-gained`,
+  `tax-marked`, `disappear-placed`, `bomb-placed`, `bomb-passed`,
+  `bomb-defused`). The board renders every token as a chip on its seat, so a toast
+  repeats ongoing state. These are the strongest promotion candidates; see the
+  open questions.
+
+A challenge opening has no row. The window picker is the surface, and the
+challenger has a control there, so a fact to classify would be noise.
 
 ## Open questions
 
-- Should `turn-started` toast for the viewer's own seat? A "your turn" cue is
-  useful in a game where you wait, but the phase pill already marks it. It is
-  silent today.
-- Should the winner toast as well as the banner? The banner is the primary
-  surface; a toast is redundant.
+- `claim-blocked` is the strongest promotion candidate. A block decides whether
+  an action lands, and once the window closes the board shows nothing about it.
+  It is silent today because the window pill and the target's pending label cover
+  the moment. Promoting it is a one-row edit, and its same-claim guard is already
+  in place.
+- Should the Bomb family toast? A Bomb change alters the threat model for the
+  whole room, and the `Bomb from <priors>` chip is dense. Silent today.
 - Should a Treaty formation or a Bomb move be a `room` toast? Both change
   targeting for every seat, and both are easy to miss on the board.
+- Should `treaty-expired` toast when a non-member's elimination drops the table
+  to two? The survivors learn they can now attack each other, but the expiry
+  always arrives beside an `eliminated` toast.
+- Should `turn-started` toast for the viewer's own seat? A "your turn" cue is
+  useful in a game where you wait, but the phase pill already marks it. Silent
+  today.
+- Should the winner toast as well as the banner? The banner is the primary
+  surface; a toast is redundant.
 - Is one coalesced toast per interval right, or should a seat losing two cards
   produce two? One summary is the current choice.
 - Should copy name the revealed card? The card is public in `revealed`, but the
   toast names only the count, so the board stays the place to read the card.
+- An identical consecutive Arms reveal is invisible, because `arms` is never
+  reset. Closing it needs a counter in `G54View`, a protocol change this work
+  does not make.
