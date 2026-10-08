@@ -1,3 +1,2 @@
-- Manage dev server process using `herdr` (use herdr skills)(only if herdr available)
-- Herdr pane for dev server process should named "DEV $PORT"(where $PORT should be replaced with the dev server PORT number)
-- at most 1 dev server per worktree
+- Run the dev server as a tmux DEV session: `devproc start 'pnpm dev --host 0.0.0.0 --port {port}'`. Convention: [tmux-processes.md](/home/kevin/.pi/agent/docs/tmux-processes.md).
+- Inside herdr, name the pane `DEV $PORT` instead of opening a tmux session.
