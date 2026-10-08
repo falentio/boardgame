@@ -1,4 +1,5 @@
 import {
+  deadline,
   genesisSeed,
   makeRoster,
   seatId,
@@ -32,10 +33,14 @@ export interface RoomLike {
   readonly code: RoomCode;
   readonly roles: readonly RoleId[];
   readonly seats: readonly RoomSeatLike[];
+  readonly startedAt: number | null;
 }
 
 export const genesisFor = (room: RoomLike): GenesisInput<G54Setup> => ({
   seed: genesisSeed(room.code),
   roster: rosterFor(room.seats),
   setup: { roles: [...room.roles] },
+  // A started room always has startedAt; 0 means no epoch, which the frame-0
+  // guard turns into no deadline.
+  startedAt: deadline(room.startedAt ?? 0),
 });

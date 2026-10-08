@@ -54,8 +54,8 @@ export {
 export type { GameDefinition } from "./game.ts";
 export type { Random } from "./hash.ts";
 
-export type { GameId, SeatId, FrameIndex, Seed } from "./ids.ts";
-export { gameId, seatId, frameIndex, nextFrameIndex, seed, IdError } from "./ids.ts";
+export type { GameId, SeatId, FrameIndex, Seed, Deadline } from "./ids.ts";
+export { gameId, seatId, frameIndex, nextFrameIndex, seed, deadline, IdError } from "./ids.ts";
 
 // --- app author ------------------------------------------------------------
 

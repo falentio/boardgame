@@ -1,4 +1,11 @@
-import { expectArray, expectInteger, expectObject, expectString, field } from "./codec.ts";
+import {
+  expectArray,
+  expectInteger,
+  expectNumber,
+  expectObject,
+  expectString,
+  field,
+} from "./codec.ts";
 import {
   decodeFrame,
   encodeFrame,
@@ -10,10 +17,12 @@ import {
 } from "./frame.ts";
 import { chainSeed, stateDigest } from "./hash.ts";
 import {
+  deadline as toDeadline,
   frameIndex,
   gameId as toGameId,
   seed as toSeed,
   seatId,
+  type Deadline,
   type GameId,
   type FrameIndex,
   type Seed,
@@ -37,6 +46,8 @@ export interface Snapshot<A> {
   readonly roster: Roster;
   readonly state: Json;
   readonly head: Frame<A> | null;
+  /** The instant the open frame times out, or null for no deadline. Never hashed. */
+  readonly deadline: Deadline | null;
 }
 
 /**
@@ -118,6 +129,7 @@ export const encodeSnapshot = <S, A, Setup, View>(
   roster: encodeRoster(snapshot.roster),
   state: snapshot.state,
   head: snapshot.head === null ? null : encodeFrame(snapshot.head, game.action),
+  deadline: snapshot.deadline,
 });
 
 /**
@@ -170,6 +182,9 @@ export const decodeSnapshot = <S, A, Setup, View>(
   const roster = decodeRoster(field(object, "roster"));
   const headJson = field(object, "head");
   const head = headJson === null ? null : decodeFrame(headJson, game.action);
+  const rawDeadline = field(object, "deadline");
+  const deadlineValue =
+    rawDeadline === null ? null : toDeadline(expectNumber(rawDeadline, "snapshot deadline"));
   // Validate the encoded state eagerly so a corrupt snapshot fails at the
   // boundary rather than inside a later fold, and so the digest below is taken
   // over the codec's canonical form (not an attacker-shaped wire value).
@@ -201,6 +216,7 @@ export const decodeSnapshot = <S, A, Setup, View>(
     roster,
     state: stateJson,
     head,
+    deadline: deadlineValue,
   };
 };
 

@@ -33,7 +33,7 @@ test("occupantOf is the inverse of seatOf, and null for an empty or unknown seat
 
 test("genesisFor seeds from the room code and carries the setup roles", () => {
   const code = roomCode("BAVOKUTI");
-  const genesis = genesisFor({ code, roles: STARTER_ROLES, seats: SEATS });
+  const genesis = genesisFor({ code, roles: STARTER_ROLES, seats: SEATS, startedAt: null });
   expect(genesis.seed).toBe(genesisSeed(code));
   expect(genesis.roster.order).toEqual([seatId("room-1:seat:0"), seatId("room-1:seat:2")]);
   expect(genesis.setup.roles).toEqual([...STARTER_ROLES]);

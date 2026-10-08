@@ -1,5 +1,6 @@
 import {
   createSession,
+  deadline,
   makeRoster,
   type Clock,
   type Frame,
@@ -41,6 +42,8 @@ export interface TableOptions<Setup> {
   readonly seed: Seed;
   readonly clock: Clock;
   readonly timeoutMs?: number;
+  /** The agreed frame-0 epoch. Defaults to 0, so a fresh clock sees a full budget. */
+  readonly startedAt?: number;
 }
 
 /**
@@ -83,7 +86,12 @@ export const makeTable = <S, A, Setup, View>(
           clock: options.clock,
           config: { seat, inputTimeoutMs: options.timeoutMs ?? 1000 },
         },
-        { seed: options.seed, roster, setup: options.setup },
+        {
+          seed: options.seed,
+          roster,
+          setup: options.setup,
+          startedAt: deadline(options.startedAt ?? 0),
+        },
       ),
     );
   }
@@ -122,7 +130,12 @@ export const recordingSession = <S, A, Setup, View>(
       clock: options.clock,
       config: { seat: options.seat, inputTimeoutMs: options.timeoutMs ?? 1000 },
     },
-    { seed: options.seed, roster: makeRoster(options.seats), setup: options.setup },
+    {
+      seed: options.seed,
+      roster: makeRoster(options.seats),
+      setup: options.setup,
+      startedAt: deadline(options.startedAt ?? 0),
+    },
   );
   return { session, frames };
 };

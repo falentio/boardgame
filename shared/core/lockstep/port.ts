@@ -18,7 +18,7 @@ export interface SessionPort<A> {
 
 /**
  * The only time seam. The primitive reads no ambient clock; `now()` is called
- * only inside `tick`, and only to decide when the local seat emits `idle`.
+ * only inside `tick` and `remainingMs`.
  */
 export interface Clock {
   now(): number;

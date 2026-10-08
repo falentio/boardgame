@@ -11,6 +11,7 @@ export type GameId = Brand<string, "GameId">;
 export type SeatId = Brand<string, "SeatId">;
 export type FrameIndex = Brand<number, "FrameIndex">;
 export type Seed = Brand<string, "Seed">;
+export type Deadline = Brand<number, "Deadline">;
 
 export const gameId = (raw: string): GameId => {
   if (raw.length === 0) throw new IdError("game id must be non-empty");
@@ -38,6 +39,13 @@ export const seed = (raw: string): Seed => {
     throw new IdError(`seed must be 16 lowercase hex chars, got ${raw}`);
   }
   return raw as Seed;
+};
+
+export const deadline = (raw: number): Deadline => {
+  if (!Number.isFinite(raw)) {
+    throw new IdError(`deadline must be a finite ms instant, got ${String(raw)}`);
+  }
+  return raw as Deadline;
 };
 
 export class IdError extends Error {

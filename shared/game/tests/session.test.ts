@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import {
   act,
+  deadline,
   genesisSeed,
   makeRoster,
   seatId,
@@ -22,6 +23,7 @@ const genesis = (entropy: string): GenesisInput<G54Setup> => ({
   seed: genesisSeed(entropy),
   roster: makeRoster([ANN, BOB]),
   setup: SETUP,
+  startedAt: deadline(0),
 });
 
 interface Peer {

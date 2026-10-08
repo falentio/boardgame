@@ -2,6 +2,7 @@ import {
   activeSeats,
   buildFrame,
   framePayload,
+  idle,
   isComplete,
   orderSeats,
   type Frame,
@@ -11,7 +12,7 @@ import {
 } from "./frame.ts";
 import type { GameDefinition } from "./game.ts";
 import { chainSeed, makeRandom, stateDigest } from "./hash.ts";
-import { frameIndex, type FrameIndex, type SeatId, type Seed } from "./ids.ts";
+import { deadline, frameIndex, type Deadline, type FrameIndex, type SeatId, type Seed } from "./ids.ts";
 import {
   advanceFrame,
   appendFrame,
@@ -32,7 +33,7 @@ export type Inbound<A> =
 export interface SessionConfig {
   /** Which seat this process plays. */
   readonly seat: SeatId;
-  /** How long the local seat may stay silent before `tick` fills `idle` for it. */
+  /** The frame budget in ms: how long a frame may stay open before `tick` carries it. */
   readonly inputTimeoutMs: number;
 }
 
@@ -49,7 +50,12 @@ export interface GenesisInput<Setup> {
   readonly seed: Seed;
   readonly roster: Roster;
   readonly setup: Setup;
+  /** The instant frame 0 opened, from the agreed room record. Never hashed. */
+  readonly startedAt: Deadline;
 }
+
+const tighten = (a: Deadline | null, b: Deadline | null): Deadline | null =>
+  b === null ? a : a === null ? b : deadline(Math.min(a, b));
 
 /**
  * One peer's handle on the game. `report` offers the local seat's intent,
@@ -68,8 +74,6 @@ export interface Session<A, View> {
   /** Index of the frame currently open (not yet sealed). */
   readonly frame: FrameIndex;
   readonly terminal: boolean;
-  /** How long the local seat's clock runs from the moment a frame opens. */
-  readonly inputTimeoutMs: number;
 
   /** Offer the local seat's input for the open frame. Ignored if not owed. */
   report(input: SeatInput<A>): void;
@@ -83,10 +87,9 @@ export interface Session<A, View> {
   /** App-driven timeout check. Reads time only through the injected `Clock`. */
   tick(): void;
   /**
-   * Ms left before `tick` fills `idle` for the local seat, or null when the
-   * local seat owes nothing in the open frame. The app renders this as the turn
-   * clock; the primitive stays the single source of truth for the deadline, so
-   * the display cannot drift from the value `tick` actually acts on.
+   * Ms left before `tick` carries the local seat, or null when the local seat
+   * owes nothing. The primitive stays the single source of truth for the
+   * deadline, so the display cannot drift from the value `tick` acts on.
    */
   remainingMs(): number | null;
 }
@@ -117,6 +120,7 @@ export const createSession = <S, A, Setup, View>(
     frame: frameIndex(0),
     seed: genesis.seed,
     log: emptyLog(deps.game.id, frameIndex(0)),
+    deadline: deadline(genesis.startedAt + deps.config.inputTimeoutMs),
   });
 
 /**
@@ -147,6 +151,7 @@ export const resumeSession = <S, A, Setup, View>(
     frame: snapshot.frame,
     seed: baseSeed(deps.game, snapshot),
     log: logFromSnapshot(snapshot),
+    deadline: snapshot.deadline,
   });
 };
 
@@ -190,6 +195,7 @@ interface Base<S, A> {
   readonly frame: FrameIndex;
   readonly seed: Seed;
   readonly log: FrameLog<A>;
+  readonly deadline: Deadline | null;
 }
 
 class SessionEngine<S, A, Setup, View> implements Session<A, View> {
@@ -207,7 +213,7 @@ class SessionEngine<S, A, Setup, View> implements Session<A, View> {
   #log: FrameLog<A>;
   #buffer = new Map<SeatId, SeatInput<A>>();
   #pending = new Map<number, Frame<A>>();
-  #openedAt: number;
+  #deadline: Deadline | null;
 
   constructor(deps: SessionDeps<S, A, Setup, View>, base: Base<S, A>) {
     this.seat = deps.config.seat;
@@ -220,7 +226,7 @@ class SessionEngine<S, A, Setup, View> implements Session<A, View> {
     this.#frame = base.frame;
     this.#seed = base.seed;
     this.#log = base.log;
-    this.#openedAt = deps.clock.now();
+    this.#deadline = base.deadline;
   }
 
   get frame(): FrameIndex {
@@ -229,10 +235,6 @@ class SessionEngine<S, A, Setup, View> implements Session<A, View> {
 
   get terminal(): boolean {
     return this.#game.isTerminal(this.#state);
-  }
-
-  get inputTimeoutMs(): number {
-    return this.#timeoutMs;
   }
 
   /**
@@ -293,15 +295,23 @@ class SessionEngine<S, A, Setup, View> implements Session<A, View> {
       roster: this.#roster,
       state: this.#game.state.encode(this.#state),
       head: logHead(this.#log),
+      deadline: this.terminal ? null : this.#deadline,
     };
   }
 
   tick(): void {
     if (this.terminal) return;
-    if (this.owed().includes(this.seat) && !this.#buffer.has(this.seat)) {
-      if (this.#clock.now() - this.#openedAt >= this.#timeoutMs) this.report({ kind: "idle" });
+    if (this.#deadline !== null && this.#clock.now() >= this.#deadline && this.#mayCarry()) {
+      for (const seat of this.owed()) {
+        if (!this.#buffer.has(seat)) this.#buffer.set(seat, idle<A>());
+      }
     }
     this.#sealIfComplete();
+  }
+
+  /** A session the table never agreed to must not speak for its seats. */
+  #mayCarry(): boolean {
+    return activeSeats(this.#roster).includes(this.seat);
   }
 
   /**
@@ -310,9 +320,10 @@ class SessionEngine<S, A, Setup, View> implements Session<A, View> {
    */
   remainingMs(): number | null {
     if (this.terminal) return null;
+    if (this.#deadline === null) return null;
     if (!this.owed().includes(this.seat)) return null;
     if (this.#buffer.has(this.seat)) return null;
-    return Math.max(0, this.#timeoutMs - (this.#clock.now() - this.#openedAt));
+    return Math.max(0, this.#deadline - this.#clock.now());
   }
 
   #receiveReport(report: SeatReport<A>): void {
@@ -378,6 +389,7 @@ class SessionEngine<S, A, Setup, View> implements Session<A, View> {
         `divergent snapshot: frame ${String(snapshot.frame)} carries a different seed than the local head`,
       );
     }
+    const forward = snapshot.frame > this.#frame;
     const seed = baseSeed(this.#game, snapshot);
     this.#state = this.#game.state.decode(snapshot.state);
     this.#roster = snapshot.roster;
@@ -386,7 +398,7 @@ class SessionEngine<S, A, Setup, View> implements Session<A, View> {
     this.#log = logFromSnapshot(snapshot);
     this.#buffer.clear();
     this.#pending.clear();
-    this.#openedAt = this.#clock.now();
+    this.#deadline = forward ? snapshot.deadline : tighten(this.#deadline, snapshot.deadline);
   }
 
   /**
@@ -427,7 +439,7 @@ class SessionEngine<S, A, Setup, View> implements Session<A, View> {
     this.#frame = next.frame;
     this.#log = appendFrame(this.#log, frame);
     this.#buffer.clear();
-    this.#openedAt = this.#clock.now();
+    this.#deadline = deadline(this.#clock.now() + this.#timeoutMs);
   }
 
   #checkpoint(): Checkpoint<S> {

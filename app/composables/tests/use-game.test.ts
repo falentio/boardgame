@@ -17,7 +17,7 @@ test("seatOf and genesisFor agree on the viewer's seat and the room seed", () =>
   const seat = seatOf(seats, userId("bob"));
   expect(seat).toBe(seatId("room-1:seat:1"));
 
-  const genesis = genesisFor({ code: CODE, roles: STARTER_ROLES, seats });
+  const genesis = genesisFor({ code: CODE, roles: STARTER_ROLES, seats, startedAt: null });
   expect(genesis.seed).toBe(genesisSeed(CODE));
   expect(genesis.roster.order).toContain(seat!);
 });

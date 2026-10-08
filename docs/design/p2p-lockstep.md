@@ -14,7 +14,7 @@ The primitive removes the concurrency instead of ordering it. The unit of agreem
 
 Nothing non-deterministic enters state or the log.
 
-- **No wall clock in the core.** A `Clock` is injected and used only to decide when the _local_ peer emits an `idle` input on timeout. Once emitted, the input is in the frame and every downstream step is pure.
+- **No wall clock in the core.** A `Clock` is injected and used only to decide when an active peer carries a silent owed seat to an `idle` input on timeout. Once carried, the input is in the frame and every downstream step is pure.
 - **No ambient randomness.** All randomness is a seeded PRNG. A frame carries the `Seed` it is stepped with, and the next seed is a hash of the previous seed, the frame index, the frame's agreed inputs, _and the digest of the state the frame produced_, so the chain is self-verifying and commits to the resulting state, not just the inputs.
 - **Hidden information stays out of the log.** The reducer owns hidden state (the Court deck order, face-down hands). The deck is shuffled once inside the game's `genesis` from the genesis seed. The log never carries it. Peers reproduce it because they share the seed, not because they exchange the cards.
 - **Redaction is a first-class member.** `project(state, seat)` returns a `View` with hidden information removed. The raw state never leaves the primitive.
@@ -88,6 +88,13 @@ interface SessionDeps<S, A, Setup, View> {
   readonly config: SessionConfig;         // { seat, inputTimeoutMs }
 }
 
+interface GenesisInput<Setup> {
+  readonly seed: Seed;
+  readonly roster: Roster;
+  readonly setup: Setup;
+  readonly startedAt: Deadline;           // agreed instant frame 0 opened
+}
+
 interface Session<A, View> {
   readonly seat: SeatId;
   readonly frame: FrameIndex;
@@ -98,6 +105,7 @@ interface Session<A, View> {
   view(): View;                           // redacted for the local seat
   snapshot(): Snapshot<A>;
   tick(): void;                           // app-driven timeout check
+  remainingMs(): number | null;           // local seat's clock, or null
 }
 
 interface SessionPort<A> {
@@ -113,7 +121,7 @@ A caller offers a move with one `report`, advances by satisfying the owed set, a
 
 ## Load
 
-Snapshot load, log replay, and late-join are the same left fold at different base points. `resumeSession` adopts a snapshot in O(1). A snapshot is `{ gameId, version, frame, seed, roster, state, head }`, self-contained, so a joiner needs no replay. A `FrameLog` is gap-free, so replay is a plain fold.
+Snapshot load, log replay, and late-join are the same left fold at different base points. `resumeSession` adopts a snapshot in O(1). A snapshot is `{ gameId, version, frame, seed, roster, state, head, deadline }`, self-contained, so a joiner needs no replay. A `FrameLog` is gap-free, so replay is a plain fold.
 
 A snapshot's `seed` is never trusted as stored: it is re-derived from `head` over the carried state and the two must agree, so a tampered or divergent snapshot is rejected. A stale snapshot (`frame <` the local frame) is dropped rather than rewinding a live session, and a same-frame snapshot with a different seed is a divergence and is rejected loudly.
 
@@ -125,5 +133,6 @@ The **state-convergence check** defends against a subtler failure than cheating:
 
 ## Tradeoffs
 
-- **Frame barrier latency.** A frame seals only when every owed seat has reported, so the slowest owed seat bounds the round trip. This is the price of removing concurrency; a game that wants to act on a partial frame cannot, by construction. The local `idle` timeout bounds the wait for a silent seat.
+- **Frame barrier latency.** A frame seals only when every owed seat has reported, so the slowest owed seat bounds the round trip. This is the price of removing concurrency; a game that wants to act on a partial frame cannot, by construction. Any active peer carries a silent owed seat to `idle` once its own copy of the frame deadline passes, which bounds the wait.
+- **A report in flight at the deadline is lost.** Each peer compares the deadline against its own clock, so a peer can carry `idle` for a seat whose real report has not reached it yet. Two peers can then seal the same frame index with different inputs and diverge, which the seed chain reports as a `SessionError` rather than a silent fork. The window is the clock skew plus one network latency, against a budget measured in seconds. Closing it needs an authority the cooperative model does not have.
 - **Challenge ordering is not "first come, first served."** A frame is total and ordered by seat, so the log cannot represent which of two simultaneous responses arrived first. Only the deterministic seat-order tie-break is representable: the earliest seat in `Roster.order` wins an in-frame race. A game that needs true first-come-first-served must not model it in the frame.

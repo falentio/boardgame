@@ -170,7 +170,7 @@ A **frame** is the unit of agreement. It is total: one seat-addressed input per 
 
 A frame carries the `Seed` it is stepped with. The next seed is a digest of the previous seed, the frame index, the frame's agreed inputs, and the digest of the state the frame produced. Every peer computes the same value, so a receiver verifies a frame instead of trusting it. Committing the **state** digest is what makes the chain a convergence check: two peers that fold the same inputs but reach different state compute different next seeds, so a bad `step` or a lossy codec shows up as a rejected frame, not a silent fork.
 
-`Clock` is used in one place, to decide when the local peer emits `idle` on timeout. Once emitted, the input is in the frame and every downstream step is pure.
+`Clock` is used in one place, to decide when an active peer carries a silent owed seat to `idle` on timeout. Once carried, the input is in the frame and every downstream step is pure. A peer compares the deadline against its own clock, so a report still in flight when the deadline passes is dropped, and a seat carried too early reads as `idle`.
 
 ## Plug a game into a session
 
@@ -182,6 +182,7 @@ import {
   resumeSession,
   decodeSnapshot,
   act,
+  deadline,
   seatId,
   genesisSeed,
   makeRoster,
@@ -201,6 +202,7 @@ const session = createSession(
     seed: genesisSeed(lobbyEntropy),
     roster: makeRoster([seatId("ann"), seatId("bob")]),
     setup: { rounds: 3 },
+    startedAt: deadline(room.startedAt ?? 0),
   },
 );
 
@@ -233,7 +235,7 @@ For a game author:
 | `act`, `idle`, `resign`, `makeRoster`, `activeSeats`, `orderSeats`, `rosterPosition`                                      | Frame and roster helpers                                             |
 | `Random`                                                                                                                  | The seeded PRNG handed to `genesis` and `step`                       |
 | `Json`, `canonicalize`, `asJson`, `expectObject`, `expectArray`, `expectString`, `expectNumber`, `expectInteger`, `field` | The serialization boundary                                           |
-| `GameId`, `SeatId`, `FrameIndex`, `Seed`                                                                                  | Branded ids; construct with `gameId`, `seatId`, `frameIndex`, `seed` |
+| `GameId`, `SeatId`, `FrameIndex`, `Seed`, `Deadline`                                                                     | Branded ids; construct with `gameId`, `seatId`, `frameIndex`, `seed`, `deadline` |
 
 For an app author:
 
@@ -306,7 +308,7 @@ For a new game, drive it to terminal with a small policy and assert the outcome,
 
 The threat model is cooperative peers. Frame seeds are public, so a peer that controls a frame's inputs can predict that frame's deck draw. Anti-cheat needs a commit-reveal layer and is out of scope.
 
-The frame barrier costs a round trip to every owed seat, so the slowest seat bounds each window. The local `idle` timeout bounds the wait for a silent seat.
+The frame barrier costs a round trip to every owed seat, so the slowest seat bounds each window. Any active peer carries a silent owed seat to `idle` once the frame's deadline passes, which bounds the wait.
 
 First-come-first-served ordering is not representable. A frame is total and ordered by seat, so a game that needs a tie-break applies the deterministic seat-order one. G54's challenge window uses clockwise-from-active, which matches the rulebook.
 

@@ -3,6 +3,7 @@ import {
   act,
   buildFrame,
   createSession,
+  deadline,
   frameIndex,
   genesisSeed,
   idle,
@@ -31,7 +32,7 @@ const nullPort = (): SessionPort<G54Action> => ({
 const session = () =>
   createSession(
     { game: g54, port: nullPort(), clock: { now: () => 0 }, config: { seat: ANN, inputTimeoutMs: 1000 } },
-    { seed: SEED, roster: makeRoster(SEATS), setup: SETUP },
+    { seed: SEED, roster: makeRoster(SEATS), setup: SETUP, startedAt: deadline(0) },
   );
 
 const roundTrip = (message: GameMessage<G54Action>): GameMessage<G54Action> | null =>
