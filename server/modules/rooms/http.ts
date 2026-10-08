@@ -6,6 +6,7 @@ import type { AppAuth } from "../../utils/auth.ts";
 import type { Db } from "../../utils/db.ts";
 import type { RoomEntropy } from "../../../shared/rooms/code.ts";
 import { parseRoomCode } from "../../../shared/rooms/code.ts";
+import { joinUrl } from "../../../shared/rooms/link.ts";
 import { userId, type RoomCode, type RoomId, type UserId } from "../../../shared/rooms/ids.ts";
 import type { Result } from "../../../shared/rooms/result.ts";
 import { ROOM_TTL_MS, type Room, type RoomError, type Seat } from "../../../shared/rooms/room.ts";
@@ -91,7 +92,7 @@ const occupantIdsOf = (seats: readonly Seat[]): UserId[] => {
 const toView = (room: Room, origin: string, occupants: OccupantDirectory): RoomView => ({
   id: room.id,
   code: room.code,
-  link: `${origin}/join/${room.code}`,
+  link: joinUrl(origin, room.code),
   host: room.host,
   name: room.name,
   setup: { roles: room.setup.roles },

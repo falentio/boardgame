@@ -18,13 +18,12 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { sameOriginPath } from "@/composables/safe-redirect"
+import { useAuthDestination } from "@/composables/auth-destination"
 
 const props = defineProps<{
   class?: HTMLAttributes["class"]
 }>()
 
-const route = useRoute()
 const session = authClient.useSession()
 const name = ref("")
 const email = ref("")
@@ -32,9 +31,7 @@ const password = ref("")
 const error = ref("")
 const submitting = ref(false)
 
-const origin = useRequestURL().origin
-
-const safeRedirect = (value: unknown) => sameOriginPath(value, origin)
+const { afterAuth, sibling } = useAuthDestination("/login")
 
 const onSubmit = async () => {
   error.value = ""
@@ -50,7 +47,7 @@ const onSubmit = async () => {
       return
     }
     await session.value.refetch()
-    await navigateTo(safeRedirect(route.query.redirect))
+    await navigateTo(afterAuth)
   } finally {
     submitting.value = false
   }
@@ -123,7 +120,7 @@ const onSubmit = async () => {
       </CardContent>
     </Card>
     <FieldDescription class="px-6 text-center">
-      Already have an account? <NuxtLink to="/login">Sign in</NuxtLink>
+      Already have an account? <NuxtLink :to="sibling">Sign in</NuxtLink>
     </FieldDescription>
   </div>
 </template>
