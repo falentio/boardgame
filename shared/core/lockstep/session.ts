@@ -68,6 +68,8 @@ export interface Session<A, View> {
   /** Index of the frame currently open (not yet sealed). */
   readonly frame: FrameIndex;
   readonly terminal: boolean;
+  /** How long the local seat's clock runs from the moment a frame opens. */
+  readonly inputTimeoutMs: number;
 
   /** Offer the local seat's input for the open frame. Ignored if not owed. */
   report(input: SeatInput<A>): void;
@@ -80,6 +82,13 @@ export interface Session<A, View> {
   snapshot(): Snapshot<A>;
   /** App-driven timeout check. Reads time only through the injected `Clock`. */
   tick(): void;
+  /**
+   * Ms left before `tick` fills `idle` for the local seat, or null when the
+   * local seat owes nothing in the open frame. The app renders this as the turn
+   * clock; the primitive stays the single source of truth for the deadline, so
+   * the display cannot drift from the value `tick` actually acts on.
+   */
+  remainingMs(): number | null;
 }
 
 export class SessionError extends Error {
@@ -222,6 +231,10 @@ class SessionEngine<S, A, Setup, View> implements Session<A, View> {
     return this.#game.isTerminal(this.#state);
   }
 
+  get inputTimeoutMs(): number {
+    return this.#timeoutMs;
+  }
+
   /**
    * Seats owed in the open frame, in canonical order. An empty owed set on a
    * non-terminal state is a game contract violation: `isComplete` would be
@@ -289,6 +302,17 @@ class SessionEngine<S, A, Setup, View> implements Session<A, View> {
       if (this.#clock.now() - this.#openedAt >= this.#timeoutMs) this.report({ kind: "idle" });
     }
     this.#sealIfComplete();
+  }
+
+  /**
+   * The same predicate `tick` acts on, read as a remaining duration. Once the
+   * local seat has reported, or does not owe, there is no clock to show.
+   */
+  remainingMs(): number | null {
+    if (this.terminal) return null;
+    if (!this.owed().includes(this.seat)) return null;
+    if (this.#buffer.has(this.seat)) return null;
+    return Math.max(0, this.#timeoutMs - (this.#clock.now() - this.#openedAt));
   }
 
   #receiveReport(report: SeatReport<A>): void {

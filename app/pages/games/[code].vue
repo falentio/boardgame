@@ -3,8 +3,10 @@ import { computed, watch } from "vue"
 import { Card, CardContent } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
 import GameBoard from "@/components/g54/board/GameBoard.vue"
+import TurnTimer from "@/components/g54/board/TurnTimer.vue"
 import WindowPicker from "@/components/g54/board/WindowPicker.vue"
 import { boardOf, type SeatIdentity } from "@/composables/board-view.ts"
+import type { TurnClock } from "@/composables/turn-timer.ts"
 import { forcedAction } from "@/composables/window-menu.ts"
 import { useAuthSession } from "@/composables/useAuthSession"
 import { useGame } from "@/composables/useGame"
@@ -51,7 +53,7 @@ const identities = computed<ReadonlyMap<SeatId, SeatIdentity>>(() => {
   return map
 })
 
-const { view, status, report, acted, resign } = useGame({
+const { view, status, report, acted, resign, remainingMs, inputTimeoutMs } = useGame({
   game: g54,
   room,
   viewer,
@@ -76,6 +78,13 @@ const winner = computed(() => {
 const forced = computed(() => {
   const menu = board.value?.menu
   return menu === null || menu === undefined ? null : forcedAction(menu)
+})
+
+/** The local seat's clock, or null when it owes nothing and there is nothing to show. */
+const turnClock = computed<TurnClock | null>(() => {
+  const remaining = remainingMs.value
+  if (remaining === null || status.value !== "live" || winner.value !== null) return null
+  return { remainingMs: remaining, totalMs: inputTimeoutMs }
 })
 
 watch(
@@ -154,8 +163,9 @@ watch(
             >
               Waiting for the other players…
             </p>
+            <TurnTimer :clock="turnClock" />
             <WindowPicker
-              v-else-if="board.menu"
+              v-if="board.menu"
               :menu="board.menu"
               :busy="acted"
               @act="report(act($event))"

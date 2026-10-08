@@ -29,6 +29,10 @@ export interface UseGame<A, View> {
   readonly view: ShallowRef<View | null>;
   readonly status: Ref<GameStatus>;
   readonly acted: Ref<boolean>;
+  /** Ms left on the local seat's turn clock, or null when it owes nothing. */
+  readonly remainingMs: Ref<number | null>;
+  /** The full turn clock, so a timer can render a fraction as well as a number. */
+  readonly inputTimeoutMs: number;
   report(input: SeatInput<A>): void;
   resign(): void;
 }
@@ -43,6 +47,8 @@ export const useGame = <S, A, View>(deps: {
   const view = shallowRef<View | null>(null);
   const status = ref<GameStatus>("waiting");
   const acted = ref(false);
+  const remainingMs = ref<number | null>(null);
+  const inputTimeoutMs = deps.inputTimeoutMs ?? 30000;
 
   let current: GameSession<A, View> | null = null;
   let timer: ReturnType<typeof setInterval> | null = null;
@@ -59,6 +65,7 @@ export const useGame = <S, A, View>(deps: {
       view.value = current.session.view();
       if (terminal) status.value = "terminal";
     }
+    remainingMs.value = current.session.remainingMs();
   };
 
   const report = (input: SeatInput<A>): void => {
@@ -73,12 +80,12 @@ export const useGame = <S, A, View>(deps: {
   };
 
   if (!import.meta.client) {
-    return { view, status, acted, report: () => {}, resign: () => {} };
+    return { view, status, acted, remainingMs, inputTimeoutMs, report: () => {}, resign: () => {} };
   }
 
   const config = pusherConfigFrom(useRuntimeConfig().public.pusher);
   if (config === null) {
-    return { view, status, acted, report, resign };
+    return { view, status, acted, remainingMs, inputTimeoutMs, report, resign };
   }
 
   const dispose = (): void => {
@@ -131,5 +138,5 @@ export const useGame = <S, A, View>(deps: {
 
   onUnmounted(dispose);
 
-  return { view, status, acted, report, resign };
+  return { view, status, acted, remainingMs, inputTimeoutMs, report, resign };
 };

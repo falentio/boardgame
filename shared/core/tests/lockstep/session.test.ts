@@ -216,6 +216,84 @@ test("tick fills idle for a silent local seat after the timeout", () => {
   expect(at(table, ANN).frame).toBe(frameIndex(1));
 });
 
+test("remainingMs counts down to the same deadline tick acts on", () => {
+  const clock = fakeClock();
+  const table = makeTable(coinflip, {
+    seats: SEATS,
+    setup: SETUP,
+    seed: SEED,
+    clock: clock.clock,
+    timeoutMs: 1000,
+  });
+  const ann = at(table, ANN);
+  expect(ann.remainingMs()).toBe(1000);
+  clock.advance(400);
+  expect(ann.remainingMs()).toBe(600);
+  clock.advance(600);
+  // The deadline is reached; tick fills idle for the local seat in the same step.
+  expect(ann.remainingMs()).toBe(0);
+  ann.tick();
+  expect(ann.frame).toBe(frameIndex(1));
+});
+
+test("remainingMs is null for a seat the open frame does not owe", () => {
+  const table = newTable();
+  // Frame 0 is the caller-only window; only ANN is owed, so only ANN has a clock.
+  expect(at(table, ANN).remainingMs()).toBe(1000);
+  expect(at(table, BOB).remainingMs()).toBeNull();
+});
+
+test("remainingMs is null once the local seat has reported in an open frame", () => {
+  const table = newTable();
+  at(table, ANN).report(act<CoinflipAction>({ t: "call", side: "heads" }));
+  // Frame 1 is the stake window, owed by every seat, and ANN owes it too.
+  expect(at(table, ANN).frame).toBe(frameIndex(1));
+  expect(at(table, ANN).remainingMs()).toBe(1000);
+  at(table, ANN).report(act<CoinflipAction>({ t: "stake" }));
+  // ANN has reported, so its clock is done even though the frame is still open.
+  expect(at(table, ANN).frame).toBe(frameIndex(1));
+  expect(at(table, ANN).remainingMs()).toBeNull();
+});
+
+test("remainingMs counts down to the same deadline tick acts on", () => {
+  const clock = fakeClock();
+  const table = makeTable(coinflip, {
+    seats: SEATS,
+    setup: SETUP,
+    seed: SEED,
+    clock: clock.clock,
+    timeoutMs: 1000,
+  });
+  const ann = at(table, ANN);
+  expect(ann.remainingMs()).toBe(1000);
+  clock.advance(400);
+  expect(ann.remainingMs()).toBe(600);
+  clock.advance(600);
+  // The deadline is reached; tick fills idle for the local seat in the same step.
+  expect(ann.remainingMs()).toBe(0);
+  ann.tick();
+  expect(ann.frame).toBe(frameIndex(1));
+});
+
+test("remainingMs is null for a seat the open frame does not owe", () => {
+  const table = newTable();
+  // Frame 0 is the caller-only window; only ANN is owed, so only ANN has a clock.
+  expect(at(table, ANN).remainingMs()).toBe(1000);
+  expect(at(table, BOB).remainingMs()).toBeNull();
+});
+
+test("remainingMs is null once the local seat has reported in an open frame", () => {
+  const table = newTable();
+  at(table, ANN).report(act<CoinflipAction>({ t: "call", side: "heads" }));
+  // Frame 1 is the stake window, owed by every seat, and ANN owes it too.
+  expect(at(table, ANN).frame).toBe(frameIndex(1));
+  expect(at(table, ANN).remainingMs()).toBe(1000);
+  at(table, ANN).report(act<CoinflipAction>({ t: "stake" }));
+  // ANN has reported, so its clock is done even though the frame is still open.
+  expect(at(table, ANN).frame).toBe(frameIndex(1));
+  expect(at(table, ANN).remainingMs()).toBeNull();
+});
+
 test("snapshot round-trips through the codec and decodes back", () => {
   const table = newTable();
   at(table, ANN).report(act<CoinflipAction>({ t: "call", side: "heads" }));
