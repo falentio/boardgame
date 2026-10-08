@@ -37,6 +37,9 @@ export interface UseGame<A, View> {
   resign(): void;
 }
 
+/** The deadline-check cadence: tight, so peers carry an overdue frame within ~8ms of each other. */
+export const TICK_MS = 16;
+
 export const useGame = <S, A, View>(deps: {
   readonly game: GameDefinition<S, A, G54Setup, View>;
   readonly room: Ref<RoomLike | null>;
@@ -131,7 +134,7 @@ export const useGame = <S, A, View>(deps: {
       timer = setInterval(() => {
         session.session.tick();
         refresh();
-      }, deps.tickMs ?? 250);
+      }, deps.tickMs ?? TICK_MS);
     },
     { immediate: true },
   );

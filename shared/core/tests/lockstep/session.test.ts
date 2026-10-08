@@ -216,6 +216,24 @@ test("tick fills idle for a silent local seat after the timeout", () => {
   expect(at(table, ANN).frame).toBe(frameIndex(1));
 });
 
+test("a report past the deadline still wins if it lands before the next tick", () => {
+  const clock = fakeClock();
+  const table = makeTable(coinflip, {
+    seats: SEATS,
+    setup: SETUP,
+    seed: SEED,
+    clock: clock.clock,
+    timeoutMs: 1000,
+  });
+  at(table, ANN).report(act<CoinflipAction>({ t: "call", side: "heads" }));
+  clock.advance(1500);
+  at(table, BOB).report(act<CoinflipAction>({ t: "stake" }));
+  at(table, ANN).tick();
+  expect(at(table, ANN).frame).toBe(frameIndex(2));
+  const sealed = table.sealed.get(1);
+  expect(sealed?.inputs.find(([seat]) => seat === BOB)?.[1].kind).toBe("act");
+});
+
 test("remainingMs counts down to the same deadline tick acts on", () => {
   const clock = fakeClock();
   const table = makeTable(coinflip, {
