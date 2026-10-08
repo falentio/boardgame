@@ -19,7 +19,7 @@ const delegatedProps = reactiveOmit(props, 'class', 'toastOptions')
 
 <template>
   <Sonner
-    :class="cn('toaster group', props.class)"
+    :class="cn('toaster group font-sans!', props.class)"
     :style="{
       '--normal-bg': 'var(--popover)',
       '--normal-text': 'var(--popover-foreground)',

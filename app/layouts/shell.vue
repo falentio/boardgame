@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import 'vue-sonner/style.css'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -11,7 +12,9 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import { Toaster } from "@/components/ui/sonner"
 </script>
+
 
 <template>
   <SidebarProvider>
@@ -34,6 +37,8 @@ import {
         </div>
       </header>
       <slot />
+      <Toaster position="top-right" :duration="4000" />
+
     </SidebarInset>
   </SidebarProvider>
 </template>

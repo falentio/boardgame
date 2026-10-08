@@ -8,6 +8,7 @@ import { boardOf, type SeatIdentity } from "@/composables/board-view.ts"
 import { forcedAction } from "@/composables/window-menu.ts"
 import { useAuthSession } from "@/composables/useAuthSession"
 import { useGame } from "@/composables/useGame"
+import { useGameToasts } from "@/composables/useGameToasts"
 import { useLobby } from "@/composables/useLobby"
 import { act } from "#shared/core/lockstep/index.ts"
 import { g54 } from "#shared/core/lockstep/games/g54/index.ts"
@@ -55,6 +56,8 @@ const { view, status, report, acted, resign } = useGame({
   room,
   viewer,
 })
+
+useGameToasts({ view, identities })
 
 const board = computed(() => {
   const current = view.value
