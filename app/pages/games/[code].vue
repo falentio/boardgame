@@ -156,6 +156,7 @@ watch(
               {{ winner }}
             </div>
             <GameBoard :board="board" />
+            <TurnTimer :clock="turnClock" />
             <p
               v-if="forced"
               role="status"
@@ -163,9 +164,8 @@ watch(
             >
               Waiting for the other players…
             </p>
-            <TurnTimer :clock="turnClock" />
             <WindowPicker
-              v-if="board.menu"
+              v-else-if="board.menu"
               :menu="board.menu"
               :busy="acted"
               @act="report(act($event))"
