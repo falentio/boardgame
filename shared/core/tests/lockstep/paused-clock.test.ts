@@ -56,7 +56,7 @@ test("REPRO: a paused tab's first tick forks its chain instead of waiting", () =
   // broadcasts from here on is then rejected and this client is stranded on its
   // own fork, while the turn clock still reads as a race this client is in.
   expect(ann.frame).toBe<FrameIndex>(1);
-  expect(ann.snapshot().head).toBeNull();
+  expect(ann.snapshot().head?.index).toBe<FrameIndex>(0);
   expect(ann.remainingMs()).toBeNull();
 });
 
@@ -85,8 +85,9 @@ test("folding an agreed frame ends the pause", () => {
   const ann = at(openTable(clock), ANN);
   ann.report(act<CoinflipAction>({ t: "call", side: "heads" }));
 
-  // A peer that kept running holds the agreed head for the same index.
-  const live = at(openTable(clock), ANN);
+  // A peer that kept running seals the same index from the agreed reports.
+  const liveTable = openTable(clock);
+  const live = at(liveTable, ANN);
   live.report(act<CoinflipAction>({ t: "call", side: "heads" }));
   for (let elapsed = 0; elapsed <= BUDGET + 16; elapsed += 16) {
     live.tick();
@@ -97,10 +98,10 @@ test("folding an agreed frame ends the pause", () => {
   ann.tick();
   expect(ann.frame).toBe<FrameIndex>(1);
 
-  const agreed = [...live.sealed.values()].find((frame) => frame.index === 1);
+  const agreed = [...liveTable.sealed.values()].find((frame) => frame.index === 1);
   if (agreed === undefined) throw new Error("the live peer never sealed frame 1");
   ann.receive({ kind: "frame", frame: agreed });
 
   expect(ann.frame).toBe<FrameIndex>(2);
-  expect(ann.remainingMs()).not.toBeNull();
+  expect(ann.paused).toBe(false);
 });
