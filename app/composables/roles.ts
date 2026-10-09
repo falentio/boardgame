@@ -126,7 +126,7 @@ export interface PickGroup {
 }
 
 const rolesIn = (category: RoleCategory): readonly RoleSpec[] =>
-  ROLE_CATALOG.filter((spec) => spec.category === category);
+  ROLE_CATALOG.filter((spec) => spec.category === category).sort((a, b) => a.name.localeCompare(b.name));
 
 export const mergedGroups: readonly PickGroup[] = [
   { key: "finance", label: "Finance", roles: rolesIn("finance") },
