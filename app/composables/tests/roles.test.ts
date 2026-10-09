@@ -143,3 +143,10 @@ test("a partial draft stays null and picking the whole catalog still yields five
   expect(new Set(roles).size).toBe(5);
   expect(() => validateRoles(roles)).not.toThrow();
 });
+
+test("each merged group lists its roles in name order", () => {
+  for (const group of mergedGroups) {
+    const names = group.roles.map((role) => role.name);
+    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
+  }
+});
