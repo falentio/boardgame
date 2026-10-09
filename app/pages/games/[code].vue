@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, watch } from "vue"
-import { Card, CardContent } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
 import GameBoard from "@/components/g54/board/GameBoard.vue"
 import TurnTimer from "@/components/g54/board/TurnTimer.vue"
@@ -109,85 +108,81 @@ watch(
 
 <template>
   <div class="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 p-4 pt-0">
-    <Card>
-      <CardContent class="pt-4">
-        <Transition name="status" mode="out-in">
-          <div v-if="loadFailed" key="failed" class="flex flex-col gap-3">
-            <h1 class="text-2xl leading-tight font-semibold">
-              Game
-            </h1>
-            <p class="text-destructive text-sm leading-normal">
-              {{ loadFailed }}
-            </p>
-            <NuxtLink to="/" class="text-primary text-sm underline-offset-4 hover:underline">
-              Back to the dashboard
-            </NuxtLink>
-          </div>
+    <Transition name="status" mode="out-in">
+      <div v-if="loadFailed" key="failed" class="flex flex-col gap-3">
+        <h1 class="text-2xl leading-tight font-semibold">
+          Game
+        </h1>
+        <p class="text-destructive text-sm leading-normal">
+          {{ loadFailed }}
+        </p>
+        <NuxtLink to="/" class="text-primary text-sm underline-offset-4 hover:underline">
+          Back to the dashboard
+        </NuxtLink>
+      </div>
 
-          <div v-else-if="status === 'waiting'" key="waiting" class="flex items-center gap-3">
-            <h1 class="sr-only">
-              Game
-            </h1>
-            <Spinner />
-            <p role="status" class="text-muted-foreground text-sm leading-normal">
-              Waiting for the game to start…
-            </p>
-          </div>
+      <div v-else-if="status === 'waiting'" key="waiting" class="flex items-center gap-3">
+        <h1 class="sr-only">
+          Game
+        </h1>
+        <Spinner />
+        <p role="status" class="text-muted-foreground text-sm leading-normal">
+          Waiting for the game to start…
+        </p>
+      </div>
 
-          <div v-else-if="status === 'spectator'" key="spectator" class="flex flex-col gap-3">
-            <h1 class="text-2xl leading-tight font-semibold">
-              Game
-            </h1>
-            <p class="text-muted-foreground text-sm leading-normal">
-              You are not seated in this game, so you cannot see the board.
-            </p>
-            <NuxtLink to="/" class="text-primary text-sm underline-offset-4 hover:underline">
-              Back to the dashboard
-            </NuxtLink>
-          </div>
+      <div v-else-if="status === 'spectator'" key="spectator" class="flex flex-col gap-3">
+        <h1 class="text-2xl leading-tight font-semibold">
+          Game
+        </h1>
+        <p class="text-muted-foreground text-sm leading-normal">
+          You are not seated in this game, so you cannot see the board.
+        </p>
+        <NuxtLink to="/" class="text-primary text-sm underline-offset-4 hover:underline">
+          Back to the dashboard
+        </NuxtLink>
+      </div>
 
-          <div v-else-if="status === 'resyncing'" key="resyncing" class="flex flex-col gap-3">
-            <h1 class="text-2xl leading-tight font-semibold">
-              Game
-            </h1>
-            <div class="flex items-center gap-3">
-              <Spinner />
-              <p role="status" class="text-muted-foreground text-sm leading-normal">
-                This tab fell out of step with the other players. Resyncing…
-              </p>
-            </div>
-          </div>
+      <div v-else-if="status === 'resyncing'" key="resyncing" class="flex flex-col gap-3">
+        <h1 class="text-2xl leading-tight font-semibold">
+          Game
+        </h1>
+        <div class="flex items-center gap-3">
+          <Spinner />
+          <p role="status" class="text-muted-foreground text-sm leading-normal">
+            This tab fell out of step with the other players. Resyncing…
+          </p>
+        </div>
+      </div>
 
-          <div v-else-if="board" key="board" class="flex flex-col gap-4">
-            <WinnerCard v-if="winnerCard" :state="winnerCard" />
-            <GameBoard :board="board" />
-            <TurnTimer :clock="turnClock" />
-            <p
-              v-if="forced"
-              role="status"
-              class="text-muted-foreground text-sm leading-normal"
-            >
-              Waiting for the other players…
-            </p>
-            <WindowPicker
-              v-else-if="board.menu"
-              :menu="board.menu"
-              :busy="acted"
-              @act="report(act($event))"
-            />
-            <div v-if="!winnerCard">
-              <button
-                type="button"
-                class="text-muted-foreground text-sm underline-offset-4 hover:underline transition-transform duration-150 ease-out active:scale-[0.97]"
-                @click="resign"
-              >
-                Resign
-              </button>
-            </div>
-          </div>
-        </Transition>
-      </CardContent>
-    </Card>
+      <div v-else-if="board" key="board" class="flex flex-col gap-4">
+        <WinnerCard v-if="winnerCard" :state="winnerCard" />
+        <GameBoard :board="board" />
+        <TurnTimer :clock="turnClock" />
+        <p
+          v-if="forced"
+          role="status"
+          class="text-muted-foreground text-sm leading-normal"
+        >
+          Waiting for the other players…
+        </p>
+        <WindowPicker
+          v-else-if="board.menu"
+          :menu="board.menu"
+          :busy="acted"
+          @act="report(act($event))"
+        />
+        <div v-if="!winnerCard">
+          <button
+            type="button"
+            class="text-muted-foreground text-sm underline-offset-4 hover:underline transition-transform duration-150 ease-out active:scale-[0.97]"
+            @click="resign"
+          >
+            Resign
+          </button>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
