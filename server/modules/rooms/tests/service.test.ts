@@ -58,9 +58,11 @@ afterEach(async () => {
 const scriptedEntropy = (codes: readonly string[]): RoomEntropy => {
   const values: number[] = [];
   for (const code of codes) {
-    for (let index = 0; index < code.length; index += 1) {
-      const alphabet = index % 2 === 0 ? CONSONANTS : VOWELS;
-      values.push(alphabet.indexOf(code[index]!));
+    const offset = code.length % 2;
+    values.push(offset === 1 ? VOWELS.indexOf(code[0]!) + 1 : 0);
+    for (let index = offset; index < code.length; index += 2) {
+      values.push(CONSONANTS.indexOf(code[index]!));
+      values.push(VOWELS.indexOf(code[index + 1]!));
     }
   }
   let cursor = 0;
@@ -158,6 +160,20 @@ test("createRoom retries a code collision and lands on a free code", async () =>
   });
   if (!second.ok) throw new Error(`expected a retry to succeed, got ${second.error.kind}`);
   expect(second.value.code).toBe("BAJUDIRU");
+});
+
+test("createRoom persists a 9-letter code and reads it back", async () => {
+  const created = await createRoom(deps({ entropy: scriptedEntropy(["AGAJUDIRU"]) }), {
+    host: HOST,
+    name: "Alpha",
+    seats: 3,
+    roles: STARTER_ROLES,
+  });
+  if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+  expect(created.value.code).toBe("AGAJUDIRU");
+
+  const fetched = await getRoom(deps(), created.value.code);
+  expect(fetched.ok && fetched.value).toEqual(created.value);
 });
 
 test("joinRoom seats a second user in the first open seat", async () => {

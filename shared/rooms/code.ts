@@ -1,16 +1,18 @@
 import type { Random } from "../core/lockstep/hash.ts";
-import { CONSONANTS, VOWELS, isRoomCode, roomCode, type RoomCode } from "./ids.ts";
+import { CODE_PAIRS, CONSONANTS, VOWELS, isRoomCode, roomCode, type RoomCode } from "./ids.ts";
 
-export const CODE_LENGTH = 8;
-export const CODE_SPACE_SIZE = CONSONANTS.length ** 4 * VOWELS.length ** 4;
+const PREFIXES = ["", ...VOWELS] as const;
+export const CODE_LENGTHS = [CODE_PAIRS * 2, CODE_PAIRS * 2 + 1] as const;
+export const CODE_SPACE_SIZE =
+  PREFIXES.length * CONSONANTS.length ** CODE_PAIRS * VOWELS.length ** CODE_PAIRS;
 
 export type RoomEntropy = Pick<Random, "int">;
 
 export const generateCode = (entropy: RoomEntropy): RoomCode => {
-  let raw = "";
-  for (let index = 0; index < CODE_LENGTH; index += 1) {
-    const alphabet = index % 2 === 0 ? CONSONANTS : VOWELS;
-    raw += alphabet[entropy.int(alphabet.length)]!;
+  let raw: string = PREFIXES[entropy.int(PREFIXES.length)]!;
+  for (let pair = 0; pair < CODE_PAIRS; pair += 1) {
+    raw += CONSONANTS[entropy.int(CONSONANTS.length)]!;
+    raw += VOWELS[entropy.int(VOWELS.length)]!;
   }
   return roomCode(raw);
 };
