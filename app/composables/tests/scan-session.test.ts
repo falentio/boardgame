@@ -2,7 +2,7 @@ import { expect, test } from "vitest";
 import { roomCode } from "#shared/rooms/ids.ts";
 import { classifyCameraError, scanNext, type ScanState } from "../scan-session.ts";
 
-const CODE = roomCode("BAVOKUTI");
+const CODE = roomCode("BAWOLUTI");
 const idle: ScanState = { kind: "idle" };
 
 test("walks idle to starting to scanning to decoded", () => {
@@ -10,7 +10,7 @@ test("walks idle to starting to scanning to decoded", () => {
   expect(starting).toEqual({ kind: "starting" });
   const scanning = scanNext(starting, { kind: "started" });
   expect(scanning).toEqual({ kind: "scanning" });
-  expect(scanNext(scanning, { kind: "frame", text: "bavokuti" })).toEqual({
+  expect(scanNext(scanning, { kind: "frame", text: "bawoluti" })).toEqual({
     kind: "decoded",
     code: CODE,
   });
@@ -18,7 +18,7 @@ test("walks idle to starting to scanning to decoded", () => {
 
 test("reads a frame's join URL and reports a non-join frame as unrecognized", () => {
   const scanning: ScanState = { kind: "scanning" };
-  expect(scanNext(scanning, { kind: "frame", text: "https://board.example/join/BAVOKUTI" })).toEqual({
+  expect(scanNext(scanning, { kind: "frame", text: "https://board.example/join/BAWOLUTI" })).toEqual({
     kind: "decoded",
     code: CODE,
   });
@@ -30,7 +30,7 @@ test("reads a frame's join URL and reports a non-join frame as unrecognized", ()
 
 test("a later frame still decodes after an unrecognized one", () => {
   const unrecognized = scanNext({ kind: "scanning" }, { kind: "frame", text: "not a code" });
-  expect(scanNext(unrecognized, { kind: "frame", text: "BAVOKUTI" })).toEqual({
+  expect(scanNext(unrecognized, { kind: "frame", text: "BAWOLUTI" })).toEqual({
     kind: "decoded",
     code: CODE,
   });
@@ -66,8 +66,8 @@ test("decoded is terminal, so a late frame cannot fire a second navigation", () 
 });
 
 test("a frame before the scanner starts is ignored", () => {
-  expect(scanNext(idle, { kind: "frame", text: "BAVOKUTI" })).toBe(idle);
-  expect(scanNext({ kind: "starting" }, { kind: "frame", text: "BAVOKUTI" })).toEqual({
+  expect(scanNext(idle, { kind: "frame", text: "BAWOLUTI" })).toBe(idle);
+  expect(scanNext({ kind: "starting" }, { kind: "frame", text: "BAWOLUTI" })).toEqual({
     kind: "starting",
   });
 });

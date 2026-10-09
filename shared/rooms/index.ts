@@ -1,5 +1,7 @@
 export {
+  CONSONANTS,
   RoomIdError,
+  VOWELS,
   isRoomCode,
   roomCode,
   roomId,
@@ -11,10 +13,8 @@ export {
   type UserId,
 } from "./ids.ts";
 export {
-  CODE_LENGTH,
+  CODE_LENGTHS,
   CODE_SPACE_SIZE,
-  CONSONANTS,
-  VOWELS,
   generateCode,
   parseRoomCode,
   type RoomEntropy,

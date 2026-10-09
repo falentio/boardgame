@@ -118,7 +118,7 @@ test("GET /api/rooms/:code returns the room for a session and 404 for an unknown
   const fetched = await call(`/api/rooms/${room.code}`, { cookie: host.cookie });
   expect(fetched.status).toBe(200);
 
-  const missing = await call("/api/rooms/BAKUDIRU", { cookie: host.cookie });
+  const missing = await call("/api/rooms/BAJUDIRU", { cookie: host.cookie });
   expect(missing.status).toBe(404);
 
   const badCode = await call("/api/rooms/nope", { cookie: host.cookie });
@@ -147,7 +147,7 @@ test("POST /api/rooms/:code/join seats a second user and reports 409 for a repea
   const repeat = await call(`/api/rooms/${room.code}/join`, { method: "POST", cookie: guest.cookie });
   expect(repeat.status).toBe(409);
 
-  const missing = await call("/api/rooms/BAKUDIRU/join", { method: "POST", cookie: guest.cookie });
+  const missing = await call("/api/rooms/BAJUDIRU/join", { method: "POST", cookie: guest.cookie });
   expect(missing.status).toBe(404);
 });
 
@@ -170,7 +170,7 @@ test("POST /api/rooms/:code/leave frees the seat, 204 on empty, and 409 for a no
   });
   expect(notSeated.status).toBe(409);
 
-  const missing = await call("/api/rooms/BAKUDIRU/leave", { method: "POST", cookie: host.cookie });
+  const missing = await call("/api/rooms/BAJUDIRU/leave", { method: "POST", cookie: host.cookie });
   expect(missing.status).toBe(404);
 
   const badCode = await call("/api/rooms/nope/leave", { method: "POST", cookie: host.cookie });
@@ -244,7 +244,7 @@ test("POST /api/rooms/:code/kick frees the target and guards host, self, and bod
   });
   expect(notSeated.status).toBe(409);
 
-  const missing = await call("/api/rooms/BAKUDIRU/kick", {
+  const missing = await call("/api/rooms/BAJUDIRU/kick", {
     method: "POST",
     cookie: host.cookie,
     body: JSON.stringify({ user: guest.id }),
@@ -281,7 +281,7 @@ test("POST /api/rooms/:code/start starts a full room for the host and exposes st
   const denied = await call(`/api/rooms/${room.code}/start`, { method: "POST", cookie: guest.cookie });
   expect(denied.status).toBe(403);
 
-  const missing = await call("/api/rooms/BAKUDIRU/start", { method: "POST", cookie: host.cookie });
+  const missing = await call("/api/rooms/BAJUDIRU/start", { method: "POST", cookie: host.cookie });
   expect(missing.status).toBe(404);
 
   const badCode = await call("/api/rooms/nope/start", { method: "POST", cookie: host.cookie });
@@ -329,7 +329,7 @@ test("PATCH /api/rooms/:code lets the host rename and set roles; others get 403"
   });
   expect(denied.status).toBe(403);
 
-  const missing = await call("/api/rooms/BAKUDIRU", {
+  const missing = await call("/api/rooms/BAJUDIRU", {
     method: "PATCH",
     cookie: host.cookie,
     body: JSON.stringify({ name: "Beta" }),
@@ -414,7 +414,7 @@ test("a room created by one session is invisible to another without its code", a
 const AUTH_APP_KEY = "boardgame-byc3vc";
 const AUTH_HOST = "wss.vask.dev";
 const TEST_SECRET = "test-secret";
-const AUTH_SIGNATURE = "ea7f52379896a24c8041b2e7f1de7fca73ac10040ed1ff8667cb7096dc4cbad6";
+const AUTH_SIGNATURE = "0424f7ed3545da0b496ede7f9a1ac6b48502008da77a8e25683fd2e38e975c72";
 
 const authEnv = (): unknown => ({
   ...harness.env,
@@ -476,7 +476,7 @@ test("POST /api/pusher/auth signs a private-room channel for a session", async (
   const host = await signUp("host@example.com");
   const response = await callAuth(host.cookie, {
     socket_id: "1234.5678",
-    channel_name: "private-room-BAVOKUTI",
+    channel_name: "private-room-BAWOLUTI",
   });
   expect(response.status).toBe(200);
   expect(response.body).toEqual({ auth: `${AUTH_APP_KEY}:${AUTH_SIGNATURE}` });
@@ -485,7 +485,7 @@ test("POST /api/pusher/auth signs a private-room channel for a session", async (
 test("POST /api/pusher/auth is 401 without a session", async () => {
   const response = await callAuth(null, {
     socket_id: "1234.5678",
-    channel_name: "private-room-BAVOKUTI",
+    channel_name: "private-room-BAWOLUTI",
   });
   expect(response.status).toBe(401);
 });
@@ -512,7 +512,7 @@ test("POST /api/pusher/auth signs a private-game channel for a session", async (
   const host = await signUp("host@example.com");
   const response = await callAuth(host.cookie, {
     socket_id: "1234.5678",
-    channel_name: "private-game-BAVOKUTI",
+    channel_name: "private-game-BAWOLUTI",
   });
   expect(response.status).toBe(200);
   const auth = (response.body as { auth: string }).auth;
@@ -530,7 +530,7 @@ test("POST /api/pusher/auth is 503 when realtime is not configured", async () =>
   };
   const response = await callAuth(
     host.cookie,
-    { socket_id: "1234.5678", channel_name: "private-room-BAVOKUTI" },
+    { socket_id: "1234.5678", channel_name: "private-room-BAWOLUTI" },
     unconfigured,
   );
   expect(response.status).toBe(503);

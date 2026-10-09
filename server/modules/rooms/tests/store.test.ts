@@ -38,7 +38,7 @@ afterEach(async () => {
 const aRoom = (overrides: Partial<Omit<Parameters<typeof createRoom>[0], "startedAt">> = {}): Room => {
   const result = createRoom({
     id: roomId("room-1"),
-    code: roomCode("GAKUDIRU"),
+    code: roomCode("GAJUDIRU"),
     host: HOST,
     name: "Alpha",
     seats: 3,
@@ -74,7 +74,7 @@ test("saveRoom round-trips a set startedAt", async () => {
 
 test("roomByCode is an exact-match lookup and misses for an unknown code", async () => {
   await insertRoom(harness.db, aRoom());
-  expect(await roomByCode(harness.db, roomCode("BAKUDIRU"))).toBeNull();
+  expect(await roomByCode(harness.db, roomCode("BAJUDIRU"))).toBeNull();
 });
 
 test("a duplicate code is refused by the unique index, not by a read", async () => {
@@ -113,8 +113,8 @@ test("removeRoom deletes the row so the code becomes free again", async () => {
 test("deleteExpiredRooms removes only rows past the TTL and returns them", async () => {
   const TTL = 24 * 60 * 60 * 1000;
   const now = TTL * 3;
-  const dead = aRoom({ id: roomId("room-dead"), code: roomCode("GAKUDIRU"), now: now - TTL });
-  const alive = aRoom({ id: roomId("room-alive"), code: roomCode("BAKUDIRU"), now: now - TTL + 1 });
+  const dead = aRoom({ id: roomId("room-dead"), code: roomCode("GAJUDIRU"), now: now - TTL });
+  const alive = aRoom({ id: roomId("room-alive"), code: roomCode("BAJUDIRU"), now: now - TTL + 1 });
   await insertRoom(harness.db, dead);
   await insertRoom(harness.db, alive);
 

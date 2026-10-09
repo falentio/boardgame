@@ -75,7 +75,7 @@ const onJoin = async () => {
                   <InputGroupInput
                     id="room-code"
                     v-model="code"
-                    placeholder="BAVOKUTI"
+                    placeholder="BAWOLUTI"
                     autocomplete="off"
                     autocapitalize="characters"
                     spellcheck="false"
@@ -88,10 +88,10 @@ const onJoin = async () => {
                   </InputGroupAddon>
                 </InputGroup>
                 <FieldDescription v-if="invalid" id="room-code-hint" class="text-destructive">
-                  Room codes are 8 letters, like BAVOKUTI.
+                  Room codes are 8 or 9 letters, like BAWOLUTI.
                 </FieldDescription>
                 <FieldDescription v-else id="room-code-hint">
-                  Enter the 8-letter code, or scan the QR code from a shared link.
+                  Enter the room code, or scan the QR code from a shared link.
                 </FieldDescription>
               </Field>
               <Field>

@@ -10,7 +10,12 @@ export class RoomIdError extends Error {
   override readonly name = "RoomIdError";
 }
 
-const CODE_PATTERN = /^[BCDFGHJKLMNPQRSTVWXYZ][AEIOU][BCDFGHJKLMNPQRSTVWXYZ][AEIOU][BCDFGHJKLMNPQRSTVWXYZ][AEIOU][BCDFGHJKLMNPQRSTVWXYZ][AEIOU]$/;
+export const CONSONANTS = "BCDGHJLMNPRTWYZ";
+export const VOWELS = "AEIOU";
+
+export const CODE_PAIRS = 4;
+
+const CODE_PATTERN = new RegExp(`^[${VOWELS}]?(?:[${CONSONANTS}][${VOWELS}]){${CODE_PAIRS}}$`);
 
 export const isRoomCode = (raw: string): boolean => CODE_PATTERN.test(raw);
 
@@ -26,7 +31,7 @@ export const userId = (raw: string): UserId => {
 
 export const roomCode = (raw: string): RoomCode => {
   if (!isRoomCode(raw)) {
-    throw new RoomIdError(`room code must be 8 chars CVCVCVCV, got ${raw}`);
+    throw new RoomIdError(`room code must be 8 or 9 letters, got ${raw}`);
   }
   return raw as RoomCode;
 };

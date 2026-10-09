@@ -187,7 +187,7 @@ export const createRoomApp = (deps: RoomAppDeps): Hono => {
     const auth = await session(c);
     if (!auth) return unauthorized(c);
     const code = codeFrom(c);
-    if (code === null) return badRequest(c, "code must be 8 chars CVCVCVCV");
+    if (code === null) return badRequest(c, "code must be 8 or 9 letters");
     return respond(c, await getRoom(serviceDeps, code));
   });
 
@@ -195,7 +195,7 @@ export const createRoomApp = (deps: RoomAppDeps): Hono => {
     const auth = await session(c);
     if (!auth) return unauthorized(c);
     const code = codeFrom(c);
-    if (code === null) return badRequest(c, "code must be 8 chars CVCVCVCV");
+    if (code === null) return badRequest(c, "code must be 8 or 9 letters");
     return respond(c, await joinRoom(serviceDeps, { code, user: userId(auth.user.id) }));
   });
 
@@ -203,7 +203,7 @@ export const createRoomApp = (deps: RoomAppDeps): Hono => {
     const auth = await session(c);
     if (!auth) return unauthorized(c);
     const code = codeFrom(c);
-    if (code === null) return badRequest(c, "code must be 8 chars CVCVCVCV");
+    if (code === null) return badRequest(c, "code must be 8 or 9 letters");
     return respond(c, await leaveRoom(serviceDeps, { code, user: userId(auth.user.id) }));
   });
 
@@ -211,7 +211,7 @@ export const createRoomApp = (deps: RoomAppDeps): Hono => {
     const auth = await session(c);
     if (!auth) return unauthorized(c);
     const code = codeFrom(c);
-    if (code === null) return badRequest(c, "code must be 8 chars CVCVCVCV");
+    if (code === null) return badRequest(c, "code must be 8 or 9 letters");
     const body = await readObject(c);
     if (body === null) return badRequest(c, "body must be a JSON object");
     const target = body.user;
@@ -228,7 +228,7 @@ export const createRoomApp = (deps: RoomAppDeps): Hono => {
     const auth = await session(c);
     if (!auth) return unauthorized(c);
     const code = codeFrom(c);
-    if (code === null) return badRequest(c, "code must be 8 chars CVCVCVCV");
+    if (code === null) return badRequest(c, "code must be 8 or 9 letters");
     return respond(c, await startRoom(serviceDeps, { code, actor: userId(auth.user.id) }));
   });
 
@@ -236,7 +236,7 @@ export const createRoomApp = (deps: RoomAppDeps): Hono => {
     const auth = await session(c);
     if (!auth) return unauthorized(c);
     const code = codeFrom(c);
-    if (code === null) return badRequest(c, "code must be 8 chars CVCVCVCV");
+    if (code === null) return badRequest(c, "code must be 8 or 9 letters");
     const body = await readObject(c);
     if (body === null) return badRequest(c, "body must be a JSON object");
     const envelope = parseEnvelope(body);
@@ -255,7 +255,7 @@ export const createRoomApp = (deps: RoomAppDeps): Hono => {
     const auth = await session(c);
     if (!auth) return unauthorized(c);
     const code = codeFrom(c);
-    if (code === null) return badRequest(c, "code must be 8 chars CVCVCVCV");
+    if (code === null) return badRequest(c, "code must be 8 or 9 letters");
     const body = await readObject(c);
     if (body === null) return badRequest(c, "body must be a JSON object");
     const name = body.name;
@@ -276,7 +276,7 @@ export const createRoomApp = (deps: RoomAppDeps): Hono => {
     const auth = await session(c);
     if (!auth) return unauthorized(c);
     const code = codeFrom(c);
-    if (code === null) return badRequest(c, "code must be 8 chars CVCVCVCV");
+    if (code === null) return badRequest(c, "code must be 8 or 9 letters");
     const result = await deleteRoom(serviceDeps, { code, actor: userId(auth.user.id) });
     if (!result.ok) return c.json({ error: result.error }, statusFor(result.error.kind));
     return c.body(null, 204);

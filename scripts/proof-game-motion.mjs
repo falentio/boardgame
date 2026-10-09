@@ -181,16 +181,16 @@ const main = async () => {
       if (!opened) throw new Error('the seats select did not open');
       await hostBrowser.page.clickReal(EL.seatsOption);
       await hostBrowser.page.clickReal(EL.buttonText('Create room'));
-      const inLobby = await hostBrowser.page.waitFor('/^\\/rooms\\/[A-Z]{8}$/.test(location.pathname)', { timeoutMs: 20000 });
+      const inLobby = await hostBrowser.page.waitFor('/^\\/rooms\\/[A-Z]{8,9}$/.test(location.pathname)', { timeoutMs: 20000 });
       if (!inLobby) throw new Error('create did not land in the lobby, at ' + (await hostBrowser.page.url()));
       const code = (await hostBrowser.page.url()).replace('/rooms/', '');
       await guestBrowser.page.goto(BASE + '/join/' + code);
-      await guestBrowser.page.waitFor('/^\\/rooms\\/[A-Z]{8}$/.test(location.pathname)', { timeoutMs: 20000 });
+      await guestBrowser.page.waitFor('/^\\/rooms\\/[A-Z]{8,9}$/.test(location.pathname)', { timeoutMs: 20000 });
       let full = await hostBrowser.page.waitFor("document.body.innerText.includes('All seats filled')", { timeoutMs: 15000 });
       if (!full) { await hostBrowser.page.goto(BASE + '/rooms/' + code); full = await hostBrowser.page.waitFor("document.body.innerText.includes('All seats filled')", { timeoutMs: 15000 }); }
       if (!full) throw new Error('room ' + code + ' never became full');
       await hostBrowser.page.clickReal(EL.buttonText('Start game'));
-      await hostBrowser.page.waitFor('/^\\/games\\/[A-Z]{8}$/.test(location.pathname)', { timeoutMs: 15000 });
+      await hostBrowser.page.waitFor('/^\\/games\\/[A-Z]{8,9}$/.test(location.pathname)', { timeoutMs: 15000 });
       await guestBrowser.page.goto(BASE + '/games/' + code);
       await hostBrowser.page.waitForHydration();
       await guestBrowser.page.waitForHydration();
