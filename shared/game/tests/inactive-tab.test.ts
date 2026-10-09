@@ -55,14 +55,27 @@ interface Client {
  * Delivering to a frozen tab queues, exactly as a socket buffer does for a tab
  * whose JS has stopped.
  */
-const makeRoom = () => {
+const makeRoom = (latencySteps = 0) => {
   const clients = new Map<SeatId, Client>();
   const clock = fakeClock();
+  /** Envelopes in flight, so a checkpoint costs a round trip like the real one. */
+  const inFlight: { at: number; to: Client; envelope: unknown }[] = [];
+  let stepCount = 0;
 
   const deliver = (client: Client, envelope: unknown): void => {
-    const message = decodeMessage(g54, envelope);
-    if (message === null) return;
-    client.session.session.receive(message as never);
+    if (latencySteps === 0) {
+      client.handlers.onMessage(envelope);
+      return;
+    }
+    inFlight.push({ at: stepCount + latencySteps, to: client, envelope });
+  };
+
+  const flushDue = (): void => {
+    for (let i = inFlight.length - 1; i >= 0; i--) {
+      if (inFlight[i]!.at > stepCount) continue;
+      const item = inFlight.splice(i, 1)[0]!;
+      item.to.handlers.onMessage(item.envelope);
+    }
   };
 
   const publish = (from: Client, envelope: unknown): void => {
@@ -114,6 +127,8 @@ const makeRoom = () => {
 
   /** One step of the room: the app's tick, then the clock. */
   const step = (): void => {
+    stepCount += 1;
+    flushDue();
     for (const client of clients.values()) {
       if (client.frozen) continue;
       client.session.tick();
@@ -125,71 +140,138 @@ const makeRoom = () => {
   return { clients, clock, join, step, connect };
 };
 
-test("an inactive tab resyncs itself in the background and nobody else notices", () => {
+/**
+ * A short gap closes on its own: the frames the room published while this tab
+ * was away are still in its pending buffer, so it needs no checkpoint at all.
+ */
+test("a short inactivity closes on the backlog and nobody else notices", () => {
   const room = makeRoom();
   const ann = room.join(ANN);
   const bob = room.join(BOB);
   room.connect(ANN);
   room.connect(BOB);
-
-  const playTo = (frame: number): void => {
-    for (let i = 0; i < 4000 && ann.session.session.frame < frame; i++) {
-      for (const client of [ann, bob].filter((c) => !c.frozen)) {
-        const view = client.session.session.view();
-        const owed = client.session.session.owed();
-        if (owed.includes(client.seat)) {
-          const action: G54Action = view.active === client.seat
-            ? ({ t: "income" } as G54Action)
-            : ({ t: "pass" } as G54Action);
-          client.session.session.report(act<G54Action>(action));
-        }
-      }
-      room.step();
-    }
-  };
-  playTo(6);
+  playTo(room, ann, bob, 6);
 
   const publishedBeforeFreeze = ann.published.length;
-  const bobHeadBefore = bob.session.session.snapshot().head;
   const bobFrameBefore = bob.session.session.frame;
 
-  // ann switches away. Its JS stops: no ticks, and the socket buffers everything
-  // bob publishes for the whole gap.
   ann.frozen = true;
-  for (let i = 0; i < 4 * BUDGET; i += TICK) room.step();
+  for (let i = 0; i < 2 * BUDGET; i += TICK) room.step();
 
-  expect(bob.session.session.sync).toBe("live");
-  expect(bob.session.session.frame).toBeGreaterThan(bobFrameBefore);
-  expect(ann.session.session.sync).toBe("live");
+  // The frozen tab asked for nothing, because it ran no code at all.
+  expect(ann.published).toHaveLength(publishedBeforeFreeze);
 
-  // ann comes back. Its first tick sees a clock that jumped past several budgets.
   ann.frozen = false;
-  for (const envelope of ann.inbox.splice(0)) {
-    (ann as unknown as { handlers: GameChannelHandlers }).handlers.onMessage(envelope);
-  }
+  drainInbox(ann);
   room.step();
 
-  // Only the tab that fell behind asks for a checkpoint, and it says so while it
-  // waits instead of telling anyone to reload.
+  // The backlog folded, so this client is back on the agreed chain and never
+  // needed a checkpoint or a reload.
+  expect(ann.session.sync).toBe("live");
+  expect(ann.session.session.frame).toBe(bob.session.session.frame);
+  expect(ann.session.session.view().players).toEqual(bob.session.session.view().players);
+  expect(
+    ann.published.slice(publishedBeforeFreeze).filter((e) => decodeMessage(g54, e)?.kind === "sync"),
+  ).toHaveLength(0);
+  expect(bob.session.sync).toBe("live");
+});
+
+/**
+ * A long gap cannot: the frames that would close it are beyond the session's
+ * pending buffer and have already gone by. This is the tab that must resync,
+ * and it must do so alone and without a reload.
+ */
+test("a long inactivity resyncs that tab alone, in the background", () => {
+  const room = makeRoom(3);
+  const ann = room.join(ANN);
+  const bob = room.join(BOB);
+  room.connect(ANN);
+  room.connect(BOB);
+  playTo(room, ann, bob, 6);
+
+  const publishedBeforeFreeze = ann.published.length;
+  const bobFrameBefore = bob.session.session.frame;
+
+  ann.frozen = true;
+  for (let i = 0; i < 16 * BUDGET; i += TICK) room.step();
+
+  // Bob kept playing the whole time. Nothing asked him for anything, and his
+  // own chain never moved sideways.
+  expect(bob.session.sync).toBe("live");
+  expect(bob.session.session.frame).toBeGreaterThan(bobFrameBefore);
+  expect(ann.published).toHaveLength(publishedBeforeFreeze);
+
+  // ann comes back. Her clock has jumped past many budgets, so she cannot carry
+  // and the frames that would bridge the gap have already gone by.
+  ann.frozen = false;
+  dropWindow(ann);
+  drainInbox(ann);
+  room.step();
+
+  // She says she is catching up instead of telling anyone to reload, and she
+  // asks exactly once.
   expect(ann.session.sync).toBe("resyncing");
-  const syncsSinceResume = ann.published
-    .slice(publishedBeforeFreeze)
-    .filter((e) => decodeMessage(g54, e)?.kind === "sync");
-  expect(syncsSinceResume).toHaveLength(1);
-  expect(bob.published.filter((e) => decodeMessage(g54, e)?.kind === "sync")).toHaveLength(1);
+  expect(
+    ann.published.slice(publishedBeforeFreeze).filter((e) => decodeMessage(g54, e)?.kind === "sync"),
+  ).toHaveLength(1);
 
-  // It catches up on its own, and the peer it asked answers without being moved.
-  for (let i = 0; i < 200; i++) room.step();
+  // Bob answered. He never entered a resync, and the frame he agreed before the
+  // freeze is still behind him: he was never rewound.
+  expect(bob.session.sync).toBe("live");
+  const bobHeadBeforeResync = bob.session.session.snapshot().head;
+  expect(bobHeadBeforeResync).not.toBeNull();
 
-  expect(ann.session.session.sync).toBe("live");
+  // She catches up on her own.
+  for (let i = 0; i < 120; i++) room.step();
+
+  expect(ann.session.sync).toBe("live");
   expect(ann.session.session.frame).toBe(bob.session.session.frame);
   expect(ann.session.session.view().players).toEqual(bob.session.session.view().players);
   expect(ann.session.session.view().active).toBe(bob.session.session.view().active);
-  expect(bob.session.session.sync).toBe("live");
-  expect(bob.session.session.snapshot().head).not.toBeNull();
-  expect(bobHeadBefore).not.toBeNull();
 
-  // The peer's own chain is untouched: the frame it agreed before the freeze is
-  // still its head, so nothing it holds was replaced by a resync.
-  expect(bob.session.session.frame).toBeGreaterThanOrEqual(bobFrameBefore);
+  // Bob's head is still his own: the checkpoint he answered with did not
+  // replace his chain.
+  const bobHeadAfter = bob.session.session.snapshot().head;
+  expect(bob.syncTimeline.every((state) => state === "live")).toBe(true);
+  expect(bobHeadAfter!.index).toBeGreaterThanOrEqual(bobHeadBeforeResync!.index);
+
+  // Her own timeline shows the loading state and then the automatic exit, which
+  // is exactly what the UI renders.
+  expect(ann.syncTimeline).toContain("resyncing");
+  expect(ann.syncTimeline.at(-1)).toBe("live");
 });
+/**
+ * A window the tab never received. A tab that stopped running loses its
+ * socket, so the frames published across the gap are gone rather than queued,
+ * and the log can no longer be bridged frame by frame.
+ */
+const dropWindow = (client: Client): void => {
+  // The socket is down for the whole inactive period, so what comes back is only
+  // the tail. Everything the room published while it was away is gone.
+  client.inbox.splice(0, Math.floor(client.inbox.length * 0.6));
+};
+
+const drainInbox = (client: Client): void => {
+  for (const envelope of client.inbox.splice(0)) client.handlers.onMessage(envelope);
+};
+
+const playTo = (
+  room: ReturnType<typeof makeRoom>,
+  ann: Client,
+  bob: Client,
+  frame: number,
+): void => {
+  for (let i = 0; i < 4000 && ann.session.session.frame < frame; i++) {
+    for (const client of [ann, bob].filter((c) => !c.frozen)) {
+      const owed = client.session.session.owed();
+      if (!owed.includes(client.seat)) continue;
+      const view = client.session.session.view();
+      const action: G54Action =
+        view.active === client.seat
+          ? ({ t: "income" } as G54Action)
+          : ({ t: "pass" } as G54Action);
+      client.session.session.report(act<G54Action>(action));
+    }
+    room.step();
+  }
+};
