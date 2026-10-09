@@ -57,7 +57,7 @@ export function cloudflareEnv(event: H3Event): CloudflareEnv {
     throw createError({
       statusCode: 500,
       statusMessage:
-        "Missing BETTER_AUTH_URL. Set it in .dev.vars locally and via `wrangler secret put BETTER_AUTH_URL` in production.",
+        "Missing BETTER_AUTH_URL. Set it in .dev.vars locally and in the \"vars\" block of wrangler.jsonc in production.",
     });
   }
 
