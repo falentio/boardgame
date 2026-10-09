@@ -15,9 +15,9 @@ const CONFIG: PusherConfig = {
 
 const NOW = 1700000000;
 const BODY =
-  '{"name":"room-changed","channels":["private-room-BAVOKUTI"],"data":"{\\"code\\":\\"BAVOKUTI\\",\\"reason\\":\\"joined\\"}"}';
+  '{"name":"room-changed","channels":["private-room-BAWOLUTI"],"data":"{\\"code\\":\\"BAWOLUTI\\",\\"reason\\":\\"joined\\"}"}';
 const GOLDEN_URL =
-  "https://wss.vask.dev/apps/boardgame-byc3vc/events?auth_key=boardgame-byc3vc&auth_timestamp=1700000000&auth_version=1.0&body_md5=0afa4158f3001742862d7523c3f58883&auth_signature=2a402149f08ad9889686ad66da39a17f59fbf07bb492f1d05fcce2302d5f7572";
+  "https://wss.vask.dev/apps/boardgame-byc3vc/events?auth_key=boardgame-byc3vc&auth_timestamp=1700000000&auth_version=1.0&body_md5=7c4accf3870a237d48ae092f2da712d3&auth_signature=61e74516a7ae0c372bdd0227ea0dab0f3f0cab578c3b110586c8c276e592fd91";
 
 interface FetchCall {
   readonly url: string;
@@ -57,15 +57,15 @@ test("signTrigger signs the query in the auth_key, timestamp, version, body_md5 
 });
 
 test("channelAuth signs <socket_id>:<channel> as <appKey>:<hmac>", () => {
-  expect(channelAuth(CONFIG, "1234.5678", "private-room-BAVOKUTI")).toEqual({
-    auth: "boardgame-byc3vc:ea7f52379896a24c8041b2e7f1de7fca73ac10040ed1ff8667cb7096dc4cbad6",
+  expect(channelAuth(CONFIG, "1234.5678", "private-room-BAWOLUTI")).toEqual({
+    auth: "boardgame-byc3vc:0424f7ed3545da0b496ede7f9a1ac6b48502008da77a8e25683fd2e38e975c72",
   });
 });
 
 test("pusherPublisher posts the signed trigger to the channel and event", async () => {
   const { calls, impl } = recordingFetch();
   const publish = pusherPublisher(CONFIG, { fetch: impl, now: () => NOW });
-  await publish("private-room-BAVOKUTI", "room-changed", { code: "BAVOKUTI", reason: "joined" });
+  await publish("private-room-BAWOLUTI", "room-changed", { code: "BAWOLUTI", reason: "joined" });
 
   expect(calls).toHaveLength(1);
   const call = calls[0]!;
@@ -84,7 +84,7 @@ test("pusherPublisher swallows a non-2xx response and logs it", async () => {
   });
 
   await expect(
-    publish("private-room-BAVOKUTI", "room-changed", { code: "BAVOKUTI", reason: "joined" }),
+    publish("private-room-BAWOLUTI", "room-changed", { code: "BAWOLUTI", reason: "joined" }),
   ).resolves.toBeUndefined();
   expect(logged).toHaveLength(1);
   expect(logged[0]).toContain("400");
@@ -102,7 +102,7 @@ test("pusherPublisher swallows a network error and logs it", async () => {
   });
 
   await expect(
-    publish("private-room-BAVOKUTI", "room-changed", { code: "BAVOKUTI", reason: "joined" }),
+    publish("private-room-BAWOLUTI", "room-changed", { code: "BAWOLUTI", reason: "joined" }),
   ).resolves.toBeUndefined();
   expect(logged).toHaveLength(1);
 });
@@ -124,7 +124,7 @@ test("pusherPublisher aborts a hung request at the timeout and swallows it", asy
   });
 
   await expect(
-    publish("private-room-BAVOKUTI", "room-changed", { code: "BAVOKUTI", reason: "joined" }),
+    publish("private-room-BAWOLUTI", "room-changed", { code: "BAWOLUTI", reason: "joined" }),
   ).resolves.toBeUndefined();
   expect(sawSignal).toBe(true);
   expect(logged).toHaveLength(1);

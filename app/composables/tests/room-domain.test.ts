@@ -9,14 +9,14 @@ import {
   type RoomLoad,
 } from "../room-domain.ts";
 
-const CODE: RoomCode = roomCode("BAVOKUTI");
+const CODE: RoomCode = roomCode("BAWOLUTI");
 const HOST: UserId = userId("user-host");
 const GUEST: UserId = userId("user-guest");
 
 const wireRoom = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
   id: "room-1",
-  code: "BAVOKUTI",
-  link: "https://example.test/join/BAVOKUTI",
+  code: "BAWOLUTI",
+  link: "https://example.test/join/BAWOLUTI",
   host: "user-host",
   name: "New room",
   setup: { roles: ["banker", "director", "guerrilla", "politician", "peacekeeper"] },
@@ -41,7 +41,7 @@ const loadedRoom = (seats: readonly LoadedSeat[], startedAt: number | null = nul
   code: CODE,
   name: "New room",
   host: HOST,
-  link: "https://example.test/join/BAVOKUTI",
+  link: "https://example.test/join/BAWOLUTI",
   roles: ["banker", "director", "guerrilla", "politician", "peacekeeper"],
   startedAt,
   expiresAt: 86_400_001,
@@ -57,7 +57,7 @@ const loadedRoom = (seats: readonly LoadedSeat[], startedAt: number | null = nul
 test("parseRoom reads a valid wire object", () => {
   const room = parseRoom(wireRoom());
   expect(room).not.toBeNull();
-  expect(room?.code).toBe("BAVOKUTI");
+  expect(room?.code).toBe("BAWOLUTI");
   expect(room?.host).toBe("user-host");
   expect(room?.roles).toEqual(["banker", "director", "guerrilla", "politician", "peacekeeper"]);
   expect(room?.seats).toEqual([

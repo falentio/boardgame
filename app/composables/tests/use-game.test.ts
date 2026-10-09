@@ -7,7 +7,7 @@ import { roomCode, userId } from "../../../shared/rooms/ids.ts";
 import { genesisFor, seatOf } from "../../../shared/game/seats.ts";
 import { useGame } from "../useGame.ts";
 
-const CODE = roomCode("BAVOKUTI");
+const CODE = roomCode("BAWOLUTI");
 
 test("seatOf and genesisFor agree on the viewer's seat and the room seed", () => {
   const seats = [

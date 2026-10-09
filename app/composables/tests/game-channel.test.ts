@@ -4,7 +4,7 @@ import type { GameEnvelope } from "../../../shared/game/events.ts";
 import type { RoomChannelClient } from "../useRoomChannel.ts";
 import { bindGameChannel, createGameChannel } from "../game-channel.ts";
 
-const CODE = roomCode("BAVOKUTI");
+const CODE = roomCode("BAWOLUTI");
 
 interface FakeChannel {
   readonly name: string;
@@ -63,12 +63,12 @@ test("binds game on the private game channel and forwards messages", () => {
     handlers: { onMessage: (data) => messages.push(data), onConnected: () => {} },
   });
 
-  expect(client.subscribed).toEqual(["private-game-BAVOKUTI"]);
+  expect(client.subscribed).toEqual(["private-game-BAWOLUTI"]);
   client.emit("game", { v: 1, body: { kind: "sync" } });
   expect(messages).toEqual([{ v: 1, body: { kind: "sync" } }]);
 
   teardown();
-  expect(client.unsubscribed).toEqual(["private-game-BAVOKUTI"]);
+  expect(client.unsubscribed).toEqual(["private-game-BAWOLUTI"]);
 });
 
 test("fires onConnected when the channel subscription succeeds", () => {
@@ -109,5 +109,5 @@ test("createGameChannel publishes through the injected send", () => {
   expect(sent).toEqual([{ v: 1, body: { kind: "sync" } }]);
 
   teardown();
-  expect(client.unsubscribed).toEqual(["private-game-BAVOKUTI"]);
+  expect(client.unsubscribed).toEqual(["private-game-BAWOLUTI"]);
 });

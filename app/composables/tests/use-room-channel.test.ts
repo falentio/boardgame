@@ -7,7 +7,7 @@ import {
   type RoomChannelClient,
 } from "../useRoomChannel.ts";
 
-const CODE = roomCode("BAVOKUTI");
+const CODE = roomCode("BAWOLUTI");
 
 interface FakeChannel {
   readonly name: string;
@@ -73,12 +73,12 @@ test("binds room-changed on the private channel and forwards the parsed signal",
   const signals: (RoomChangedSignal | undefined)[] = [];
   const teardown = bindRoomChannel({ client, code: CODE, onChange: (s) => signals.push(s) });
 
-  expect(client.subscribed).toEqual(["private-room-BAVOKUTI"]);
-  client.emit("room-changed", { code: "BAVOKUTI", reason: "joined" });
-  expect(signals).toEqual([{ code: "BAVOKUTI", reason: "joined" }]);
+  expect(client.subscribed).toEqual(["private-room-BAWOLUTI"]);
+  client.emit("room-changed", { code: "BAWOLUTI", reason: "joined" });
+  expect(signals).toEqual([{ code: "BAWOLUTI", reason: "joined" }]);
 
   teardown();
-  expect(client.unsubscribed).toEqual(["private-room-BAVOKUTI"]);
+  expect(client.unsubscribed).toEqual(["private-room-BAWOLUTI"]);
 });
 
 test("ignores a payload that is not a valid signal", () => {
@@ -120,7 +120,7 @@ test("connectRoomChannel subscribes only after the guarded client resolves", asy
   });
 
   expect(created).toBe(1);
-  expect(client.subscribed).toEqual(["private-room-BAVOKUTI"]);
+  expect(client.subscribed).toEqual(["private-room-BAWOLUTI"]);
   teardown();
-  expect(client.unsubscribed).toEqual(["private-room-BAVOKUTI"]);
+  expect(client.unsubscribed).toEqual(["private-room-BAWOLUTI"]);
 });

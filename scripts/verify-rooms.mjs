@@ -107,7 +107,7 @@ const main = async () => {
   if (fetched.status !== 200) return fail(`read returned ${fetched.status}`);
   console.log(`PASS: read room ${room.code} by its exact code`);
 
-  const missing = await api("/api/rooms/BAKUDIRU", { cookie: host.cookie });
+  const missing = await api("/api/rooms/BAJUDIRU", { cookie: host.cookie });
   if (missing.status !== 404) return fail(`unknown code should be 404, got ${missing.status}`);
   console.log("PASS: an unknown code is 404 (reachable only by holding the code)");
 

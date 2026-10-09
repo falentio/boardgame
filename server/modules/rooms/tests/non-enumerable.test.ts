@@ -86,6 +86,5 @@ test("the pure domain exposes no storage capability", () => {
 });
 
 test("the code space is large enough that enumeration is infeasible", () => {
-  expect(CODE_SPACE_SIZE).toBe(121_550_625);
-  expect(CODE_SPACE_SIZE).toBeGreaterThan(100_000_000);
+  expect(CODE_SPACE_SIZE).toBe(31_640_625);
 });

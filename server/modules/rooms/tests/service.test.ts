@@ -136,28 +136,28 @@ test("createRoom persists a room the service reads back by code", async () => {
 });
 
 test("getRoom reports not-found for an unknown code", async () => {
-  const fetched = await getRoom(deps(), roomCode("BAKUDIRU"));
+  const fetched = await getRoom(deps(), roomCode("BAJUDIRU"));
   expect(fetched).toEqual({ ok: false, error: { kind: "not-found" } });
 });
 
 test("createRoom retries a code collision and lands on a free code", async () => {
-  const first = await createRoom(deps({ entropy: scriptedEntropy(["GAKUDIRU"]) }), {
+  const first = await createRoom(deps({ entropy: scriptedEntropy(["GAJUDIRU"]) }), {
     host: HOST,
     name: "Alpha",
     seats: 3,
     roles: STARTER_ROLES,
   });
   if (!first.ok) throw new Error(`expected a room, got ${first.error.kind}`);
-  expect(first.value.code).toBe("GAKUDIRU");
+  expect(first.value.code).toBe("GAJUDIRU");
 
-  const second = await createRoom(deps({ entropy: scriptedEntropy(["GAKUDIRU", "BAKUDIRU"]) }), {
+  const second = await createRoom(deps({ entropy: scriptedEntropy(["GAJUDIRU", "BAJUDIRU"]) }), {
     host: HOST,
     name: "Beta",
     seats: 3,
     roles: STARTER_ROLES,
   });
   if (!second.ok) throw new Error(`expected a retry to succeed, got ${second.error.kind}`);
-  expect(second.value.code).toBe("BAKUDIRU");
+  expect(second.value.code).toBe("BAJUDIRU");
 });
 
 test("joinRoom seats a second user in the first open seat", async () => {
@@ -173,7 +173,7 @@ test("joinRoom seats a second user in the first open seat", async () => {
 });
 
 test("joinRoom reports not-found for an unknown code", async () => {
-  const joined = await joinRoom(deps(), { code: roomCode("BAKUDIRU"), user: GUEST });
+  const joined = await joinRoom(deps(), { code: roomCode("BAJUDIRU"), user: GUEST });
   expect(joined).toEqual({ ok: false, error: { kind: "not-found" } });
 });
 
@@ -217,7 +217,7 @@ test("updateRoom refuses a non-host and an unknown code", async () => {
   const denied = await updateRoom(deps(), { code: created.value.code, actor: GUEST, name: "Beta" });
   expect(denied).toEqual({ ok: false, error: { kind: "not-host" } });
 
-  const missing = await updateRoom(deps(), { code: roomCode("BAKUDIRU"), actor: HOST, name: "Beta" });
+  const missing = await updateRoom(deps(), { code: roomCode("BAJUDIRU"), actor: HOST, name: "Beta" });
   expect(missing).toEqual({ ok: false, error: { kind: "not-found" } });
 });
 
@@ -314,7 +314,7 @@ test("no emit fires on an error path: not-found, denied, already-seated, room-fu
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
   recorder.changes.length = 0;
 
-  await joinRoom(deps(), { code: roomCode("BAKUDIRU"), user: GUEST });
+  await joinRoom(deps(), { code: roomCode("BAJUDIRU"), user: GUEST });
   await joinRoom(deps(), { code: created.value.code, user: HOST });
   await joinRoom(deps(), { code: created.value.code, user: GUEST });
   await updateRoom(deps(), { code: created.value.code, actor: GUEST, name: "Beta" });
@@ -503,7 +503,7 @@ test("updateRoom with no fields writes nothing and emits nothing", async () => {
 });
 
 test("the last occupant leaving deletes the row, frees the code, and emits one deleted", async () => {
-  const created = await createRoom(deps({ entropy: scriptedEntropy(["GAKUDIRU"]) }), {
+  const created = await createRoom(deps({ entropy: scriptedEntropy(["GAJUDIRU"]) }), {
     host: HOST,
     name: "Alpha",
     seats: 1,
@@ -518,14 +518,14 @@ test("the last occupant leaving deletes the row, frees the code, and emits one d
   expect(recorder.changes).toHaveLength(1);
   expect(recorder.changes[0]!.reason).toBe("deleted");
 
-  const reclaimed = await createRoom(deps({ entropy: scriptedEntropy(["GAKUDIRU"]) }), {
+  const reclaimed = await createRoom(deps({ entropy: scriptedEntropy(["GAJUDIRU"]) }), {
     host: HOST,
     name: "Beta",
     seats: 1,
     roles: STARTER_ROLES,
   });
   if (!reclaimed.ok) throw new Error(`expected the code to be free, got ${reclaimed.error.kind}`);
-  expect(reclaimed.value.code).toBe("GAKUDIRU");
+  expect(reclaimed.value.code).toBe("GAJUDIRU");
 });
 
 test("leave reloads and retries when the delete loses the compare-and-swap", async () => {
@@ -559,7 +559,7 @@ test("an expired room reads as not-found and refuses joins", async () => {
 });
 
 test("createRoom reclaims an expired code before it inserts", async () => {
-  const first = await createRoom(deps({ entropy: scriptedEntropy(["GAKUDIRU"]) }), {
+  const first = await createRoom(deps({ entropy: scriptedEntropy(["GAJUDIRU"]) }), {
     host: HOST,
     name: "Alpha",
     seats: 3,
@@ -568,11 +568,11 @@ test("createRoom reclaims an expired code before it inserts", async () => {
   if (!first.ok) throw new Error(`expected a room, got ${first.error.kind}`);
 
   const second = await createRoom(
-    deps({ entropy: scriptedEntropy(["GAKUDIRU"]), now: () => 1000 + ROOM_TTL_MS }),
+    deps({ entropy: scriptedEntropy(["GAJUDIRU"]), now: () => 1000 + ROOM_TTL_MS }),
     { host: HOST, name: "Beta", seats: 3, roles: STARTER_ROLES },
   );
   if (!second.ok) throw new Error(`expected the code to be reclaimed, got ${second.error.kind}`);
-  expect(second.value.code).toBe("GAKUDIRU");
+  expect(second.value.code).toBe("GAJUDIRU");
   expect(second.value.id).not.toBe(first.value.id);
   expect((await roomByCode(harness.db, second.value.code))!.room.id).toBe(second.value.id);
 });
@@ -592,7 +592,7 @@ test("leave and kick emit nothing on their error paths", async () => {
   expect(
     await kickUser(deps(), { code: created.value.code, actor: HOST, target: GUEST }),
   ).toEqual({ ok: false, error: { kind: "not-seated" } });
-  expect(await leaveRoom(deps(), { code: roomCode("BAKUDIRU"), user: GUEST })).toEqual({
+  expect(await leaveRoom(deps(), { code: roomCode("BAJUDIRU"), user: GUEST })).toEqual({
     ok: false,
     error: { kind: "not-found" },
   });

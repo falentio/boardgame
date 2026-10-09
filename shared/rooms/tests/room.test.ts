@@ -28,7 +28,7 @@ const SETUP: G54Setup = { roles: STARTER_ROLES };
 
 const newRoom = (overrides: Partial<NewRoom> = {}): NewRoom => ({
   id: roomId("room-1"),
-  code: roomCode("GAKUDIRU"),
+  code: roomCode("GAJUDIRU"),
   host: HOST,
   name: "Alpha",
   seats: 3,
@@ -51,7 +51,7 @@ const failure = <T>(result: { ok: true; value: T } | { ok: false; error: RoomErr
 test("createRoom seats the host at position 0 and opens the rest", () => {
   const room = created();
   expect(room.id).toBe("room-1");
-  expect(room.code).toBe("GAKUDIRU");
+  expect(room.code).toBe("GAJUDIRU");
   expect(room.host).toBe(HOST);
   expect(room.name).toBe("Alpha");
   expect(room.setup).toEqual(SETUP);

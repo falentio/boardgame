@@ -12,18 +12,18 @@ import {
   userId,
 } from "../ids.ts";
 
-test("the alphabet is 21 consonants and 5 vowels with no overlap", () => {
-  expect(CONSONANTS).toBe("BCDFGHJKLMNPQRSTVWXYZ");
+test("the alphabet is 15 consonants and 5 vowels with no overlap", () => {
+  expect(CONSONANTS).toBe("BCDGHJLMNPRTWYZ");
   expect(VOWELS).toBe("AEIOU");
-  expect(CONSONANTS).toHaveLength(21);
+  expect(CONSONANTS).toHaveLength(15);
   expect(VOWELS).toHaveLength(5);
   expect([...CONSONANTS].some((letter) => VOWELS.includes(letter))).toBe(false);
 });
 
-test("the code space is 21^4 * 5^4 = 121,550,625", () => {
+test("the code space is 15^4 * 5^4 = 31,640,625", () => {
   expect(CODE_LENGTH).toBe(8);
-  expect(CODE_SPACE_SIZE).toBe(21 ** 4 * 5 ** 4);
-  expect(CODE_SPACE_SIZE).toBe(121_550_625);
+  expect(CODE_SPACE_SIZE).toBe(15 ** 4 * 5 ** 4);
+  expect(CODE_SPACE_SIZE).toBe(31_640_625);
 });
 
 test("the accepted pattern uses exactly the generator alphabet, in CVCVCVCV order", () => {
@@ -35,21 +35,27 @@ test("the accepted pattern uses exactly the generator alphabet, in CVCVCVCV orde
 });
 
 test("parseRoomCode normalizes case and whitespace, and rejects anything not CVCVCVCV", () => {
-  expect(parseRoomCode("GAKUDIRU")).toBe("GAKUDIRU");
-  expect(parseRoomCode("gakudiru")).toBe("GAKUDIRU");
-  expect(parseRoomCode("  gakudiru  ")).toBe("GAKUDIRU");
-  expect(parseRoomCode("GAKUDIR")).toBeNull();
-  expect(parseRoomCode("GAKUDIRUX")).toBeNull();
-  expect(parseRoomCode("GAKUDIR1")).toBeNull();
+  expect(parseRoomCode("GAJUDIRU")).toBe("GAJUDIRU");
+  expect(parseRoomCode("gajudiru")).toBe("GAJUDIRU");
+  expect(parseRoomCode("  gajudiru  ")).toBe("GAJUDIRU");
+  expect(parseRoomCode("GAJUDIR")).toBeNull();
+  expect(parseRoomCode("GAJUDIRUX")).toBeNull();
+  expect(parseRoomCode("GAJUDIR1")).toBeNull();
   expect(parseRoomCode("")).toBeNull();
   expect(parseRoomCode("AAAA")).toBeNull();
 });
 
 test("roomCode brands a valid code and rejects anything else with RoomIdError", () => {
-  expect(roomCode("GAKUDIRU")).toBe("GAKUDIRU");
-  expect(() => roomCode("gakudiru")).toThrow(RoomIdError);
-  expect(() => roomCode("ABCDEFGH")).toThrow(RoomIdError);
+  expect(roomCode("GAJUDIRU")).toBe("GAJUDIRU");
+  expect(() => roomCode("gajudiru")).toThrow(RoomIdError);
+  expect(() => roomCode("ABABCDCD")).toThrow(RoomIdError);
   expect(() => roomCode("")).toThrow(RoomIdError);
+});
+
+test("a code using a removed consonant is rejected", () => {
+  for (const letter of "QKXSFV") {
+    expect(isRoomCode([letter, "A", "B", "A", "B", "A", "B", "A"].join(""))).toBe(false);
+  }
 });
 
 test("roomId and userId brand any non-empty string and reject empty", () => {
@@ -76,7 +82,7 @@ test("generateCode draws a consonant then a vowel per pair", () => {
     },
   };
   expect(generateCode(entropy)).toBe("BABABABA");
-  expect(calls).toEqual([21, 5, 21, 5, 21, 5, 21, 5]);
+  expect(calls).toEqual([15, 5, 15, 5, 15, 5, 15, 5]);
 });
 
 test("every generated character comes from the alphabet at its slot", () => {

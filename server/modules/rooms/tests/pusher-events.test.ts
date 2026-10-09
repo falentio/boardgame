@@ -48,7 +48,7 @@ test("pusherRoomEvents publishes room-changed to the private channel with the si
   vi.stubGlobal("fetch", impl);
 
   const events = pusherRoomEvents(CONFIG);
-  await events.changed(room("BAVOKUTI"), "joined");
+  await events.changed(room("BAWOLUTI"), "joined");
 
   expect(calls).toHaveLength(1);
   const url = new URL(calls[0]!.url);
@@ -61,8 +61,8 @@ test("pusherRoomEvents publishes room-changed to the private channel with the si
     data: string;
   };
   expect(body.name).toBe("room-changed");
-  expect(body.channels).toEqual(["private-room-BAVOKUTI"]);
-  expect(JSON.parse(body.data)).toEqual({ code: "BAVOKUTI", reason: "joined" });
+  expect(body.channels).toEqual(["private-room-BAWOLUTI"]);
+  expect(JSON.parse(body.data)).toEqual({ code: "BAWOLUTI", reason: "joined" });
 });
 
 test("pusherRoomEvents never throws when the publish fails", async () => {
@@ -75,7 +75,7 @@ test("pusherRoomEvents never throws when the publish fails", async () => {
   const spy = vi.spyOn(console, "error").mockImplementation(() => {});
 
   const events = pusherRoomEvents(CONFIG);
-  await expect(events.changed(room("BAVOKUTI"), "created")).resolves.toBeUndefined();
+  await expect(events.changed(room("BAWOLUTI"), "created")).resolves.toBeUndefined();
 
   spy.mockRestore();
 });
