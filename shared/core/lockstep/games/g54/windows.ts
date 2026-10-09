@@ -279,10 +279,7 @@ const resolveTurn = (state: G54State, frame: Frame<G54Action>): G54State => {
   return openClaim(state, planTurn(state, frame), rest);
 };
 
-/**
- * Spy's second action: a full general or role action with its own windows. A
- * pass, or any illegal claim, simply ends the turn.
- */
+/** Spy's second action is any general or role action except Spy, which is once per turn. */
 const resolveSpySecond = (state: G54State, frame: Frame<G54Action>): G54State => {
   const rest = state.steps.slice(1);
   const player = playerOf(state, state.active);
@@ -308,7 +305,7 @@ const resolveSpySecond = (state: G54State, frame: Frame<G54Action>): G54State =>
       return openClaim(state, { kind: action.t, target: null }, rest);
     }
   }
-  if (action?.t === "claim") {
+  if (action?.t === "claim" && action.role !== "spy") {
     const legal = legalRole(state, action.role, action.target, action.named ?? null);
     if (legal !== null) {
       return openClaim(

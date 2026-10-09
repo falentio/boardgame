@@ -663,20 +663,26 @@ const bombMenu = (
   }
 }
 
-/** Spy's second action reuses the turn menu, plus a Stop that ends the turn. */
+const ONCE_PER_TURN = "Once per turn"
+
+/**
+ * Spy's second action reuses the turn menu with Spy muted, plus a Stop. Spy stays
+ * in the list rather than dropping out, so the reason is visible instead of the
+ * card reading as missing.
+ */
 const spySecondMenu = (
   view: G54View,
   seat: SeatId,
   identityOf: (seat: SeatId) => SeatIdentity,
 ): WindowMenu => {
   const menu = turnMenu(view, seat, identityOf)
+  const cards = menu.cards.map((card): CardChoice =>
+    card.id === "claim-spy" ? { ...card, enabled: false, reason: ONCE_PER_TURN } : card,
+  )
   return {
     ...menu,
     title: "Second action",
-    cards: [
-      ...menu.cards,
-      direct("stop", verb("Stop", "End your turn."), () => ({ t: "pass" })),
-    ],
+    cards: [...cards, direct("stop", verb("Stop", "End your turn."), () => ({ t: "pass" }))],
   }
 }
 

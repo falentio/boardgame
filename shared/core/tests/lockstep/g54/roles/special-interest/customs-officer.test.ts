@@ -113,7 +113,7 @@ test("Customs Officer: a new claim moves the mark", () => {
   expect(state.tax).toEqual({ role: "guerrilla", holder: BOB });
 });
 
-test("Customs Officer: a Spy pays the Tax on both claims of the taxed role", () => {
+test("Customs Officer: a Spy pays the Tax on its claim, but cannot claim Spy twice", () => {
   let state = craftSet(
     ["spy", "director", "guerrilla", "customs-officer", "politician"],
     [[ANN, ["spy", "banker"]]],
@@ -123,14 +123,14 @@ test("Customs Officer: a Spy pays the Tax on both claims of the taxed role", () 
   state = advance(state, (seat, s) =>
     seat === s.active ? { t: "claim", role: "spy", target: null } : null,
   );
+  expect(rawCoins(state, CARA)).toBe(3);
+  expect(openPurpose(state)).toBe("challenge-claim");
   state = advance(state, pass);
   expect(openPurpose(state)).toBe("spy-second");
   state = advance(state, (seat, s) =>
     seat === s.active ? { t: "claim", role: "spy", target: null } : null,
   );
-  // Both Spy claims of the taxed role pay: the holder gains 2.
-  expect(rawCoins(state, CARA)).toBe(4);
-  expect(openPurpose(state)).toBe("challenge-claim");
+  expect(rawCoins(state, CARA)).toBe(3);
 });
 
 test("Customs Officer: the holder keeps the Tax when the taxed claim fails", () => {

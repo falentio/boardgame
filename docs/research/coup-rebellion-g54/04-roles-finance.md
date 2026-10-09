@@ -35,9 +35,9 @@ Web notes must show current coins, max take, and risk text. Disable when holding
 ## Spy
 
 Category is Finance in Deposit Genius list. Function is tempo, not pure income.
-Action is take 1 coin from Treasury, then immediately take a second action of player's choice. Second action may be general or any active role action. It goes through normal challenge and block windows. If player holds 10 or more coins after the first coin, the second action must be Coup.
+Action is take 1 coin from Treasury, then immediately take a second action of player's choice. Second action may be a general action or a role action other than Spy, since the Spy action can only be performed once per turn. It goes through normal challenge and block windows. If player holds 10 or more coins after the first coin, the second action must be Coup.
 Counteraction is none. Block is none.
-Edge cases are second action may target anyone including same target. Costs apply normally. Spy plus Customs Officer tax interaction is harsh because tax applies to both claims. Spy does not grant immunity to forced Coup rule. Web notes need chained action flow. Show first coin, then reopen action menu with Coup forced when applicable. Both steps need separate challenge windows.
+Edge cases are second action may target anyone including same target. Costs apply normally. Spy plus Customs Officer tax interaction is harsh because the Spy claim pays the Tax and the second action claim pays it again if its role is the taxed one. Spy does not grant immunity to forced Coup rule. Web notes need chained action flow. Show first coin, then reopen action menu with Coup forced when applicable. Both steps need separate challenge windows.
 
 ## Finance Implementation Checklist
 

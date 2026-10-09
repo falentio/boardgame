@@ -13,7 +13,7 @@ Web notes need wealth ranking display, target confirmation, recipient picker on 
 
 Action is take the 2 Tax tokens. Keep 1. Place the other on any active role card. From then on every other player must pay 1 coin to the Customs Officer holder each time they claim that taxed role. Tax applies per claim, including blocked or challenged claims where the claim was made. Tax is paid before resolution.
 Block is none.
-Edge cases are tax holder changes when another player claims Customs Officer and retaxes. Old tax is replaced. Tax on a role with no cost such as Director still costs 1 to claim. Spy double claims pay twice if both are taxed. Speculator plus tax is harsh.
+Edge cases are tax holder changes when another player claims Customs Officer and retaxes. Old tax is replaced. Tax on a role with no cost such as Director still costs 1 to claim. A Spy's second action is a normal claim and pays the Tax if its role is the marked one. The Spy action itself is once per turn, so the Spy claim cannot be taxed twice. Speculator plus tax is harsh.
 Web notes need tax marker on role board, auto charge on claim, payment to holder. Show holder name on taxed role.
 
 ## Foreign Consular
