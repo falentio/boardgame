@@ -321,6 +321,35 @@ const main = async () => {
       if (ok) pass(`${tag} is a horizontal scroll strip (${s.scrolls ? "content overflows and scrolls" : "fits without scrolling"})`);
     }
 
+    const ringRoom = await browser.page.eval(`(() => {
+      const strips = [...document.querySelectorAll('[data-slot=role-strip]')];
+      return strips.map((strip) => {
+        const cards = [...strip.querySelectorAll('[data-role-option]')];
+        const gr = strip.getBoundingClientRect();
+        strip.scrollLeft = 0;
+        const first = cards[0].getBoundingClientRect();
+        strip.scrollLeft = strip.scrollWidth;
+        const last = cards[cards.length - 1].getBoundingClientRect();
+        const out = {
+          roomTop: +(first.top - gr.top).toFixed(2),
+          roomLeft: +(first.left - gr.left).toFixed(2),
+          roomRightAtEnd: +(gr.right - last.right).toFixed(2),
+          scrolledToEnd: strip.scrollLeft + strip.clientWidth >= strip.scrollWidth - 1,
+        };
+        strip.scrollLeft = 0;
+        return out;
+      });
+    })()`);
+    info(`ring room: ${JSON.stringify(ringRoom)}`);
+    for (const [i, r] of ringRoom.entries()) {
+      const tag = `strip ${i}`;
+      let ok = true;
+      if (r.roomTop < 2) { fail(`${tag} leaves ${r.roomTop}px above the first card; the selected card's ring clips at the top`); ok = false; }
+      if (r.roomLeft < 2) { fail(`${tag} leaves ${r.roomLeft}px left of the first card; the selected card's ring clips at the left edge`); ok = false; }
+      if (r.scrolledToEnd && r.roomRightAtEnd < 2) { fail(`${tag} leaves ${r.roomRightAtEnd}px right of the last card at the scroll end; the ring clips at the right edge`); ok = false; }
+      if (ok) pass(`${tag} leaves ${r.roomLeft}/${r.roomTop}/${r.roomRightAtEnd}px of ring room at the strip edges`);
+    }
+
     const wide = await browser.page.screenshot("rooms-new-picker-1280");
     console.log(`screenshot: ${wide}`);
 
