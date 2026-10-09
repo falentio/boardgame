@@ -46,6 +46,15 @@ test("pickRole fills both special slots, clears on re-pick, and replaces when fu
   expect(filledCount(replaced)).toBe(2);
 });
 
+test("pickRole evicts the oldest special across consecutive replacements", () => {
+  const two = pickRole(pickRole(emptyDraft, "politician"), "peacekeeper");
+  const third = pickRole(two, "communist");
+  expect(third.special).toEqual(["peacekeeper", "communist"]);
+  const fourth = pickRole(third, "arms-dealer");
+  expect(fourth.special).toEqual(["communist", "arms-dealer"]);
+  expect(filledCount(fourth)).toBe(2);
+});
+
 test("pickRole never allows the same role twice", () => {
   const draft = pickRole(pickRole(pickRole(emptyDraft, "banker"), "politician"), "banker");
   const picked = [draft.finance, draft.communications, draft.force, draft.special[0], draft.special[1]];
