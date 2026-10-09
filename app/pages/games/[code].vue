@@ -5,6 +5,7 @@ import { Spinner } from "@/components/ui/spinner"
 import GameBoard from "@/components/g54/board/GameBoard.vue"
 import TurnTimer from "@/components/g54/board/TurnTimer.vue"
 import WindowPicker from "@/components/g54/board/WindowPicker.vue"
+import WinnerCard, { type WinnerCardState } from "@/components/g54/WinnerCard.vue"
 import { boardOf, type SeatIdentity } from "@/composables/board-view.ts"
 import type { TurnClock } from "@/composables/turn-timer.ts"
 import { forcedAction } from "@/composables/window-menu.ts"
@@ -73,6 +74,14 @@ const winner = computed(() => {
   const seat = current.winner
   if (seat === null) return "Game over"
   return `${identities.value.get(seat)?.name ?? seat} wins`
+})
+
+const winnerCard = computed<WinnerCardState | null>(() => {
+  const current = view.value
+  if (current === null || !current.terminal) return null
+  const identity = current.winner === null ? undefined : identities.value.get(current.winner)
+  if (identity === undefined) return { kind: "over" }
+  return { kind: "winner", name: identity.name, image: identity.image }
 })
 
 const forced = computed(() => {
@@ -147,14 +156,7 @@ watch(
           </div>
 
           <div v-else-if="board" key="board" class="flex flex-col gap-4">
-            <div
-              v-if="winner"
-              role="status"
-              class="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary"
-              data-slot="winner-banner"
-            >
-              {{ winner }}
-            </div>
+            <WinnerCard v-if="winnerCard" :state="winnerCard" />
             <GameBoard :board="board" />
             <TurnTimer :clock="turnClock" />
             <p
@@ -170,7 +172,7 @@ watch(
               :busy="acted"
               @act="report(act($event))"
             />
-            <div>
+            <div v-if="!winnerCard">
               <button
                 type="button"
                 class="text-muted-foreground text-sm underline-offset-4 hover:underline transition-transform duration-150 ease-out active:scale-[0.97]"
@@ -195,23 +197,5 @@ watch(
 .status-enter-from,
 .status-leave-to {
   opacity: 0;
-}
-
-[data-slot="winner-banner"] {
-  --enter-y: -6px;
-  transition: opacity 300ms var(--ease-out), transform 300ms var(--ease-out);
-}
-
-@starting-style {
-  [data-slot="winner-banner"] {
-    opacity: 0;
-    transform: translateY(var(--enter-y));
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  [data-slot="winner-banner"] {
-    --enter-y: 0px;
-  }
 }
 </style>
