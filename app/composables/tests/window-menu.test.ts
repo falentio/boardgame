@@ -784,6 +784,19 @@ test("spy-second reuses the turn menu and adds a Stop", () => {
   expect(menuOf(projected, BOB, identityOf)).toBeNull()
 })
 
+test("spy-second mutes Spy with a reason instead of hiding it", () => {
+  const state = genesis(["spy", "director", "guerrilla", "peacekeeper", "politician"])
+  const resolved = allPass(fold(state, [ANN, { t: "claim", role: "spy", target: null }]))
+  const projected = project(resolved, ANN)
+  expect(projected.window?.purpose).toBe("spy-second")
+  const menu = menuOf(projected, ANN, identityOf)!
+  const spy = cardOf(menu, "claim-spy")
+  expect(spy.enabled).toBe(false)
+  expect(spy.reason).toBe("Once per turn")
+  // The other roles stay live, so the mute reads as one unavailable card, not a broken menu.
+  expect(directOf(menu, "claim-director").enabled).toBe(true)
+})
+
 test("plantation-payout offers a single Continue acknowledgement", () => {
   const state = genesis(["plantation-owner", "director", "guerrilla", "peacekeeper", "politician"])
   const massClaim = allPass(fold(state, [ANN, { t: "claim", role: "plantation-owner", target: null }]))

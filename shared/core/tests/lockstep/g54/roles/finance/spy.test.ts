@@ -110,6 +110,23 @@ test("Spy: a failed challenge costs the challenger a life, then the second actio
   expect(openPurpose(state)).toBe("spy-second");
 });
 
+test("Spy: the second action cannot be Spy again", () => {
+  let state = craftSet(financeSet("spy"), [[ANN, ["spy", "banker"]]], "spy-reclaim");
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "spy", target: null } : null,
+  );
+  state = advance(state, pass);
+  expect(openPurpose(state)).toBe("spy-second");
+  const afterFirst = rawCoins(state, ANN);
+
+  state = advance(state, (seat, s) =>
+    seat === s.active ? { t: "claim", role: "spy", target: null } : null,
+  );
+  state = advance(state, pass);
+  expect(openPurpose(state)).not.toBe("spy-second");
+  expect(rawCoins(state, ANN)).toBe(afterFirst);
+});
+
 test("Spy: at 10+ coins the second action must be Coup", () => {
   let state = withCoins(
     craftSet(financeSet("spy"), [[ANN, ["spy", "banker"]]], "spy-forced"),
