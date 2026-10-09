@@ -104,5 +104,21 @@ const onJoin = async () => {
         </CardContent>
       </Card>
     </div>
+    <section class="flex flex-col gap-4">
+      <h2 class="text-lg leading-snug font-semibold">
+        Project
+      </h2>
+      <p class="text-muted-foreground text-sm leading-normal">
+        Boardgame plays Coup: Rebellion G54 in the browser. Rooms and games are shared by code or QR link.
+      </p>
+      <a
+        href="https://github.com/falentio/boardgame"
+        target="_blank"
+        rel="noreferrer"
+        class="text-primary text-sm underline-offset-4 hover:underline"
+      >
+        falentio/boardgame on GitHub
+      </a>
+    </section>
   </div>
 </template>
