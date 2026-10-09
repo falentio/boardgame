@@ -311,13 +311,13 @@ const main = async () => {
     const backToBanker = await hostBrowser.page.waitFor(`${selectedCount} === 5 && !!${banker}`, { timeoutMs: 5000 });
     if (!backToBanker) fail("could not restore the starter Finance role before submitting");
 
-    await hostBrowser.page.clickUntil("button[type=submit]", "/^\\/rooms\\/[A-Z]{8}$/.test(location.pathname)");
-    const inLobby = await hostBrowser.page.waitFor("/^\\/rooms\\/[A-Z]{8}$/.test(location.pathname)", {
+    await hostBrowser.page.clickUntil("button[type=submit]", "/^\\/rooms\\/[A-Z]{8,9}$/.test(location.pathname)");
+    const inLobby = await hostBrowser.page.waitFor("/^\\/rooms\\/[A-Z]{8,9}$/.test(location.pathname)", {
       timeoutMs: 20000,
     });
     if (!inLobby) fail(`create did not navigate to the lobby, at ${await hostBrowser.page.url()}`);
     const code = (await hostBrowser.page.url()).replace("/rooms/", "");
-    if (!/^[A-Z]{8}$/.test(code)) fail(`the lobby URL did not carry an 8-char code: ${code}`);
+    if (!/^[A-Z]{8,9}$/.test(code)) fail(`the lobby URL did not carry an 8- or 9-char code: ${code}`);
     else pass(`created the room ${code} and landed in its lobby`);
 
     await hostBrowser.page.waitForHydration();
@@ -361,7 +361,7 @@ const main = async () => {
     console.log(`screenshot: ${await hostBrowser.page.screenshot("05-lobby-waiting")}`);
 
     await guestBrowser.page.goto(`${BASE}/join/${code}`);
-    const guestInLobby = await guestBrowser.page.waitFor("/^\\/rooms\\/[A-Z]{8}$/.test(location.pathname)", {
+    const guestInLobby = await guestBrowser.page.waitFor("/^\\/rooms\\/[A-Z]{8,9}$/.test(location.pathname)", {
       timeoutMs: 20000,
     });
     if (!guestInLobby) fail(`the guest link did not land in the lobby, at ${await guestBrowser.page.url()}`);
@@ -430,7 +430,7 @@ const main = async () => {
 
     await hostBrowser.page.eval(clickButton("Start game"));
     const onGame = await hostBrowser.page.waitFor(
-      "/^\\/games\\/[A-Z]{8}$/.test(location.pathname)",
+      "/^\\/games\\/[A-Z]{8,9}$/.test(location.pathname)",
       { timeoutMs: 8000 },
     );
     if (!onGame) {

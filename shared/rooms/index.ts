@@ -13,7 +13,7 @@ export {
   type UserId,
 } from "./ids.ts";
 export {
-  CODE_LENGTH,
+  CODE_LENGTHS,
   CODE_SPACE_SIZE,
   generateCode,
   parseRoomCode,

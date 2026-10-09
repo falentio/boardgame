@@ -246,13 +246,13 @@ const main = async () => {
     await hostBrowser.page.waitFor("document.querySelectorAll('[role=option]').length >= 7", { timeoutMs: 4000 });
     await hostBrowser.page.clickReal(`[...document.querySelectorAll('[role=option]')].find((o) => o.textContent.trim() === '2')`);
     await hostBrowser.page.clickReal(EL.buttonText("Create room"));
-    const inLobby = await hostBrowser.page.waitFor("/^\\/rooms\\/[A-Z]{8}$/.test(location.pathname)", { timeoutMs: 20000 });
+    const inLobby = await hostBrowser.page.waitFor("/^\\/rooms\\/[A-Z]{8,9}$/.test(location.pathname)", { timeoutMs: 20000 });
     if (!inLobby) throw new Error(`create did not land in the lobby, at ${await hostBrowser.page.url()}`);
     const code = (await hostBrowser.page.url()).replace("/rooms/", "").split("?")[0];
     pass(`host created room ${code}`);
 
     await guestBrowser.page.goto(`${BASE}/join/${code}`, { waitMs: 2000 });
-    const guestSeated = await guestBrowser.page.waitFor("/^\\/rooms\\/[A-Z]{8}$/.test(location.pathname)", { timeoutMs: 20000 });
+    const guestSeated = await guestBrowser.page.waitFor("/^\\/rooms\\/[A-Z]{8,9}$/.test(location.pathname)", { timeoutMs: 20000 });
     if (!guestSeated) throw new Error(`guest never landed in the lobby, at ${await guestBrowser.page.url()}`);
     pass("guest joined through the shared link");
 
@@ -282,7 +282,7 @@ const main = async () => {
       throw new Error(`room ${code} never became full for the host`);
     }
     await hostBrowser.page.clickReal(EL.buttonText("Start game"));
-    const onGame = await hostBrowser.page.waitFor("/^\\/games\\/[A-Z]{8}/.test(location.pathname)", { timeoutMs: 15000 });
+    const onGame = await hostBrowser.page.waitFor("/^\\/games\\/[A-Z]{8,9}/.test(location.pathname)", { timeoutMs: 15000 });
     if (!onGame) throw new Error(`Start game did not open the board, at ${await hostBrowser.page.url()}`);
     pass("host's Start game opened the board");
 

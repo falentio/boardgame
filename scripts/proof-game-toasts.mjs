@@ -248,16 +248,16 @@ const main = async () => {
       `[...document.querySelectorAll('[data-role-option]')].find((b) => (b.getAttribute('aria-label') || '').startsWith('Arms Dealer'))`,
     );
     await hostBrowser.page.clickReal(EL.buttonText("Create room"));
-    const inLobby = await hostBrowser.page.waitFor("/^\\/rooms\\/[A-Z]{8}$/.test(location.pathname)", { timeoutMs: 20000 });
+    const inLobby = await hostBrowser.page.waitFor("/^\\/rooms\\/[A-Z]{8,9}$/.test(location.pathname)", { timeoutMs: 20000 });
     if (!inLobby) throw new Error(`create did not land in the lobby, at ${await hostBrowser.page.url()}`);
     const code = (await hostBrowser.page.url()).replace("/rooms/", "");
     pass(`host created room ${code}`);
 
     await guestBrowser.page.goto(`${BASE}/join/${code}`);
-    let guestInLobby = await guestBrowser.page.waitFor("/^\\/rooms\\/[A-Z]{8}$/.test(location.pathname)", { timeoutMs: 20000 });
+    let guestInLobby = await guestBrowser.page.waitFor("/^\\/rooms\\/[A-Z]{8,9}$/.test(location.pathname)", { timeoutMs: 20000 });
     if (!guestInLobby) {
       await guestBrowser.page.goto(`${BASE}/rooms/${code}`);
-      guestInLobby = await guestBrowser.page.waitFor("/^\\/rooms\\/[A-Z]{8}$/.test(location.pathname)", { timeoutMs: 20000 });
+      guestInLobby = await guestBrowser.page.waitFor("/^\\/rooms\\/[A-Z]{8,9}$/.test(location.pathname)", { timeoutMs: 20000 });
     }
     if (!guestInLobby) throw new Error(`guest link did not land in the lobby, at ${await guestBrowser.page.url()}`);
     pass("guest joined through the shared link");
@@ -269,7 +269,7 @@ const main = async () => {
     }
     if (!full) throw new Error(`room ${code} never became full for the host`);
     await hostBrowser.page.clickReal(EL.buttonText("Start game"));
-    const onGame = await hostBrowser.page.waitFor("/^\\/games\\/[A-Z]{8}$/.test(location.pathname)", { timeoutMs: 15000 });
+    const onGame = await hostBrowser.page.waitFor("/^\\/games\\/[A-Z]{8,9}$/.test(location.pathname)", { timeoutMs: 15000 });
     if (!onGame) throw new Error(`Start game did not open the board, at ${await hostBrowser.page.url()}`);
     pass("host's Start game opened the board");
 
