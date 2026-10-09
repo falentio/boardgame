@@ -1,5 +1,7 @@
 export {
+  CONSONANTS,
   RoomIdError,
+  VOWELS,
   isRoomCode,
   roomCode,
   roomId,
@@ -13,8 +15,6 @@ export {
 export {
   CODE_LENGTH,
   CODE_SPACE_SIZE,
-  CONSONANTS,
-  VOWELS,
   generateCode,
   parseRoomCode,
   type RoomEntropy,

@@ -1,15 +1,16 @@
 import { expect, test } from "vitest";
 import { makeRandom } from "../../core/lockstep/hash.ts";
 import { seed } from "../../core/lockstep/ids.ts";
+import { CODE_LENGTH, CODE_SPACE_SIZE, generateCode, parseRoomCode } from "../code.ts";
 import {
   CONSONANTS,
-  CODE_LENGTH,
-  CODE_SPACE_SIZE,
+  RoomIdError,
   VOWELS,
-  generateCode,
-  parseRoomCode,
-} from "../code.ts";
-import { RoomIdError, isRoomCode, roomCode, roomId, userId } from "../ids.ts";
+  isRoomCode,
+  roomCode,
+  roomId,
+  userId,
+} from "../ids.ts";
 
 test("the alphabet is 21 consonants and 5 vowels with no overlap", () => {
   expect(CONSONANTS).toBe("BCDFGHJKLMNPQRSTVWXYZ");

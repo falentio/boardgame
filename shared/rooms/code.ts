@@ -1,10 +1,8 @@
 import type { Random } from "../core/lockstep/hash.ts";
-import { isRoomCode, roomCode, type RoomCode } from "./ids.ts";
+import { CONSONANTS, VOWELS, isRoomCode, roomCode, type RoomCode } from "./ids.ts";
 
-export const CONSONANTS = "BCDFGHJKLMNPQRSTVWXYZ";
-export const VOWELS = "AEIOU";
 export const CODE_LENGTH = 8;
-export const CODE_SPACE_SIZE = 21 ** 4 * 5 ** 4;
+export const CODE_SPACE_SIZE = CONSONANTS.length ** 4 * VOWELS.length ** 4;
 
 export type RoomEntropy = Pick<Random, "int">;
 

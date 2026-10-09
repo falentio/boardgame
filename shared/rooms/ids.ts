@@ -10,7 +10,10 @@ export class RoomIdError extends Error {
   override readonly name = "RoomIdError";
 }
 
-const CODE_PATTERN = /^[BCDFGHJKLMNPQRSTVWXYZ][AEIOU][BCDFGHJKLMNPQRSTVWXYZ][AEIOU][BCDFGHJKLMNPQRSTVWXYZ][AEIOU][BCDFGHJKLMNPQRSTVWXYZ][AEIOU]$/;
+export const CONSONANTS = "BCDFGHJKLMNPQRSTVWXYZ";
+export const VOWELS = "AEIOU";
+
+const CODE_PATTERN = new RegExp(`^(?:[${CONSONANTS}][${VOWELS}]){4}$`);
 
 export const isRoomCode = (raw: string): boolean => CODE_PATTERN.test(raw);
 
