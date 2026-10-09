@@ -254,7 +254,7 @@ const main = async () => {
     pass("host started the game over the API");
 
     await hostBrowser.page.goto(`${BASE}/games/${code}`, { waitMs: 2500 });
-    const onGame = await hostBrowser.page.waitFor("/^\\/games\\/[A-Z]{8}/.test(location.pathname)", { timeoutMs: 15000 });
+    const onGame = await hostBrowser.page.waitFor("/^\\/games\\/[A-Z]{8,9}/.test(location.pathname)", { timeoutMs: 15000 });
     if (!onGame) throw new Error(`the board did not open, at ${await hostBrowser.page.url()}`);
     pass("the board opened");
 
