@@ -21,6 +21,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate:local": "wrangler d1 migrations apply boardgame --local",
     "db:migrate:remote": "wrangler d1 migrations apply boardgame --remote",
+    "sync:bindings": "node scripts/sync-wrangler-bindings.mjs",
     "verify:auth": "node scripts/verify-auth.mjs",
     "verify:ui": "node scripts/proof-ui.mjs"
   },

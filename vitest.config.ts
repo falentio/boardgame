@@ -13,6 +13,7 @@ export default defineConfig({
       "server/modules/users/tests/**/*.test.ts",
       "server/modules/realtime/tests/**/*.test.ts",
       "app/composables/tests/**/*.test.ts",
+      "scripts/tests/**/*.test.ts",
     ],
     environment: "node",
   },
