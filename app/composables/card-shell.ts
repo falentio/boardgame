@@ -6,6 +6,6 @@ export const CARD_BADGE_CLASS =
   "rounded-full bg-muted px-2 py-0.5 text-[0.6875rem] font-medium text-foreground ring-1 ring-foreground/10"
 
 /** The strip the lobby and the new-room role picker lay their roles out in, so they cannot drift. */
-export const ROLE_STRIP_CLASS = "flex gap-3 overflow-x-auto pb-2"
+export const ROLE_STRIP_CLASS = "flex gap-3 overflow-x-auto -mx-1 -mt-1 px-1 pt-1 pb-3"
 
 export const ROLE_STRIP_CARD_CLASS = "w-40 shrink-0"
