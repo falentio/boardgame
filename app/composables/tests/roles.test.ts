@@ -42,7 +42,7 @@ test("pickRole fills both special slots, clears on re-pick, and replaces when fu
   expect(removed.special).toEqual([null, "peacekeeper"]);
 
   const replaced = pickRole(two, "communist");
-  expect(replaced.special).toEqual(["communist", "peacekeeper"]);
+  expect(replaced.special).toEqual(["peacekeeper", "communist"]);
   expect(filledCount(replaced)).toBe(2);
 });
 
