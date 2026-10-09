@@ -33,7 +33,7 @@ test("pusherGameEvents publishes the envelope as game to the private game channe
   vi.stubGlobal("fetch", impl);
 
   const events = pusherGameEvents(CONFIG);
-  await events.published(roomCode("BAVOKUTI"), encodeEnvelope({ kind: "sync" }));
+  await events.published(roomCode("BAWOLUTI"), encodeEnvelope({ kind: "sync" }));
 
   expect(calls).toHaveLength(1);
   const url = new URL(calls[0]!.url);
@@ -46,6 +46,6 @@ test("pusherGameEvents publishes the envelope as game to the private game channe
     data: string;
   };
   expect(body.name).toBe("game");
-  expect(body.channels).toEqual(["private-game-BAVOKUTI"]);
+  expect(body.channels).toEqual(["private-game-BAWOLUTI"]);
   expect(JSON.parse(body.data)).toEqual({ v: 1, body: { kind: "sync" } });
 });

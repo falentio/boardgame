@@ -96,10 +96,15 @@ const assign = (draft: RoleDraft, role: RoleId): RoleDraft => {
       return { ...draft, communications: role };
     case "force":
       return { ...draft, force: role };
-    case "special-interest":
-      if (draft.special[0] === null) return { ...draft, special: [role, draft.special[1]] };
-      if (draft.special[1] === null) return { ...draft, special: [draft.special[0], role] };
-      return { ...draft, special: [role, draft.special[1]] };
+    case "special-interest": {
+      const [first, second] = draft.special;
+      if (first === null) {
+        if (second === null) return { ...draft, special: [role, null] };
+        return { ...draft, special: [second, role] };
+      }
+      if (second === null) return { ...draft, special: [first, role] };
+      return { ...draft, special: [second, role] };
+    }
   }
 };
 
@@ -121,7 +126,7 @@ export interface PickGroup {
 }
 
 const rolesIn = (category: RoleCategory): readonly RoleSpec[] =>
-  ROLE_CATALOG.filter((spec) => spec.category === category);
+  ROLE_CATALOG.filter((spec) => spec.category === category).sort((a, b) => a.name.localeCompare(b.name));
 
 export const mergedGroups: readonly PickGroup[] = [
   { key: "finance", label: "Finance", roles: rolesIn("finance") },

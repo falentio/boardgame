@@ -15,6 +15,7 @@ export { encodeMessage, decodeMessage } from "./protocol.ts";
 export type { RoomSeatLike, RoomLike } from "./seats.ts";
 export { rosterFor, seatOf, occupantOf, genesisFor } from "./seats.ts";
 
+export type { SyncState } from "./session.ts";
 export type {
   GameChannel,
   GameChannelHandlers,

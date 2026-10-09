@@ -93,7 +93,7 @@ const main = async () => {
   const createdBody = await created.text();
   if (created.status !== 201) return fail(`create returned ${created.status}: ${createdBody}`);
   const { room } = JSON.parse(createdBody);
-  if (!room?.code || room.code.length !== 8) return fail(`create returned no code: ${createdBody}`);
+  if (!room?.code || (room.code.length !== 8 && room.code.length !== 9)) return fail(`create returned no code: ${createdBody}`);
   if (room.host !== host.id) return fail(`create returned the wrong host: ${createdBody}`);
   if (room.link !== `${BASE}/join/${room.code}`) return fail(`create returned the wrong link: ${createdBody}`);
   if (room.seats[0]?.occupant !== host.id) return fail(`host is not seated at position 0: ${createdBody}`);
@@ -107,7 +107,7 @@ const main = async () => {
   if (fetched.status !== 200) return fail(`read returned ${fetched.status}`);
   console.log(`PASS: read room ${room.code} by its exact code`);
 
-  const missing = await api("/api/rooms/BAKUDIRU", { cookie: host.cookie });
+  const missing = await api("/api/rooms/BAJUDIRU", { cookie: host.cookie });
   if (missing.status !== 404) return fail(`unknown code should be 404, got ${missing.status}`);
   console.log("PASS: an unknown code is 404 (reachable only by holding the code)");
 

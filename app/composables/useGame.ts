@@ -23,7 +23,7 @@ import {
 import { createGameChannel } from "./game-channel.ts";
 import { pusherConfigFrom, sharedPusherClient } from "./useRoomChannel.ts";
 
-export type GameStatus = "waiting" | "spectator" | "live" | "terminal" | "diverged";
+export type GameStatus = "waiting" | "spectator" | "live" | "terminal" | "resyncing";
 
 export interface UseGame<A, View> {
   readonly view: ShallowRef<View | null>;
@@ -58,6 +58,17 @@ export const useGame = <S, A, View>(deps: {
   let lastFrame = -1;
   let lastTerminal = false;
 
+  /**
+   * The UI phase, derived from the session rather than accumulated. `resyncing`
+   * is a loading state this client leaves on its own, so it wins over `live` but
+   * not over a terminal board, which is where the game ends for everyone.
+   */
+  const phase = (): GameStatus => {
+    if (current === null) return "waiting";
+    if (current.session.terminal) return "terminal";
+    return current.sync === "resyncing" ? "resyncing" : "live";
+  };
+
   const refresh = (): void => {
     if (current === null) return;
     const frame = current.session.frame;
@@ -66,13 +77,13 @@ export const useGame = <S, A, View>(deps: {
       lastFrame = frame;
       lastTerminal = terminal;
       view.value = current.session.view();
-      if (terminal) status.value = "terminal";
     }
+    status.value = phase();
     remainingMs.value = current.session.remainingMs();
   };
 
   const report = (input: SeatInput<A>): void => {
-    if (current === null || status.value !== "live") return;
+    if (current === null || current.sync !== "live" || current.session.terminal) return;
     current.session.report(input);
     acted.value = true;
     refresh();
@@ -122,17 +133,13 @@ export const useGame = <S, A, View>(deps: {
           refresh();
           acted.value = false;
         },
-        onError: () => {
-          status.value = "diverged";
-        },
       });
       current = session;
       lastFrame = -1;
       lastTerminal = false;
-      status.value = "live";
       refresh();
       timer = setInterval(() => {
-        session.session.tick();
+        session.tick();
         refresh();
       }, deps.tickMs ?? TICK_MS);
     },

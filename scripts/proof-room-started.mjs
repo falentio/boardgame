@@ -297,7 +297,7 @@ const main = async () => {
     await page.clearCookies();
     await page.setSessionCookie(guest);
     await page.goto(`${BASE}/rooms/${room.code}`);
-    const redirected = await page.waitFor(`/^\\/games\\/[A-Z]{8}$/.test(location.pathname)`, { timeoutMs: 15000 });
+    const redirected = await page.waitFor(`/^\\/games\\/[A-Z]{8,9}$/.test(location.pathname)`, { timeoutMs: 15000 });
     const path = await page.url();
     if (!redirected || !path.startsWith(`/games/${room.code}`)) {
       fail(`a seated non-host landed on ${path}, want /games/${room.code}`);

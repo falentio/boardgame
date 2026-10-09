@@ -2,6 +2,7 @@
 import type { RoleId } from "#shared/core/lockstep/games/g54/roles.ts"
 import { computed } from "vue"
 import RoleCard from "@/components/g54/RoleCard.vue"
+import { ROLE_STRIP_CLASS, ROLE_STRIP_CARD_CLASS } from "@/composables/card-shell"
 import { filledCount, isPicked, mergedGroups, pickRole, type RoleDraft } from "@/composables/roles"
 
 const props = defineProps<{ draft: RoleDraft }>()
@@ -31,11 +32,12 @@ const choose = (role: RoleId) => emit("change", pickRole(props.draft, role))
         <span v-if="group.key === 'special'" class="text-muted-foreground">· pick 2</span>
       </p>
 
-      <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+      <div data-slot="role-strip" :class="ROLE_STRIP_CLASS">
         <RoleCard
           v-for="role in group.roles"
           :key="role.id"
           :role="role.id"
+          :class="ROLE_STRIP_CARD_CLASS"
           selectable
           :selected="picked(role.id)"
           data-role-option
