@@ -172,7 +172,7 @@ watch(
               :busy="acted"
               @act="report(act($event))"
             />
-            <div>
+            <div v-if="!winnerCard">
               <button
                 type="button"
                 class="text-muted-foreground text-sm underline-offset-4 hover:underline transition-transform duration-150 ease-out active:scale-[0.97]"
