@@ -19,6 +19,7 @@ import { parseRoomCode } from "#shared/rooms/code.ts"
 import { userId, type UserId } from "#shared/rooms/ids.ts"
 import { useAuthSession } from "@/composables/useAuthSession"
 import { useLobby } from "@/composables/useLobby"
+import { ROLE_STRIP_CLASS, ROLE_STRIP_CARD_CLASS } from "@/composables/card-shell"
 import { formatRemaining } from "@/composables/room-time.ts"
 import {
   kickMember,
@@ -313,12 +314,12 @@ const onJoin = async () => {
             <p class="text-sm leading-none font-medium">
               Roles
             </p>
-            <div data-slot="role-strip" class="flex gap-3 overflow-x-auto pb-2">
+            <div data-slot="role-strip" :class="ROLE_STRIP_CLASS">
               <RoleCard
                 v-for="role in lobby.room.roles"
                 :key="role"
                 :role="role"
-                class="w-40 shrink-0"
+                :class="ROLE_STRIP_CARD_CLASS"
               />
             </div>
           </div>
