@@ -55,7 +55,6 @@ const open = (
   id: string,
   game: GameDefinition<G54State, G54Action, G54Setup, G54View>,
   bus: ReturnType<typeof makeBus>,
-  onError?: (error: Error) => void,
 ) =>
   openGameSession({
     game,
@@ -63,7 +62,6 @@ const open = (
     seat: id === "ann" ? ANN : BOB,
     genesis: genesis("game-session-tests"),
     clock: { now: () => 0 },
-    onError,
   });
 
 test("two peers built from the same genesis converge after both report", () => {
@@ -81,14 +79,23 @@ test("two peers built from the same genesis converge after both report", () => {
   expect(ann.session.view().active).toBe(bob.session.view().active);
 });
 
-test("a divergent snapshot is contained and surfaced through onError", () => {
+// A checkpoint this client cannot fold is the same recoverable condition as a
+// pause: it asks again, and the answering peer's own checkpoint repairs it.
+// A checkpoint this client cannot fold is the same recoverable condition as a
+// pause, not a verdict: the session keeps standing and the room's own
+// checkpoint repairs it.
+test("a divergent snapshot is contained and repaired from a good one", () => {
   const bus = makeBus();
-  const errors: Error[] = [];
-  const ann = open("ann", g54, bus, (error) => errors.push(error));
+  const ann = open("ann", g54, bus);
   const bob = open("bob", g54, bus);
   bus.connect("ann");
   bus.connect("bob");
+  ann.session.report(act<G54Action>({ t: "income" }));
+  bob.session.report(act<G54Action>({ t: "pass" }));
+  const head = bob.session.frame;
+  expect(ann.session.frame).toBe(head);
 
+  // A peer on a different seed: its checkpoint cannot fold here.
   const divergent = openGameSession({
     game: g54,
     channel: { subscribe: () => () => {}, publish: () => {} },
@@ -100,10 +107,15 @@ test("a divergent snapshot is contained and surfaced through onError", () => {
     encodeMessage(g54, { kind: "snapshot", snapshot: divergent.session.snapshot() }),
   );
 
-  expect(errors).toHaveLength(1);
-  expect(ann.session.frame).toBe(0);
-});
+  expect(ann.session.frame).toBe(head);
 
+  // The room answers with a checkpoint that does fold, and the session
+  // catches up to it without any reload.
+  bus.channel("bob").publish(
+    encodeMessage(g54, { kind: "snapshot", snapshot: bob.session.snapshot() }),
+  );
+  expect(ann.session.frame).toBeGreaterThanOrEqual(head);
+});
 test("a sync from a fresh peer is answered with a snapshot and adopted", () => {
   const bus = makeBus();
   const ann = open("ann", g54, bus);

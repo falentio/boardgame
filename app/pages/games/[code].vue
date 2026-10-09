@@ -146,13 +146,16 @@ watch(
             </NuxtLink>
           </div>
 
-          <div v-else-if="status === 'diverged'" key="diverged" class="flex flex-col gap-3">
+          <div v-else-if="status === 'resyncing'" key="resyncing" class="flex flex-col gap-3">
             <h1 class="text-2xl leading-tight font-semibold">
               Game
             </h1>
-            <p class="text-destructive text-sm leading-normal">
-              This game fell out of sync with the other players. Reload the page to resync.
-            </p>
+            <div class="flex items-center gap-3">
+              <Spinner />
+              <p role="status" class="text-muted-foreground text-sm leading-normal">
+                This tab fell out of step with the other players. Resyncing…
+              </p>
+            </div>
           </div>
 
           <div v-else-if="board" key="board" class="flex flex-col gap-4">

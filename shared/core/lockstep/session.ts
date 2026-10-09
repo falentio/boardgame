@@ -81,6 +81,23 @@ export interface Session<A, View> {
   receive(message: Inbound<A>): void;
   /** Seats the game expects in the open frame, in canonical order. */
   owed(): readonly SeatId[];
+  /**
+   * True when the process holding this session was not running across a frame
+   * budget: its own clock has moved more than two budgets past the last frame
+   * this session sealed. A session that is ticking cannot reach that, because
+   * every running session re-seals within one tick of the deadline it set at
+   * its last seal.
+   *
+   * A paused session holds a head the table has already moved past, so carrying
+   * would seal an index the table sealed from inputs this session never saw, and
+   * the chain forks. `tick` and `report` both refuse while this is true; the
+   * caller answers it with a resync from a peer's snapshot.
+   *
+   * Derived, not stored, so read it from the app's tick loop. It says nothing
+   * about the table, only that this process stopped running. Never true at
+   * frame 0, where nothing has been sealed here yet.
+   */
+  readonly paused: boolean;
   /** Redacted view for the local seat. */
   view(): View;
   snapshot(): Snapshot<A>;
@@ -214,6 +231,8 @@ class SessionEngine<S, A, Setup, View> implements Session<A, View> {
   #buffer = new Map<SeatId, SeatInput<A>>();
   #pending = new Map<number, Frame<A>>();
   #deadline: Deadline | null;
+  /** When this session last sealed a frame, or null at frame 0. Drives `paused`. */
+  #sealedAt: number | null = null;
 
   constructor(deps: SessionDeps<S, A, Setup, View>, base: Base<S, A>) {
     this.seat = deps.config.seat;
@@ -231,6 +250,20 @@ class SessionEngine<S, A, Setup, View> implements Session<A, View> {
 
   get frame(): FrameIndex {
     return this.#frame;
+  }
+
+  /**
+   * The `paused` derivation. Two budgets, not a tunable: the open frame's
+   * deadline is one budget past the last seal, so being past that deadline is
+   * normal for a tick. Being past it by another entire budget means the frame
+   * timed out and this process did not respond for a further full budget, so it
+   * was not running. `null` at frame 0 keeps a session built late, or from a room
+   * with no epoch, timing out exactly as before.
+   */
+  get paused(): boolean {
+    if (this.terminal) return false;
+    if (this.#sealedAt === null) return false;
+    return this.#clock.now() - this.#sealedAt > 2 * this.#timeoutMs;
   }
 
   get terminal(): boolean {
@@ -260,6 +293,7 @@ class SessionEngine<S, A, Setup, View> implements Session<A, View> {
 
   report(input: SeatInput<A>): void {
     if (this.terminal) return;
+    if (this.paused) return;
     if (!this.owed().includes(this.seat)) return;
     if (this.#buffer.has(this.seat)) return;
     this.#buffer.set(this.seat, input);
@@ -301,7 +335,12 @@ class SessionEngine<S, A, Setup, View> implements Session<A, View> {
 
   tick(): void {
     if (this.terminal) return;
-    if (this.#deadline !== null && this.#clock.now() >= this.#deadline && this.#mayCarry()) {
+    if (
+      this.#deadline !== null &&
+      this.#clock.now() >= this.#deadline &&
+      !this.paused &&
+      this.#mayCarry()
+    ) {
       for (const seat of this.owed()) {
         if (!this.#buffer.has(seat)) this.#buffer.set(seat, idle<A>());
       }
@@ -320,6 +359,7 @@ class SessionEngine<S, A, Setup, View> implements Session<A, View> {
    */
   remainingMs(): number | null {
     if (this.terminal) return null;
+    if (this.paused) return null;
     if (this.#deadline === null) return null;
     if (!this.owed().includes(this.seat)) return null;
     if (this.#buffer.has(this.seat)) return null;
@@ -399,6 +439,12 @@ class SessionEngine<S, A, Setup, View> implements Session<A, View> {
     this.#buffer.clear();
     this.#pending.clear();
     this.#deadline = forward ? snapshot.deadline : tighten(this.#deadline, snapshot.deadline);
+    // A forward snapshot replaces the head wholesale, so the answering peer's last
+    // seal becomes ours. Without this the resumed session still reads as paused,
+    // refuses to carry, and the room never advances again.
+    if (forward) {
+      this.#sealedAt = snapshot.deadline === null ? null : snapshot.deadline - this.#timeoutMs;
+    }
   }
 
   /**
@@ -439,7 +485,19 @@ class SessionEngine<S, A, Setup, View> implements Session<A, View> {
     this.#frame = next.frame;
     this.#log = appendFrame(this.#log, frame);
     this.#buffer.clear();
-    this.#deadline = deadline(this.#clock.now() + this.#timeoutMs);
+    this.#seal();
+  }
+
+  /**
+   * The instant of the last frame this session sealed. The open frame's deadline
+   * is this plus the budget, so `paused` can ask how long ago the chain last
+   * advanced here. The deadline alone cannot answer it: at frame 0 the deadline
+   * is the agreed epoch plus the budget, not a reading of this session's clock.
+   */
+  #seal(): void {
+    const now = this.#clock.now();
+    this.#sealedAt = now;
+    this.#deadline = deadline(now + this.#timeoutMs);
   }
 
   #checkpoint(): Checkpoint<S> {

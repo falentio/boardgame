@@ -53,8 +53,10 @@ test("REPRO: a refresh does not extend the turn clock", () => {
 
 // A frame seals only when every owed seat has reported. Today each peer only
 // times out its own seat, so a silent or absent turn-holder hangs the frame for
-// everyone present.
-test("REPRO: a present peer carries a silent owed seat so the frame seals", () => {
+// everyone present. The ticks here are 16ms apart, which is a tab that is
+// running: the carry has to keep working for a slow seat, so only a clock that
+// jumped across whole budgets is a pause.
+test("a present peer carries a silent owed seat so the frame seals", () => {
   const clock = fakeClock();
   const table = makeTable(coinflip, {
     seats: SEATS,
@@ -66,8 +68,10 @@ test("REPRO: a present peer carries a silent owed seat so the frame seals", () =
   at(table, ANN).report(act<CoinflipAction>({ t: "call", side: "heads" }));
   expect(at(table, ANN).frame).toBe(frameIndex(1));
   // BOB goes silent; ANN and CARA are present and have no move to make.
-  clock.advance(5_000);
-  at(table, ANN).tick();
+  for (let elapsed = 0; elapsed <= 1_016; elapsed += 16) {
+    at(table, ANN).tick();
+    clock.advance(16);
+  }
   expect(at(table, ANN).frame).toBe(frameIndex(2));
   expect(at(table, CARA).frame).toBe(frameIndex(2));
 });

@@ -98,9 +98,18 @@ const sharedClient = singleton();
 export const sharedPusherClient = (config: RoomChannelConfig): Promise<RoomChannelClient> =>
   sharedClient(() => createPusherClient(config));
 
-const createPusherClient = (config: RoomChannelConfig): RoomChannelClient =>
-  new Pusher(config.key, {
-    wsHost: config.host,
+const splitEndpoint = (host: string): { readonly wsHost: string; readonly wssPort?: number } => {
+  const at = host.lastIndexOf(":");
+  if (at === -1) return { wsHost: host };
+  const port = Number(host.slice(at + 1));
+  return Number.isInteger(port) ? { wsHost: host.slice(0, at), wssPort: port } : { wsHost: host };
+};
+
+const createPusherClient = (config: RoomChannelConfig): RoomChannelClient => {
+  const endpoint = splitEndpoint(config.host);
+  return new Pusher(config.key, {
+    wsHost: endpoint.wsHost,
+    wssPort: endpoint.wssPort,
     httpHost: config.host,
     forceTLS: true,
     // pusher-js requires a cluster even when wsHost overrides the endpoint.
@@ -109,6 +118,7 @@ const createPusherClient = (config: RoomChannelConfig): RoomChannelClient =>
     enableStats: false,
     authEndpoint: "/api/pusher/auth",
   });
+};
 
 export const pusherConfigFrom = (value: unknown): RoomChannelConfig | null => {
   if (typeof value !== "object" || value === null) return null;
