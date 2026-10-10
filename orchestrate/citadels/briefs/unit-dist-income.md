@@ -38,8 +38,8 @@ Implement the Gold Mine unique district and prove its effect with a test.
 
 Your file exists as a stub exporting goldMine (a DistrictEffect) and
 goldMineScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Declare `onIncome` for your id.
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Set your own `<camel>Triggers` export to `["onIncome"]`.
 
 ## THE EFFECT (official rulebook text; the spec)
 When you choose gold while gathering resources, take 1 extra gold.
@@ -101,8 +101,8 @@ Implement the Library unique district and prove its effect with a test.
 
 Your file exists as a stub exporting library (a DistrictEffect) and
 libraryScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Declare `onIncome` for your id.
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Set your own `<camel>Triggers` export to `["onIncome"]`.
 
 ## THE EFFECT (official rulebook text; the spec)
 When you choose to draw cards while gathering resources, keep both cards you drew.
@@ -164,8 +164,8 @@ Implement the Observatory unique district and prove its effect with a test.
 
 Your file exists as a stub exporting observatory (a DistrictEffect) and
 observatoryScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Declare `onIncome` for your id.
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Set your own `<camel>Triggers` export to `["onIncome"]`.
 
 ## THE EFFECT (official rulebook text; the spec)
 When you choose to draw cards while gathering resources, draw three and keep one.
@@ -227,8 +227,8 @@ Implement the School Of Magic unique district and prove its effect with a test.
 
 Your file exists as a stub exporting schoolOfMagic (a DistrictEffect) and
 schoolOfMagicScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Declare `onIncome` for your id.
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Set your own `<camel>Triggers` export to `["onIncome"]`.
 
 ## THE EFFECT (official rulebook text; the spec)
 During resource gathering it counts as a district of any one type you choose. As the King it can count as noble, and so on.
@@ -290,8 +290,8 @@ Implement the Park unique district and prove its effect with a test.
 
 Your file exists as a stub exporting park (a DistrictEffect) and
 parkScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Declare `onEndTurn` for your id.
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Set your own `<camel>Triggers` export to `["onEndTurn"]`.
 
 ## THE EFFECT (official rulebook text; the spec)
 If you have no cards in hand at the end of your turn, draw two cards.
@@ -353,8 +353,8 @@ Implement the Poor House unique district and prove its effect with a test.
 
 Your file exists as a stub exporting poorHouse (a DistrictEffect) and
 poorHouseScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Declare `onEndTurn` for your id.
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Set your own `<camel>Triggers` export to `["onEndTurn"]`.
 
 ## THE EFFECT (official rulebook text; the spec)
 If you have no gold at the end of your turn, take one gold from the bank.

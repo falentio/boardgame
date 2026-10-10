@@ -38,8 +38,8 @@ Implement the Basilica unique district and prove its effect with a test.
 
 Your file exists as a stub exporting basilica (a DistrictEffect) and
 basilicaScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Scoring only: implement `<id>Scoring`; no hook needed.
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.
 
 ## THE EFFECT (official rulebook text; the spec)
 At end of game score 1 extra point for each district of odd cost in your city.
@@ -101,8 +101,8 @@ Implement the Capitol unique district and prove its effect with a test.
 
 Your file exists as a stub exporting capitol (a DistrictEffect) and
 capitolScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Scoring only: implement `<id>Scoring`; no hook needed.
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.
 
 ## THE EFFECT (official rulebook text; the spec)
 At end of game, if you have at least three districts of one type, score 3 extra points. This can score only once.
@@ -164,8 +164,8 @@ Implement the Dragon Gate unique district and prove its effect with a test.
 
 Your file exists as a stub exporting dragonGate (a DistrictEffect) and
 dragonGateScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Scoring only: implement `<id>Scoring`; no hook needed.
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.
 
 ## THE EFFECT (official rulebook text; the spec)
 At end of game score 2 extra points.
@@ -227,8 +227,8 @@ Implement the Imperial Treasury unique district and prove its effect with a test
 
 Your file exists as a stub exporting imperialTreasury (a DistrictEffect) and
 imperialTreasuryScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Scoring only: implement `<id>Scoring`; no hook needed.
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.
 
 ## THE EFFECT (official rulebook text; the spec)
 At end of game score 1 point for each gold in your stash.
@@ -290,8 +290,8 @@ Implement the Ivory Tower unique district and prove its effect with a test.
 
 Your file exists as a stub exporting ivoryTower (a DistrictEffect) and
 ivoryTowerScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Scoring only: implement `<id>Scoring`; no hook needed.
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.
 
 ## THE EFFECT (official rulebook text; the spec)
 If the Ivory Tower is the only unique district in your city at end of game, score 5 extra points. If the Haunted Quarter is also present and counted as a non-unique type, the Ivory Tower still scores.
@@ -353,8 +353,8 @@ Implement the Map Room unique district and prove its effect with a test.
 
 Your file exists as a stub exporting mapRoom (a DistrictEffect) and
 mapRoomScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Scoring only: implement `<id>Scoring`; no hook needed.
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.
 
 ## THE EFFECT (official rulebook text; the spec)
 At end of game score 1 point for each card in your hand.
@@ -416,8 +416,8 @@ Implement the Statue unique district and prove its effect with a test.
 
 Your file exists as a stub exporting statue (a DistrictEffect) and
 statueScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Scoring only: implement `<id>Scoring`; no hook needed.
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.
 
 ## THE EFFECT (official rulebook text; the spec)
 If you hold the crown at end of game, score 5 extra points.
@@ -479,8 +479,8 @@ Implement the Wishing Well unique district and prove its effect with a test.
 
 Your file exists as a stub exporting wishingWell (a DistrictEffect) and
 wishingWellScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Scoring only: implement `<id>Scoring`; no hook needed.
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.
 
 ## THE EFFECT (official rulebook text; the spec)
 At end of game score 1 extra point for each unique district in your city.
@@ -542,8 +542,8 @@ Implement the Haunted Quarter unique district and prove its effect with a test.
 
 Your file exists as a stub exporting hauntedQuarter (a DistrictEffect) and
 hauntedQuarterScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Scoring only: implement `<id>Scoring`; no hook needed.
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.
 
 ## THE EFFECT (official rulebook text; the spec)
 At final scoring, count it as a district of any one type you choose. If you choose a type other than unique, it no longer counts as unique for other scoring.
@@ -605,8 +605,8 @@ Implement the Museum unique district and prove its effect with a test.
 
 Your file exists as a stub exporting museum (a DistrictEffect) and
 museumScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Scoring only: implement `<id>Scoring`; no hook needed.
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.
 
 ## THE EFFECT (official rulebook text; the spec)
 Once per turn, place a card from your hand under the Museum. At end of game score 1 point per card under it. If the Museum is exchanged or seized the cards stay with it; if destroyed the cards are discarded to the bottom of the deck.

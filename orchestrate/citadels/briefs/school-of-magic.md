@@ -18,8 +18,8 @@ Implement the School Of Magic unique district and prove its effect with a test.
 
 Your file exists as a stub exporting schoolOfMagic (a DistrictEffect) and
 schoolOfMagicScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Declare `onIncome` for your id.
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Set your own `<camel>Triggers` export to `["onIncome"]`.
 
 ## THE EFFECT (official rulebook text; the spec)
 During resource gathering it counts as a district of any one type you choose. As the King it can count as noble, and so on.

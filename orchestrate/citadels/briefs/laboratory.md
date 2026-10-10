@@ -18,8 +18,8 @@ Implement the Laboratory unique district and prove its effect with a test.
 
 Your file exists as a stub exporting laboratory (a DistrictEffect) and
 laboratoryScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Declare `onEndTurn` for your id.
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Set your own `<camel>Triggers` export to `["onEndTurn"]`.
 
 ## THE EFFECT (official rulebook text; the spec)
 Once per turn you may discard one card from your hand to take 2 gold.

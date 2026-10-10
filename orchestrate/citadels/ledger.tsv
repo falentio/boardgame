@@ -1,3 +1,16 @@
 pr	sha	verdict	evidence	verifier	ts
 1	6925dce522b716b7684780900e481aa8530865df	unit-test-verified	scripts/citadels-verify.sh shared/core/tests/lockstep/citadels/scaffold.test.ts -> 16 passed, tsc OK; commit 6925dce		2026-10-10T16:44:09.678Z
 1	2e757f82693da2d7a23144c565c4ac9c59440776	unit-test-verified	scripts/citadels-verify.sh scaffold+catalog+seams -> 32 passed, tsc OK		2026-10-10T17:02:18.971Z
+1	13155e9	unit-test-verified	scripts/citadels-verify.sh hooks+scaffold -> 30 passed, tsc OK		2026-10-10T17:26:22.655Z
+1	d666799	unit-test-verified	citadels suite 154 passed at d666799; per-unit verify green		2026-10-10T17:53:53.947Z
+1	2a72864	unit-test-verified	citadels suite 154 passed at 2a72864; per-unit verify green		2026-10-10T17:53:53.954Z
+1	cccd128	unit-test-verified	citadels suite 154 passed at cccd128; per-unit verify green		2026-10-10T17:53:53.962Z
+1	1daa707	unit-test-verified	citadels suite 154 passed at 1daa707; per-unit verify green		2026-10-10T17:53:53.969Z
+1	6cf31d1	unit-test-verified	citadels suite 154 passed at 6cf31d1; per-unit verify green		2026-10-10T17:53:53.977Z
+1	4ffda58	unit-test-verified	citadels suite 154 passed at 4ffda58; per-unit verify green		2026-10-10T17:53:53.983Z
+1	cd9cfbf	unit-test-verified	citadels suite 202 passed at cd9cfbf		2026-10-10T18:20:48.769Z
+1	d8e84df	unit-test-verified	citadels suite 202 passed at d8e84df		2026-10-10T18:20:48.775Z
+1	8c3db12	unit-test-verified	citadels suite 202 passed at 8c3db12		2026-10-10T18:20:48.781Z
+1	d56296e	unit-test-verified	all 27 characters implemented; citadels suite 330 passed		2026-10-10T19:08:40.719Z
+1	ae23e55	unit-test-verified	factory green; 7 members proven blocked on a missing build seam		2026-10-10T19:08:40.723Z
+1	2acbdaf	unit-test-verified	5 scoring districts green; 5 proven blocked on a missing state-aware scoring seam		2026-10-10T19:08:40.726Z

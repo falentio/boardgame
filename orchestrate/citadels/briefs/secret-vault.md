@@ -18,8 +18,8 @@ Implement the Secret Vault unique district and prove its effect with a test.
 
 Your file exists as a stub exporting secretVault (a DistrictEffect) and
 secretVaultScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Declare `onBuild` for your id (or handle it inside the build path if the hook does not fit; report if so).
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Set your own `<camel>Triggers` export to `["onBuild"]` (or report if the build path needs a different seam).
 
 ## THE EFFECT (official rulebook text; the spec)
 The Secret Vault cannot be built. Score 3 extra points at end of game if it is still in your hand.

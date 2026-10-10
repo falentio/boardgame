@@ -18,8 +18,8 @@ Implement the Park unique district and prove its effect with a test.
 
 Your file exists as a stub exporting park (a DistrictEffect) and
 parkScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Declare `onEndTurn` for your id.
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Set your own `<camel>Triggers` export to `["onEndTurn"]`.
 
 ## THE EFFECT (official rulebook text; the spec)
 If you have no cards in hand at the end of your turn, draw two cards.

@@ -2,4 +2,22 @@ id	track	state	branch	pr	sha	brief
 core-scaffold	core	done			6925dce	orchestrate/citadels/briefs/core-scaffold.md
 data-catalog-fix	rules	done			2e757f8	fix the invented district catalog and mis-ranked characters 1-3 against docs/design/citadels-catalog.md
 engine-seams	core	done			c62f4a4	orchestrate/citadels/briefs/engine-seams.md
-engine-hooks	core	pending				orchestrate/citadels/briefs/engine-hooks.md
+engine-hooks	core	done			13155e9	orchestrate/citadels/briefs/engine-hooks.md
+engine-district-resolvers	core	done			d666799	orchestrate/citadels/briefs/engine-district-resolvers.md
+chars-rank1	characters	done			2a72864	orchestrate/citadels/briefs/unit-chars-rank1.md
+chars-rank2	characters	done			cccd128	orchestrate/citadels/briefs/unit-chars-rank2.md
+chars-rank3	characters	done			1daa707	orchestrate/citadels/briefs/unit-chars-rank3.md
+chars-rank4	characters	done			6cf31d1	orchestrate/citadels/briefs/unit-chars-rank4.md
+chars-rank5	characters	done			4ffda58	orchestrate/citadels/briefs/unit-chars-rank5.md
+district-triggers-per-file	districts	done			cd9cfbf	orchestrate/citadels/briefs/district-triggers-per-file.md
+chars-rank6	characters	done			945863d	orchestrate/citadels/briefs/unit-chars-rank6.md
+chars-rank7	characters	done			d56296e	orchestrate/citadels/briefs/unit-chars-rank7.md
+chars-rank8	characters	done			d8e84df	orchestrate/citadels/briefs/unit-chars-rank8.md
+chars-rank9	characters	done			8c3db12	orchestrate/citadels/briefs/unit-chars-rank9.md
+dist-income	districts	pending				orchestrate/citadels/briefs/unit-dist-income.md
+dist-build	districts	partial			ae23e55	orchestrate/citadels/briefs/unit-dist-build.md
+dist-guard	districts	done			01ed8ad	orchestrate/citadels/briefs/unit-dist-guard.md
+dist-scoring	districts	partial			2acbdaf	orchestrate/citadels/briefs/unit-dist-scoring.md
+dist-actions	districts	done			659236c	orchestrate/citadels/briefs/unit-dist-actions.md
+dist-build-remainder	districts	pending				1/8 done (factory); 7 blocked on the build seam
+dist-scoring-remainder	districts	pending				5/10 done; 5 blocked on the scoring seam

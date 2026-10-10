@@ -18,8 +18,8 @@ Implement the Theatre unique district and prove its effect with a test.
 
 Your file exists as a stub exporting theatre (a DistrictEffect) and
 theatreScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Scoring only: implement `<id>Scoring`; no hook needed.
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.
 
 ## THE EFFECT (official rulebook text; the spec)
 At the start of the round you may exchange your character card for a random character card from another player. You choose the player blindly. In 2-3 player games you choose which of your two characters to give and randomly take one of your opponent's.

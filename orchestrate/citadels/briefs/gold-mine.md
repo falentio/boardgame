@@ -18,8 +18,8 @@ Implement the Gold Mine unique district and prove its effect with a test.
 
 Your file exists as a stub exporting goldMine (a DistrictEffect) and
 goldMineScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Declare `onIncome` for your id.
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Set your own `<camel>Triggers` export to `["onIncome"]`.
 
 ## THE EFFECT (official rulebook text; the spec)
 When you choose gold while gathering resources, take 1 extra gold.

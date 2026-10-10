@@ -38,8 +38,8 @@ Implement the Factory unique district and prove its effect with a test.
 
 Your file exists as a stub exporting factory (a DistrictEffect) and
 factoryScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Declare `onBuild` for your id (or handle it inside the build path if the hook does not fit; report if so).
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Set your own `<camel>Triggers` export to `["onBuild"]` (or report if the build path needs a different seam).
 
 ## THE EFFECT (official rulebook text; the spec)
 Your other unique districts cost one less gold to build.
@@ -101,8 +101,8 @@ Implement the Quarry unique district and prove its effect with a test.
 
 Your file exists as a stub exporting quarry (a DistrictEffect) and
 quarryScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Declare `onBuild` for your id (or handle it inside the build path if the hook does not fit; report if so).
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Set your own `<camel>Triggers` export to `["onBuild"]` (or report if the build path needs a different seam).
 
 ## THE EFFECT (official rulebook text; the spec)
 You may build a district identical to one already in your city. Only one duplicate may exist in your city at a time. You cannot use the Magistrate, Diplomat, or Marshal to acquire an identical district.
@@ -164,8 +164,8 @@ Implement the Framework unique district and prove its effect with a test.
 
 Your file exists as a stub exporting framework (a DistrictEffect) and
 frameworkScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Declare `onBuild` for your id (or handle it inside the build path if the hook does not fit; report if so).
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Set your own `<camel>Triggers` export to `["onBuild"]` (or report if the build path needs a different seam).
 
 ## THE EFFECT (official rulebook text; the spec)
 You may build any district by destroying the Framework instead of paying its cost. The Magistrate cannot confiscate a district built by destroying the Framework.
@@ -227,8 +227,8 @@ Implement the Necropolis unique district and prove its effect with a test.
 
 Your file exists as a stub exporting necropolis (a DistrictEffect) and
 necropolisScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Declare `onBuild` for your id (or handle it inside the build path if the hook does not fit; report if so).
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Set your own `<camel>Triggers` export to `["onBuild"]` (or report if the build path needs a different seam).
 
 ## THE EFFECT (official rulebook text; the spec)
 Instead of paying the Necropolis's cost, you may destroy any one district in your city. The Magistrate cannot confiscate a Necropolis built without paying its cost.
@@ -290,8 +290,8 @@ Implement the Stables unique district and prove its effect with a test.
 
 Your file exists as a stub exporting stables (a DistrictEffect) and
 stablesScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Declare `onBuild` for your id (or handle it inside the build path if the hook does not fit; report if so).
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Set your own `<camel>Triggers` export to `["onBuild"]` (or report if the build path needs a different seam).
 
 ## THE EFFECT (official rulebook text; the spec)
 Building the Stables does not count toward your building limit this turn, so you may build another district afterward. If confiscated by the Magistrate, you may still build another district.
@@ -353,8 +353,8 @@ Implement the Monument unique district and prove its effect with a test.
 
 Your file exists as a stub exporting monument (a DistrictEffect) and
 monumentScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Declare `onBuild` for your id (or handle it inside the build path if the hook does not fit; report if so).
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Set your own `<camel>Triggers` export to `["onBuild"]` (or report if the build path needs a different seam).
 
 ## THE EFFECT (official rulebook text; the spec)
 You cannot build the Monument if your city already has five or more districts. It counts as two districts when counting districts at end of game.
@@ -416,8 +416,8 @@ Implement the Secret Vault unique district and prove its effect with a test.
 
 Your file exists as a stub exporting secretVault (a DistrictEffect) and
 secretVaultScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Declare `onBuild` for your id (or handle it inside the build path if the hook does not fit; report if so).
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Set your own `<camel>Triggers` export to `["onBuild"]` (or report if the build path needs a different seam).
 
 ## THE EFFECT (official rulebook text; the spec)
 The Secret Vault cannot be built. Score 3 extra points at end of game if it is still in your hand.
@@ -479,8 +479,8 @@ Implement the Thieves Den unique district and prove its effect with a test.
 
 Your file exists as a stub exporting thievesDen (a DistrictEffect) and
 thievesDenScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Declare `onBuild` for your id (or handle it inside the build path if the hook does not fit; report if so).
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Set your own `<camel>Triggers` export to `["onBuild"]` (or report if the build path needs a different seam).
 
 ## THE EFFECT (official rulebook text; the spec)
 You may pay for the Thieves' Den partly or fully with cards from your hand at 1 card = 1 gold. If confiscated by the Magistrate, you receive back only gold spent, not cards.

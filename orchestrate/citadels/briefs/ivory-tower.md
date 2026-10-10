@@ -18,8 +18,8 @@ Implement the Ivory Tower unique district and prove its effect with a test.
 
 Your file exists as a stub exporting ivoryTower (a DistrictEffect) and
 ivoryTowerScoring (a DistrictScoring). Fill both in. To have the engine call your
-effect, set your own id's entry in UNIQUE_TRIGGERS to the hook you declare — that is
-the one shared table you may edit, and only your own id's row. Scoring only: implement `<id>Scoring`; no hook needed.
+effect, set your own per-file trigger export (named below) — you never edit a
+shared table. Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.
 
 ## THE EFFECT (official rulebook text; the spec)
 If the Ivory Tower is the only unique district in your city at end of game, score 5 extra points. If the Haunted Quarter is also present and counted as a non-unique type, the Ivory Tower still scores.

@@ -4,7 +4,7 @@
     "name": "Gold Mine",
     "file": "gold-mine",
     "camel": "goldMine",
-    "hook": "Declare `onIncome` for your id.",
+    "hook": "Set your own `<camel>Triggers` export to `[\"onIncome\"]`.",
     "rule": "When you choose gold while gathering resources, take 1 extra gold.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -13,7 +13,7 @@
     "name": "Library",
     "file": "library",
     "camel": "library",
-    "hook": "Declare `onIncome` for your id.",
+    "hook": "Set your own `<camel>Triggers` export to `[\"onIncome\"]`.",
     "rule": "When you choose to draw cards while gathering resources, keep both cards you drew.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -22,7 +22,7 @@
     "name": "Observatory",
     "file": "observatory",
     "camel": "observatory",
-    "hook": "Declare `onIncome` for your id.",
+    "hook": "Set your own `<camel>Triggers` export to `[\"onIncome\"]`.",
     "rule": "When you choose to draw cards while gathering resources, draw three and keep one.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -31,7 +31,7 @@
     "name": "School Of Magic",
     "file": "school-of-magic",
     "camel": "schoolOfMagic",
-    "hook": "Declare `onIncome` for your id.",
+    "hook": "Set your own `<camel>Triggers` export to `[\"onIncome\"]`.",
     "rule": "During resource gathering it counts as a district of any one type you choose. As the King it can count as noble, and so on.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -40,7 +40,7 @@
     "name": "Park",
     "file": "park",
     "camel": "park",
-    "hook": "Declare `onEndTurn` for your id.",
+    "hook": "Set your own `<camel>Triggers` export to `[\"onEndTurn\"]`.",
     "rule": "If you have no cards in hand at the end of your turn, draw two cards.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -49,7 +49,7 @@
     "name": "Poor House",
     "file": "poor-house",
     "camel": "poorHouse",
-    "hook": "Declare `onEndTurn` for your id.",
+    "hook": "Set your own `<camel>Triggers` export to `[\"onEndTurn\"]`.",
     "rule": "If you have no gold at the end of your turn, take one gold from the bank.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -58,7 +58,7 @@
     "name": "Factory",
     "file": "factory",
     "camel": "factory",
-    "hook": "Declare `onBuild` for your id (or handle it inside the build path if the hook does not fit; report if so).",
+    "hook": "Set your own `<camel>Triggers` export to `[\"onBuild\"]` (or report if the build path needs a different seam).",
     "rule": "Your other unique districts cost one less gold to build.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -67,7 +67,7 @@
     "name": "Quarry",
     "file": "quarry",
     "camel": "quarry",
-    "hook": "Declare `onBuild` for your id (or handle it inside the build path if the hook does not fit; report if so).",
+    "hook": "Set your own `<camel>Triggers` export to `[\"onBuild\"]` (or report if the build path needs a different seam).",
     "rule": "You may build a district identical to one already in your city. Only one duplicate may exist in your city at a time. You cannot use the Magistrate, Diplomat, or Marshal to acquire an identical district.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -76,7 +76,7 @@
     "name": "Framework",
     "file": "framework",
     "camel": "framework",
-    "hook": "Declare `onBuild` for your id (or handle it inside the build path if the hook does not fit; report if so).",
+    "hook": "Set your own `<camel>Triggers` export to `[\"onBuild\"]` (or report if the build path needs a different seam).",
     "rule": "You may build any district by destroying the Framework instead of paying its cost. The Magistrate cannot confiscate a district built by destroying the Framework.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -85,7 +85,7 @@
     "name": "Necropolis",
     "file": "necropolis",
     "camel": "necropolis",
-    "hook": "Declare `onBuild` for your id (or handle it inside the build path if the hook does not fit; report if so).",
+    "hook": "Set your own `<camel>Triggers` export to `[\"onBuild\"]` (or report if the build path needs a different seam).",
     "rule": "Instead of paying the Necropolis's cost, you may destroy any one district in your city. The Magistrate cannot confiscate a Necropolis built without paying its cost.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -94,7 +94,7 @@
     "name": "Stables",
     "file": "stables",
     "camel": "stables",
-    "hook": "Declare `onBuild` for your id (or handle it inside the build path if the hook does not fit; report if so).",
+    "hook": "Set your own `<camel>Triggers` export to `[\"onBuild\"]` (or report if the build path needs a different seam).",
     "rule": "Building the Stables does not count toward your building limit this turn, so you may build another district afterward. If confiscated by the Magistrate, you may still build another district.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -103,7 +103,7 @@
     "name": "Monument",
     "file": "monument",
     "camel": "monument",
-    "hook": "Declare `onBuild` for your id (or handle it inside the build path if the hook does not fit; report if so).",
+    "hook": "Set your own `<camel>Triggers` export to `[\"onBuild\"]` (or report if the build path needs a different seam).",
     "rule": "You cannot build the Monument if your city already has five or more districts. It counts as two districts when counting districts at end of game.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -112,7 +112,7 @@
     "name": "Secret Vault",
     "file": "secret-vault",
     "camel": "secretVault",
-    "hook": "Declare `onBuild` for your id (or handle it inside the build path if the hook does not fit; report if so).",
+    "hook": "Set your own `<camel>Triggers` export to `[\"onBuild\"]` (or report if the build path needs a different seam).",
     "rule": "The Secret Vault cannot be built. Score 3 extra points at end of game if it is still in your hand.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -121,7 +121,7 @@
     "name": "Thieves Den",
     "file": "thieves-den",
     "camel": "thievesDen",
-    "hook": "Declare `onBuild` for your id (or handle it inside the build path if the hook does not fit; report if so).",
+    "hook": "Set your own `<camel>Triggers` export to `[\"onBuild\"]` (or report if the build path needs a different seam).",
     "rule": "You may pay for the Thieves' Den partly or fully with cards from your hand at 1 card = 1 gold. If confiscated by the Magistrate, you receive back only gold spent, not cards.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -130,7 +130,7 @@
     "name": "Keep",
     "file": "keep",
     "camel": "keep",
-    "hook": "Declare `onDestroy` for your id.",
+    "hook": "Set your own `<camel>Triggers` export to `[\"onDestroy\"]`.",
     "rule": "The Warlord cannot destroy the Keep.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -139,7 +139,7 @@
     "name": "Great Wall",
     "file": "great-wall",
     "camel": "greatWall",
-    "hook": "Declare `onDestroy` for your id.",
+    "hook": "Set your own `<camel>Triggers` export to `[\"onDestroy\"]`.",
     "rule": "The Warlord pays one extra gold to destroy your districts; the Diplomat pays one extra gold to exchange them. The Diplomat does not apply the Great Wall's effect to the district he is exchanging from his own city.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -148,7 +148,7 @@
     "name": "Armory",
     "file": "armory",
     "camel": "armory",
-    "hook": "Declare `onDestroy` for your id.",
+    "hook": "Set your own `<camel>Triggers` export to `[\"onDestroy\"]`.",
     "rule": "On your turn you may destroy the Armory to destroy any one other player's district. A district in a completed city cannot be destroyed.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -157,7 +157,7 @@
     "name": "Basilica",
     "file": "basilica",
     "camel": "basilica",
-    "hook": "Scoring only: implement `<id>Scoring`; no hook needed.",
+    "hook": "Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.",
     "rule": "At end of game score 1 extra point for each district of odd cost in your city.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -166,7 +166,7 @@
     "name": "Capitol",
     "file": "capitol",
     "camel": "capitol",
-    "hook": "Scoring only: implement `<id>Scoring`; no hook needed.",
+    "hook": "Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.",
     "rule": "At end of game, if you have at least three districts of one type, score 3 extra points. This can score only once.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -175,7 +175,7 @@
     "name": "Dragon Gate",
     "file": "dragon-gate",
     "camel": "dragonGate",
-    "hook": "Scoring only: implement `<id>Scoring`; no hook needed.",
+    "hook": "Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.",
     "rule": "At end of game score 2 extra points.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -184,7 +184,7 @@
     "name": "Imperial Treasury",
     "file": "imperial-treasury",
     "camel": "imperialTreasury",
-    "hook": "Scoring only: implement `<id>Scoring`; no hook needed.",
+    "hook": "Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.",
     "rule": "At end of game score 1 point for each gold in your stash.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -193,7 +193,7 @@
     "name": "Ivory Tower",
     "file": "ivory-tower",
     "camel": "ivoryTower",
-    "hook": "Scoring only: implement `<id>Scoring`; no hook needed.",
+    "hook": "Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.",
     "rule": "If the Ivory Tower is the only unique district in your city at end of game, score 5 extra points. If the Haunted Quarter is also present and counted as a non-unique type, the Ivory Tower still scores.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -202,7 +202,7 @@
     "name": "Map Room",
     "file": "map-room",
     "camel": "mapRoom",
-    "hook": "Scoring only: implement `<id>Scoring`; no hook needed.",
+    "hook": "Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.",
     "rule": "At end of game score 1 point for each card in your hand.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -211,7 +211,7 @@
     "name": "Statue",
     "file": "statue",
     "camel": "statue",
-    "hook": "Scoring only: implement `<id>Scoring`; no hook needed.",
+    "hook": "Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.",
     "rule": "If you hold the crown at end of game, score 5 extra points.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -220,7 +220,7 @@
     "name": "Wishing Well",
     "file": "wishing-well",
     "camel": "wishingWell",
-    "hook": "Scoring only: implement `<id>Scoring`; no hook needed.",
+    "hook": "Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.",
     "rule": "At end of game score 1 extra point for each unique district in your city.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -229,7 +229,7 @@
     "name": "Haunted Quarter",
     "file": "haunted-quarter",
     "camel": "hauntedQuarter",
-    "hook": "Scoring only: implement `<id>Scoring`; no hook needed.",
+    "hook": "Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.",
     "rule": "At final scoring, count it as a district of any one type you choose. If you choose a type other than unique, it no longer counts as unique for other scoring.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -238,7 +238,7 @@
     "name": "Museum",
     "file": "museum",
     "camel": "museum",
-    "hook": "Scoring only: implement `<id>Scoring`; no hook needed.",
+    "hook": "Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.",
     "rule": "Once per turn, place a card from your hand under the Museum. At end of game score 1 point per card under it. If the Museum is exchanged or seized the cards stay with it; if destroyed the cards are discarded to the bottom of the deck.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -247,7 +247,7 @@
     "name": "Laboratory",
     "file": "laboratory",
     "camel": "laboratory",
-    "hook": "Declare `onEndTurn` for your id.",
+    "hook": "Set your own `<camel>Triggers` export to `[\"onEndTurn\"]`.",
     "rule": "Once per turn you may discard one card from your hand to take 2 gold.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -256,7 +256,7 @@
     "name": "Smithy",
     "file": "smithy",
     "camel": "smithy",
-    "hook": "Declare `onEndTurn` for your id.",
+    "hook": "Set your own `<camel>Triggers` export to `[\"onEndTurn\"]`.",
     "rule": "Once per turn you may pay 2 gold to draw 3 cards from the deck.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
@@ -265,7 +265,7 @@
     "name": "Theatre",
     "file": "theatre",
     "camel": "theatre",
-    "hook": "Scoring only: implement `<id>Scoring`; no hook needed.",
+    "hook": "Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.",
     "rule": "At the start of the round you may exchange your character card for a random character card from another player. You choose the player blindly. In 2-3 player games you choose which of your two characters to give and randomly take one of your opponent's.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   }
