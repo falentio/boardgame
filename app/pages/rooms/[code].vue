@@ -12,14 +12,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import RoleCard from "@/components/g54/RoleCard.vue"
+import RoleStrip from "@/components/room/RoleStrip.vue"
 import SeatList from "@/components/room/SeatList.vue"
 import ShareLink from "@/components/room/ShareLink.vue"
 import { parseRoomCode } from "#shared/rooms/code.ts"
 import { userId, type UserId } from "#shared/rooms/ids.ts"
 import { useAuthSession } from "@/composables/useAuthSession"
 import { useLobby } from "@/composables/useLobby"
-import { ROLE_STRIP_CLASS, ROLE_STRIP_CARD_CLASS } from "@/composables/card-shell"
 import { formatRemaining } from "@/composables/room-time.ts"
 import {
   kickMember,
@@ -333,14 +332,7 @@ const onJoin = async () => {
             <p class="text-sm leading-none font-medium">
               Roles
             </p>
-            <div data-slot="role-strip" :class="ROLE_STRIP_CLASS">
-              <RoleCard
-                v-for="role in lobby.room.roles"
-                :key="role"
-                :role="role"
-                :class="ROLE_STRIP_CARD_CLASS"
-              />
-            </div>
+            <RoleStrip :roles="lobby.room.roles" />
           </div>
 
           <div class="flex flex-col gap-3">

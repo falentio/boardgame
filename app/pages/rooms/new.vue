@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue"
+import { computed, nextTick, ref } from "vue"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
@@ -12,9 +12,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
+import CreateRoomConfirmDialog from "@/components/room/CreateRoomConfirmDialog.vue"
 import RolePicker from "@/components/room/RolePicker.vue"
 import { completeRoles, defaultDraft, missingLabels, pickRole, type RoleDraft } from "@/composables/roles"
 import { createRoom } from "@/composables/rooms-api"
+import type { CreateRoomConfig } from "@/composables/room-config"
 import type { RoleId } from "#shared/core/lockstep/games/g54/roles.ts"
 
 definePageMeta({ layout: "shell" })
@@ -26,8 +28,10 @@ const seats = ref(5)
 const draft = ref<RoleDraft>(defaultDraft())
 const submitting = ref(false)
 const error = ref("")
-const errorField = ref<"name" | "roles" | "form" | null>(null)
+const errorField = ref<"name" | "roles" | null>(null)
 const formEl = ref<HTMLFormElement | null>(null)
+const pendingCreate = ref<CreateRoomConfig | null>(null)
+const createError = ref("")
 
 const roles = computed(() => completeRoles(draft.value))
 const canSubmit = computed(() => roles.value !== null && !submitting.value)
@@ -48,7 +52,7 @@ const focusFirstProblem = () => {
   form.querySelector<HTMLInputElement>("#room-name")?.focus()
 }
 
-const onSubmit = async () => {
+const onSubmit = () => {
   error.value = ""
   errorField.value = null
 
@@ -68,19 +72,32 @@ const onSubmit = async () => {
     return
   }
 
+  createError.value = ""
+  pendingCreate.value = { name: trimmed, seats: seats.value, roles: selected }
+}
+
+const onConfirmCreate = async () => {
+  const request = pendingCreate.value
+  if (request === null || submitting.value) return
   submitting.value = true
   try {
-    const outcome = await createRoom({ name: trimmed, seats: seats.value, roles: selected })
+    const outcome = await createRoom(request)
     if (outcome.kind === "created") {
+      pendingCreate.value = null
       await navigateTo("/rooms/" + outcome.code)
       return
     }
-    error.value = outcome.reason
-    errorField.value = "form"
-    focusFirstProblem()
+    createError.value = outcome.reason
   } finally {
     submitting.value = false
   }
+}
+
+const onCancelCreate = async () => {
+  pendingCreate.value = null
+  createError.value = ""
+  await nextTick()
+  formEl.value?.querySelector<HTMLButtonElement>("button[type=submit]")?.focus()
 }
 </script>
 
@@ -102,8 +119,8 @@ const onSubmit = async () => {
                 v-model="name"
                 maxlength="60"
                 placeholder="Movie night"
-                :aria-invalid="errorField === 'name' || errorField === 'form' ? true : undefined"
-                :aria-describedby="errorField === 'name' || errorField === 'form' ? 'create-error' : undefined"
+                :aria-invalid="errorField === 'name' ? true : undefined"
+                :aria-describedby="errorField === 'name' ? 'create-error' : undefined"
               />
             </Field>
             <Field>
@@ -155,5 +172,13 @@ const onSubmit = async () => {
         </form>
       </CardContent>
     </Card>
+
+    <CreateRoomConfirmDialog
+      :request="pendingCreate"
+      :pending="submitting"
+      :error="createError"
+      @confirm="onConfirmCreate"
+      @cancel="onCancelCreate"
+    />
   </div>
 </template>

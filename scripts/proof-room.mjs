@@ -311,7 +311,15 @@ const main = async () => {
     const backToBanker = await hostBrowser.page.waitFor(`${selectedCount} === 5 && !!${banker}`, { timeoutMs: 5000 });
     if (!backToBanker) fail("could not restore the starter Finance role before submitting");
 
-    await hostBrowser.page.clickUntil("button[type=submit]", "/^\\/rooms\\/[A-Z]{8,9}$/.test(location.pathname)");
+    const dialogOpened = await hostBrowser.page.clickUntil(
+      "button[type=submit]",
+      "document.querySelector('[role=alertdialog]')",
+    );
+    if (!dialogOpened) fail("the create form's submit never opened the confirm dialog");
+    await hostBrowser.page.clickUntil(
+      "[role=alertdialog] [data-slot=button]",
+      "/^\\/rooms\\/[A-Z]{8,9}$/.test(location.pathname)",
+    );
     const inLobby = await hostBrowser.page.waitFor("/^\\/rooms\\/[A-Z]{8,9}$/.test(location.pathname)", {
       timeoutMs: 20000,
     });
