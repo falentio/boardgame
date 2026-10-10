@@ -281,7 +281,19 @@ export const resolveDraftPick: WindowResolver = (ctx) => {
   };
 };
 
-/** Build a district from hand index `card` if affordable; otherwise do nothing. */
+/** Charge the Tax Collector's token: one gold from a builder who can spare it. */
+const chargeBuildTax = (state: CitadelsState, seat: SeatId): CitadelsState => {
+  if (!state.cast.includes("tax-collector")) return state;
+  if (seatHolding(state, "tax-collector") === seat) return state;
+  if (playerOf(state, seat).gold <= 0) return state;
+  return { ...spendGold(state, seat, 1), taxPot: (state.taxPot ?? 0) + 1 };
+};
+
+/**
+ * Build a district from hand index `card` if affordable; otherwise do nothing.
+ * The returned state carries the build's follow-up windows (the Magistrate's
+ * confiscation) as its step stack, which `resolveTurn` splices below `end-turn`.
+ */
 export const tryBuild = (
   state: CitadelsState,
   seat: SeatId,
@@ -290,13 +302,20 @@ export const tryBuild = (
 ): CitadelsState => {
   const player = playerOf(state, seat);
   const id = player.hand[card];
-  if (id === undefined) return state;
+  if (id === undefined) return withSteps(state, []);
   const cost = specOfDistrict(id).cost;
-  if (player.gold < cost) return state;
+  if (player.gold < cost) return withSteps(state, []);
   const hand = player.hand.filter((_, i) => i !== card);
   const city = [...player.city, { id, gold: 0 }];
   const built = withPlayer(state, { ...player, gold: player.gold - cost, hand, city });
-  return runDistrictHooks(built, "onBuild", seat, [], rng);
+  const taxed = chargeBuildTax(runDistrictHooks(built, "onBuild", seat, [], rng), seat);
+  const magistrate = seatHolding(state, "magistrate");
+  const warrant = state.warrants?.[0];
+  // Every build on this path pays its cost, so every successful build is a paid build.
+  if (warrant !== undefined && magistrate !== null && seatHolding(state, warrant) === seat) {
+    return withSteps(taxed, [winStep("magistrate-confiscate", [magistrate])]);
+  }
+  return withSteps(taxed, []);
 };
 
 export const resolveTurn: WindowResolver = (ctx) => {
@@ -316,7 +335,8 @@ export const resolveTurn: WindowResolver = (ctx) => {
     return withSteps(next, [winStep("keep", [seat]), END_TURN, ...rest]);
   }
   if (action?.t === "build") {
-    return withSteps(tryBuild(ctx.state, seat, action.card, ctx.rng), [END_TURN, ...rest]);
+    const built = tryBuild(ctx.state, seat, action.card, ctx.rng);
+    return withSteps(built, [...built.steps, END_TURN, ...rest]);
   }
   const gathered = runDistrictHooks(addGold(ctx.state, seat, 2), "onIncome", seat, rest, ctx.rng);
   return withSteps(gathered, [END_TURN, ...rest]);
@@ -363,6 +383,17 @@ export const resolveChooseType: WindowResolver = (ctx) => {
   return popWindow(type === null ? ctx.state : patchPending(ctx.state, { namedType: type }));
 };
 
+/** A threatened character's owner resolves the threat before their own turn. */
+const withThreat = (
+  state: CitadelsState,
+  character: CharacterId,
+  seat: SeatId,
+  stack: readonly Step[],
+): readonly Step[] =>
+  (state.threats ?? []).includes(character)
+    ? [winStep("blackmailer-threat", [seat]), ...stack]
+    : stack;
+
 /** Advance the rank cursor: call the next cast character, or close the round. */
 export const applyCall = (state: CitadelsState): CitadelsState => {
   const rest = state.steps.slice(1);
@@ -373,12 +404,33 @@ export const applyCall = (state: CitadelsState): CitadelsState => {
   const skip =
     character === null || seat === null || isSkipped(state, character) || isResigned(state, seat);
   if (skip) return withSteps({ ...state, callRank: rank + 1 }, [CALL, ...rest]);
-  return withSteps({ ...state, active: seat, callRank: rank + 1 }, [
-    winStep("turn", [seat]),
-    END_TURN,
-    CALL,
-    ...rest,
-  ]);
+
+  const witchOwner = seatHolding(state, "witch");
+  if (state.bewitched === character && witchOwner !== null) {
+    // The Witch plays this slot; the bewitched character's own turn is suppressed.
+    const takeover: readonly Step[] = [
+      winStep("witch-takeover", [witchOwner]),
+      END_TURN,
+      CALL,
+      ...rest,
+    ];
+    // `active` stays the called character's owner: that seat's character was called.
+    return withSteps(
+      { ...state, callRank: rank + 1 },
+      withThreat(state, character, seat, takeover),
+    );
+  }
+
+  const thiefOwner = seatHolding(state, "thief");
+  const turn: readonly Step[] = [winStep("turn", [seat]), END_TURN, CALL, ...rest];
+  const called: readonly Step[] =
+    state.robbed === character && thiefOwner !== null
+      ? [winStep("thief-rob", [thiefOwner]), ...turn]
+      : turn;
+  return withSteps(
+    { ...state, active: seat, callRank: rank + 1 },
+    withThreat(state, character, seat, called),
+  );
 };
 
 export const applyEndTurn = (state: CitadelsState, rng: Random): CitadelsState => {
@@ -387,15 +439,24 @@ export const applyEndTurn = (state: CitadelsState, rng: Random): CitadelsState =
   return withSteps(withPending(hooked, null), rest);
 };
 
+/** Clear the per-round markers; the Tax Collector's pot carries over. */
+const clearRoundMarkers = (state: CitadelsState): CitadelsState => ({
+  ...state,
+  robbed: null,
+  bewitched: null,
+  threats: [],
+  warrants: [],
+});
+
 export const applyEndRound = (state: CitadelsState, rng: Random): CitadelsState => {
   const rest = state.steps.slice(1);
   const round = state.round + 1;
   const finished = state.players.filter((p) => p.city.length >= cityTarget(state)).map((p) => p.seat);
   if (finished.length > 0) {
-    return { ...state, round, phase: "over", completed: finished, steps: [] };
+    return clearRoundMarkers({ ...state, round, phase: "over", completed: finished, steps: [] });
   }
   const draft = buildDraft(state.cast, crownOrder(state), rng);
-  return {
+  return clearRoundMarkers({
     ...state,
     round,
     phase: "draft",
@@ -405,5 +466,5 @@ export const applyEndRound = (state: CitadelsState, rng: Random): CitadelsState 
     callRank: 1,
     pending: null,
     steps: [winStep("draft-pick", [draft.picker]), ...rest],
-  };
+  });
 };

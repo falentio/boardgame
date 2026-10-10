@@ -63,7 +63,12 @@ export type WindowPurpose =
   | "warlord-destroy"
   | "tax-collect"
   | "witch-resume"
-  | "queen-income";
+  | "queen-income"
+  | "thief-rob"
+  | "witch-takeover"
+  | "blackmailer-threat"
+  | "armory-destroy"
+  | "theatre-swap";
 
 export interface Window {
   readonly kind: WindowKind;
@@ -202,6 +207,11 @@ const WINDOW_KIND: Record<WindowPurpose, WindowKind> = {
   "tax-collect": "oneOf",
   "witch-resume": "oneOf",
   "queen-income": "oneOf",
+  "thief-rob": "oneOf",
+  "witch-takeover": "oneOf",
+  "blackmailer-threat": "oneOf",
+  "armory-destroy": "oneOf",
+  "theatre-swap": "oneOf",
 };
 
 /**

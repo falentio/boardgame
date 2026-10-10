@@ -5,6 +5,7 @@ import {
   resolveChooseSeat,
   resolveChooseType,
   resolveDraftPick,
+  resolveGeneric,
   resolveKeep,
   resolveTurn,
   type WindowResolver,
@@ -113,6 +114,13 @@ export const CHARACTER_RESOLVERS: Record<WindowPurpose, WindowResolver> = {
   "tax-collect": taxCollectorResolve,
   "witch-resume": witchResolve,
   "queen-income": queenResolve,
+  "thief-rob": thiefResolve,
+  "witch-takeover": witchResolve,
+  "blackmailer-threat": blackmailerResolve,
+  // District-owned purposes: no district resolver seam exists yet, so these pop
+  // and continue until the Armory and Theater workers add one.
+  "armory-destroy": resolveGeneric,
+  "theatre-swap": resolveGeneric,
 };
 
 export { resolveChooseCharacter, resolveChooseSeat, resolveChooseType, resolveDraftPick, resolveKeep, resolveTurn };
