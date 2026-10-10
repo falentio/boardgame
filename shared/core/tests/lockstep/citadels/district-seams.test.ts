@@ -167,7 +167,8 @@ test("a build that destroys instead of paying removes the named own district and
   const next = tryBuild(state, ANN, 0, rawRandom());
   expect(cityOf(next, ANN).map((d) => d.id)).toEqual(["dragon-gate"]);
   expect(rawGold(next, ANN)).toBe(10);
-  expect(next.discard).toEqual(["framework"]);
+  // The destroyed district sinks to the bottom of the deck, as the Warlord does.
+  expect(next.deck[next.deck.length - 1]).toBe("framework");
   expect(totalCards(next)).toBe(totalCards(state));
 });
 
@@ -223,6 +224,46 @@ test("the colour count reads the declared type: a declared fifth colour drops th
   );
   const fourColours = scoreGame(withCity(turnState(), ANN, declared)).find((e) => e.seat === ANN);
   expect(fourColours?.colors).toBe(0);
+});
+
+test("the character's limit is enforced: the Trader is unlimited for trade, capped elsewhere", () => {
+  const traderState: CitadelsState = {
+    ...turnState(),
+    claimed: [{ seat: ANN, character: "trader" }],
+  };
+  const trade = withHand(withGold(traderState, ANN, 20), ANN, ["tavern", "market", "docks"]);
+  const first = build(trade, 0);
+  const second = build(first, 0);
+  const third = build(second, 0);
+  expect(cityOf(third, ANN).map((d) => d.id)).toEqual(["tavern", "market", "docks"]);
+  expect(openPurpose(third)).toBe("turn");
+
+  // The Trader's allowance is trade-only: a non-trade build consumes the limit.
+  const noble = withHand(withGold(traderState, ANN, 20), ANN, ["manor", "castle"]);
+  const one = build(noble, 0);
+  expect(cityOf(one, ANN).map((d) => d.id)).toEqual(["manor"]);
+  const two = build(one, 0);
+  expect(cityOf(two, ANN).map((d) => d.id)).toEqual(["manor"]);
+});
+
+test("the Architect's limit of three is enforced by the counter, not the window count", () => {
+  const architectState: CitadelsState = {
+    ...turnState(),
+    claimed: [{ seat: ANN, character: "architect" }],
+    steps: [
+      { kind: "window", window: { kind: "turn", purpose: "turn", seats: [ANN] } },
+      { kind: "window", window: { kind: "turn", purpose: "turn", seats: [ANN] } },
+      { kind: "window", window: { kind: "turn", purpose: "turn", seats: [ANN] } },
+      ...TURN_REST,
+    ],
+  };
+  const state = withHand(withGold(architectState, ANN, 20), ANN, ["tavern", "market", "docks", "harbor"]);
+  const first = build(state, 0);
+  const second = build(first, 0);
+  const third = build(second, 0);
+  expect(cityOf(third, ANN).map((d) => d.id)).toEqual(["tavern", "market", "docks"]);
+  const fourth = build(third, 0);
+  expect(cityOf(fourth, ANN)).toHaveLength(3);
 });
 
 const observatoryDraw: DistrictEffect = (ctx) => ({

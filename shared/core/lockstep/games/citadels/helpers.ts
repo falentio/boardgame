@@ -305,13 +305,16 @@ export const BUILD_LIMITS: Partial<Record<CharacterId, number>> = {
 };
 
 /**
- * How many limit-counting builds a seat's character allows this turn. The Trader
- * builds without limit; the Architect, Seer, Scholar, and Navigator override the
- * default of one.
+ * How many limit-counting builds a seat's character allows this turn. The
+ * Architect, Seer, Scholar, and Navigator override the default of one; the
+ * Trader is unlimited, but only for trade districts, so `card` names the
+ * district being built.
  */
-export const buildLimit = (state: CitadelsState, seat: SeatId): number => {
+export const buildLimit = (state: CitadelsState, seat: SeatId, card?: DistrictId): number => {
   const character = claimOf(state, seat)?.character ?? null;
-  if (character === "trader") return Number.POSITIVE_INFINITY;
+  if (character === "trader" && card !== undefined && specOfDistrict(card).type === "trade") {
+    return Number.POSITIVE_INFINITY;
+  }
   return character === null ? 1 : (BUILD_LIMITS[character] ?? 1);
 };
 
@@ -370,6 +373,7 @@ export const tryBuild = (
   let hand = player.hand.filter((_, i) => i !== card);
   let city = player.city;
   let discard = state.discard;
+  let deck = state.deck;
   let paid = true;
 
   if (destroy) {
@@ -377,7 +381,8 @@ export const tryBuild = (
     const at = destroySource === null ? -1 : city.findIndex((placed) => placed.id === destroySource);
     const gone = city[at < 0 ? 0 : at];
     city = city.filter((_, i) => i !== (at < 0 ? 0 : at));
-    if (gone !== undefined) discard = [...discard, gone.id];
+    // A destroyed district sinks to the bottom of the deck, as the Warlord and Armory do.
+    if (gone !== undefined) deck = [...deck, gone.id];
     paid = false;
   } else if (payCards > 0) {
     if (hand.length < payCards) return withSteps(state, []);
@@ -394,6 +399,7 @@ export const tryBuild = (
   const builtState: CitadelsState = {
     ...withPlayer(state, builtPlayer),
     discard,
+    deck,
     builtThisTurn: counted ? (state.builtThisTurn ?? 0) + 1 : (state.builtThisTurn ?? 0),
   };
   const taxed = chargeBuildTax(runDistrictHooks(builtState, "onBuild", seat, [], rng), seat);
@@ -447,9 +453,10 @@ export const resolveTurn: WindowResolver = (ctx) => {
     const built = tryBuild(ctx.state, seat, action.card, ctx.rng);
     // A build succeeds when the card left the hand; only a successful build under
     // the limit re-offers a turn window, so a failed attempt ends the turn as before.
+    const builtId = playerOf(ctx.state, seat).hand[action.card];
     const succeeded =
       playerOf(built, seat).hand.length < playerOf(ctx.state, seat).hand.length;
-    if (succeeded && (built.builtThisTurn ?? 0) < buildLimit(ctx.state, seat)) {
+    if (succeeded && (built.builtThisTurn ?? 0) < buildLimit(ctx.state, seat, builtId)) {
       // Drop any duplicate turn windows a character effect pre-seeded so the
       // limit counter, not the pre-seeded count, decides how many builds remain.
       const below = rest.filter(
