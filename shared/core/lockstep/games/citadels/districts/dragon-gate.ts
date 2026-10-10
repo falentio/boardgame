@@ -1,11 +1,14 @@
 import type { DistrictHook } from "../districts.ts";
 import type { DistrictCtx, DistrictEffect, DistrictScoring } from "./effects.ts";
 
-/** Stub: the dragon-gate district's ability is filled in by its own worker. */
+/** The Dragon Gate scores only at end of game; the engine never calls it in play. */
 export const dragonGate: DistrictEffect = (ctx: DistrictCtx) => ctx.state;
 
-/** Stub: end-game points for dragon-gate; its own worker fills this in. */
-export const dragonGateScoring: DistrictScoring = () => 0;
+/** The Dragon Gate's flat end-game bonus. */
+const DRAGON_GATE_BONUS = 2;
+
+/** Two extra points whenever the Dragon Gate stands in the city. */
+export const dragonGateScoring: DistrictScoring = () => DRAGON_GATE_BONUS;
 
 /** The engine hooks this district responds to; empty means never called. */
 export const dragonGateTriggers: readonly DistrictHook[] = [];
