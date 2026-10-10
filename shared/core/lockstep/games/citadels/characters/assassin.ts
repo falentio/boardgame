@@ -2,7 +2,6 @@ import { type CharacterId } from "../characters.ts";
 import type { CharacterCtx, CharacterEffect } from "../characters/index.ts";
 import {
   emptyPending,
-  END_TURN,
   popWindow,
   resolveChooseCharacter,
   winStep,
@@ -37,13 +36,7 @@ export const assassin: CharacterEffect = (ctx: CharacterCtx) => {
     return withSteps({ ...cleared, skipped: [...state.skipped, named] }, rest);
   }
   const armed = withPending(state, { ...emptyPending(seat, "assassin"), note: NAME_NOTE });
-  return withSteps(armed, [
-    winStep("choose-character", []),
-    { kind: "resolve" },
-    winStep("turn", [seat]),
-    END_TURN,
-    ...rest,
-  ]);
+  return withSteps(armed, [winStep("choose-character", []), { kind: "resolve" }, ...rest]);
 };
 
 /**

@@ -2,7 +2,14 @@ import { expect, test } from "vitest";
 import { act } from "../../../../index.ts";
 import type { CharacterId } from "../../../../lockstep/games/citadels/characters.ts";
 import { assassin, canKill } from "../../../../lockstep/games/citadels/characters/assassin.ts";
-import { applyCall, resolveChooseCharacter } from "../../../../lockstep/games/citadels/helpers.ts";
+import {
+  applyCall,
+  CALL,
+  END_ROUND,
+  END_TURN,
+  resolveChooseCharacter,
+  winStep,
+} from "../../../../lockstep/games/citadels/helpers.ts";
 import type { CitadelsState, Claim, Window } from "../../../../lockstep/games/citadels/state.ts";
 import {
   ANN,
@@ -104,9 +111,12 @@ test("the Assassin cannot name itself: the rule is another character", () => {
 });
 
 test("the Assassin takes its own turn after naming", () => {
-  const opened = open(turnState(CLAIMED));
+  // The engine's continuation already carries the Assassin's turn window, which
+  // the effect must leave in place below its own naming steps.
+  const rest = [winStep("turn", [ANN]), END_TURN, CALL, END_ROUND];
+  const opened = assassin({ state: turnState(CLAIMED), seat: ANN, rest, rng: rawRandom() });
   expect(purposes(opened)).toContain("turn");
-  expect(opened.steps.some((s) => s.kind === "window" && s.window.seats[0] === ANN)).toBe(true);
+  expect(purposes(opened).indexOf("turn")).toBeGreaterThan(purposes(opened).indexOf("choose-character"));
 });
 
 test("the kill is not a no-op: without it the named character would take a turn", () => {
