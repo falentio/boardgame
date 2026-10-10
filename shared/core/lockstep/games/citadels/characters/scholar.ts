@@ -5,7 +5,6 @@ import {
   deckDraw,
   emptyPending,
   isSkipped,
-  patchPending,
   playerOf,
   popWindow,
   seatHolding,
