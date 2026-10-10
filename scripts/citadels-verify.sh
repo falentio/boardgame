@@ -11,12 +11,12 @@
 # a sibling's errors as noise.
 #
 # Usage: scripts/citadels-verify.sh <test-file> [<test-file> ...] [--own <src> ...]
-# Owned sources are derived from each test path by the rule below, unless --own
-# or CITADELS_OWN (colon list) is given.
 #
-# Derivation: shared/core/tests/lockstep/citadels/characters/x.test.ts
-#          -> shared/core/lockstep/games/citadels/characters/x.ts
-# i.e. swap \`tests/\` for \`games/\` after the lockstep segment, and drop \`.test\`.
+# Owned sources: pass --own explicitly for every source file your unit edits. That
+# is the reliable form. Without --own, the script derives the source path from the
+# test path by string surgery; a NEW test whose source already exists derives
+# fine, and a test with no source of its own (a pure integration test) owns
+# nothing, so only its own test failure gates. CITADELS_OWN (colon list) overrides.
 set -uo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
@@ -35,29 +35,22 @@ for arg in "$@"; do
   if [ "$mode" = tests ]; then TESTS+=("$arg"); else OWN+=("$arg"); fi
 done
 
-# Derive the owned source path for a test path, by string surgery that must
-# actually match a file on disk. A derivation that produces nothing is a bug in
-# this script, so it fails loudly rather than silently matching no error line.
-derive_own() {
-  local t="$1"
-  local src
-  src="${t/tests\/lockstep\/citadels\//lockstep\/games\/citadels\/}"
-  src="${src%.test.ts}.ts"
-  if [ "$src" = "$t" ] || [ ! -f "$src" ]; then
-    echo "cannot derive an owned source for $t; pass --own explicitly" >&2
-    return 1
-  fi
-  printf '%s\n' "$src"
-}
-
 if [ -n "${CITADELS_OWN:-}" ]; then
   IFS=':' read -r -a OWN <<< "$CITADELS_OWN"
 fi
 if [ "${#OWN[@]}" -eq 0 ]; then
   for t in "${TESTS[@]}"; do
-    derived="$(derive_own "$t")" || exit 2
-    OWN+=("$derived")
+    src="${t/tests\/lockstep\/citadels\//lockstep\/games\/citadels\/}"
+    src="${src%.test.ts}.ts"
+    if [ "$src" != "$t" ] && [ -f "$src" ]; then
+      OWN+=("$src")
+    fi
   done
+fi
+
+if [ "${#OWN[@]}" -eq 0 ]; then
+  echo "note: no owned source derived; only a test failure will gate this run."
+  echo "      pass --own <path> for every source file your unit edits."
 fi
 
 echo "== vitest (the gate) =="
@@ -77,7 +70,6 @@ if [ "$TSC_RC" -eq 0 ]; then
   exit 0
 fi
 
-# Fail if any error line names a path this unit owns.
 MINE=0
 while IFS= read -r line; do
   for own in "${OWN[@]}"; do
@@ -93,8 +85,6 @@ if [ "$MINE" -eq 1 ]; then
   exit 1
 fi
 
-# No error in an owned path. A tsc error anywhere under the citadels module that
-# is not ours means a sibling is mid-edit; that is not this unit's failure.
 NOISE="$(grep -c "lockstep/games/citadels/" "$TSC_LOG" || true)"
 if [ "${NOISE:-0}" -gt 0 ]; then
   echo "tsc reports $NOISE error line(s) under the citadels module, none in your paths."
