@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue"
 import type { Board } from "@/composables/board-view.ts"
+import RoleGuide from "./RoleGuide.vue"
 import SeatPiece from "./SeatPiece.vue"
 import TablePuck from "./TablePuck.vue"
 
@@ -15,7 +16,10 @@ const ordered = computed(() => {
 
 <template>
   <div class="mx-auto flex w-full max-w-5xl flex-col gap-5" data-slot="game-board">
-    <div class="rounded-2xl border border-dashed border-foreground/15 bg-muted/30 px-6 py-5">
+    <div class="relative rounded-2xl border border-dashed border-foreground/15 bg-muted/30 px-6 py-5">
+      <div class="absolute end-3 top-3">
+        <RoleGuide :roles="board.table.roles" />
+      </div>
       <TablePuck :table="board.table" />
     </div>
 
