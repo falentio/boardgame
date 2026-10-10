@@ -4,27 +4,24 @@ import type { G54Action } from "#shared/core/lockstep/games/g54/index.ts"
 import type { CardChoice, TargetCard, WindowMenu } from "@/composables/window-menu.ts"
 import { generalCardModel, verbCardModel } from "@/composables/general-card.ts"
 import { seatId, type SeatId } from "#shared/rooms/ids.ts"
-import Confirm from "@/components/g54/board/picker/Confirm.vue"
-import Direct from "@/components/g54/board/picker/Direct.vue"
 import Roster from "@/components/g54/board/picker/Roster.vue"
-import Tray from "@/components/g54/board/picker/Tray.vue"
-import Sheet from "@/components/g54/board/picker/Sheet.vue"
+import RosterMotion from "@/components/g54/board/picker/RosterMotion.vue"
 
 definePageMeta({ layout: false })
 
-type Variant = "confirm" | "direct" | "roster" | "tray" | "sheet"
+type Variant = "roster" | "roster-motion"
 type Scene = "challenge" | "turn"
 
-const VARIANTS: readonly Variant[] = ["confirm", "direct", "roster", "tray", "sheet"]
+const VARIANTS: readonly Variant[] = ["roster", "roster-motion"]
 const SCENES: readonly Scene[] = ["challenge", "turn"]
-const VARIANT_COMPONENTS = { confirm: Confirm, direct: Direct, roster: Roster, tray: Tray, sheet: Sheet }
+const VARIANT_COMPONENTS = { roster: Roster, "roster-motion": RosterMotion }
 
 const route = useRoute()
 const router = useRouter()
 
 const variant = computed<Variant>(() => {
-  const raw = String(route.query.variant ?? "confirm")
-  return (VARIANTS as readonly string[]).includes(raw) ? (raw as Variant) : "confirm"
+  const raw = String(route.query.variant ?? "roster")
+  return (VARIANTS as readonly string[]).includes(raw) ? (raw as Variant) : "roster"
 })
 const scene = computed<Scene>(() => {
   const raw = String(route.query.scene ?? "challenge")
@@ -39,10 +36,10 @@ const setScene = (next: Scene) => router.replace({ query: { ...route.query, scen
 const onKey = (event: KeyboardEvent) => {
   if (event.target instanceof HTMLInputElement) return
   const index = VARIANTS.indexOf(variant.value)
-  if (event.key === "ArrowRight") setVariant(VARIANTS[(index + 1) % VARIANTS.length] ?? "confirm")
-  if (event.key === "ArrowLeft") setVariant(VARIANTS[(index - 1 + VARIANTS.length) % VARIANTS.length] ?? "confirm")
+  if (event.key === "ArrowRight") setVariant(VARIANTS[(index + 1) % VARIANTS.length] ?? "roster")
+  if (event.key === "ArrowLeft") setVariant(VARIANTS[(index - 1 + VARIANTS.length) % VARIANTS.length] ?? "roster")
   const jump = Number(event.key)
-  if (jump >= 1 && jump <= VARIANTS.length) setVariant(VARIANTS[jump - 1] ?? "confirm")
+  if (jump >= 1 && jump <= VARIANTS.length) setVariant(VARIANTS[jump - 1] ?? "roster")
 }
 onMounted(() => window.addEventListener("keydown", onKey))
 onUnmounted(() => window.removeEventListener("keydown", onKey))
@@ -146,7 +143,9 @@ const turnMenu: WindowMenu = {
 const menu = computed<WindowMenu>(() => (scene.value === "challenge" ? challengeMenu : turnMenu))
 
 const last = ref<string>("")
+const replay = ref(0)
 watch([variant, scene], () => { last.value = "" })
+const replayEnter = () => { last.value = ""; replay.value += 1 }
 
 const onAct = (action: G54Action) => { last.value = JSON.stringify(action) }
 
@@ -184,9 +183,9 @@ const SEATS = [
         </div>
       </div>
 
-      <component :is="activeComponent" :menu="menu" :busy="false" @act="onAct" />
+      <component :is="activeComponent" :key="replay" :menu="menu" :busy="false" @act="onAct" />
 
-      <p class="text-muted-foreground min-h-5 text-sm" role="status" aria-live="polite">
+      <p class="text-muted-foreground min-h-5 text-sm">
         <span v-if="last">Fired <code class="font-mono text-xs">{{ last }}</code></span>
         <span v-else>No action fired yet.</span>
       </p>
@@ -201,7 +200,10 @@ const SEATS = [
         :aria-current="variant === name ? 'true' : 'false'"
         @click="setVariant(name)"
       >
-        {{ name[0]?.toUpperCase() + name.slice(1) }}
+        {{ name === "roster-motion" ? "Roster + motion" : "Roster" }}
+      </button>
+      <button type="button" data-action="replay" @click="replayEnter">
+        Replay enter
       </button>
     </nav>
 
