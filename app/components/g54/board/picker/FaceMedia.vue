@@ -23,6 +23,7 @@ const playerImage = computed(() =>
 )
 const playerInitials = computed(() => (props.face.kind === "player" ? initialsOf(props.face.name) : ""))
 const actionLabel = computed(() => (props.face.kind === "action" ? props.face.card.label : null))
+const actionArt = computed(() => (props.face.kind === "action" ? props.face.card.art : null))
 const actionIcon = computed<Component | null>(() =>
   actionLabel.value === null ? null : (ICONS[actionLabel.value] ?? null),
 )
@@ -30,11 +31,12 @@ const actionIcon = computed<Component | null>(() =>
 
 <template>
   <span class="grid size-10 shrink-0 place-items-center" aria-hidden="true">
+    <!-- role: the RoleCard crop (object-[50%_18%] on portrait art) -->
     <img
       v-if="roleArt"
       :src="roleArt"
       alt=""
-      class="size-10 rounded-lg object-cover ring-1 ring-foreground/10"
+      class="size-10 rounded-lg object-cover object-[50%_18%] ring-1 ring-foreground/10"
       loading="lazy"
       decoding="async"
     >
@@ -42,6 +44,15 @@ const actionIcon = computed<Component | null>(() =>
       <AvatarImage :src="playerImage" alt="" />
       <AvatarFallback class="rounded-full text-xs">{{ playerInitials }}</AvatarFallback>
     </Avatar>
+    <!-- general action: its square art, centred like GeneralActionCard -->
+    <img
+      v-else-if="actionArt"
+      :src="actionArt"
+      alt=""
+      class="size-10 rounded-lg object-cover ring-1 ring-foreground/10"
+      loading="lazy"
+      decoding="async"
+    >
     <span
       v-else-if="actionIcon"
       class="bg-muted text-foreground grid size-10 place-items-center rounded-lg"
