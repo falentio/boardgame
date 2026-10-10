@@ -42,7 +42,8 @@ import {
   totalCards,
 } from "./driver.ts";
 
-const FULL_DECK = BASIC_DISTRICTS.length + 14;
+/** 54 basic copies plus the 14 chosen uniques. */
+const FULL_DECK = BASIC_DISTRICTS.reduce((n, spec) => n + spec.copies, 0) + 14;
 
 test("makeTable starts a session for 3, 4, 5, and 6 seats with a legal cast", () => {
   for (const seats of [SEATS3, SEATS4, SEATS5, SEATS6]) {
@@ -141,18 +142,19 @@ test("every character in the catalog has its own file, an effect, and a resolver
   }
 });
 
-test("the district catalog holds 54 basics and 30 uniques, each with an effect", () => {
-  expect(BASIC_DISTRICTS).toHaveLength(54);
+test("the district catalog holds 17 basic cards (54 copies) and 30 uniques, each with an effect", () => {
+  expect(BASIC_DISTRICTS).toHaveLength(17);
+  expect(BASIC_DISTRICTS.reduce((n, spec) => n + spec.copies, 0)).toBe(54);
   expect(UNIQUE_DISTRICTS).toHaveLength(30);
-  expect(DISTRICT_CATALOG).toHaveLength(84);
-  const byType = new Map<string, number>();
+  expect(DISTRICT_CATALOG).toHaveLength(47);
+  const copiesByType = new Map<string, number>();
   for (const spec of BASIC_DISTRICTS) {
-    byType.set(spec.type, (byType.get(spec.type) ?? 0) + 1);
+    copiesByType.set(spec.type, (copiesByType.get(spec.type) ?? 0) + spec.copies);
   }
-  expect(byType.get("military")).toBe(11);
-  expect(byType.get("religious")).toBe(11);
-  expect(byType.get("noble")).toBe(12);
-  expect(byType.get("trade")).toBe(20);
+  expect(copiesByType.get("military")).toBe(11);
+  expect(copiesByType.get("noble")).toBe(12);
+  expect(copiesByType.get("religious")).toBe(11);
+  expect(copiesByType.get("trade")).toBe(20);
   for (const spec of UNIQUE_DISTRICTS) {
     expect(spec.unique).toBe(true);
     expect(spec.type).toBe("unique");

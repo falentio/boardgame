@@ -4,9 +4,9 @@ import { CitadelsError } from "./error.ts";
 /**
  * The character domain. 27 characters across ranks 1-9, three per rank. Each
  * rank-1..8 character plus optionally one rank-9 character forms a game's cast
- * (`validateCast` in setup.ts). The catalog is pure data: rank, the district
- * colour the character collects gold for, whether it takes the crown, and a
- * one-line summary. Every character's ability lives in `characters/<id>.ts`.
+ * (`validateCast` in setup.ts). The catalog is pure data: rank, the income
+ * ability, whether it takes the crown, and a one-line summary. Every character's
+ * ability lives in `characters/<id>.ts`.
  */
 
 export type CharacterId =
@@ -40,16 +40,35 @@ export type CharacterId =
 
 export type Rank = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
+/** What each counted district yields: gold, a card, or the holder's choice of either. */
+export type IncomeGrant =
+  | { readonly kind: "gold" }
+  | { readonly kind: "cards" }
+  | { readonly kind: "gold-or-cards" };
+
+/**
+ * A character's resource-gathering bonus: it counts its own districts of
+ * `counts` type and yields `grants` per one. King and Emperor take gold per
+ * noble, Patrician a card per noble; Bishop gold per religious, Cardinal a card,
+ * Abbot the holder's choice; Merchant and Trader gold per trade; Warlord,
+ * Diplomat, and Marshal gold per military. `null` means no income ability.
+ */
+export interface CharacterIncome {
+  readonly counts: DistrictType;
+  readonly grants: IncomeGrant;
+}
+
 export interface CharacterSpec {
   readonly id: CharacterId;
   readonly name: string;
   readonly rank: Rank;
-  /** The district type this character collects gold for, or null (no income ability). */
-  readonly income: DistrictType | null;
+  readonly income: CharacterIncome | null;
   /** True when the character must take the crown (King, Emperor, Patrician). */
   readonly crown: boolean;
   readonly summary: string;
 }
+
+const goldFrom = (counts: DistrictType): CharacterIncome => ({ counts, grants: { kind: "gold" } });
 
 export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
   {
@@ -69,12 +88,12 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     summary: "Name a character; its owner is bewitched and takes the Witch's turn instead.",
   },
   {
-    id: "spy",
-    name: "Spy",
+    id: "magistrate",
+    name: "Magistrate",
     rank: 1,
     income: null,
     crown: false,
-    summary: "Name a district type and a player; look at that player's hand and take 1 gold.",
+    summary: "Confiscate a district from a player's city, paying its cost to the owner.",
   },
   {
     id: "thief",
@@ -85,20 +104,20 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     summary: "Name a character; when it is called you take all of its owner's gold.",
   },
   {
+    id: "spy",
+    name: "Spy",
+    rank: 2,
+    income: null,
+    crown: false,
+    summary: "Name a district type and a player; look at that player's hand and take 1 gold.",
+  },
+  {
     id: "blackmailer",
     name: "Blackmailer",
     rank: 2,
     income: null,
     crown: false,
     summary: "Pay 1 gold to a character; that character skips its turn this round.",
-  },
-  {
-    id: "seer",
-    name: "Seer",
-    rank: 2,
-    income: null,
-    crown: false,
-    summary: "Draw a card, keep one and give one to a neighbour.",
   },
   {
     id: "magician",
@@ -117,18 +136,18 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     summary: "Look at a player's hand and take one district card from it.",
   },
   {
-    id: "magistrate",
-    name: "Magistrate",
+    id: "seer",
+    name: "Seer",
     rank: 3,
     income: null,
     crown: false,
-    summary: "Confiscate a district from a player's city, paying its cost to the owner.",
+    summary: "Draw a card, keep one and give one to a neighbour.",
   },
   {
     id: "king",
     name: "King",
     rank: 4,
-    income: "noble",
+    income: goldFrom("noble"),
     crown: true,
     summary: "Take the crown and 1 gold per noble district in your city.",
   },
@@ -136,7 +155,7 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     id: "emperor",
     name: "Emperor",
     rank: 4,
-    income: "noble",
+    income: goldFrom("noble"),
     crown: true,
     summary: "Take the crown, give the crown to a player, and collect 1 gold per noble district.",
   },
@@ -144,15 +163,15 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     id: "patrician",
     name: "Patrician",
     rank: 4,
-    income: "noble",
+    income: { counts: "noble", grants: { kind: "cards" } },
     crown: true,
-    summary: "Take the crown and collect 1 gold per noble district in your city.",
+    summary: "Take the crown and collect 1 card per noble district in your city.",
   },
   {
     id: "bishop",
     name: "Bishop",
     rank: 5,
-    income: "religious",
+    income: goldFrom("religious"),
     crown: false,
     summary: "Collect 1 gold per religious district; name a player who pays you 1 gold per noble.",
   },
@@ -160,23 +179,23 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     id: "abbot",
     name: "Abbot",
     rank: 5,
-    income: "religious",
+    income: { counts: "religious", grants: { kind: "gold-or-cards" } },
     crown: false,
-    summary: "Collect 1 gold per religious district; take 1 gold or 1 card from the richest player.",
+    summary: "Collect 1 gold or 1 card per religious district; take 1 gold or 1 card from the richest player.",
   },
   {
     id: "cardinal",
     name: "Cardinal",
     rank: 5,
-    income: "religious",
+    income: { counts: "religious", grants: { kind: "cards" } },
     crown: false,
-    summary: "Collect 1 gold per religious district; a rival gives you 1 gold or 1 card.",
+    summary: "Collect 1 card per religious district; a rival gives you 1 gold or 1 card.",
   },
   {
     id: "merchant",
     name: "Merchant",
     rank: 6,
-    income: "trade",
+    income: goldFrom("trade"),
     crown: false,
     summary: "Collect 1 gold per trade district and gain 1 extra gold.",
   },
@@ -192,7 +211,7 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     id: "trader",
     name: "Trader",
     rank: 6,
-    income: "trade",
+    income: goldFrom("trade"),
     crown: false,
     summary: "Collect 1 gold per trade district and build any number of districts.",
   },
@@ -224,7 +243,7 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     id: "warlord",
     name: "Warlord",
     rank: 8,
-    income: "military",
+    income: goldFrom("military"),
     crown: false,
     summary: "Collect 1 gold per military district; pay to destroy one district.",
   },
@@ -232,15 +251,15 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     id: "diplomat",
     name: "Diplomat",
     rank: 8,
-    income: null,
+    income: goldFrom("military"),
     crown: false,
-    summary: "Exchange a district in your city with one in a rival's city.",
+    summary: "Collect 1 gold per military district; exchange a district in your city with a rival's.",
   },
   {
     id: "marshal",
     name: "Marshal",
     rank: 8,
-    income: "military",
+    income: goldFrom("military"),
     crown: false,
     summary: "Collect 1 gold per military district; seize a district from a rival's city.",
   },
