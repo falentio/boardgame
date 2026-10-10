@@ -4,6 +4,7 @@ import type { G54Action } from "#shared/core/lockstep/games/g54/index.ts"
 import type { CardChoice, TargetCard, WindowMenu } from "@/composables/window-menu.ts"
 import { Button } from "@/components/ui/button"
 import { faceName, faceSummary, usePickerState } from "../window-picker-parts.ts"
+import FaceMedia from "./FaceMedia.vue"
 
 const props = defineProps<{ menu: WindowMenu; busy?: boolean }>()
 const emit = defineEmits<{ act: [action: G54Action] }>()
@@ -17,7 +18,6 @@ const targets = computed<readonly TargetCard[]>(() => groups.value.flatMap((grou
 const isDirect = (card: CardChoice): boolean => card.target === null
 const rowLabel = (card: CardChoice): string =>
   [faceName(card.face), card.reason ?? faceSummary(card.face)].join(". ")
-const initial = (card: CardChoice): string => faceName(card.face).slice(0, 1)
 
 const runCard = (card: CardChoice): void => {
   if (busy.value || !card.enabled || card.target !== null) return
@@ -61,10 +61,7 @@ const runTarget = (): void => {
           :aria-label="rowLabel(card)"
           @click="select(card)"
         >
-          <span
-            class="bg-muted flex size-9 shrink-0 items-center justify-center rounded-lg text-xs font-semibold"
-            aria-hidden="true"
-          >{{ initial(card) }}</span>
+          <FaceMedia :face="card.face" />
           <span class="min-w-0 flex-1">
             <span class="block truncate text-sm font-medium">{{ faceName(card.face) }}</span>
             <span class="text-muted-foreground block truncate text-xs">
@@ -106,6 +103,7 @@ const runTarget = (): void => {
             :aria-label="faceName(target.face)"
             @click="toggle(target)"
           >
+            <FaceMedia :face="target.face" />
             <span class="min-w-0 flex-1">
               <span class="block truncate text-sm font-medium">{{ faceName(target.face) }}</span>
               <span v-if="target.reason" class="text-muted-foreground block truncate text-xs">
