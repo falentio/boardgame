@@ -6,6 +6,7 @@ import {
   confirmable,
   type CardChoice,
   type CardFace,
+  type StagedCard,
   type TargetCard,
   type TargetGroup,
   type WindowMenu,
@@ -28,6 +29,9 @@ export interface PickerState {
   readonly targetIds: Ref<readonly string[]>
   readonly card: Ref<CardChoice | null>
   readonly groups: Ref<readonly TargetGroup[]>
+  readonly skipSelect: Ref<boolean>
+  readonly pickedCount: Ref<number>
+  readonly required: Ref<number>
   readonly ready: Ref<boolean>
   readonly select: (card: CardChoice) => void
   readonly toggle: (target: TargetCard) => void
@@ -39,13 +43,23 @@ export const usePickerState = (menu: Ref<WindowMenu>, busy: Ref<boolean>): Picke
   const selectedId = ref<string | null>(null)
   const targetIds = ref<readonly string[]>([])
 
-  const card = computed<CardChoice | null>(
-    () => menu.value.cards.find((candidate) => candidate.id === selectedId.value) ?? null,
-  )
+  /** A lone enabled staged card is not a choice: open its target stage, not a one-row select. */
+  const loneStaged = computed<StagedCard | null>(() => {
+    const only = menu.value.cards.length === 1 ? menu.value.cards[0] : undefined
+    return only !== undefined && only.enabled && only.target !== null ? only : null
+  })
+  const skipSelect = computed(() => loneStaged.value !== null)
+
+  const card = computed<CardChoice | null>(() => {
+    const id = selectedId.value ?? loneStaged.value?.id ?? null
+    return menu.value.cards.find((candidate) => candidate.id === id) ?? null
+  })
   const groups = computed<readonly TargetGroup[]>(() => card.value?.target ?? [])
   const picks = computed<readonly TargetCard[]>(() =>
     groups.value.flatMap((group) => group.cards).filter((c) => targetIds.value.includes(c.id)),
   )
+  const pickedCount = computed(() => picks.value.length)
+  const required = computed(() => groups.value.reduce((total, group) => total + group.count, 0))
   const ready = computed(
     () => !busy.value && card.value !== null && confirmable(card.value, picks.value),
   )
@@ -80,5 +94,18 @@ export const usePickerState = (menu: Ref<WindowMenu>, busy: Ref<boolean>): Picke
     return chosen.target === null ? chosen.resolve() : chosen.resolve(picks.value)
   }
 
-  return { selectedId, targetIds, card, groups, ready, select, toggle, clear, build }
+  return {
+    selectedId,
+    targetIds,
+    card,
+    groups,
+    skipSelect,
+    pickedCount,
+    required,
+    ready,
+    select,
+    toggle,
+    clear,
+    build,
+  }
 }
