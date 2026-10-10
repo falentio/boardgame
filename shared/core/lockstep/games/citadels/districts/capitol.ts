@@ -1,11 +1,29 @@
 import type { DistrictHook } from "../districts.ts";
+import { specOfDistrict } from "../districts.ts";
 import type { DistrictCtx, DistrictEffect, DistrictScoring } from "./effects.ts";
 
-/** Stub: the capitol district's ability is filled in by its own worker. */
+/** The Capitol scores only at end of game; the engine never calls it in play. */
 export const capitol: DistrictEffect = (ctx: DistrictCtx) => ctx.state;
 
-/** Stub: end-game points for capitol; its own worker fills this in. */
-export const capitolScoring: DistrictScoring = () => 0;
+/** Three districts of one type earn a flat three points, once, however many types qualify. */
+const THREE_OF_A_TYPE = 3;
+
+/** True when the city holds at least three districts of some one type, the Capitol included. */
+const hasThreeOfAType = (city: readonly { readonly id: string }[]): boolean => {
+  const counts = new Map<string, number>();
+  for (const district of city) {
+    const type = specOfDistrict(district.id).type;
+    counts.set(type, (counts.get(type) ?? 0) + 1);
+  }
+  for (const count of counts.values()) {
+    if (count >= 3) return true;
+  }
+  return false;
+};
+
+/** Three extra points when the city shows three districts of one type, and only once. */
+export const capitolScoring: DistrictScoring = (_district, city) =>
+  hasThreeOfAType(city) ? THREE_OF_A_TYPE : 0;
 
 /** The engine hooks this district responds to; empty means never called. */
 export const capitolTriggers: readonly DistrictHook[] = [];
