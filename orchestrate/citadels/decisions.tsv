@@ -1,0 +1,9 @@
+ts	phase	decision	why	evidence	result
+2026-07-18T23:00:00Z	frame	counted the work: 27 characters + 84 districts + setup/draft/turn/scoring	wanted the size before a long run	docs/design/citadels-full-game.md	about 8 tracks, 20-30 units
+2026-07-18T23:02:00Z	frame	routed to the Orchestrate playbook	work outlives one agent: many stacked units and subagents	orchestrate/citadels/overview.md	program opened
+2026-07-18T23:05:00Z	harness	probed the subagent environment instead of assuming it	children run inside a T3 thread and may or may not share my worktree	delegate_task probe child	probe confirmed: children share ONE worktree and ONE branch
+2026-07-18T23:08:00Z	harness	gave every worker one file and pre-registered all effects in the scaffold	two workers editing one file in a shared worktree is a race	orchestrate/citadels/briefs/core-scaffold.md addendum	one writer per file
+2026-07-18T23:10:00Z	harness	serialized commits through a flock script instead of trusting git index	git commit races on .git/index with concurrent workers	scripts/citadels-commit.sh	commit lever works
+2026-07-18T23:12:00Z	harness	installed deps and pinned the baseline	vp test failed only because node_modules was absent; had to know the real baseline	pnpm install; vp test	baseline: 5 pre-existing failures in rooms/http.test.ts, repo formatting red
+2026-07-18T23:14:00Z	harness	wrote a scoped tsconfig and verify script instead of using the red repo-wide check	a gate already red at baseline cannot gate anything	tsconfig.citadels.json, scripts/citadels-verify.sh	scoped gate green
+2026-07-18T23:16:00Z	pilot	spawned core-scaffold as the pilot, the one-way door	falsify the brief template and the one-writer contract while it costs one agent	commit 9f646dc, brief core-scaffold	running

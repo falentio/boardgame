@@ -1,0 +1,143 @@
+[
+  {
+    "id": "chars-rank1",
+    "kind": "character",
+    "members": [
+      "assassin",
+      "witch",
+      "magistrate"
+    ]
+  },
+  {
+    "id": "chars-rank2",
+    "kind": "character",
+    "members": [
+      "thief",
+      "spy",
+      "blackmailer"
+    ]
+  },
+  {
+    "id": "chars-rank3",
+    "kind": "character",
+    "members": [
+      "magician",
+      "wizard",
+      "seer"
+    ]
+  },
+  {
+    "id": "chars-rank4",
+    "kind": "character",
+    "members": [
+      "king",
+      "emperor",
+      "patrician"
+    ]
+  },
+  {
+    "id": "chars-rank5",
+    "kind": "character",
+    "members": [
+      "bishop",
+      "abbot",
+      "cardinal"
+    ]
+  },
+  {
+    "id": "chars-rank6",
+    "kind": "character",
+    "members": [
+      "merchant",
+      "alchemist",
+      "trader"
+    ]
+  },
+  {
+    "id": "chars-rank7",
+    "kind": "character",
+    "members": [
+      "architect",
+      "navigator",
+      "scholar"
+    ]
+  },
+  {
+    "id": "chars-rank8",
+    "kind": "character",
+    "members": [
+      "warlord",
+      "diplomat",
+      "marshal"
+    ]
+  },
+  {
+    "id": "chars-rank9",
+    "kind": "character",
+    "members": [
+      "artist",
+      "queen",
+      "tax-collector"
+    ]
+  },
+  {
+    "id": "dist-income",
+    "kind": "district",
+    "members": [
+      "gold-mine",
+      "library",
+      "observatory",
+      "school-of-magic",
+      "park",
+      "poor-house"
+    ]
+  },
+  {
+    "id": "dist-build",
+    "kind": "district",
+    "members": [
+      "factory",
+      "quarry",
+      "framework",
+      "necropolis",
+      "stables",
+      "monument",
+      "secret-vault",
+      "thieves-den"
+    ]
+  },
+  {
+    "id": "dist-guard",
+    "kind": "district",
+    "members": [
+      "keep",
+      "great-wall",
+      "armory"
+    ]
+  },
+  {
+    "id": "dist-scoring",
+    "kind": "district",
+    "members": [
+      "basilica",
+      "capitol",
+      "dragon-gate",
+      "imperial-treasury",
+      "ivory-tower",
+      "map-room",
+      "statue",
+      "wishing-well",
+      "haunted-quarter",
+      "museum"
+    ]
+  },
+  {
+    "id": "dist-actions",
+    "kind": "district",
+    "members": [
+      "laboratory",
+      "smithy",
+      "theatre"
+    ]
+  }
+]
