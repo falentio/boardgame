@@ -1,11 +1,13 @@
 import type { DistrictHook } from "../districts.ts";
+import { specOfDistrict } from "../districts.ts";
 import type { DistrictCtx, DistrictEffect, DistrictScoring } from "./effects.ts";
 
-/** Stub: the wishing-well district's ability is filled in by its own worker. */
+/** The Wishing Well scores only at end of game; the engine never calls it in play. */
 export const wishingWell: DistrictEffect = (ctx: DistrictCtx) => ctx.state;
 
-/** Stub: end-game points for wishing-well; its own worker fills this in. */
-export const wishingWellScoring: DistrictScoring = () => 0;
+/** One extra point for each unique district in the city, the Wishing Well included. */
+export const wishingWellScoring: DistrictScoring = (_district, city) =>
+  city.filter((placed) => specOfDistrict(placed.id).unique).length;
 
 /** The engine hooks this district responds to; empty means never called. */
 export const wishingWellTriggers: readonly DistrictHook[] = [];
