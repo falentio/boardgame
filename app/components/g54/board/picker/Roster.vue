@@ -17,7 +17,6 @@ const { selectedId, targetIds, card: chosen, groups, ready, select, toggle, buil
 
 const targets = computed<readonly TargetCard[]>(() => groups.value.flatMap((group) => group.cards))
 
-const isDirect = (card: CardChoice): boolean => card.target === null
 const roleMeta = (card: CardChoice | TargetCard): RoleCardModel | null =>
   card.face.kind === "role" ? roleCardModel(card.face.role) : null
 
@@ -35,17 +34,11 @@ const rowClass = (card: CardChoice | TargetCard, selected: boolean): string => {
   return "hover:bg-muted/60"
 }
 
-/** A direct row fires; a staged row selects to reveal its target stage. */
-const activate = (card: CardChoice): void => {
-  if (busy.value || !card.enabled) return
-  if (card.target === null) {
-    emit("act", card.resolve())
-    return
-  }
-  select(card)
-}
+const confirmLabel = computed(() =>
+  chosen.value === null ? "Confirm" : `Confirm ${faceName(chosen.value.face)}`,
+)
 
-const runTarget = (): void => {
+const confirm = (): void => {
   const action = build()
   if (action !== null) emit("act", action)
 }
@@ -77,7 +70,7 @@ const runTarget = (): void => {
         :disabled="busy || !card.enabled"
         :aria-pressed="card.id === selectedId"
         :aria-label="labelOf(card)"
-        @click="activate(card)"
+        @click="select(card)"
       >
         <FaceMedia :face="card.face" />
         <span class="min-w-0 flex-1">
@@ -118,18 +111,19 @@ const runTarget = (): void => {
             </span>
           </span>
         </button>
-        <Button
-          v-if="ready"
-          type="button"
-          size="lg"
-          class="mt-1 w-full"
-          :disabled="busy"
-          :aria-label="`Confirm ${faceName(chosen.face)}`"
-          @click="runTarget"
-        >
-          Confirm {{ faceName(chosen.face) }}
-        </Button>
       </div>
     </div>
+
+    <footer class="flex items-center justify-end border-t border-foreground/10 bg-muted/40 px-6 py-3">
+      <Button
+        type="button"
+        size="lg"
+        :disabled="!ready"
+        :aria-label="confirmLabel"
+        @click="confirm"
+      >
+        Confirm
+      </Button>
+    </footer>
   </section>
 </template>
