@@ -1,11 +1,26 @@
 import type { DistrictHook } from "../districts.ts";
+import { specOfDistrict } from "../districts.ts";
 import type { DistrictCtx, DistrictEffect, DistrictScoring } from "./effects.ts";
 
-/** Stub: the ivory-tower district's ability is filled in by its own worker. */
+/** The Ivory Tower scores only at end of game; the engine never calls it in play. */
 export const ivoryTower: DistrictEffect = (ctx: DistrictCtx) => ctx.state;
 
-/** Stub: end-game points for ivory-tower; its own worker fills this in. */
-export const ivoryTowerScoring: DistrictScoring = () => 0;
+/**
+ * The Haunted Quarter's scoring-time type choice never reaches this seam, so we
+ * take the branch the rulebook names: a present Haunted Quarter is counted as a
+ * non-unique district and does not stop the Ivory Tower from scoring.
+ */
+const HAUNTED_QUARTER = "haunted-quarter";
+
+/** Five extra points when the Ivory Tower is the city's only unique district. */
+const IVORY_TOWER_BONUS = 5;
+
+export const ivoryTowerScoring: DistrictScoring = (_district, city) => {
+  const uniques = city.filter(
+    (placed) => specOfDistrict(placed.id).unique && placed.id !== HAUNTED_QUARTER,
+  );
+  return uniques.length === 1 ? IVORY_TOWER_BONUS : 0;
+};
 
 /** The engine hooks this district responds to; empty means never called. */
 export const ivoryTowerTriggers: readonly DistrictHook[] = [];
