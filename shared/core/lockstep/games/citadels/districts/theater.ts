@@ -1,3 +1,4 @@
+import type { DistrictHook } from "../districts.ts";
 import type { WindowResolver } from "../helpers.ts";
 import type { DistrictCtx, DistrictEffect, DistrictScoring } from "./effects.ts";
 
@@ -12,3 +13,6 @@ export const theaterResolve: WindowResolver = (ctx) => ({
   ...ctx.state,
   steps: ctx.state.steps.slice(1),
 });
+
+/** The engine hooks this district responds to; empty means never called. */
+export const theaterTriggers: readonly DistrictHook[] = [];
