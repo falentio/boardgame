@@ -50,10 +50,9 @@ export const usePickerState = (menu: Ref<WindowMenu>, busy: Ref<boolean>): Picke
   })
   const skipSelect = computed(() => loneStaged.value !== null)
 
-  const card = computed<CardChoice | null>(() => {
-    const id = selectedId.value ?? loneStaged.value?.id ?? null
-    return menu.value.cards.find((candidate) => candidate.id === id) ?? null
-  })
+  const card = computed<CardChoice | null>(
+    () => menu.value.cards.find((candidate) => candidate.id === selectedId.value) ?? loneStaged.value,
+  )
   const groups = computed<readonly TargetGroup[]>(() => card.value?.target ?? [])
   const picks = computed<readonly TargetCard[]>(() =>
     groups.value.flatMap((group) => group.cards).filter((c) => targetIds.value.includes(c.id)),
