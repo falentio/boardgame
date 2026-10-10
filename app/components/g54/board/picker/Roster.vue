@@ -3,6 +3,7 @@ import { computed, toRef } from "vue"
 import type { G54Action } from "#shared/core/lockstep/games/g54/index.ts"
 import type { CardChoice, TargetCard, WindowMenu } from "@/composables/window-menu.ts"
 import { Button } from "@/components/ui/button"
+import RoleCard from "@/components/g54/RoleCard.vue"
 import { faceName, faceSummary, usePickerState } from "../window-picker-parts.ts"
 import FaceMedia from "./FaceMedia.vue"
 
@@ -15,6 +16,7 @@ const { selectedId, targetIds, card: chosen, groups, ready, select, toggle, buil
 
 const targets = computed<readonly TargetCard[]>(() => groups.value.flatMap((group) => group.cards))
 
+const isRole = (card: CardChoice | TargetCard): boolean => card.face.kind === "role"
 const isDirect = (card: CardChoice): boolean => card.target === null
 const rowLabel = (card: CardChoice): string =>
   [faceName(card.face), card.reason ?? faceSummary(card.face)].join(". ")
@@ -46,14 +48,24 @@ const runTarget = (): void => {
       </p>
     </header>
 
-    <div class="flex min-w-0 flex-1 flex-col gap-1.5 overflow-y-auto px-3 py-4">
+    <div class="flex min-w-0 flex-1 flex-col gap-2 overflow-y-auto px-3 py-4">
       <div
         v-for="card in menu.cards"
         :key="card.id"
-        class="flex items-center gap-2 rounded-xl px-2 py-2"
-        :class="card.id === selectedId ? 'bg-primary/10 ring-1 ring-primary/30' : 'hover:bg-muted/60'"
+        class="flex items-start gap-2 rounded-xl p-2"
+        :class="!isRole(card) && (card.id === selectedId ? 'bg-primary/10 ring-1 ring-primary/30' : 'hover:bg-muted/60')"
       >
+        <RoleCard
+          v-if="isRole(card)"
+          :role="card.face.role"
+          selectable
+          :selected="card.id === selectedId"
+          :disabled="busy || !card.enabled"
+          class="w-40 shrink-0"
+          @select="select(card)"
+        />
         <button
+          v-else
           type="button"
           class="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-1 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           :disabled="busy || !card.enabled"
@@ -74,6 +86,7 @@ const runTarget = (): void => {
           type="button"
           size="sm"
           variant="outline"
+          class="mt-1"
           :disabled="busy || !card.enabled"
           :aria-label="`${faceName(card.face)}, ${faceSummary(card.face)}`"
           @click="runCard(card)"
@@ -84,7 +97,7 @@ const runTarget = (): void => {
 
       <div
         v-if="chosen !== null && targets.length > 0"
-        class="mt-3 flex flex-col gap-1.5 border-t border-foreground/10 pt-3"
+        class="mt-3 flex flex-col gap-2 border-t border-foreground/10 pt-3"
       >
         <p class="text-muted-foreground px-2 text-xs font-medium tracking-wide uppercase">
           {{ faceName(chosen.face) }}: pick a target
@@ -92,10 +105,20 @@ const runTarget = (): void => {
         <div
           v-for="target in targets"
           :key="target.id"
-          class="flex items-center gap-2 rounded-xl px-2 py-2"
-          :class="targetIds.includes(target.id) ? 'bg-primary/10 ring-1 ring-primary/30' : 'hover:bg-muted/60'"
+          class="flex items-start gap-2 rounded-xl p-2"
+          :class="!isRole(target) && (targetIds.includes(target.id) ? 'bg-primary/10 ring-1 ring-primary/30' : 'hover:bg-muted/60')"
         >
+          <RoleCard
+            v-if="isRole(target)"
+            :role="target.face.role"
+            selectable
+            :selected="targetIds.includes(target.id)"
+            :disabled="busy || !target.enabled"
+            class="w-40 shrink-0"
+            @select="toggle(target)"
+          />
           <button
+            v-else
             type="button"
             class="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-1 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             :disabled="busy || !target.enabled"
@@ -115,6 +138,7 @@ const runTarget = (): void => {
             v-if="targetIds.includes(target.id) && ready"
             type="button"
             size="sm"
+            class="mt-1"
             :disabled="busy"
             @click="runTarget"
           >
