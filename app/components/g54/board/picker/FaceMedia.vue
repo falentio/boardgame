@@ -4,10 +4,11 @@ import type { CardFace } from "@/composables/window-menu.ts"
 import { computed } from "vue"
 import { Hand, Swords, Target, Zap } from "@lucide/vue"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { roleCardModel } from "@/composables/role-card"
 import { resolveUserImage } from "#shared/users/avatar.ts"
 import { initialsOf } from "#shared/users/initials.ts"
 
-/** The leading face for a non-role card: an avatar, an action's art, or its icon. Role faces render as a full RoleCard instead. */
+/** The leading face for a row: role art (the RoleCard crop), a player avatar, an action's art, or its icon. */
 const props = defineProps<{ face: CardFace }>()
 
 const ICONS: Readonly<Record<string, Component>> = {
@@ -17,6 +18,7 @@ const ICONS: Readonly<Record<string, Component>> = {
   Target,
 }
 
+const roleArt = computed(() => (props.face.kind === "role" ? roleCardModel(props.face.role).art : null))
 const playerImage = computed(() =>
   props.face.kind === "player" ? resolveUserImage(props.face.image, props.face.seat) : null,
 )
@@ -30,7 +32,15 @@ const actionIcon = computed<Component | null>(() =>
 
 <template>
   <span class="grid size-10 shrink-0 place-items-center" aria-hidden="true">
-    <Avatar v-if="playerImage" class="size-10 rounded-full ring-1 ring-foreground/15">
+    <img
+      v-if="roleArt"
+      :src="roleArt"
+      alt=""
+      class="size-10 rounded-lg object-cover object-[50%_18%] ring-1 ring-foreground/10"
+      loading="lazy"
+      decoding="async"
+    >
+    <Avatar v-else-if="playerImage" class="size-10 rounded-full ring-1 ring-foreground/15">
       <AvatarImage :src="playerImage" alt="" />
       <AvatarFallback class="rounded-full text-xs">{{ playerInitials }}</AvatarFallback>
     </Avatar>
