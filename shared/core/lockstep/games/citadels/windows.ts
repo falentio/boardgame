@@ -1,6 +1,7 @@
 import type { Frame, FrameIndex, Random, SeatId } from "../../index.ts";
 import type { CitadelsAction } from "./actions.ts";
 import { CHARACTER_EFFECTS, CHARACTER_RESOLVERS } from "./characters/index.ts";
+import { DISTRICT_RESOLVERS } from "./districts/effects.ts";
 import { CitadelsError } from "./error.ts";
 import {
   applyCall,
@@ -102,7 +103,10 @@ export const stepState = (
   if (owed.length === 0 && top.window.kind !== "turn") {
     return drain(withSteps(folded, folded.steps.slice(1)), rng);
   }
-  const resolver = CHARACTER_RESOLVERS[top.window.purpose] ?? resolveGeneric;
+  const resolver =
+    DISTRICT_RESOLVERS[top.window.purpose] ??
+    CHARACTER_RESOLVERS[top.window.purpose] ??
+    resolveGeneric;
   const ctx: WindowCtx = { state: folded, window: top.window, frame, rng };
   return drain(resolver(ctx), rng);
 };

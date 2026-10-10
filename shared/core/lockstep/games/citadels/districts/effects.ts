@@ -1,7 +1,8 @@
 import type { Random, SeatId } from "../../../index.ts";
 import { UNIQUE_DISTRICTS, type DistrictHook, type DistrictId } from "../districts.ts";
-import type { CitadelsState, PlacedDistrict, Step } from "../state.ts";
-import { armory, armoryScoring } from "./armory.ts";
+import type { WindowResolver } from "../helpers.ts";
+import type { CitadelsState, PlacedDistrict, Step, WindowPurpose } from "../state.ts";
+import { armory, armoryResolve, armoryScoring } from "./armory.ts";
 import { basilica, basilicaScoring } from "./basilica.ts";
 import { capitol, capitolScoring } from "./capitol.ts";
 import { dragonGate, dragonGateScoring } from "./dragon-gate.ts";
@@ -28,7 +29,7 @@ import { secretVault, secretVaultScoring } from "./secret-vault.ts";
 import { smithy, smithyScoring } from "./smithy.ts";
 import { stables, stablesScoring } from "./stables.ts";
 import { statue, statueScoring } from "./statue.ts";
-import { theater, theaterScoring } from "./theater.ts";
+import { theater, theaterResolve, theaterScoring } from "./theater.ts";
 import { thievesDen, thievesDenScoring } from "./thieves-den.ts";
 import { wishingWell, wishingWellScoring } from "./wishing-well.ts";
 
@@ -157,6 +158,17 @@ export const UNIQUE_SCORING: Record<DistrictId, DistrictScoring> = {
   theater: theaterScoring,
   "thieves-den": thievesDenScoring,
   "wishing-well": wishingWellScoring,
+};
+
+/**
+ * One resolver per window purpose a district owns: the Armory and Theater open
+ * windows at the start of the round, and each points at its own district's
+ * `<id>Resolve`. Every other purpose is a character window or an engine window,
+ * so a district worker never edits a shared registry.
+ */
+export const DISTRICT_RESOLVERS: Partial<Record<WindowPurpose, WindowResolver>> = {
+  "armory-destroy": armoryResolve,
+  "theatre-swap": theaterResolve,
 };
 
 /** Every unique district id, in catalog order. */
