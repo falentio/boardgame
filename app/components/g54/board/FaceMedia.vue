@@ -2,7 +2,7 @@
 import type { Component } from "vue"
 import type { CardFace } from "@/composables/window-menu.ts"
 import { computed } from "vue"
-import { Hand, Swords, Target, Zap } from "@lucide/vue"
+import { Eye, Flag, Hand, Swords, Target, Zap } from "@lucide/vue"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { roleCardModel } from "@/composables/role-card"
 import { resolveUserImage } from "#shared/users/avatar.ts"
@@ -16,6 +16,8 @@ const ICONS: Readonly<Record<string, Component>> = {
   Pass: Hand,
   Continue: Zap,
   Target,
+  Show: Eye,
+  Concede: Flag,
 }
 
 const roleArt = computed(() => (props.face.kind === "role" ? roleCardModel(props.face.role).art : null))
