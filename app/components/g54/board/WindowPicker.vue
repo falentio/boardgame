@@ -46,6 +46,8 @@ const rowClass = (card: CardChoice, selected: boolean): string => {
   return "hover:bg-muted/60"
 }
 
+const rowTextClass = (selected: boolean): string => (selected ? "whitespace-normal" : "truncate")
+
 const confirmLabel = computed(() =>
   chosen.value === null ? "Confirm" : `Confirm ${faceName(chosen.value.face)}`,
 )
@@ -87,8 +89,10 @@ const confirm = (): void => {
         >
           <FaceMedia :face="card.face" />
           <span class="min-w-0 flex-1">
-            <span class="block truncate text-sm font-medium">{{ faceName(card.face) }}</span>
-            <span class="text-muted-foreground block truncate text-xs">
+            <span class="block text-sm font-medium" :class="rowTextClass(card.id === selectedId)">
+              {{ faceName(card.face) }}
+            </span>
+            <span class="text-muted-foreground block text-xs" :class="rowTextClass(card.id === selectedId)">
               {{ card.reason ?? faceSummary(card.face) }}
             </span>
             <span v-if="roleMeta(card)" class="mt-1 flex flex-wrap items-center gap-1.5">
