@@ -13,16 +13,15 @@ export const alchemistRefund = (state: CitadelsState, seat: SeatId, paid: number
 
 /**
  * At the end of the Alchemist's turn, take back every gold paid to build
- * districts this turn. That spend rides on the turn-local pending record's gold
- * counter, the same in-flight counter the Abbot and Cardinal carry their own
- * gold figures on; it reads zero when no district was paid for. Because the
- * refund lands after the turn's builds, the Alchemist can only ever have built
- * what it could afford at the time.
+ * districts this turn. That spend is carried on the turn-local pending record's
+ * gold counter, which the build path credits and which reads zero when no
+ * district was paid for. Because the refund lands after the turn's builds, the
+ * Alchemist can only ever have built what it could afford at the time.
  */
 export const alchemist: CharacterEffect = (ctx) => {
   const pending = ctx.state.pending;
   const seat = pending?.actor ?? ctx.seat;
-  const paid = pending?.amount ?? 0;
+  const paid = pending?.gold ?? 0;
   return withSteps(withPending(alchemistRefund(ctx.state, seat, paid), null), ctx.rest);
 };
 

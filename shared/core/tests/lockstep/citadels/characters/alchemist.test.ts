@@ -26,7 +26,7 @@ const ctxFor = (state: CitadelsState) => ({ state, seat: ANN, rest: [], rng: raw
 
 /** The turn-local record of gold the seat paid to build districts this turn. */
 const withPaidToBuild = (state: CitadelsState, paid: number): CitadelsState =>
-  withPending(state, { ...emptyPending(ANN, "alchemist"), amount: paid });
+  withPending(state, { ...emptyPending(ANN, "alchemist"), gold: paid });
 
 test("at the end of your turn, take back all the gold you paid to build districts this turn", () => {
   const state = withPaidToBuild(withGold(alchemistState(), ANN, 0), 5);
