@@ -1,9 +1,18 @@
 import { expect, test } from "vitest";
-import { assassin } from "../../../../lockstep/games/citadels/characters/assassin.ts";
+import { act } from "../../../../index.ts";
 import type { CharacterId } from "../../../../lockstep/games/citadels/characters.ts";
-import { applyCall } from "../../../../lockstep/games/citadels/helpers.ts";
-import type { Claim, CitadelsState } from "../../../../lockstep/games/citadels/state.ts";
-import { ANN, BOB, CARA, SEATS3, play, rawGenesis, rawRandom } from "../driver.ts";
+import { assassin, canKill } from "../../../../lockstep/games/citadels/characters/assassin.ts";
+import { applyCall, resolveChooseCharacter } from "../../../../lockstep/games/citadels/helpers.ts";
+import type { CitadelsState, Claim, Window } from "../../../../lockstep/games/citadels/state.ts";
+import {
+  ANN,
+  BOB,
+  SEATS3,
+  openPurpose,
+  rawFrame,
+  rawGenesis,
+  rawRandom,
+} from "../driver.ts";
 
 const BASE: readonly CharacterId[] = [
   "assassin",
@@ -32,76 +41,78 @@ const turnState = (claimed: readonly Claim[]): CitadelsState => ({
   steps: [{ kind: "call" }, { kind: "end-round" }],
 });
 
+const topWindow = (state: CitadelsState): Window => {
+  const top = state.steps[0];
+  if (top === undefined || top.kind !== "window") throw new Error("no open window");
+  return top.window;
+};
+
 const purposes = (state: CitadelsState): readonly string[] =>
   state.steps.flatMap((step) => (step.kind === "window" ? [step.window.purpose] : []));
 
-const topPurpose = (state: CitadelsState): string | null => purposes(state)[0] ?? null;
+/** The Assassin's first pass: arm the commit and open the naming window. */
+const open = (state: CitadelsState): CitadelsState =>
+  assassin({ state, seat: ANN, rest: [], rng: rawRandom() });
+
+/** Name `character` through the shared choose-character window, as the engine does. */
+const name = (state: CitadelsState, character: CharacterId): CitadelsState => {
+  const opened = open(state);
+  const frame = rawFrame(0, [[ANN, act({ t: "name-character", character })]]);
+  return resolveChooseCharacter({ state: opened, window: topWindow(opened), frame, rng: rawRandom() });
+};
+
+/** The Assassin's commit pass: read the named character and record the kill. */
+const commit = (state: CitadelsState): CitadelsState =>
+  assassin({ state, seat: ANN, rest: [], rng: rawRandom() });
 
 test("the Assassin calls the name of another character", () => {
-  const opened = assassin({ state: turnState(CLAIMED), seat: ANN, rest: [], rng: rawRandom() });
-  expect(topPurpose(opened)).toBe("choose-character");
+  const opened = open(turnState(CLAIMED));
+  expect(openPurpose(opened)).toBe("choose-character");
   expect(opened.pending?.actor).toBe(ANN);
   expect(opened.pending?.character).toBe("assassin");
-  const named = play(opened, [[ANN, { t: "name-character", character: "merchant" }]]);
-  expect(named.skipped).toContain("merchant");
+  const named = name(turnState(CLAIMED), "merchant");
   expect(named.pending?.namedCharacter).toBe("merchant");
 });
 
-test("the Assassin takes its own turn after naming", () => {
-  const opened = assassin({ state: turnState(CLAIMED), seat: ANN, rest: [], rng: rawRandom() });
-  const named = play(opened, [[ANN, { t: "name-character", character: "merchant" }]]);
-  expect(named.steps[0]).toMatchObject({
-    kind: "window",
-    window: { purpose: "turn", seats: [ANN] },
-  });
+test("when the killed character is called it must remain silent and skip its entire turn", () => {
+  const killed = commit(name(turnState(CLAIMED), "merchant"));
+  expect(killed.skipped).toContain("merchant");
+  const called = applyCall({ ...killed, callRank: 6, active: ANN });
+  expect(called.callRank).toBe(7);
+  expect(purposes(called)).toHaveLength(0);
 });
 
-test("naming yourself is not another character, so nothing is killed", () => {
-  const opened = assassin({ state: turnState(CLAIMED), seat: ANN, rest: [], rng: rawRandom() });
-  const named = play(opened, [[ANN, { t: "name-character", character: "assassin" }]]);
-  expect(named.skipped).toEqual([]);
-});
-
-test("when the killed character is called it remains silent and skips its entire turn", () => {
-  const state: CitadelsState = {
-    ...turnState(CLAIMED),
-    callRank: 6,
-    active: CARA,
-    skipped: ["merchant"],
-  };
-  const next = applyCall(state);
-  expect(next.callRank).toBe(7);
-  expect(purposes(next)).toHaveLength(0);
-});
-
-test("a killed character is skipped without revealing its card", () => {
-  const state: CitadelsState = {
-    ...turnState(CLAIMED),
-    callRank: 6,
-    active: CARA,
-    skipped: ["merchant"],
-  };
-  const next = applyCall(state);
-  // The killed owner is never announced as active and is owed no window, so its
-  // identity never leaves the hidden claim record.
-  expect(next.active).toBe(CARA);
-  expect(next.steps.some((step) => step.kind === "window" && step.window.seats.includes(BOB))).toBe(
+test("the killed character skips without revealing its card", () => {
+  const killed = commit(name(turnState(CLAIMED), "merchant"));
+  const called = applyCall({ ...killed, callRank: 6, active: ANN });
+  // No window names the killed owner, so its hidden claim never becomes public.
+  expect(called.steps.some((step) => step.kind === "window" && step.window.seats.includes(BOB))).toBe(
     false,
   );
-  expect(next.claimed).toEqual(state.claimed);
+  expect(called.claimed).toEqual(killed.claimed);
 });
 
-test("a live character is called normally: the skip is specific to the kill", () => {
-  const state: CitadelsState = { ...turnState(CLAIMED), callRank: 6, active: CARA };
-  const next = applyCall(state);
-  expect(next.active).toBe(BOB);
-  expect(topPurpose(next)).toBe("turn");
+test("a character not killed is called normally: the skip is specific", () => {
+  const called = applyCall({ ...turnState(CLAIMED), callRank: 6, active: ANN });
+  expect(called.active).toBe(BOB);
+  expect(openPurpose(called)).toBe("turn");
 });
 
-test("the kill is recorded: a no-op Assassin would not skip the character", () => {
-  const opened = assassin({ state: turnState(CLAIMED), seat: ANN, rest: [], rng: rawRandom() });
-  const named = play(opened, [[ANN, { t: "name-character", character: "merchant" }]]);
-  const called = applyCall({ ...named, callRank: 6, active: CARA });
+test("the Assassin cannot name itself: the rule is another character", () => {
+  expect(canKill(turnState(CLAIMED), "assassin")).toBe(false);
+  expect(commit(name(turnState(CLAIMED), "assassin")).skipped).toEqual([]);
+});
+
+test("the Assassin takes its own turn after naming", () => {
+  const opened = open(turnState(CLAIMED));
+  expect(purposes(opened)).toContain("turn");
+  expect(opened.steps.some((s) => s.kind === "window" && s.window.seats[0] === ANN)).toBe(true);
+});
+
+test("the kill is not a no-op: without it the named character would take a turn", () => {
+  const killed = commit(name(turnState(CLAIMED), "merchant"));
+  const called = applyCall({ ...killed, callRank: 6, active: ANN });
+  expect(called.skipped).toContain("merchant");
   expect(purposes(called)).not.toContain("turn");
   expect(called.callRank).toBe(7);
 });
