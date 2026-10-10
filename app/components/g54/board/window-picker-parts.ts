@@ -6,6 +6,7 @@ import {
   confirmable,
   type CardChoice,
   type CardFace,
+  type StagedCard,
   type TargetCard,
   type TargetGroup,
   type WindowMenu,
@@ -28,10 +29,12 @@ export interface PickerState {
   readonly targetIds: Ref<readonly string[]>
   readonly card: Ref<CardChoice | null>
   readonly groups: Ref<readonly TargetGroup[]>
+  readonly skipSelect: Ref<boolean>
+  readonly pickedCount: Ref<number>
+  readonly required: Ref<number>
   readonly ready: Ref<boolean>
   readonly select: (card: CardChoice) => void
   readonly toggle: (target: TargetCard) => void
-  readonly clear: () => void
   readonly build: () => G54Action | null
 }
 
@@ -39,21 +42,26 @@ export const usePickerState = (menu: Ref<WindowMenu>, busy: Ref<boolean>): Picke
   const selectedId = ref<string | null>(null)
   const targetIds = ref<readonly string[]>([])
 
+  /** A lone enabled staged card is not a choice: it opens straight to its target stage. */
+  const loneStaged = computed<StagedCard | null>(() => {
+    const only = menu.value.cards.length === 1 ? menu.value.cards[0] : undefined
+    return only !== undefined && only.enabled && only.target !== null ? only : null
+  })
+  const skipSelect = computed(() => loneStaged.value !== null)
+
+  /** The id wins, then the lone staged card: a stale id must not hide a lone card's stage. */
   const card = computed<CardChoice | null>(
-    () => menu.value.cards.find((candidate) => candidate.id === selectedId.value) ?? null,
+    () => menu.value.cards.find((candidate) => candidate.id === selectedId.value) ?? loneStaged.value,
   )
   const groups = computed<readonly TargetGroup[]>(() => card.value?.target ?? [])
   const picks = computed<readonly TargetCard[]>(() =>
     groups.value.flatMap((group) => group.cards).filter((c) => targetIds.value.includes(c.id)),
   )
+  const pickedCount = computed(() => picks.value.length)
+  const required = computed(() => groups.value.reduce((total, group) => total + group.count, 0))
   const ready = computed(
     () => !busy.value && card.value !== null && confirmable(card.value, picks.value),
   )
-
-  const clear = (): void => {
-    selectedId.value = null
-    targetIds.value = []
-  }
 
   const select = (next: CardChoice): void => {
     if (busy.value || !next.enabled) return
@@ -80,5 +88,17 @@ export const usePickerState = (menu: Ref<WindowMenu>, busy: Ref<boolean>): Picke
     return chosen.target === null ? chosen.resolve() : chosen.resolve(picks.value)
   }
 
-  return { selectedId, targetIds, card, groups, ready, select, toggle, clear, build }
+  return {
+    selectedId,
+    targetIds,
+    card,
+    groups,
+    skipSelect,
+    pickedCount,
+    required,
+    ready,
+    select,
+    toggle,
+    build,
+  }
 }
