@@ -1,11 +1,18 @@
-import type { DistrictHook } from "../districts.ts";
+import type { DistrictHook, DistrictId } from "../districts.ts";
 import type { DistrictCtx, DistrictEffect, DistrictScoring } from "./effects.ts";
 
-/** Stub: the keep district's ability is filled in by its own worker. */
+/**
+ * The Keep is immune to the Warlord's destroy. The clause is a veto, not a state
+ * change, so it is a query the destroy path consults: a district whose id this
+ * returns true for can never be destroyed.
+ */
+export const keepProtects = (id: DistrictId): boolean => id === "keep";
+
+/** The Keep's protection is the veto above; it mutates no state. */
 export const keep: DistrictEffect = (ctx: DistrictCtx) => ctx.state;
 
-/** Stub: end-game points for keep; its own worker fills this in. */
+/** The Keep scores no end-game points of its own. */
 export const keepScoring: DistrictScoring = () => 0;
 
-/** The engine hooks this district responds to; empty means never called. */
-export const keepTriggers: readonly DistrictHook[] = [];
+/** The engine hooks this district responds to. */
+export const keepTriggers: readonly DistrictHook[] = ["onDestroy"];
