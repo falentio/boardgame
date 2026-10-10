@@ -160,6 +160,20 @@ export interface CitadelsState {
   readonly completed: readonly SeatId[];
   /** Seats that resigned. */
   readonly resigned: readonly SeatId[];
+
+  // Cross-turn persistent state. Everything above is turn-local; these five
+  // outlive one turn, landing when a named character is later called or carrying
+  // between rounds. Engine bookkeeping only: never crossed by `project`.
+  /** The character the Thief named this round, or null. Cleared at end of round. */
+  readonly robbed?: CharacterId | null;
+  /** The character the Witch bewitched this round, or null. */
+  readonly bewitched?: CharacterId | null;
+  /** The two Blackmailer threat markers: the targeted one first, the decoy second. */
+  readonly threats?: readonly CharacterId[];
+  /** The three Magistrate warrant markers: the signed (targeted) one first. */
+  readonly warrants?: readonly CharacterId[];
+  /** Gold accumulated on the Tax Collector's token; carries between rounds. */
+  readonly taxPot?: number;
 }
 
 const WINDOW_KIND: Record<WindowPurpose, WindowKind> = {
@@ -189,6 +203,20 @@ const WINDOW_KIND: Record<WindowPurpose, WindowKind> = {
   "witch-resume": "oneOf",
   "queen-income": "oneOf",
 };
+
+/**
+ * Fill the cross-turn fields a state built before this seam may omit, so every
+ * state the engine sees carries them. The codec requires all five; `genesisState`
+ * predates them, so `genesis` normalizes here.
+ */
+export const withCrossTurnDefaults = (state: CitadelsState): CitadelsState => ({
+  ...state,
+  robbed: state.robbed ?? null,
+  bewitched: state.bewitched ?? null,
+  threats: state.threats ?? [],
+  warrants: state.warrants ?? [],
+  taxPot: state.taxPot ?? 0,
+});
 
 export const windowKindFor = (purpose: WindowPurpose): WindowKind => WINDOW_KIND[purpose];
 
@@ -408,6 +436,11 @@ export const stateCodec: Codec<CitadelsState> = {
     pending: state.pending === null ? null : encodePending(state.pending),
     completed: [...state.completed],
     resigned: [...state.resigned],
+    robbed: state.robbed ?? null,
+    bewitched: state.bewitched ?? null,
+    threats: [...(state.threats ?? [])],
+    warrants: [...(state.warrants ?? [])],
+    taxPot: state.taxPot ?? 0,
   }),
   decode: (json): CitadelsState => {
     const object = expectObject(json, "citadels state");
@@ -428,6 +461,11 @@ export const stateCodec: Codec<CitadelsState> = {
       pending: decodePending(field(object, "pending")),
       completed: decodeSeats(field(object, "completed"), "completed"),
       resigned: decodeSeats(field(object, "resigned"), "resigned"),
+      robbed: decodeNullableCharacter(field(object, "robbed"), "robbed"),
+      bewitched: decodeNullableCharacter(field(object, "bewitched"), "bewitched"),
+      threats: decodeCharacters(field(object, "threats"), "threats"),
+      warrants: decodeCharacters(field(object, "warrants"), "warrants"),
+      taxPot: expectInteger(field(object, "taxPot"), "taxPot"),
     };
   },
 };

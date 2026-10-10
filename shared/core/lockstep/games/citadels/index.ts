@@ -14,7 +14,13 @@ import { CitadelsError } from "./error.ts";
 import { hasSeat } from "./helpers.ts";
 import { winnerOf } from "./scoring.ts";
 import { genesisState, type CitadelsSetup } from "./setup.ts";
-import { stateCodec, type CitadelsState, type Phase, type WindowPurpose } from "./state.ts";
+import {
+  stateCodec,
+  withCrossTurnDefaults,
+  type CitadelsState,
+  type Phase,
+  type WindowPurpose,
+} from "./state.ts";
 import { isTerminal, openWindow, seatsOwedFor, seatsOwedNow, stepState } from "./windows.ts";
 
 export { CitadelsError } from "./error.ts";
@@ -86,7 +92,7 @@ export const citadels: GameDefinition<CitadelsState, CitadelsAction, CitadelsSet
   action: actionCodec,
 
   genesis(setup: CitadelsSetup, roster: Roster, rng: Random): CitadelsState {
-    return genesisState(setup, roster, rng);
+    return withCrossTurnDefaults(genesisState(setup, roster, rng));
   },
 
   seatsOwed(state: CitadelsState, index: FrameIndex): readonly SeatId[] {
