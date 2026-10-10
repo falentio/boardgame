@@ -14,3 +14,5 @@ pr	sha	verdict	evidence	verifier	ts
 1	d56296e	unit-test-verified	all 27 characters implemented; citadels suite 330 passed		2026-10-10T19:08:40.719Z
 1	ae23e55	unit-test-verified	factory green; 7 members proven blocked on a missing build seam		2026-10-10T19:08:40.723Z
 1	2acbdaf	unit-test-verified	5 scoring districts green; 5 proven blocked on a missing state-aware scoring seam		2026-10-10T19:08:40.726Z
+1	e1827a3	unit-test-verified	citadels suite 348 passed; BuildTerms/BuildQuery/onDraw/state-aware scoring added		2026-10-10T19:49:10.704Z
+1	ce923f9	unit-test-verified	library+observatory+school-of-magic green; suite 371 passed		2026-10-10T20:11:58.104Z

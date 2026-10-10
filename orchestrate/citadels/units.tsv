@@ -14,10 +14,16 @@ chars-rank6	characters	done			945863d	orchestrate/citadels/briefs/unit-chars-ran
 chars-rank7	characters	done			d56296e	orchestrate/citadels/briefs/unit-chars-rank7.md
 chars-rank8	characters	done			d8e84df	orchestrate/citadels/briefs/unit-chars-rank8.md
 chars-rank9	characters	done			8c3db12	orchestrate/citadels/briefs/unit-chars-rank9.md
-dist-income	districts	pending				orchestrate/citadels/briefs/unit-dist-income.md
+dist-income	districts	partial			adde28f	orchestrate/citadels/briefs/unit-dist-income.md
 dist-build	districts	partial			ae23e55	orchestrate/citadels/briefs/unit-dist-build.md
 dist-guard	districts	done			01ed8ad	orchestrate/citadels/briefs/unit-dist-guard.md
 dist-scoring	districts	partial			2acbdaf	orchestrate/citadels/briefs/unit-dist-scoring.md
 dist-actions	districts	done			659236c	orchestrate/citadels/briefs/unit-dist-actions.md
-dist-build-remainder	districts	pending				1/8 done (factory); 7 blocked on the build seam
-dist-scoring-remainder	districts	pending				5/10 done; 5 blocked on the scoring seam
+dist-build-remainder	districts	abandoned				1/8 done (factory); 7 blocked on the build seam
+dist-scoring-remainder	districts	abandoned				5/10 done; 5 blocked on the scoring seam
+district-seams	core	done			e1827a3	orchestrate/citadels/briefs/district-seams.md
+dist-income-remainder	districts	done			ce923f9	3/6 done (gold-mine, park, poor-house); library/observatory/school-of-magic blocked on the draw hook
+integration-full-game	verify	pending				orchestrate/citadels/briefs/integration-full-game.md
+dist-build-a	districts	pending				orchestrate/citadels/briefs/unit-dist-build-a.md
+dist-build-b	districts	pending				orchestrate/citadels/briefs/unit-dist-build-b.md
+dist-score-a	districts	pending				orchestrate/citadels/briefs/unit-dist-score-a.md
