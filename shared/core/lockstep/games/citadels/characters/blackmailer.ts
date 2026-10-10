@@ -1,9 +1,145 @@
+import { specOfCharacter, type CharacterId } from "../characters.ts";
 import type { CharacterCtx, CharacterEffect } from "../characters/index.ts";
-import { withSteps } from "../helpers.ts";
-import type { WindowResolver } from "../helpers.ts";
+import {
+  actionOf,
+  claimOf,
+  emptyPending,
+  isSkipped,
+  patchPending,
+  playerOf,
+  seatHolding,
+  transferGold,
+  winStep,
+  withPending,
+  withSteps,
+  type WindowCtx,
+  type WindowResolver,
+} from "../helpers.ts";
+import type { CitadelsState, Step } from "../state.ts";
 
-/** Stub: the blackmailer's ability is filled in by its own worker. */
-export const blackmailer: CharacterEffect = (ctx: CharacterCtx) => withSteps(ctx.state, ctx.rest);
+/** The blackmailer's in-flight sub-states, carried in `pending.note`. */
+const THREAT_1 = "threat-1";
+const THREAT_2 = "threat-2";
+const REVEAL = "reveal";
 
-/** Stub: the windows the blackmailer opens are resolved by its own worker. */
-export const blackmailerResolve: WindowResolver = (ctx) => withSteps(ctx.state, ctx.state.steps.slice(1));
+/**
+ * Whether the Blackmailer may put a threat marker on `character`: not rank 1
+ * (already taken its turn), not the Assassin's kill, not the Witch's bewitch, and
+ * not a character already threatened this round.
+ */
+export const canThreat = (
+  state: CitadelsState,
+  character: CharacterId,
+  taken: readonly CharacterId[] = [],
+): boolean =>
+  specOfCharacter(character).rank !== 1 &&
+  !isSkipped(state, character) &&
+  state.bewitched !== character &&
+  !taken.includes(character);
+
+/**
+ * Assign two threat markers facedown to two different characters; the first
+ * named shows the flowered lace and is the target, the second is the decoy.
+ * Recorded in `threats` with the target first, which `applyCall` reads to open
+ * the `blackmailer-threat` window at the start of a threatened player's turn.
+ */
+export const blackmailer: CharacterEffect = (ctx: CharacterCtx) => {
+  const { state, seat, rest } = ctx;
+  const pending = state.pending;
+  const mine = pending !== null && pending.character === "blackmailer" ? pending : null;
+
+  if (mine === null) {
+    const armed = withPending(state, { ...emptyPending(seat, "blackmailer"), note: THREAT_1 });
+    return withSteps(armed, [
+      winStep("blackmailer-resolve", [seat]),
+      { kind: "resolve" },
+      ...rest,
+    ]);
+  }
+  if (mine.note === THREAT_1) {
+    const first = mine.namedCharacter;
+    const threats = first !== null && canThreat(state, first) ? [first] : [];
+    const armed = { ...patchPending(state, { note: THREAT_2, namedCharacter: null }), threats };
+    return withSteps(armed, [
+      winStep("blackmailer-resolve", [seat]),
+      { kind: "resolve" },
+      ...rest,
+    ]);
+  }
+  const second = mine.namedCharacter;
+  const base = state.threats ?? [];
+  const threats = second !== null && canThreat(state, second, base) ? [...base, second] : base;
+  return withSteps({ ...withPending(state, null), threats }, rest);
+};
+
+/** The Blackmailer names a character for one of the two markers. */
+const resolveName = (ctx: WindowCtx, rest: readonly Step[]): CitadelsState => {
+  const actor = ctx.state.pending?.actor ?? ctx.window.seats[0] ?? ctx.state.active;
+  const action = actionOf(ctx.frame, actor);
+  const named = action?.t === "name-character" ? action.character : null;
+  return withSteps(
+    named === null ? ctx.state : patchPending(ctx.state, { namedCharacter: named }),
+    rest,
+  );
+};
+
+/**
+ * A threatened player resolves the threat before taking their turn: bribe by
+ * paying half their gold (rounded down) to remove the marker, or refuse and let
+ * the Blackmailer decide whether to reveal the marker.
+ */
+const resolveThreat = (ctx: WindowCtx, rest: readonly Step[]): CitadelsState => {
+  const state = ctx.state;
+  const seat = ctx.window.seats[0] ?? state.active;
+  const character = claimOf(state, seat)?.character ?? null;
+  if (character === null || !(state.threats ?? []).includes(character)) {
+    return withSteps(state, rest);
+  }
+  const blackmailerOwner = seatHolding(state, "blackmailer");
+  const action = actionOf(ctx.frame, seat);
+  if (action?.t === "choose" && action.value === "bribe") {
+    const half = Math.floor(playerOf(state, seat).gold / 2);
+    const paid =
+      blackmailerOwner === null ? state : transferGold(state, seat, blackmailerOwner, half);
+    return withSteps({ ...paid, threats: (paid.threats ?? []).filter((c) => c !== character) }, rest);
+  }
+  if (blackmailerOwner === null) {
+    return withSteps(
+      { ...state, threats: (state.threats ?? []).filter((c) => c !== character) },
+      rest,
+    );
+  }
+  const armed = withPending(state, {
+    ...emptyPending(blackmailerOwner, "blackmailer"),
+    note: REVEAL,
+  });
+  return withSteps(armed, [winStep("blackmailer-resolve", [blackmailerOwner]), ...rest]);
+};
+
+/** The Blackmailer may reveal the marker; the flowered lace takes all the gold. */
+const resolveReveal = (ctx: WindowCtx, rest: readonly Step[]): CitadelsState => {
+  const state = ctx.state;
+  const actor = state.pending?.actor ?? ctx.window.seats[0] ?? state.active;
+  const victim = state.active;
+  const character = claimOf(state, victim)?.character ?? null;
+  const cleared = withPending(state, null);
+  if (character === null) return withSteps(cleared, rest);
+  const threats = cleared.threats ?? [];
+  const action = actionOf(ctx.frame, actor);
+  const revealed = action?.t === "choose" && action.value === "reveal";
+  const flowered = threats[0] === character;
+  let next: CitadelsState = { ...cleared, threats: threats.filter((c) => c !== character) };
+  if (revealed && flowered) {
+    next = transferGold(next, victim, actor, playerOf(next, victim).gold);
+  }
+  return withSteps(next, rest);
+};
+
+/** Resolve the blackmailer's own windows; the shared `choose-*` windows never land here. */
+export const blackmailerResolve: WindowResolver = (ctx) => {
+  const rest = ctx.state.steps.slice(1);
+  if (ctx.window.purpose === "blackmailer-resolve") {
+    return ctx.state.pending?.note === REVEAL ? resolveReveal(ctx, rest) : resolveName(ctx, rest);
+  }
+  return resolveThreat(ctx, rest);
+};
