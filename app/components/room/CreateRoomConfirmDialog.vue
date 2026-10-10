@@ -42,7 +42,7 @@ const onOpenChange = (open: boolean) => {
         </AlertDialogDescription>
       </AlertDialogHeader>
 
-      <dl class="flex flex-col gap-3 text-sm">
+      <dl class="flex min-w-0 flex-col gap-3 text-sm">
         <div class="flex items-baseline justify-between gap-4">
           <dt class="text-muted-foreground">Name</dt>
           <dd class="min-w-0 truncate font-medium" :title="request?.name">{{ request?.name }}</dd>
