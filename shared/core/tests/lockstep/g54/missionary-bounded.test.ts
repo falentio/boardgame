@@ -12,13 +12,14 @@ import {
   withCoins,
   type G54State,
 } from "./driver.ts";
+import { FORCED_COUP_COINS } from "../../../lockstep/games/g54/windows.ts";
 import { specOf } from "../../../lockstep/games/g54/roles.ts";
 
 const ROLES = ["banker", "director", "guerrilla", "politician", "missionary"] as const;
 const SAVE_COST = specOf("missionary").cost;
 const HIT_COST = specOf("guerrilla").cost;
+const BANK_CEILING = FORCED_COUP_COINS - 1;
 
-/** Genesis for a table where Bob alone holds a genuine Missionary. */
 const missionTable = (entropy: string): G54State =>
   craftSet(
     ROLES,
@@ -30,7 +31,6 @@ const missionTable = (entropy: string): G54State =>
     entropy,
   );
 
-/** One Guerrilla hit on Bob, through the reveal and any reactive window it opens. */
 const hitBob = (state: G54State): G54State => {
   let next = withCoins(state, ANN, HIT_COST);
   next = advance(next, (seat, s) =>
@@ -89,8 +89,7 @@ test("Missionary: a surviving save pays its price to the Treasury", () => {
 });
 
 test("Missionary: the save drains the bank, so the loop terminates", () => {
-  // The price beats every income rate, so each save spends down a bank the forced Coup at 10 caps at 9.
-  let state = withCoins(missionTable("missey-bound"), BOB, 9);
+  let state = withCoins(missionTable("missey-bound"), BOB, BANK_CEILING);
   let saves = 0;
   let hits = 0;
   const log: string[] = [];

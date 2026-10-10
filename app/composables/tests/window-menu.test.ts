@@ -128,7 +128,8 @@ const claimSurvives = (state: G54State, claim: G54Action): G54State =>
 /** A Guerrilla hit on BOB driven through the block and execution to his reactive window. */
 const toReactive = (role: string): G54State => {
   const armed = withCoins(genesis(["banker", "director", "guerrilla", role, "politician"]), ANN, 4)
-  const claimed = claimSurvives(armed, { t: "claim", role: "guerrilla", target: BOB })
+  const funded = withCoins(armed, BOB, 5)
+  const claimed = claimSurvives(funded, { t: "claim", role: "guerrilla", target: BOB })
   const blocked = fold(claimed, [BOB, { t: "pass" }])
   return fold(blocked, [BOB, { t: "reveal", index: 0 }])
 }

@@ -43,7 +43,7 @@ import {
   withPlayer,
   withSteps,
 } from "./helpers.ts";
-import { claimCost, isHoldless, specOf, type RoleId } from "./roles.ts";
+import { claimCost, isHoldless, missionarySaveCost, specOf, type RoleId } from "./roles.ts";
 import {
   type BombState,
   type ExtraClaim,
@@ -660,11 +660,13 @@ const resolveWriterDraw = (
   ]);
 };
 
-/** Open the reactive windows a loss enables: Intellectual always, Missionary except Coup. */
+const affordsSave = (state: G54State, seat: SeatId): boolean =>
+  playerOf(state, seat).coins >= missionarySaveCost;
+
 const reactiveSteps = (state: G54State, seat: SeatId, cause: LossCause): readonly Step[] => {
   const steps: Step[] = [];
   if (state.roles.includes("intellectual")) steps.push(winStep("reactive-intellectual", [seat]));
-  if (cause !== "coup" && state.roles.includes("missionary")) {
+  if (cause !== "coup" && state.roles.includes("missionary") && affordsSave(state, seat)) {
     steps.push(winStep("reactive-missionary", [seat]));
   }
   return steps;

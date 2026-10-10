@@ -10,6 +10,7 @@ import {
   makeWindow,
   openSwap,
   otherAlive,
+  payToTreasury,
   playerOf,
   poorest,
   priestTargetable,
@@ -21,7 +22,7 @@ import {
   withPlayer,
   withSteps,
 } from "./helpers.ts";
-import { type RoleId } from "./roles.ts";
+import { missionarySaveCost, type RoleId } from "./roles.ts";
 import type { ExtraClaim, G54State, PendingAction, Step } from "./state.ts";
 
 export interface RoleCtx {
@@ -322,13 +323,13 @@ export const EXTRA_EFFECTS: Record<ExtraClaim["kind"], ExtraEffect> = {
       ),
       ctx.rest,
     ),
-  reactive: (ctx) =>
-    withSteps(
-      ctx.claim.role === "missionary"
-        ? drawIntoHand(ctx.state, ctx.claim.claimant, 1)
-        : gainFromTreasury(ctx.state, ctx.claim.claimant, 5),
-      ctx.rest,
-    ),
+  reactive: (ctx) => {
+    if (ctx.claim.role !== "missionary") {
+      return withSteps(gainFromTreasury(ctx.state, ctx.claim.claimant, 5), ctx.rest);
+    }
+    const paid = payToTreasury(ctx.state, ctx.claim.claimant, missionarySaveCost);
+    return withSteps(drawIntoHand(paid, ctx.claim.claimant, 1), ctx.rest);
+  },
   anarchist: (ctx) => {
     const bomb = ctx.state.bomb;
     if (bomb === null) return withSteps(ctx.state, ctx.rest);
