@@ -1,11 +1,13 @@
 import type { DistrictHook } from "../districts.ts";
+import { specOfDistrict } from "../districts.ts";
 import type { DistrictCtx, DistrictEffect, DistrictScoring } from "./effects.ts";
 
-/** Stub: the basilica district's ability is filled in by its own worker. */
+/** The Basilica scores only at end of game; the engine never calls it in play. */
 export const basilica: DistrictEffect = (ctx: DistrictCtx) => ctx.state;
 
-/** Stub: end-game points for basilica; its own worker fills this in. */
-export const basilicaScoring: DistrictScoring = () => 0;
+/** One extra point for each district of odd cost in the city, the Basilica included. */
+export const basilicaScoring: DistrictScoring = (_district, city) =>
+  city.filter((placed) => specOfDistrict(placed.id).cost % 2 === 1).length;
 
 /** The engine hooks this district responds to; empty means never called. */
 export const basilicaTriggers: readonly DistrictHook[] = [];
