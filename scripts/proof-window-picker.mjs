@@ -192,9 +192,9 @@ const launchBrowser = async (label, debugPort) => {
 
 const EL = {
   picker: "[data-slot=window-picker]",
-  roleCard: (name) => `[...document.querySelectorAll('[data-slot=window-picker] button[data-slot=role-card]')].find((b) => (b.getAttribute('aria-label') || '').startsWith(${JSON.stringify(name)}))`,
-  generalCard: (name) => `[...document.querySelectorAll('[data-slot=window-picker] button[data-slot=general-action-card]')].find((b) => (b.getAttribute('aria-label') || '').startsWith(${JSON.stringify(name)}))`,
-  playerCard: (name) => `[...document.querySelectorAll('[data-slot=player-card]')].find((b) => (b.getAttribute('aria-label') || '') === ${JSON.stringify(name)})`,
+  roleCard: (name) => `[...document.querySelectorAll('[data-slot=window-picker] .picker-row')].find((b) => (b.getAttribute('aria-label') || '').startsWith(${JSON.stringify(name)}))`,
+  generalCard: (name) => `[...document.querySelectorAll('[data-slot=window-picker] .picker-row')].find((b) => (b.getAttribute('aria-label') || '').startsWith(${JSON.stringify(name)}))`,
+  playerCard: (name) => `[...document.querySelectorAll('[data-slot=window-picker] .target-row')].find((b) => (b.getAttribute('aria-label') || '').startsWith(${JSON.stringify(name)}))`,
   confirm: `[...document.querySelectorAll('[data-slot=window-picker] button')].find((b) => b.textContent.trim() === 'Confirm')`,
   buttonText: (name) => `[...document.querySelectorAll('button')].find((b) => b.textContent.trim().includes(${JSON.stringify(name)}))`,
 };
@@ -210,9 +210,9 @@ const pickerState = (page) => page.eval(`(() => {
   return {
     present: !!picker,
     title: picker?.querySelector('h2')?.textContent.trim() ?? null,
-    roleCards: picker ? picker.querySelectorAll('[data-slot=role-card]').length : 0,
-    generalCards: picker ? picker.querySelectorAll('[data-slot=general-action-card]').length : 0,
-    playerCards: picker ? picker.querySelectorAll('[data-slot=player-card]').length : 0,
+    roleCards: picker ? [...picker.querySelectorAll('.picker-row')].filter((b) => (b.getAttribute('aria-label') || '').includes(' role.')).length : 0,
+    generalCards: picker ? [...picker.querySelectorAll('.picker-row')].filter((b) => !(b.getAttribute('aria-label') || '').includes(' role.')).length : 0,
+    playerCards: picker ? picker.querySelectorAll('.target-row').length : 0,
     confirm: (() => { const c = [...document.querySelectorAll('[data-slot=window-picker] button')].find((b) => b.textContent.trim() === 'Confirm'); return c ? { disabled: c.disabled } : null; })(),
   };
 })()`);
@@ -338,13 +338,13 @@ const main = async () => {
     const clickedPolitician = await hostBrowser.page.clickReal(EL.roleCard("Politician"));
     if (!clickedPolitician) fail(`host could not select the Politician card; body: ${(await hostBrowser.page.bodyText()).replace(/\n/g, " | ")}`);
     else pass("host selected the Politician card (needs a target)");
-    const targetShown = await hostBrowser.page.waitFor("!!document.querySelector('[data-slot=player-card]')", { timeoutMs: 6000 });
+    const targetShown = await hostBrowser.page.waitFor("!!document.querySelector('[data-slot=window-picker] .target-row')", { timeoutMs: 6000 });
     const targetState = await pickerState(hostBrowser.page);
     info(`host target stage: player-cards=${targetState.playerCards} confirm=${JSON.stringify(targetState.confirm)}`);
     if (!targetShown || targetState.playerCards < 1) fail("selecting Politician did not open a player-card target stage");
     else pass(`the target stage shows ${targetState.playerCards} [data-slot=player-card] element(s)`);
 
-    await hostBrowser.page.eval("document.querySelector('[data-slot=player-card]')?.scrollIntoView({ block: 'center' })");
+    await hostBrowser.page.eval("document.querySelector('[data-slot=window-picker] .target-row')?.scrollIntoView({ block: 'center' })");
     await delay(300);
     const shot3 = await hostBrowser.page.screenshot("picker-03-host-target-stage");
     console.log(`screenshot: ${shot3}`);

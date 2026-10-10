@@ -1,91 +1,46 @@
 <script setup lang="ts">
-import { computed, ref } from "vue"
+import { computed } from "vue"
 import type { G54Action } from "#shared/core/lockstep/games/g54/index.ts"
-import { specOf } from "#shared/core/lockstep/games/g54/roles.ts"
-import {
-  confirmable,
-  type CardChoice,
-  type CardFace,
-  type TargetCard,
-  type TargetGroup,
-  type WindowMenu,
-} from "@/composables/window-menu.ts"
+import type { CardChoice, TargetCard, WindowMenu } from "@/composables/window-menu.ts"
 import { Button } from "@/components/ui/button"
-import RoleCard from "@/components/g54/RoleCard.vue"
-import GeneralActionCard from "@/components/g54/GeneralActionCard.vue"
-import PlayerCard from "@/components/g54/PlayerCard.vue"
+import { CARD_BADGE_CLASS } from "@/composables/card-shell"
+import { roleCardModel, type RoleCardModel } from "@/composables/role-card"
+import { faceName, faceSummary, usePickerState } from "./window-picker-parts.ts"
+import FaceMedia from "./FaceMedia.vue"
 
 const props = defineProps<{ menu: WindowMenu; busy?: boolean }>()
 const emit = defineEmits<{ act: [action: G54Action] }>()
 
 const busy = computed(() => props.busy === true)
+const menu = computed(() => props.menu)
+const { selectedId, targetIds, card: chosen, groups, ready, select, toggle, build } = usePickerState(menu, busy)
 
-const selectedCardId = ref<string | null>(null)
-const selectedTargetIds = ref<readonly string[]>([])
+const targets = computed<readonly TargetCard[]>(() => groups.value.flatMap((group) => group.cards))
 
-const selectedCard = computed<CardChoice | null>(
-  () => props.menu.cards.find((card) => card.id === selectedCardId.value) ?? null,
-)
-const groups = computed<readonly TargetGroup[]>(() => selectedCard.value?.target ?? [])
-const selectedTargets = computed<readonly TargetCard[]>(() =>
-  groups.value
-    .flatMap((group) => group.cards)
-    .filter((card) => selectedTargetIds.value.includes(card.id)),
-)
+const roleMeta = (card: CardChoice | TargetCard): RoleCardModel | null =>
+  card.face.kind === "role" ? roleCardModel(card.face.role) : null
 
-const confirmReady = computed(
-  () => selectedCard.value !== null && confirmable(selectedCard.value, selectedTargets.value),
-)
-
-const faceName = (face: CardFace): string => {
-  if (face.kind === "role") return specOf(face.role).name
-  if (face.kind === "action") return face.card.label
-  return face.name
+/** Role rows borrow RoleCard's accessible name; other faces read their name and reason. */
+const labelOf = (card: CardChoice | TargetCard): string => {
+  const role = roleMeta(card)
+  if (role !== null) return role.accessibleName
+  return [faceName(card.face), card.reason ?? faceSummary(card.face)].join(". ")
 }
 
-const confirmLabel = computed<string>(() =>
-  selectedCard.value === null ? "Confirm" : `Confirm ${faceName(selectedCard.value.face)}`,
+/** RoleCard's states on the chip row: selected ring, disabled opacity, otherwise a hover. */
+const rowClass = (card: CardChoice | TargetCard, selected: boolean): string => {
+  if (selected) return "bg-primary/10 ring-2 ring-primary/40"
+  if (busy.value || !card.enabled) return "opacity-50"
+  return "hover:bg-muted/60"
+}
+
+const confirmLabel = computed(() =>
+  chosen.value === null ? "Confirm" : `Confirm ${faceName(chosen.value.face)}`,
 )
-
-const isCardDisabled = (card: CardChoice): boolean => busy.value || !card.enabled
-
-const startsGroup = (index: number): boolean => {
-  const cards = props.menu.cards
-  const previous = cards[index - 1]
-  const card = cards[index]
-  if (card === undefined || previous === undefined) return false
-  return card.group !== previous.group
-}
-
-const select = (card: CardChoice): void => {
-  if (isCardDisabled(card)) return
-  selectedCardId.value = card.id
-  selectedTargetIds.value = []
-}
-
-const groupOf = (target: TargetCard): TargetGroup | null =>
-  groups.value.find((group) => group.cards.includes(target)) ?? null
-
-const isTargetSelected = (target: TargetCard): boolean =>
-  selectedTargetIds.value.includes(target.id)
-
-const toggleTarget = (target: TargetCard): void => {
-  if (busy.value || !target.enabled) return
-  if (isTargetSelected(target)) {
-    selectedTargetIds.value = selectedTargetIds.value.filter((id) => id !== target.id)
-    return
-  }
-  const group = groupOf(target)
-  if (group === null) return
-  const chosen = group.cards.filter(isTargetSelected).length
-  if (chosen >= group.count) return
-  selectedTargetIds.value = [...selectedTargetIds.value, target.id]
-}
 
 const confirm = (): void => {
-  const card = selectedCard.value
-  if (card === null || !confirmReady.value) return
-  emit("act", card.target === null ? card.resolve() : card.resolve(selectedTargets.value))
+  const action = build()
+  if (action !== null) emit("act", action)
 }
 </script>
 
@@ -96,112 +51,75 @@ const confirm = (): void => {
     role="group"
     :aria-label="menu.title"
   >
-    <header class="border-b border-foreground/10 bg-muted/40 px-6 py-4">
-      <h2 class="text-base leading-tight font-semibold">
+    <header class="border-b border-foreground/10 px-6 py-5">
+      <h2 class="text-lg leading-tight font-semibold">
         {{ menu.title }}
       </h2>
-      <p v-if="menu.note" class="text-muted-foreground mt-0.5 text-sm leading-snug">
+      <p v-if="menu.note" class="text-muted-foreground mt-1 text-sm leading-snug">
         {{ menu.note }}
       </p>
     </header>
 
-    <div class="flex min-w-0 flex-1 flex-col justify-center px-6 py-5">
-      <div class="flex min-w-0 flex-col gap-2">
-        <div
-          class="grid grid-flow-col grid-rows-[auto_auto] -mx-1 -mt-1 items-stretch gap-x-3 gap-y-1.5 overflow-x-auto px-1 pt-1 pb-3"
-        >
-          <template v-for="(card, index) in menu.cards" :key="card.id">
-            <div
-              v-if="startsGroup(index)"
-              class="row-span-2 w-px self-stretch bg-foreground/15"
-              aria-hidden="true"
-            />
-            <div
-              class="window-card-cell row-span-2 grid w-40 min-w-0 shrink-0 grid-rows-subgrid gap-1.5"
-            >
-              <RoleCard
-                v-if="card.face.kind === 'role'"
-                :role="card.face.role"
-                selectable
-                :selected="card.id === selectedCardId"
-                :disabled="isCardDisabled(card)"
-                @select="select(card)"
-              />
-              <GeneralActionCard
-                v-else-if="card.face.kind === 'action'"
-                :model="card.face.card"
-                selectable
-                :selected="card.id === selectedCardId"
-                :disabled="isCardDisabled(card)"
-                @select="select(card)"
-              />
-              <PlayerCard
-                v-else
-                :seat="card.face.seat"
-                :name="card.face.name"
-                :image="card.face.image"
-                selectable
-                :selected="card.id === selectedCardId"
-                :disabled="isCardDisabled(card)"
-                @select="select(card)"
-              />
-              <span class="text-muted-foreground min-h-3 text-xs leading-none italic">
-                {{ card.reason && !busy ? card.reason : "" }}
-              </span>
-            </div>
-          </template>
-        </div>
+    <div class="flex min-w-0 flex-1 flex-col gap-1.5 overflow-y-auto px-3 py-4">
+      <button
+        v-for="card in menu.cards"
+        :key="card.id"
+        type="button"
+        class="picker-row flex min-w-0 items-center gap-3 rounded-xl px-3 py-2 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        :class="rowClass(card, card.id === selectedId)"
+        :disabled="busy || !card.enabled"
+        :aria-pressed="card.id === selectedId"
+        :aria-label="labelOf(card)"
+        @click="select(card)"
+      >
+        <FaceMedia :face="card.face" />
+        <span class="min-w-0 flex-1">
+          <span class="block truncate text-sm font-medium">{{ faceName(card.face) }}</span>
+          <span class="text-muted-foreground block truncate text-xs">
+            {{ card.reason ?? faceSummary(card.face) }}
+          </span>
+          <span v-if="roleMeta(card)" class="mt-1 flex flex-wrap items-center gap-1.5">
+            <span v-if="roleMeta(card)?.cost" :class="CARD_BADGE_CLASS">{{ roleMeta(card)?.cost }}</span>
+            <span v-if="roleMeta(card)?.block" :class="CARD_BADGE_CLASS">{{ roleMeta(card)?.block }}</span>
+          </span>
+        </span>
+      </button>
 
-        <div
-          v-if="selectedCard !== null && groups.length > 0"
-          class="flex flex-col gap-2 border-t border-foreground/10 pt-3"
+      <div
+        v-if="chosen !== null && targets.length > 0"
+        class="mt-3 flex flex-col gap-1.5 border-t border-foreground/10 pt-3"
+      >
+        <p class="text-muted-foreground px-2 text-xs font-medium tracking-wide uppercase">
+          {{ faceName(chosen.face) }}: pick a target
+        </p>
+        <button
+          v-for="(target, index) in targets"
+          :key="target.id"
+          type="button"
+          class="target-row flex min-w-0 items-center gap-3 rounded-xl px-3 py-2 text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          :class="rowClass(target, targetIds.includes(target.id))"
+          :style="{ '--i': index }"
+          :disabled="busy || !target.enabled"
+          :aria-pressed="targetIds.includes(target.id)"
+          :aria-label="labelOf(target)"
+          @click="toggle(target)"
         >
-          <div
-            v-for="group in groups"
-            :key="group.id"
-            class="grid grid-flow-col grid-rows-[auto_auto] -mx-1 -mt-1 items-stretch gap-x-3 gap-y-1.5 overflow-x-auto px-1 pt-1 pb-3"
-            role="group"
-            aria-label="Target"
-          >
-            <div
-              v-for="target in group.cards"
-              :key="target.id"
-              class="window-card-cell row-span-2 grid w-40 min-w-0 shrink-0 grid-rows-subgrid gap-1.5"
-            >
-              <RoleCard
-                v-if="target.face.kind === 'role'"
-                :role="target.face.role"
-                selectable
-                :selected="isTargetSelected(target)"
-                :disabled="busy || !target.enabled"
-                @select="toggleTarget(target)"
-              />
-              <PlayerCard
-                v-else-if="target.face.kind === 'player'"
-                :seat="target.face.seat"
-                :name="target.face.name"
-                :image="target.face.image"
-                selectable
-                :selected="isTargetSelected(target)"
-                :disabled="busy || !target.enabled"
-                @select="toggleTarget(target)"
-              />
-              <span class="text-muted-foreground min-h-3 text-xs leading-none italic">
-                {{ target.reason ?? "" }}
-              </span>
-            </div>
-          </div>
-        </div>
+          <FaceMedia :face="target.face" />
+          <span class="min-w-0 flex-1">
+            <span class="block truncate text-sm font-medium">{{ faceName(target.face) }}</span>
+            <span v-if="target.reason" class="text-muted-foreground block truncate text-xs">
+              {{ target.reason }}
+            </span>
+          </span>
+        </button>
       </div>
     </div>
 
-    <footer
-      class="flex items-center justify-end gap-2 border-t border-foreground/10 bg-muted/40 px-6 py-3"
-    >
+    <footer class="flex items-center justify-end border-t border-foreground/10 bg-muted/40 px-6 py-3">
       <Button
         type="button"
         size="lg"
-        :disabled="busy || !confirmReady"
+        :disabled="!ready"
         :aria-label="confirmLabel"
         @click="confirm"
       >
@@ -212,19 +130,7 @@ const confirm = (): void => {
 </template>
 
 <style scoped>
-/* Pre-subgrid fallback: a browser that drops `grid-rows-subgrid` collapses the shared
-   rows, so the cell becomes a flex column and the card takes the slack instead. */
-@supports not (grid-template-rows: subgrid) {
-  .window-card-cell {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .window-card-cell > :first-child {
-    flex: 1;
-  }
-}
-
+/* The window opens once per turn: bridge its arrival. */
 [data-slot="window-picker"] {
   --enter-y: 8px;
   transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out);
@@ -237,9 +143,57 @@ const confirm = (): void => {
   }
 }
 
+/* Press feedback and the selected state settling, on the row itself. */
+.picker-row {
+  transition:
+    transform 160ms var(--ease-out),
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.picker-row:active {
+  transform: scale(0.98);
+}
+
+/* The target stage appears under a chosen card: stagger the rows in. */
+.target-row {
+  --rise-y: 8px;
+  animation: picker-rise 200ms var(--ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 40ms);
+  transition:
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+@keyframes picker-rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--rise-y));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   [data-slot="window-picker"] {
     --enter-y: 0px;
+  }
+
+  .picker-row {
+    transition:
+      background-color 150ms ease,
+      box-shadow 150ms ease;
+  }
+
+  .picker-row:active {
+    transform: none;
+  }
+
+  .target-row {
+    --rise-y: 0px;
+    animation-delay: 0ms;
   }
 }
 </style>

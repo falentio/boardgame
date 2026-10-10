@@ -8,7 +8,7 @@ import { roleCardModel } from "@/composables/role-card"
 import { resolveUserImage } from "#shared/users/avatar.ts"
 import { initialsOf } from "#shared/users/initials.ts"
 
-/** The leading face for a row: role art (the RoleCard crop), a player avatar, an action's art, or its icon. */
+/** The leading face for a window row: role art (the RoleCard crop), a player avatar, an action's art, or its icon. */
 const props = defineProps<{ face: CardFace }>()
 
 const ICONS: Readonly<Record<string, Component>> = {
