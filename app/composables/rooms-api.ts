@@ -17,7 +17,7 @@ export type JoinOutcome =
 export type StartOutcome =
   | { kind: "started" }
   | { kind: "not-host" }
-  | { kind: "not-full" }
+  | { kind: "not-enough-players" }
   | { kind: "missing" }
   | { kind: "failed"; reason: string };
 
@@ -122,7 +122,7 @@ export const startRoom = async (code: RoomCode): Promise<StartOutcome> => {
   } catch (error) {
     const kind = roomErrorKind(error);
     if (kind === "not-host") return { kind: "not-host" };
-    if (kind === "room-not-full") return { kind: "not-full" };
+    if (kind === "not-enough-players") return { kind: "not-enough-players" };
     if (statusOf(error) === 404 || kind === "not-found") return { kind: "missing" };
     return { kind: "failed", reason: failureReason(error) };
   }

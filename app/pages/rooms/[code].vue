@@ -45,6 +45,7 @@ const joining = ref(false)
 const joinError = ref("")
 const starting = ref(false)
 const startError = ref("")
+const startOpen = ref(false)
 const leaving = ref(false)
 const leaveError = ref("")
 const leaveOpen = ref(false)
@@ -60,7 +61,7 @@ const plural = (count: number, singular: string): string => (count === 1 ? singu
 
 const startMessage = (outcome: StartOutcome): string => {
   if (outcome.kind === "not-host") return "Only the host can start the game."
-  if (outcome.kind === "not-full") return "Every seat must be filled before you start."
+  if (outcome.kind === "not-enough-players") return "You need at least 2 players to start."
   if (outcome.kind === "missing") return "That room no longer exists."
   return outcome.kind === "failed" ? outcome.reason : ""
 }
@@ -85,6 +86,13 @@ const leaveConsequence = computed((): string => {
   if (seated <= 1) return "This closes the room."
   if (current.amIHost) return "The host moves to another player."
   return "You can rejoin with the link."
+})
+
+const startConsequence = computed((): string => {
+  const current = lobby.value
+  if (current.kind !== "room") return ""
+  const open = current.status.total - current.status.filled
+  return `${String(open)} ${plural(open, "seat")} still open. Players cannot join once the game starts.`
 })
 
 const expiry = computed((): { iso: string; absolute: string; label: string; closed: boolean } | null => {
@@ -125,7 +133,7 @@ watch(
   { immediate: true },
 )
 
-const onStart = async () => {
+const runStart = async () => {
   const current = lobby.value
   if (current.kind !== "room" || !current.canStart) return
   startError.value = ""
@@ -133,6 +141,7 @@ const onStart = async () => {
   try {
     const outcome = await startRoom(current.room.code)
     if (outcome.kind === "started") {
+      startOpen.value = false
       await navigateTo(`/games/${current.room.code}`)
       return
     }
@@ -140,6 +149,16 @@ const onStart = async () => {
   } finally {
     starting.value = false
   }
+}
+
+const onStartClick = () => {
+  const current = lobby.value
+  if (current.kind !== "room" || !current.canStart) return
+  if (current.status.kind === "full") {
+    void runStart()
+    return
+  }
+  startOpen.value = true
 }
 
 const onConfirmLeave = async () => {
@@ -344,7 +363,7 @@ const onJoin = async () => {
 
               <template v-else>
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <Button type="button" :disabled="!lobby.canStart || starting" @click="onStart">
+                  <Button type="button" :disabled="!lobby.canStart || starting" @click="onStartClick">
                     <Spinner v-if="starting" />
                     Start game
                   </Button>
@@ -352,7 +371,9 @@ const onJoin = async () => {
                     v-if="lobby.status.kind === 'waiting'"
                     class="text-muted-foreground text-sm leading-normal tabular-nums"
                   >
-                    Waiting for {{ lobby.status.total - lobby.status.filled }} more
+                    {{ lobby.canStart
+                      ? `You can start now with ${lobby.status.filled} of ${lobby.status.total} players.`
+                      : `Waiting for ${lobby.status.total - lobby.status.filled} more` }}
                   </p>
                 </div>
                 <p v-if="startError" role="alert" class="text-destructive text-sm leading-normal">
@@ -436,6 +457,27 @@ const onJoin = async () => {
           <Button type="button" variant="destructive" :disabled="kicking" @click="onConfirmKick">
             <Spinner v-if="kicking" />
             Remove
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <AlertDialog :open="startOpen" @update:open="(open) => { if (!open && !starting) startOpen = false }">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Start with open seats?</AlertDialogTitle>
+          <AlertDialogDescription>{{ startConsequence }}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <p v-if="startError" role="alert" class="text-destructive text-sm leading-normal">
+          {{ startError }}
+        </p>
+        <AlertDialogFooter>
+          <AlertDialogCancel :disabled="starting">
+            Cancel
+          </AlertDialogCancel>
+          <Button type="button" :disabled="starting" @click="runStart">
+            <Spinner v-if="starting" />
+            Start game
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

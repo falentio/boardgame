@@ -229,6 +229,22 @@ test("lobbyOf reports waiting when a seat is open and full when every seat is ta
   expect(full.canStart).toBe(true);
 });
 
+test("lobbyOf lets the host start a sparse room once the minimum is seated", () => {
+  const lobby = lobbyOf(
+    { kind: "loaded", room: loadedRoom([
+      { id: "seat-0", occupant: "user-host", joinedAt: 1 },
+      { id: "seat-1", occupant: "user-guest", joinedAt: 2 },
+      { id: "seat-2", occupant: null, joinedAt: null },
+      { id: "seat-3", occupant: null, joinedAt: null },
+      { id: "seat-4", occupant: null, joinedAt: null },
+    ]) },
+    HOST,
+  );
+  if (lobby.kind !== "room") throw new Error("expected room");
+  expect(lobby.status).toEqual({ kind: "waiting", filled: 2, total: 5 });
+  expect(lobby.canStart).toBe(true);
+});
+
 test("lobbyOf detects the host by occupant equality, not by seat index", () => {
   const lobby = lobbyOf(
     { kind: "loaded", room: loadedRoom([

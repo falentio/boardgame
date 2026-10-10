@@ -19,7 +19,7 @@ import type { RoleId } from "#shared/core/lockstep/games/g54/roles.ts"
 
 definePageMeta({ layout: "shell" })
 
-const seatOptions = [1, 2, 3, 4, 5, 6, 7]
+const seatOptions = [2, 3, 4, 5, 6, 7]
 
 const name = ref("New room")
 const seats = ref(5)
@@ -121,7 +121,7 @@ const onSubmit = async () => {
                 </SelectContent>
               </Select>
               <FieldDescription>
-                Choose 1 to 7 seats, including you as host.
+                Choose 2 to 7 seats, including you as host.
               </FieldDescription>
             </Field>
             <Field>

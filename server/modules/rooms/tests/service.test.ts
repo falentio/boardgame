@@ -326,13 +326,15 @@ test("deleteRoom emits one room-changed with reason deleted", async () => {
 });
 
 test("no emit fires on an error path: not-found, denied, already-seated, room-full", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 1, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, roles: STARTER_ROLES });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+  const seated = await joinRoom(deps(), { code: created.value.code, user: GUEST });
+  if (!seated.ok) throw new Error(`expected a join, got ${seated.error.kind}`);
   recorder.changes.length = 0;
 
   await joinRoom(deps(), { code: roomCode("BAJUDIRU"), user: GUEST });
   await joinRoom(deps(), { code: created.value.code, user: HOST });
-  await joinRoom(deps(), { code: created.value.code, user: GUEST });
+  await joinRoom(deps(), { code: created.value.code, user: THIRD });
   await updateRoom(deps(), { code: created.value.code, actor: GUEST, name: "Beta" });
   await deleteRoom(deps(), { code: created.value.code, actor: GUEST });
 
@@ -432,7 +434,7 @@ test("startRoom refuses a non-host and an open room", async () => {
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
 
   const open = await startRoom(deps(), { code: created.value.code, actor: HOST });
-  expect(open).toEqual({ ok: false, error: { kind: "room-not-full" } });
+  expect(open).toEqual({ ok: false, error: { kind: "not-enough-players" } });
 
   await joinRoom(deps(), { code: created.value.code, user: GUEST });
   const denied = await startRoom(deps(), { code: created.value.code, actor: GUEST });
@@ -522,7 +524,7 @@ test("the last occupant leaving deletes the row, frees the code, and emits one d
   const created = await createRoom(deps({ entropy: scriptedEntropy(["GAJUDIRU"]) }), {
     host: HOST,
     name: "Alpha",
-    seats: 1,
+    seats: 2,
     roles: STARTER_ROLES,
   });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
@@ -537,7 +539,7 @@ test("the last occupant leaving deletes the row, frees the code, and emits one d
   const reclaimed = await createRoom(deps({ entropy: scriptedEntropy(["GAJUDIRU"]) }), {
     host: HOST,
     name: "Beta",
-    seats: 1,
+    seats: 2,
     roles: STARTER_ROLES,
   });
   if (!reclaimed.ok) throw new Error(`expected the code to be free, got ${reclaimed.error.kind}`);
@@ -545,7 +547,7 @@ test("the last occupant leaving deletes the row, frees the code, and emits one d
 });
 
 test("leave reloads and retries when the delete loses the compare-and-swap", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 1, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, roles: STARTER_ROLES });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
   recorder.changes.length = 0;
 
