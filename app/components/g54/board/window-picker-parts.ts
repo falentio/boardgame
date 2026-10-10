@@ -35,7 +35,6 @@ export interface PickerState {
   readonly ready: Ref<boolean>
   readonly select: (card: CardChoice) => void
   readonly toggle: (target: TargetCard) => void
-  readonly clear: () => void
   readonly build: () => G54Action | null
 }
 
@@ -43,13 +42,14 @@ export const usePickerState = (menu: Ref<WindowMenu>, busy: Ref<boolean>): Picke
   const selectedId = ref<string | null>(null)
   const targetIds = ref<readonly string[]>([])
 
-  /** A lone enabled staged card is not a choice: open its target stage, not a one-row select. */
+  /** A lone enabled staged card is not a choice: it opens straight to its target stage. */
   const loneStaged = computed<StagedCard | null>(() => {
     const only = menu.value.cards.length === 1 ? menu.value.cards[0] : undefined
     return only !== undefined && only.enabled && only.target !== null ? only : null
   })
   const skipSelect = computed(() => loneStaged.value !== null)
 
+  /** The id wins, then the lone staged card: a stale id must not hide a lone card's stage. */
   const card = computed<CardChoice | null>(
     () => menu.value.cards.find((candidate) => candidate.id === selectedId.value) ?? loneStaged.value,
   )
@@ -62,11 +62,6 @@ export const usePickerState = (menu: Ref<WindowMenu>, busy: Ref<boolean>): Picke
   const ready = computed(
     () => !busy.value && card.value !== null && confirmable(card.value, picks.value),
   )
-
-  const clear = (): void => {
-    selectedId.value = null
-    targetIds.value = []
-  }
 
   const select = (next: CardChoice): void => {
     if (busy.value || !next.enabled) return
@@ -104,7 +99,6 @@ export const usePickerState = (menu: Ref<WindowMenu>, busy: Ref<boolean>): Picke
     ready,
     select,
     toggle,
-    clear,
     build,
   }
 }
