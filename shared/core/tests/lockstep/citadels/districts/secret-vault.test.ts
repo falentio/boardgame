@@ -3,28 +3,30 @@ import type { SeatId } from "../../../../index.ts";
 import { specOfDistrict } from "../../../../lockstep/games/citadels/districts.ts";
 import {
   secretVault,
+  secretVaultBuild,
   secretVaultScoring,
   secretVaultTriggers,
 } from "../../../../lockstep/games/citadels/districts/secret-vault.ts";
-import { tryBuild } from "../../../../lockstep/games/citadels/helpers.ts";
 import { scoreGame } from "../../../../lockstep/games/citadels/scoring.ts";
+import { tryBuild } from "../../../../lockstep/games/citadels/helpers.ts";
 import type { CitadelsState, PlacedDistrict } from "../../../../lockstep/games/citadels/state.ts";
 import {
   ANN,
   BASE_CAST_IDS,
   SEATS3,
+  advance,
+  openPurpose,
   rawGenesis,
   rawGold,
   rawHand,
   rawPlayer,
   rawRandom,
+  totalCards,
   withGold,
   withHand,
 } from "../driver.ts";
 
-const placed = (id: string): PlacedDistrict => ({ id, gold: 0 });
-
-const withCity = (
+const withSeatCity = (
   state: CitadelsState,
   seat: SeatId,
   city: readonly PlacedDistrict[],
@@ -33,91 +35,97 @@ const withCity = (
   players: state.players.map((player) => (player.seat === seat ? { ...player, city } : player)),
 });
 
-/** ANN's turn window is open and the round closes beneath it. */
-const turnState = (city: readonly PlacedDistrict[]): CitadelsState =>
-  withCity(
-    {
-      ...rawGenesis(SEATS3, BASE_CAST_IDS),
-      phase: "turn",
-      draft: null,
-      active: ANN,
-      steps: [
-        { kind: "window", window: { kind: "turn", purpose: "turn", seats: [ANN] } },
-        { kind: "end-round" },
-      ],
-    },
-    ANN,
-    city,
-  );
+/** ANN's turn window is open, the round closes beneath it. */
+const turnState = (): CitadelsState => ({
+  ...rawGenesis(SEATS3, BASE_CAST_IDS),
+  phase: "turn",
+  draft: null,
+  active: ANN,
+  steps: [
+    { kind: "window", window: { kind: "turn", purpose: "turn", seats: [ANN] } },
+    { kind: "end-round" },
+  ],
+});
+
+const VAULT: PlacedDistrict = { id: "secret-vault", gold: 0 };
 
 const cityOf = (state: CitadelsState, seat: SeatId): readonly PlacedDistrict[] =>
   rawPlayer(state, seat).city;
 
-const FOUR_DISTRICTS: readonly PlacedDistrict[] = [
-  placed("watchtower"),
-  placed("prison"),
-  placed("temple"),
-  placed("tavern"),
-];
-
-test("the Secret Vault cannot be built, and stays in hand with no gold spent", () => {
-  for (const city of [[], FOUR_DISTRICTS]) {
-    const state = withHand(withGold(turnState(city), ANN, 10), ANN, ["secret-vault"]);
-    const next = tryBuild(state, ANN, 0, rawRandom());
-    expect(cityOf(next, ANN)).toHaveLength(city.length);
-    expect(rawHand(next, ANN)).toEqual(["secret-vault"]);
-    expect(rawGold(next, ANN)).toBe(10);
-  }
+test("the Secret Vault cannot be built: the build is refused with the card still in hand", () => {
+  const state = withHand(withGold(turnState(), ANN, 10), ANN, ["secret-vault"]);
+  const next = tryBuild(state, ANN, 0, rawRandom());
+  expect(cityOf(next, ANN)).toEqual([]);
+  expect(rawHand(next, ANN)).toEqual(["secret-vault"]);
+  expect(rawGold(next, ANN)).toBe(10);
+  expect(totalCards(next)).toBe(totalCards(state));
 });
 
-test("the refusal is card-specific: an ordinary district in the same hand still builds", () => {
-  const state = withHand(withGold(turnState([]), ANN, 10), ANN, ["tavern"]);
+test("the refusal holds through the turn window, even with the gold to pay", () => {
+  const state = withHand(withGold(turnState(), ANN, 10), ANN, ["secret-vault"]);
+  const next = advance(state, () => ({ t: "build", card: 0 }));
+  expect(cityOf(next, ANN)).toEqual([]);
+  expect(rawHand(next, ANN)).toEqual(["secret-vault"]);
+  expect(rawGold(next, ANN)).toBe(10);
+  expect(openPurpose(next)).not.toBe("turn");
+});
+
+test("the build gate is the Secret Vault's own card: it never gates another build", () => {
+  const state = withHand(withGold(turnState(), ANN, 10), ANN, ["tavern"]);
   const next = tryBuild(state, ANN, 0, rawRandom());
   expect(cityOf(next, ANN).map((district) => district.id)).toEqual(["tavern"]);
   expect(rawGold(next, ANN)).toBe(10 - specOfDistrict("tavern").cost);
 });
 
-test("the Secret Vault scores exactly 3 extra points while it is still in your hand", () => {
-  const held = withHand(rawGenesis(SEATS3, BASE_CAST_IDS), ANN, ["secret-vault", "tavern"]);
-  expect(secretVaultScoring(placed("secret-vault"), [], ANN, held)).toBe(3);
+test("score three extra points when the Secret Vault is still in hand at end of game", () => {
+  const state = withHand(turnState(), ANN, ["secret-vault", "tavern"]);
+  expect(secretVaultScoring(VAULT, [], ANN, state)).toBe(3);
 });
 
-test("the scorer pays nothing once the vault has left the hand", () => {
-  const spent = withHand(rawGenesis(SEATS3, BASE_CAST_IDS), ANN, ["tavern"]);
-  expect(secretVaultScoring(placed("secret-vault"), [], ANN, spent)).toBe(0);
+test("score nothing when the Secret Vault is not in hand", () => {
+  const state = withHand(turnState(), ANN, ["tavern", "market"]);
+  expect(secretVaultScoring(VAULT, [], ANN, state)).toBe(0);
+  const empty = withHand(turnState(), ANN, []);
+  expect(secretVaultScoring(VAULT, [], ANN, empty)).toBe(0);
 });
 
-test("the exact extra points reach the score through the engine's scoring pass", () => {
-  // The engine folds the uniques standing in a city, so the vault is seated
-  // there for this pass; its points still come from the state's hand, which is
-  // the clause under test. (See the unit report: scoring.ts must also fold the
-  // uniques in hand for a real game to reach a held vault.)
-  const city: readonly PlacedDistrict[] = [placed("secret-vault")];
-  const held = withHand(withCity(rawGenesis(SEATS3, BASE_CAST_IDS), ANN, city), ANN, [
-    "secret-vault",
-  ]);
-  const heldScore = scoreGame(held).find((score) => score.seat === ANN);
-  expect(heldScore?.unique).toBe(3);
-
-  const spent = withHand(withCity(rawGenesis(SEATS3, BASE_CAST_IDS), ANN, city), ANN, ["tavern"]);
-  const spentScore = scoreGame(spent).find((score) => score.seat === ANN);
-  expect(spentScore?.unique).toBe(0);
+test("the scoring is exact and per card: two Secret Vaults in hand score six", () => {
+  const two = withHand(turnState(), ANN, ["secret-vault", "secret-vault"]);
+  expect(secretVaultScoring(VAULT, [], ANN, two)).toBe(6);
 });
 
-test("the ability is not a no-op: the build is refused and a held vault scores more than zero", () => {
-  const refused = tryBuild(
-    withHand(withGold(turnState([]), ANN, 10), ANN, ["secret-vault"]),
-    ANN,
-    0,
-    rawRandom(),
-  );
-  expect(cityOf(refused, ANN)).toEqual([]);
-  const held = withHand(rawGenesis(SEATS3, BASE_CAST_IDS), ANN, ["secret-vault"]);
-  expect(secretVaultScoring(placed("secret-vault"), [], ANN, held)).toBeGreaterThan(0);
+test("the scoring is a hand rule, not a city rule: the engine's city pass awards nothing", () => {
+  // A hand holding the Secret Vault cannot be seen by the city walk, which is why
+  // this scorer must be reached by a hand scan (see the unit report).
+  const state = withHand(turnState(), ANN, ["secret-vault"]);
+  const score = scoreGame(state).find((entry) => entry.seat === ANN);
+  expect(score?.unique).toBe(0);
+  expect(score?.total).toBe(0);
 });
 
-test("the Secret Vault declares the onBuild trigger and its in-play effect is a no-op", () => {
+test("the Secret Vault declares the onBuild trigger and its build query is a real gate", () => {
   expect(secretVaultTriggers).toEqual(["onBuild"]);
-  const state = turnState([]);
-  expect(secretVault({ state, owner: ANN, city: [], rest: [], rng: rawRandom() })).toBe(state);
+  // A no-op query would answer {} and let the build through; this one refuses it.
+  expect(secretVaultBuild({ state: turnState(), seat: ANN, card: "secret-vault", city: [] })).toEqual({
+    legal: false,
+  });
+  expect(secretVaultBuild({ state: turnState(), seat: ANN, card: "tavern", city: [] })).toEqual({});
+});
+
+test("the effect is not a no-op: the same gold builds a Tavern but never the Secret Vault", () => {
+  const withVault = withHand(withGold(turnState(), ANN, 10), ANN, ["secret-vault"]);
+  const withTavern = withHand(withGold(turnState(), ANN, 10), ANN, ["tavern"]);
+  expect(rawHand(tryBuild(withVault, ANN, 0, rawRandom()), ANN)).toEqual(["secret-vault"]);
+  expect(rawHand(tryBuild(withTavern, ANN, 0, rawRandom()), ANN)).toEqual([]);
+  // The effect body itself is inert: its rule lives in the build query and the scorer.
+  expect(
+    secretVault({ state: withVault, owner: ANN, city: cityOf(withVault, ANN), rest: [], rng: rawRandom() }),
+  ).toEqual(withVault);
+});
+
+test("a crafted city cannot hold the Secret Vault: it is unbuildable, so it scores no city points", () => {
+  // The scorer guards on its own id; a city entry (only reachable by hand-crafting
+  // an illegal state) still reads the hand, never the city.
+  const state = withSeatCity(withHand(turnState(), ANN, []), ANN, [VAULT]);
+  expect(secretVaultScoring(VAULT, [VAULT], ANN, state)).toBe(0);
 });
