@@ -180,6 +180,28 @@ const launchBrowser = async (label, debugPort) => {
       writeFileSync(path, Buffer.from(result.data, "base64"));
       return path;
     },
+    async shotOf(jsEl, name, { pad = 8 } = {}) {
+      await page.eval(`(() => { const el = ${jsEl}; if (el) el.scrollIntoView({ block: 'center', inline: 'nearest' }); })()`);
+      await delay(300);
+      const box = await page.eval(`(() => {
+        const el = ${jsEl};
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { x: r.left, y: r.top, w: r.width, h: r.height };
+      })()`);
+      if (box === null) throw new Error(`shotOf: no element for ${name}`);
+      const clip = {
+        x: Math.max(0, Math.floor(box.x - pad)),
+        y: Math.max(0, Math.floor(box.y - pad)),
+        width: Math.ceil(box.w + pad * 2),
+        height: Math.ceil(box.h + pad * 2),
+        scale: 2,
+      };
+      const { result } = await send("Page.captureScreenshot", { format: "png", clip }, session);
+      const path = `${OUT}${name}.png`;
+      writeFileSync(path, Buffer.from(result.data, "base64"));
+      return path;
+    },
   };
   return { chrome, page, close: () => chrome.kill("SIGKILL") };
 };
@@ -275,6 +297,8 @@ const main = async () => {
 
     const shotBefore = await browser.page.screenshot("picker-wrap-01-unpicked");
     console.log(`screenshot: ${shotBefore}`);
+    const rowBefore = await browser.page.shotOf(ROW(target.label), "picker-wrap-01-row-unpicked", { pad: 10 });
+    console.log(`screenshot: ${rowBefore}`);
 
     const clicked = await browser.page.clickReal(ROW(target.label));
     if (!clicked) fail(`the ${target.label} row was not clickable`);
@@ -295,6 +319,8 @@ const main = async () => {
 
     const shotAfter = await browser.page.screenshot("picker-wrap-02-picked");
     console.log(`screenshot: ${shotAfter}`);
+    const rowAfter = await browser.page.shotOf(ROW(target.label), "picker-wrap-02-row-picked", { pad: 10 });
+    console.log(`screenshot: ${rowAfter}`);
 
     console.log(`\nRESULT: ${target.label} whiteSpace ${before.whiteSpace} -> ${after.whiteSpace}, height ${before.height} -> ${after.height}`);
   } finally {
