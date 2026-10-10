@@ -26,19 +26,22 @@ const guerrillaHit = (state: ReturnType<typeof craftSet>) =>
 const record: ReactiveRecord = {
     hand: ["banker", "missionary", "banker"],
     lieHand: ["banker", "banker"],
+    bobCoins: 6,
     expect: {
       resolve: {
         purposes: ["challenge-claim", "turn"],
+        coins: { bob: -4 },
         hands: { bob: 1 },
       },
       lie: {
         purposes: ["challenge-claim", "proof-claim", "reveal", "turn"],
-        coins: { bob: -2 },
+        coins: { bob: -6 },
         hands: { bob: -1 },
       },
       truth: {
-        purposes: ["challenge-claim", "proof-claim", "reveal", "reactive-missionary", "challenge-claim", "turn"],
-        hands: { bob: 1 },
+        purposes: ["challenge-claim", "proof-claim", "reveal", "turn"],
+        coins: { bob: -4 },
+        hands: { bob: 1, cara: -1 },
       },
     },
   };
@@ -52,6 +55,7 @@ test("Missionary: after a non-Coup loss the holder may claim to take a Court car
     ANN,
     4,
   );
+  state = withCoins(state, BOB, 6);
   const before = totalCards(state);
   state = guerrillaHit(state);
   state = advance(state, pass);
@@ -86,6 +90,7 @@ test("Missionary: a successful challenge costs the claimant a second life", () =
     ANN,
     4,
   );
+  state = withCoins(state, BOB, 6);
   state = guerrillaHit(state);
   state = advance(state, pass);
   state = advance(state, pass);
@@ -106,6 +111,7 @@ test("Missionary: a failed challenge costs the challenger a life, then the card 
     ANN,
     4,
   );
+  state = withCoins(state, BOB, 6);
   state = guerrillaHit(state);
   state = advance(state, pass);
   state = advance(state, pass);
@@ -154,6 +160,7 @@ test("Missionary: a Disappear resolution opens the window", () => {
     ANN,
     3,
   );
+  state = withCoins(state, BOB, 6);
   state = advance(state, (seat, s) =>
     seat === s.active ? { t: "claim", role: "mercenary", target: BOB } : null,
   );

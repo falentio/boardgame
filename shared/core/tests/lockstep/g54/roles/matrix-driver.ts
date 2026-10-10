@@ -85,6 +85,7 @@ export interface ReactiveRecord {
   readonly hand: readonly RoleId[];
   /** The claimant's hand for the lie scenario. */
   readonly lieHand: readonly RoleId[];
+  readonly bobCoins?: number;
   readonly expect: Readonly<Record<"resolve" | "lie" | "truth", Expectation>>;
 }
 
@@ -298,6 +299,7 @@ export const lossTrigger = (
   role: RoleId,
   bobHand: readonly RoleId[],
   entropy: string,
+  bobCoins = 2,
 ): G54State => {
   let state = withCoins(
     craftSet(
@@ -312,6 +314,7 @@ export const lossTrigger = (
     ANN,
     4,
   );
+  state = withCoins(state, BOB, bobCoins);
   state = advance(state, (seat, s) =>
     seat === s.active ? { t: "claim", role: "guerrilla", target: BOB } : null,
   );
@@ -389,7 +392,7 @@ export const describeReactiveMatrix = (role: RoleId, rec: ReactiveRecord): void 
       const before =
         role === "lawyer"
           ? eliminationTrigger(hand, `matrix-${role}-${scenario}`)
-          : lossTrigger(role, hand, `matrix-${role}-${scenario}`);
+          : lossTrigger(role, hand, `matrix-${role}-${scenario}`, rec.bobCoins);
       expect(openPurpose(before), `${role}/${scenario} trigger window`).toBe(triggerWindow);
       const { state, purposes } = foldToTurn(before, reactiveDriver(role, scenario));
       checkExpectation(`${role}/${scenario}`, rec.expect[scenario], observe(before, state, purposes));

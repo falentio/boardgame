@@ -292,12 +292,12 @@ export const ROLE_CATALOG: readonly RoleSpec[] = [
     id: "missionary",
     name: "Missionary",
     category: "special-interest",
-    cost: 0,
+    cost: 4,
     costTo: "treasury",
     needsTarget: false,
     blockRole: null,
     reactive: true,
-    summary: "Reactive: after losing influence (not to Coup), take 1 Court card.",
+    summary: "Reactive: after losing influence (not to Coup), pay 4 coins to take 1 Court card.",
   },
   {
     id: "peacekeeper",
@@ -446,6 +446,8 @@ export const isHoldless = (spec: RoleSpec): boolean => spec.holdless === true;
 /** The cost of a claim given the target's remaining lives, falling back to the static cost. */
 export const claimCost = (spec: RoleSpec, targetLives: number): number =>
   spec.costByTargetLives?.[targetLives] ?? spec.cost;
+
+export const missionarySaveCost = specOf("missionary").cost;
 
 export const categoryCounts = (roles: readonly RoleId[]): ReadonlyMap<RoleCategory, number> => {
   const counts = new Map<RoleCategory, number>();
