@@ -73,7 +73,7 @@ const statusFor = (kind: RoomError["kind"]): 400 | 403 | 404 | 409 => {
     case "room-full":
     case "not-seated":
     case "already-started":
-    case "room-not-full":
+    case "not-enough-players":
     case "conflict":
       return 409;
   }

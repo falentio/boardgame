@@ -60,7 +60,7 @@ const plural = (count: number, singular: string): string => (count === 1 ? singu
 
 const startMessage = (outcome: StartOutcome): string => {
   if (outcome.kind === "not-host") return "Only the host can start the game."
-  if (outcome.kind === "not-full") return "Every seat must be filled before you start."
+  if (outcome.kind === "not-enough-players") return "You need at least 2 players to start."
   if (outcome.kind === "missing") return "That room no longer exists."
   return outcome.kind === "failed" ? outcome.reason : ""
 }
@@ -352,7 +352,9 @@ const onJoin = async () => {
                     v-if="lobby.status.kind === 'waiting'"
                     class="text-muted-foreground text-sm leading-normal tabular-nums"
                   >
-                    Waiting for {{ lobby.status.total - lobby.status.filled }} more
+                    {{ lobby.canStart
+                      ? `You can start now with ${lobby.status.filled} of ${lobby.status.total} players.`
+                      : `Waiting for ${lobby.status.total - lobby.status.filled} more` }}
                   </p>
                 </div>
                 <p v-if="startError" role="alert" class="text-destructive text-sm leading-normal">

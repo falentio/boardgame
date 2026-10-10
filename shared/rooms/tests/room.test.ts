@@ -7,8 +7,8 @@ import {
   MAX_NAME_LENGTH,
   ROOM_TTL_MS,
   createRoom,
+  hasEnoughPlayers,
   isExpired,
-  isFull,
   joinRoom,
   kickFromRoom,
   leaveRoom,
@@ -87,11 +87,11 @@ test("createRoom trims the name and rejects empty or over-long names", () => {
   expect(created({ name: "x".repeat(MAX_NAME_LENGTH) }).name).toHaveLength(MAX_NAME_LENGTH);
 });
 
-test("createRoom rejects seat counts outside 1..7 and non-integers", () => {
-  for (const seats of [0, 8, -1, 3.5]) {
+test("createRoom rejects seat counts outside 2..7 and non-integers", () => {
+  for (const seats of [0, 1, 8, -1, 3.5]) {
     expect(failure(createRoom(newRoom({ seats }))).kind).toBe("invalid-seat-count");
   }
-  expect(createRoom(newRoom({ seats: 1 })).ok).toBe(true);
+  expect(createRoom(newRoom({ seats: 2 })).ok).toBe(true);
   expect(createRoom(newRoom({ seats: 7 })).ok).toBe(true);
 });
 
@@ -170,9 +170,9 @@ test("setRoles replaces the setup for the host and validates the selection", () 
   );
 });
 
-test("isFull is true only when every seat is occupied", () => {
-  expect(isFull(created())).toBe(false);
-  expect(isFull(withGuests([GUEST, THIRD]))).toBe(true);
+test("hasEnoughPlayers is true once the occupant count reaches the minimum", () => {
+  expect(hasEnoughPlayers(created())).toBe(false);
+  expect(hasEnoughPlayers(withGuests([GUEST]))).toBe(true);
 });
 
 test("startRoom stamps startedAt for the host of a full room", () => {
@@ -190,10 +190,15 @@ test("startRoom is host-only", () => {
   });
 });
 
-test("startRoom refuses a room with an open seat", () => {
+test("startRoom refuses a room below the player minimum but starts a sparse room", () => {
   expect(failure(startRoom(created(), { actor: HOST, now: 5000 }))).toEqual({
-    kind: "room-not-full",
+    kind: "not-enough-players",
   });
+
+  const sparse = startRoom(withGuests([GUEST]), { actor: HOST, now: 5000 });
+  if (!sparse.ok) throw new Error("expected a sparse start");
+  expect(sparse.value.startedAt).toBe(5000);
+  expect(sparse.value.seats[2]!.occupant).toBeNull();
 });
 
 test("startRoom is idempotent and preserves the first start moment", () => {
@@ -228,7 +233,7 @@ test("a started room refuses leave, kick, and setRoles so its genesis stays fixe
   expect(failure(setRoles(room, { actor: HOST, roles, now: 6000 }))).toEqual({
     kind: "already-started",
   });
-  expect(isFull(room)).toBe(true);
+  expect(hasEnoughPlayers(room)).toBe(true);
 });
 
 test("requireHost accepts the host and rejects everyone else", () => {
@@ -294,7 +299,7 @@ test("leaveRoom transfers host to the lowest-index remaining occupant", () => {
 });
 
 test("leaveRoom by the last occupant dissolves the room", () => {
-  const left = leaveRoom(created({ seats: 1 }), { actor: HOST, now: 3000 });
+  const left = leaveRoom(created({ seats: 2 }), { actor: HOST, now: 3000 });
   if (!left.ok) throw new Error("expected a departure");
   expect(left.value).toEqual({ kind: "empty" });
 });

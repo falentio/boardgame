@@ -108,6 +108,9 @@ test("POST /api/rooms rejects a bad body with 400", async () => {
 
   const notJson = await call("/api/rooms", { method: "POST", cookie: host.cookie, body: "not json" });
   expect(notJson.status).toBe(400);
+
+  const tooFewSeats = await call("/api/rooms", { method: "POST", cookie: host.cookie, body: createBody({ seats: 1 }) });
+  expect(tooFewSeats.status).toBe(400);
 });
 
 test("GET /api/rooms/:code returns the room for a session and 404 for an unknown code", async () => {
@@ -185,7 +188,7 @@ test("POST /api/rooms/:code/leave is 204 when the last occupant leaves", async (
   const created = await call("/api/rooms", {
     method: "POST",
     cookie: host.cookie,
-    body: createBody({ seats: 1 }),
+    body: createBody({ seats: 2 }),
   });
   const { room } = (await created.json()) as { room: { code: string } };
 
@@ -291,17 +294,18 @@ test("POST /api/rooms/:code/start starts a full room for the host and exposes st
   expect(anon.status).toBe(401);
 });
 
-test("POST /api/rooms/:code/start is 409 for an open room and refuses joins once started", async () => {
+test("POST /api/rooms/:code/start is 409 below the player minimum, starts a sparse room, and refuses joins once started", async () => {
   const host = await signUp("host@example.com");
   const guest = await signUp("guest@example.com");
-  const created = await call("/api/rooms", { method: "POST", cookie: host.cookie, body: createBody({ seats: 2 }) });
+  const created = await call("/api/rooms", { method: "POST", cookie: host.cookie, body: createBody({ seats: 3 }) });
   const { room } = (await created.json()) as { room: { code: string } };
 
-  const open = await call(`/api/rooms/${room.code}/start`, { method: "POST", cookie: host.cookie });
-  expect(open.status).toBe(409);
+  const alone = await call(`/api/rooms/${room.code}/start`, { method: "POST", cookie: host.cookie });
+  expect(alone.status).toBe(409);
 
   await call(`/api/rooms/${room.code}/join`, { method: "POST", cookie: guest.cookie });
-  await call(`/api/rooms/${room.code}/start`, { method: "POST", cookie: host.cookie });
+  const sparse = await call(`/api/rooms/${room.code}/start`, { method: "POST", cookie: host.cookie });
+  expect(sparse.status).toBe(200);
 
   const third = await signUp("third@example.com");
   const late = await call(`/api/rooms/${room.code}/join`, { method: "POST", cookie: third.cookie });

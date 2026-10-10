@@ -1,6 +1,6 @@
 import { isRoleId, type RoleId } from "#shared/core/lockstep/games/g54/roles.ts";
 import { isRoomCode, roomCode, userId, type RoomCode, type UserId } from "#shared/rooms/ids.ts";
-import type { RoomError } from "#shared/rooms/room.ts";
+import { MIN_SEATS, type RoomError } from "#shared/rooms/room.ts";
 import { resolveUserImage } from "#shared/users/avatar.ts";
 
 export interface Seat {
@@ -181,7 +181,7 @@ export const lobbyOf = (load: RoomLoad, viewer: UserId | null): Lobby => {
     amIHost,
     amISeated,
     started,
-    canStart: amIHost && !started && status.kind === "full",
+    canStart: amIHost && !started && filled >= MIN_SEATS,
     canLeave: amISeated && !started,
     canKick,
     gameRedirect: started && amISeated && !amIHost,

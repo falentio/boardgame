@@ -23,10 +23,11 @@ export { err, ok, type Result } from "./result.ts";
 export {
   MAX_NAME_LENGTH,
   MAX_SEATS,
+  MIN_SEATS,
   ROOM_TTL_MS,
   createRoom,
+  hasEnoughPlayers,
   isExpired,
-  isFull,
   joinRoom,
   kickFromRoom,
   leaveRoom,

@@ -7,6 +7,7 @@ import { err, ok, type Result } from "./result.ts";
 import type { RoomCode, RoomId, UserId } from "./ids.ts";
 
 export const MAX_NAME_LENGTH = 60;
+export const MIN_SEATS = 2;
 export const MAX_SEATS = 7;
 export const ROOM_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -31,7 +32,8 @@ export interface Room {
 export const isExpired = (room: Room, now: number): boolean =>
   now >= room.createdAt + ROOM_TTL_MS;
 
-export const isFull = (room: Room): boolean => room.seats.every((s) => s.occupant !== null);
+export const hasEnoughPlayers = (room: Room): boolean =>
+  room.seats.filter((seat) => seat.occupant !== null).length >= MIN_SEATS;
 
 export type RoomError =
   | { kind: "invalid-name"; reason: string }
@@ -44,7 +46,7 @@ export type RoomError =
   | { kind: "not-seated" }
   | { kind: "invalid-kick"; reason: string }
   | { kind: "already-started" }
-  | { kind: "room-not-full" }
+  | { kind: "not-enough-players" }
   | { kind: "conflict" };
 
 export interface NewRoom {
@@ -108,10 +110,10 @@ export const createRoom = (input: NewRoom): Result<Room, RoomError> => {
   if (name === null) {
     return err({ kind: "invalid-name", reason: `name must be 1..${MAX_NAME_LENGTH} chars` });
   }
-  if (!Number.isInteger(input.seats) || input.seats < 1 || input.seats > MAX_SEATS) {
+  if (!Number.isInteger(input.seats) || input.seats < MIN_SEATS || input.seats > MAX_SEATS) {
     return err({
       kind: "invalid-seat-count",
-      reason: `seats must be an integer in 1..${MAX_SEATS}`,
+      reason: `seats must be an integer in ${MIN_SEATS}..${MAX_SEATS}`,
     });
   }
   try {
@@ -185,7 +187,7 @@ export const startRoom = (room: Room, cmd: StartRoomCommand): Result<Room, RoomE
   const denied = requireHost(room, cmd.actor);
   if (denied !== null) return err(denied);
   if (room.startedAt !== null) return ok(room);
-  if (!isFull(room)) return err({ kind: "room-not-full" });
+  if (!hasEnoughPlayers(room)) return err({ kind: "not-enough-players" });
   return ok({ ...room, startedAt: cmd.now, updatedAt: cmd.now });
 };
 
