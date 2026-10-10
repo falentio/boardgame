@@ -1,14 +1,33 @@
 import type { BuildQuery, DistrictHook } from "../districts.ts";
+import { specOfDistrict } from "../districts.ts";
 import type { DistrictCtx, DistrictEffect, DistrictScoring } from "./effects.ts";
 
-/** Stub: the thieves-den district's ability is filled in by its own worker. */
+/** The catalog id of the district this file owns. */
+const THIEVES_DEN_ID = "thieves-den";
+
+/**
+ * You may pay for the Thieves' Den partly or fully with cards from your hand at
+ * 1 card = 1 gold. The build seam offers an all-or-nothing card payment, so this
+ * answers with the full card cost when the player cannot cover the Den in gold
+ * but holds enough spare cards (the built card is removed before payment, so it
+ * takes `cost` cards beyond the Den itself). Paying gold when gold is
+ * available keeps the player's cards. The mixed gold-and-cards payment the rule
+ * also allows needs a shared-file change to `tryBuild`; see the unit report.
+ */
+export const thievesDenBuild: BuildQuery = (ctx) => {
+  if (ctx.card !== THIEVES_DEN_ID) return {};
+  const player = ctx.state.players.find((entry) => entry.seat === ctx.seat);
+  if (player === undefined) return {};
+  const cost = specOfDistrict(THIEVES_DEN_ID).cost;
+  if (player.gold >= cost) return {};
+  return player.hand.length - 1 >= cost ? { payCards: cost } : {};
+};
+
+/** The Thieves' Den's payment clause is the build query above; nothing runs on build. */
 export const thievesDen: DistrictEffect = (ctx: DistrictCtx) => ctx.state;
 
-/** Stub: end-game points for thieves-den; its own worker fills this in. */
+/** The Thieves' Den carries no end-game points of its own. */
 export const thievesDenScoring: DistrictScoring = () => 0;
 
-/** This district's pre-build answer; the engine's default terms until its worker fills it in. */
-export const thievesDenBuild: BuildQuery = () => ({});
-
-/** The engine hooks this district responds to; empty means never called. */
-export const thievesDenTriggers: readonly DistrictHook[] = [];
+/** The engine hook this district answers; the payment itself is the BuildQuery. */
+export const thievesDenTriggers: readonly DistrictHook[] = ["onBuild"];
