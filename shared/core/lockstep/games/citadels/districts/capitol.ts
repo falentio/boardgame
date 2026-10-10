@@ -1,4 +1,4 @@
-import type { DistrictHook } from "../districts.ts";
+import type { BuildQuery, DistrictHook } from "../districts.ts";
 import { specOfDistrict } from "../districts.ts";
 import type { DistrictCtx, DistrictEffect, DistrictScoring } from "./effects.ts";
 
@@ -24,6 +24,9 @@ const hasThreeOfAType = (city: readonly { readonly id: string }[]): boolean => {
 /** Three extra points when the city shows three districts of one type, and only once. */
 export const capitolScoring: DistrictScoring = (_district, city) =>
   hasThreeOfAType(city) ? THREE_OF_A_TYPE : 0;
+
+/** This district's pre-build answer; the engine's default terms until its worker fills it in. */
+export const capitolBuild: BuildQuery = () => ({});
 
 /** The engine hooks this district responds to; empty means never called. */
 export const capitolTriggers: readonly DistrictHook[] = [];

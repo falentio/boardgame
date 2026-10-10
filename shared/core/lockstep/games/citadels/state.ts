@@ -13,10 +13,17 @@ import { asCharacterId, type CharacterId } from "./characters.ts";
 import { isDistrictId, type DistrictId, type DistrictType } from "./districts.ts";
 import { CitadelsError } from "./error.ts";
 
-/** A district sitting in a city. `gold` is the Artist's beautify marker. */
+/**
+ * A district sitting in a city. `gold` is the Artist's beautify marker.
+ * `cards` holds the cards the Museum tucks under it, and `declaredType` is the
+ * colour a district such as the Haunted Quarter counts as when its owner names
+ * one; absent means the catalog type.
+ */
 export interface PlacedDistrict {
   readonly id: DistrictId;
   readonly gold: number;
+  readonly cards?: readonly DistrictId[];
+  readonly declaredType?: DistrictType;
 }
 
 export interface CitadelsPlayer {
@@ -179,6 +186,12 @@ export interface CitadelsState {
   readonly warrants?: readonly CharacterId[];
   /** Gold accumulated on the Tax Collector's token; carries between rounds. */
   readonly taxPot?: number;
+  /**
+   * How many limit-counting builds the active seat has made this turn. Absent
+   * means zero; `applyEndTurn` resets it. A build whose terms set
+   * `countsAsBuild: false` (Stables) never raises it.
+   */
+  readonly builtThisTurn?: number;
 }
 
 const WINDOW_KIND: Record<WindowPurpose, WindowKind> = {
@@ -226,6 +239,7 @@ export const withCrossTurnDefaults = (state: CitadelsState): CitadelsState => ({
   threats: state.threats ?? [],
   warrants: state.warrants ?? [],
   taxPot: state.taxPot ?? 0,
+  builtThisTurn: state.builtThisTurn ?? 0,
 });
 
 export const windowKindFor = (purpose: WindowPurpose): WindowKind => WINDOW_KIND[purpose];
@@ -286,19 +300,40 @@ const decodeCharacters = (json: Json, what: string): readonly CharacterId[] =>
 const decodeSeats = (json: Json, what: string): readonly SeatId[] =>
   expectArray(json, what).map((entry) => decodeSeat(entry, `${what} entry`));
 
+/** An optional own field: absent means the value the caller supplies instead. */
+const optionalField = (
+  object: { readonly [key: string]: Json },
+  key: string,
+): Json | undefined => (Object.hasOwn(object, key) ? object[key] : undefined);
+
+const decodePlaced = (json: Json): PlacedDistrict => {
+  const district = expectObject(json, "placed district");
+  const cards = optionalField(district, "cards");
+  const declaredType = optionalField(district, "declaredType");
+  return {
+    id: decodeDistrict(field(district, "id"), "placed district id"),
+    gold: expectInteger(field(district, "gold"), "placed district gold"),
+    ...(cards === undefined ? {} : { cards: decodeDistricts(cards, "placed district cards") }),
+    ...(declaredType === undefined
+      ? {}
+      : { declaredType: asDistrictType(expectString(declaredType, "placed district type")) }),
+  };
+};
+
+const encodePlaced = (district: PlacedDistrict): Json => ({
+  id: district.id,
+  gold: district.gold,
+  ...(district.cards === undefined ? {} : { cards: [...district.cards] }),
+  ...(district.declaredType === undefined ? {} : { declaredType: district.declaredType }),
+});
+
 const decodePlayer = (json: Json): CitadelsPlayer => {
   const object = expectObject(json, "player");
   return {
     seat: decodeSeat(field(object, "seat"), "player seat"),
     gold: expectInteger(field(object, "gold"), "player gold"),
     hand: decodeDistricts(field(object, "hand"), "player hand"),
-    city: expectArray(field(object, "city"), "player city").map((entry): PlacedDistrict => {
-      const district = expectObject(entry, "placed district");
-      return {
-        id: decodeDistrict(field(district, "id"), "placed district id"),
-        gold: expectInteger(field(district, "gold"), "placed district gold"),
-      };
-    }),
+    city: expectArray(field(object, "city"), "player city").map(decodePlaced),
   };
 };
 
@@ -429,7 +464,7 @@ export const stateCodec: Codec<CitadelsState> = {
         seat: player.seat,
         gold: player.gold,
         hand: [...player.hand],
-        city: player.city.map((district): Json => ({ id: district.id, gold: district.gold })),
+        city: player.city.map(encodePlaced),
       }),
     ),
     deck: [...state.deck],
@@ -451,6 +486,7 @@ export const stateCodec: Codec<CitadelsState> = {
     threats: [...(state.threats ?? [])],
     warrants: [...(state.warrants ?? [])],
     taxPot: state.taxPot ?? 0,
+    builtThisTurn: state.builtThisTurn ?? 0,
   }),
   decode: (json): CitadelsState => {
     const object = expectObject(json, "citadels state");
@@ -476,6 +512,7 @@ export const stateCodec: Codec<CitadelsState> = {
       threats: decodeCharacters(field(object, "threats"), "threats"),
       warrants: decodeCharacters(field(object, "warrants"), "warrants"),
       taxPot: expectInteger(field(object, "taxPot"), "taxPot"),
+      builtThisTurn: expectInteger(field(object, "builtThisTurn"), "builtThisTurn"),
     };
   },
 };

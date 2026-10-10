@@ -1,4 +1,4 @@
-import type { DistrictHook } from "../districts.ts";
+import type { BuildQuery, DistrictHook } from "../districts.ts";
 import { specOfDistrict } from "../districts.ts";
 import type { DistrictCtx, DistrictEffect, DistrictScoring } from "./effects.ts";
 
@@ -8,6 +8,9 @@ export const wishingWell: DistrictEffect = (ctx: DistrictCtx) => ctx.state;
 /** One extra point for each unique district in the city, the Wishing Well included. */
 export const wishingWellScoring: DistrictScoring = (_district, city) =>
   city.filter((placed) => specOfDistrict(placed.id).unique).length;
+
+/** This district's pre-build answer; the engine's default terms until its worker fills it in. */
+export const wishingWellBuild: BuildQuery = () => ({});
 
 /** The engine hooks this district responds to; empty means never called. */
 export const wishingWellTriggers: readonly DistrictHook[] = [];

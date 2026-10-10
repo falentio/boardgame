@@ -1,5 +1,5 @@
 import type { Frame, SeatId } from "../../../index.ts";
-import type { DistrictHook } from "../districts.ts";
+import type { BuildQuery, DistrictHook } from "../districts.ts";
 import type { CitadelsAction } from "../actions.ts";
 import { windowKindFor } from "../state.ts";
 import type { CitadelsState, Pending, Step } from "../state.ts";
@@ -142,5 +142,8 @@ export const armoryResolve: WindowResolver = (ctx) => {
 /** The Armory scores no end-game points of its own. */
 export const armoryScoring: DistrictScoring = () => 0;
 
-/** The engine hooks this district responds to. */
+/** This district's pre-build answer; the engine's default terms until its worker fills it in. */
+export const armoryBuild: BuildQuery = () => ({});
+
+/** The engine hooks this district responds to; empty means never called. */
 export const armoryTriggers: readonly DistrictHook[] = ["onDestroy"];

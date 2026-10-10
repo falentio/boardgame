@@ -1,8 +1,14 @@
 import type { Frame, Random, SeatId } from "../../index.ts";
 import type { CitadelsAction } from "./actions.ts";
 import { specOfCharacter, type CharacterId, type Rank } from "./characters.ts";
-import { BELL_TOWER, specOfDistrict, type DistrictHook, type DistrictId } from "./districts.ts";
-import { UNIQUE_EFFECTS, UNIQUE_TRIGGERS } from "./districts/effects.ts";
+import {
+  BELL_TOWER,
+  specOfDistrict,
+  type BuildTerms,
+  type DistrictHook,
+  type DistrictId,
+} from "./districts.ts";
+import { UNIQUE_BUILD, UNIQUE_EFFECTS, UNIQUE_TRIGGERS } from "./districts/effects.ts";
 import { CitadelsError } from "./error.ts";
 import { buildDraft, CITY_TARGET } from "./setup.ts";
 import type {
@@ -10,6 +16,7 @@ import type {
   CitadelsPlayer,
   CitadelsState,
   Pending,
+  PlacedDistrict,
   Step,
   Window,
   WindowPurpose,
@@ -289,10 +296,59 @@ const chargeBuildTax = (state: CitadelsState, seat: SeatId): CitadelsState => {
   return { ...spendGold(state, seat, 1), taxPot: (state.taxPot ?? 0) + 1 };
 };
 
+/** The per-turn build limits a character overrides; everyone else gets one. */
+export const BUILD_LIMITS: Partial<Record<CharacterId, number>> = {
+  architect: 3,
+  seer: 2,
+  scholar: 2,
+  navigator: 0,
+};
+
 /**
- * Build a district from hand index `card` if affordable; otherwise do nothing.
- * The returned state carries the build's follow-up windows (the Magistrate's
- * confiscation) as its step stack, which `resolveTurn` splices below `end-turn`.
+ * How many limit-counting builds a seat's character allows this turn. The Trader
+ * builds without limit; the Architect, Seer, Scholar, and Navigator override the
+ * default of one.
+ */
+export const buildLimit = (state: CitadelsState, seat: SeatId): number => {
+  const character = claimOf(state, seat)?.character ?? null;
+  if (character === "trader") return Number.POSITIVE_INFINITY;
+  return character === null ? 1 : (BUILD_LIMITS[character] ?? 1);
+};
+
+/**
+ * Fold the build terms: every unique in the builder's city answers first, then
+ * the card being built answers last and overrides. So a card prices itself
+ * (Framework, Necropolis, Thieves' Den) and a city card discounts it (Factory).
+ * The destroy source is the district whose query last asked for a destroy, which
+ * is the card a Framework build consumes.
+ */
+const buildTerms = (
+  state: CitadelsState,
+  seat: SeatId,
+  card: DistrictId,
+  city: readonly PlacedDistrict[],
+): { readonly terms: BuildTerms; readonly destroySource: DistrictId | null } => {
+  const ctx = { state, seat, card, city };
+  let terms: BuildTerms = {};
+  let destroySource: DistrictId | null = null;
+  for (const placed of [...city, { id: card, gold: 0 }]) {
+    const query = UNIQUE_BUILD[placed.id];
+    if (query === undefined) continue;
+    const answer = query(ctx);
+    terms = { ...terms, ...answer };
+    if (answer.destroy === true) destroySource = placed.id;
+    else if (answer.destroy === false) destroySource = null;
+  }
+  return { terms, destroySource };
+};
+
+/**
+ * Build a district from hand index `card` under the terms its city and the card
+ * declare; otherwise do nothing. A build may be rejected for being illegal, for
+ * an unaffordable gold cost, or for lacking the cards or city district an
+ * alternative payment needs. The returned state carries the build's follow-up
+ * windows (the Magistrate's confiscation, for a gold-paid build) as its step
+ * stack, which `resolveTurn` splices below `end-turn`.
  */
 export const tryBuild = (
   state: CitadelsState,
@@ -303,19 +359,78 @@ export const tryBuild = (
   const player = playerOf(state, seat);
   const id = player.hand[card];
   if (id === undefined) return withSteps(state, []);
-  const cost = specOfDistrict(id).cost;
-  if (player.gold < cost) return withSteps(state, []);
-  const hand = player.hand.filter((_, i) => i !== card);
-  const city = [...player.city, { id, gold: 0 }];
-  const built = withPlayer(state, { ...player, gold: player.gold - cost, hand, city });
-  const taxed = chargeBuildTax(runDistrictHooks(built, "onBuild", seat, [], rng), seat);
+  const { terms, destroySource } = buildTerms(state, seat, id, player.city);
+  if (terms.legal === false) return withSteps(state, []);
+
+  const cost = Math.max(0, terms.cost ?? specOfDistrict(id).cost);
+  const payCards = Math.max(0, terms.payCards ?? 0);
+  const destroy = terms.destroy === true;
+
+  let gold = player.gold;
+  let hand = player.hand.filter((_, i) => i !== card);
+  let city = player.city;
+  let discard = state.discard;
+  let paid = true;
+
+  if (destroy) {
+    if (city.length === 0) return withSteps(state, []);
+    const at = destroySource === null ? -1 : city.findIndex((placed) => placed.id === destroySource);
+    const gone = city[at < 0 ? 0 : at];
+    city = city.filter((_, i) => i !== (at < 0 ? 0 : at));
+    if (gone !== undefined) discard = [...discard, gone.id];
+    paid = false;
+  } else if (payCards > 0) {
+    if (hand.length < payCards) return withSteps(state, []);
+    discard = [...discard, ...hand.slice(0, payCards)];
+    hand = hand.slice(payCards);
+    paid = false;
+  } else {
+    if (gold < cost) return withSteps(state, []);
+    gold -= cost;
+  }
+
+  const builtPlayer = { ...player, gold, hand, city: [...city, { id, gold: 0 }] };
+  const counted = terms.countsAsBuild !== false;
+  const builtState: CitadelsState = {
+    ...withPlayer(state, builtPlayer),
+    discard,
+    builtThisTurn: counted ? (state.builtThisTurn ?? 0) + 1 : (state.builtThisTurn ?? 0),
+  };
+  const taxed = chargeBuildTax(runDistrictHooks(builtState, "onBuild", seat, [], rng), seat);
   const magistrate = seatHolding(state, "magistrate");
   const warrant = state.warrants?.[0];
-  // Every build on this path pays its cost, so every successful build is a paid build.
-  if (warrant !== undefined && magistrate !== null && seatHolding(state, warrant) === seat) {
+  if (paid && warrant !== undefined && magistrate !== null && seatHolding(state, warrant) === seat) {
     return withSteps(taxed, [winStep("magistrate-confiscate", [magistrate])]);
   }
   return withSteps(taxed, []);
+};
+
+/** The gather's draw: two cards, keep one, before any district adjusts it. */
+export const DRAW_COUNT = 2;
+export const DRAW_KEEP = 1;
+
+/**
+ * Deal the gather's cards. A pending record carries the draw count in `amount`
+ * and the keep count in `gold`, so a district's `onDraw` hook can raise either
+ * (Library keeps both, Observatory draws three). The cards land in
+ * `pending.cards` for the `keep` window below.
+ */
+const drawGather = (
+  state: CitadelsState,
+  seat: SeatId,
+  rest: readonly Step[],
+  rng: Random,
+): CitadelsState => {
+  const armed = withPending(state, {
+    ...emptyPending(seat, null),
+    amount: DRAW_COUNT,
+    gold: DRAW_KEEP,
+  });
+  const hooked = runDistrictHooks(armed, "onDraw", seat, rest, rng);
+  const pending = hooked.pending ?? armed.pending;
+  if (pending === null) return hooked;
+  const { drawn, deck } = deckDraw(hooked, Math.max(0, pending.amount));
+  return { ...hooked, deck, pending: { ...pending, cards: drawn } };
 };
 
 export const resolveTurn: WindowResolver = (ctx) => {
@@ -326,16 +441,27 @@ export const resolveTurn: WindowResolver = (ctx) => {
   }
   const action = actionOf(ctx.frame, seat);
   if (action?.t === "draw") {
-    const { drawn, deck } = deckDraw(ctx.state, 2);
-    const next: CitadelsState = {
-      ...ctx.state,
-      deck,
-      pending: { ...emptyPending(seat, null), cards: drawn },
-    };
-    return withSteps(next, [winStep("keep", [seat]), END_TURN, ...rest]);
+    return withSteps(drawGather(ctx.state, seat, rest, ctx.rng), [winStep("keep", [seat]), END_TURN, ...rest]);
   }
   if (action?.t === "build") {
     const built = tryBuild(ctx.state, seat, action.card, ctx.rng);
+    // A build succeeds when the card left the hand; only a successful build under
+    // the limit re-offers a turn window, so a failed attempt ends the turn as before.
+    const succeeded =
+      playerOf(built, seat).hand.length < playerOf(ctx.state, seat).hand.length;
+    if (succeeded && (built.builtThisTurn ?? 0) < buildLimit(ctx.state, seat)) {
+      // Drop any duplicate turn windows a character effect pre-seeded so the
+      // limit counter, not the pre-seeded count, decides how many builds remain.
+      const below = rest.filter(
+        (step) =>
+          !(
+            step.kind === "window" &&
+            step.window.purpose === "turn" &&
+            step.window.seats.includes(seat)
+          ),
+      );
+      return withSteps(built, [...built.steps, winStep("turn", [seat]), ...below]);
+    }
     return withSteps(built, [...built.steps, END_TURN, ...rest]);
   }
   const gathered = runDistrictHooks(addGold(ctx.state, seat, 2), "onIncome", seat, rest, ctx.rng);
@@ -349,12 +475,25 @@ export const resolveKeep: WindowResolver = (ctx) => {
   const action = actionOf(ctx.frame, seat);
   const wanted = action?.t === "keep" ? action.index : 0;
   const index = Number.isInteger(wanted) && wanted >= 0 && wanted < pool.length ? wanted : 0;
-  const card = pool[index];
+  // The gather's keep count rides on `pending.gold`; the default draw keeps one.
+  const keepCount = Math.max(1, Math.min(ctx.state.pending?.gold ?? 1, pool.length));
+  const kept =
+    keepCount >= pool.length
+      ? pool
+      : index >= 0 && index < pool.length
+        ? [pool[index] as DistrictId]
+        : [];
+  const keptIndexes = new Set(
+    kept.map((card) => pool.indexOf(card)).filter((at) => at >= 0),
+  );
   let next = ctx.state;
-  if (card !== undefined) {
+  if (kept.length > 0) {
     const player = playerOf(next, seat);
-    next = withPlayer(next, { ...player, hand: [...player.hand, card] });
-    next = { ...next, discard: [...next.discard, ...pool.filter((_, i) => i !== index)] };
+    next = withPlayer(next, { ...player, hand: [...player.hand, ...kept] });
+    next = {
+      ...next,
+      discard: [...next.discard, ...pool.filter((_, i) => !keptIndexes.has(i))],
+    };
   }
   return withSteps(withPending(next, null), rest);
 };
@@ -435,7 +574,7 @@ export const applyCall = (state: CitadelsState): CitadelsState => {
 export const applyEndTurn = (state: CitadelsState, rng: Random): CitadelsState => {
   const rest = state.steps.slice(1);
   const hooked = runDistrictHooks(state, "onEndTurn", state.active, rest, rng);
-  return withSteps(withPending(hooked, null), rest);
+  return withSteps(withPending({ ...hooked, builtThisTurn: 0 }, null), rest);
 };
 
 /** Clear the per-round markers; the Tax Collector's pot carries over. */

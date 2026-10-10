@@ -1,4 +1,4 @@
-import type { DistrictHook } from "../districts.ts";
+import type { BuildQuery, DistrictHook } from "../districts.ts";
 import { specOfDistrict } from "../districts.ts";
 import type { DistrictCtx, DistrictEffect, DistrictScoring } from "./effects.ts";
 
@@ -21,6 +21,9 @@ export const ivoryTowerScoring: DistrictScoring = (_district, city) => {
   );
   return uniques.length === 1 ? IVORY_TOWER_BONUS : 0;
 };
+
+/** This district's pre-build answer; the engine's default terms until its worker fills it in. */
+export const ivoryTowerBuild: BuildQuery = () => ({});
 
 /** The engine hooks this district responds to; empty means never called. */
 export const ivoryTowerTriggers: readonly DistrictHook[] = [];

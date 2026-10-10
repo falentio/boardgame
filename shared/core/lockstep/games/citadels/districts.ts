@@ -1,5 +1,6 @@
-import type { Random } from "../../index.ts";
+import type { Random, SeatId } from "../../index.ts";
 import { CitadelsError } from "./error.ts";
+import type { CitadelsState, PlacedDistrict } from "./state.ts";
 
 /**
  * The district domain. A card is either a basic district (pure data: a colour,
@@ -14,15 +15,53 @@ export type DistrictType = "noble" | "religious" | "trade" | "military" | "uniqu
 export type DistrictId = string;
 
 /** A trigger point a unique district may respond to. Declared once, engine-called. */
-export type DistrictHook = "onIncome" | "onBuild" | "onEndTurn" | "onScoring" | "onDestroy";
+export type DistrictHook =
+  | "onIncome"
+  | "onDraw"
+  | "onBuild"
+  | "onEndTurn"
+  | "onScoring"
+  | "onDestroy";
 
 export const DISTRICT_HOOKS: readonly DistrictHook[] = [
   "onIncome",
+  "onDraw",
   "onBuild",
   "onEndTurn",
   "onScoring",
   "onDestroy",
 ];
+
+/**
+ * What a build costs and whether it may proceed, as answered by one district.
+ * Every field is optional; an absent field means "the engine's default" (the
+ * catalog cost, a paid build, a legal build that consumes the turn's limit).
+ */
+export interface BuildTerms {
+  /** The cost to charge, defaulting to the catalog cost. */
+  readonly cost?: number;
+  /** Cards from hand the build consumes in place of gold, at 1 card = 1 gold. */
+  readonly payCards?: number;
+  /** A district in the builder's own city the build destroys instead of paying. */
+  readonly destroy?: boolean;
+  /** False when the district may not be built now (Monument below five districts). */
+  readonly legal?: boolean;
+  /** False when this build must not consume the turn's build limit (Stables). */
+  readonly countsAsBuild?: boolean;
+}
+
+/**
+ * A district's pre-build answer, mirroring the trigger table: a card can price
+ * itself, gate its own legality, pay alternatively, or decline the limit. The
+ * engine folds the queries of every unique already in the builder's city and
+ * then the query of the card being built, so a city card may discount a build.
+ */
+export type BuildQuery = (ctx: {
+  readonly state: CitadelsState;
+  readonly seat: SeatId;
+  readonly card: DistrictId;
+  readonly city: readonly PlacedDistrict[];
+}) => BuildTerms;
 
 export interface DistrictSpec {
   readonly id: DistrictId;
@@ -155,6 +194,14 @@ export const specOfDistrict = (id: DistrictId): DistrictSpec => {
 };
 
 export const typeOfDistrict = (id: DistrictId): DistrictType => specOfDistrict(id).type;
+
+/**
+ * The type a placed district counts as for colour counts and scoring: the type
+ * its owner declared (Haunted Quarter, School of Magic) when one was recorded,
+ * else its catalog type.
+ */
+export const typeOfPlaced = (district: PlacedDistrict): DistrictType =>
+  district.declaredType ?? specOfDistrict(district.id).type;
 
 /**
  * One entry per physical card: every basic copy in catalog order, then one copy

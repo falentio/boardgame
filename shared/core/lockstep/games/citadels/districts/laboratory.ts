@@ -1,4 +1,4 @@
-import type { DistrictHook } from "../districts.ts";
+import type { BuildQuery, DistrictHook } from "../districts.ts";
 import type { CitadelsState } from "../state.ts";
 import type { DistrictCtx, DistrictEffect, DistrictScoring } from "./effects.ts";
 
@@ -34,5 +34,8 @@ export const laboratory: DistrictEffect = (ctx: DistrictCtx) => discardFirst(ctx
 /** The Laboratory carries no end-game points of its own. */
 export const laboratoryScoring: DistrictScoring = () => 0;
 
-/** The engine hooks this district responds to. */
+/** This district's pre-build answer; the engine's default terms until its worker fills it in. */
+export const laboratoryBuild: BuildQuery = () => ({});
+
+/** The engine hooks this district responds to; empty means never called. */
 export const laboratoryTriggers: readonly DistrictHook[] = ["onEndTurn"];

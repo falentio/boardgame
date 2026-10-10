@@ -1,5 +1,5 @@
 import type { SeatId } from "../../index.ts";
-import { specOfDistrict, type DistrictType } from "./districts.ts";
+import { specOfDistrict, typeOfPlaced, type DistrictType } from "./districts.ts";
 import { UNIQUE_SCORING } from "./districts/effects.ts";
 import { playerOf } from "./helpers.ts";
 import type { CitadelsState, PlacedDistrict } from "./state.ts";
@@ -20,7 +20,7 @@ const costSum = (city: readonly PlacedDistrict[]): number =>
 
 /** Three points for a city that shows all five district types. */
 const colourBonus = (city: readonly PlacedDistrict[]): number => {
-  const present = new Set(city.map((district) => specOfDistrict(district.id).type));
+  const present = new Set(city.map((district) => typeOfPlaced(district)));
   return ALL_TYPES.every((type) => present.has(type)) ? 3 : 0;
 };
 
@@ -32,10 +32,14 @@ const completionBonus = (state: CitadelsState, seat: SeatId): number => {
 };
 
 /** End-game points from unique districts, summed from each district's own file. */
-const uniquePoints = (city: readonly PlacedDistrict[], seat: SeatId): number =>
+const uniquePoints = (
+  state: CitadelsState,
+  city: readonly PlacedDistrict[],
+  seat: SeatId,
+): number =>
   city.reduce((sum, district) => {
     if (!specOfDistrict(district.id).unique) return sum;
-    return sum + (UNIQUE_SCORING[district.id]?.(district, city, seat) ?? 0);
+    return sum + (UNIQUE_SCORING[district.id]?.(district, city, seat, state) ?? 0);
   }, 0);
 
 export const scoreGame = (state: CitadelsState): readonly Score[] =>
@@ -43,7 +47,7 @@ export const scoreGame = (state: CitadelsState): readonly Score[] =>
     const districts = costSum(player.city);
     const colors = colourBonus(player.city);
     const completion = completionBonus(state, player.seat);
-    const unique = uniquePoints(player.city, player.seat);
+    const unique = uniquePoints(state, player.city, player.seat);
     return {
       seat: player.seat,
       districts,

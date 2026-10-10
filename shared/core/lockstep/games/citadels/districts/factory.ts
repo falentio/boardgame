@@ -1,4 +1,4 @@
-import type { DistrictHook } from "../districts.ts";
+import type { BuildQuery, DistrictHook } from "../districts.ts";
 import { specOfDistrict } from "../districts.ts";
 import { addGold } from "../helpers.ts";
 import type { DistrictCtx, DistrictEffect, DistrictScoring } from "./effects.ts";
@@ -22,5 +22,8 @@ export const factory: DistrictEffect = (ctx: DistrictCtx) => {
 /** The Factory carries no end-game points of its own. */
 export const factoryScoring: DistrictScoring = () => 0;
 
-/** The engine hooks this district responds to. */
+/** This district's pre-build answer; the engine's default terms until its worker fills it in. */
+export const factoryBuild: BuildQuery = () => ({});
+
+/** The engine hooks this district responds to; empty means never called. */
 export const factoryTriggers: readonly DistrictHook[] = ["onBuild"];
