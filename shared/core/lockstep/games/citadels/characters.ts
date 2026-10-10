@@ -1,0 +1,312 @@
+import type { DistrictType } from "./districts.ts";
+import { CitadelsError } from "./error.ts";
+
+/**
+ * The character domain. 27 characters across ranks 1-9, three per rank. Each
+ * rank-1..8 character plus optionally one rank-9 character forms a game's cast
+ * (`validateCast` in setup.ts). The catalog is pure data: rank, the district
+ * colour the character collects gold for, whether it takes the crown, and a
+ * one-line summary. Every character's ability lives in `characters/<id>.ts`.
+ */
+
+export type CharacterId =
+  | "assassin"
+  | "thief"
+  | "magician"
+  | "king"
+  | "bishop"
+  | "merchant"
+  | "architect"
+  | "warlord"
+  | "witch"
+  | "tax-collector"
+  | "wizard"
+  | "emperor"
+  | "abbot"
+  | "alchemist"
+  | "navigator"
+  | "diplomat"
+  | "artist"
+  | "queen"
+  | "magistrate"
+  | "blackmailer"
+  | "spy"
+  | "seer"
+  | "patrician"
+  | "cardinal"
+  | "trader"
+  | "scholar"
+  | "marshal";
+
+export type Rank = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+
+export interface CharacterSpec {
+  readonly id: CharacterId;
+  readonly name: string;
+  readonly rank: Rank;
+  /** The district type this character collects gold for, or null (no income ability). */
+  readonly income: DistrictType | null;
+  /** True when the character must take the crown (King, Emperor, Patrician). */
+  readonly crown: boolean;
+  readonly summary: string;
+}
+
+export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
+  {
+    id: "assassin",
+    name: "Assassin",
+    rank: 1,
+    income: null,
+    crown: false,
+    summary: "Name a character; that character is killed and skips its turn.",
+  },
+  {
+    id: "witch",
+    name: "Witch",
+    rank: 1,
+    income: null,
+    crown: false,
+    summary: "Name a character; its owner is bewitched and takes the Witch's turn instead.",
+  },
+  {
+    id: "spy",
+    name: "Spy",
+    rank: 1,
+    income: null,
+    crown: false,
+    summary: "Name a district type and a player; look at that player's hand and take 1 gold.",
+  },
+  {
+    id: "thief",
+    name: "Thief",
+    rank: 2,
+    income: null,
+    crown: false,
+    summary: "Name a character; when it is called you take all of its owner's gold.",
+  },
+  {
+    id: "blackmailer",
+    name: "Blackmailer",
+    rank: 2,
+    income: null,
+    crown: false,
+    summary: "Pay 1 gold to a character; that character skips its turn this round.",
+  },
+  {
+    id: "seer",
+    name: "Seer",
+    rank: 2,
+    income: null,
+    crown: false,
+    summary: "Draw a card, keep one and give one to a neighbour.",
+  },
+  {
+    id: "magician",
+    name: "Magician",
+    rank: 3,
+    income: null,
+    crown: false,
+    summary: "Swap your whole hand with the deck, or exchange cards with another player.",
+  },
+  {
+    id: "wizard",
+    name: "Wizard",
+    rank: 3,
+    income: null,
+    crown: false,
+    summary: "Look at a player's hand and take one district card from it.",
+  },
+  {
+    id: "magistrate",
+    name: "Magistrate",
+    rank: 3,
+    income: null,
+    crown: false,
+    summary: "Confiscate a district from a player's city, paying its cost to the owner.",
+  },
+  {
+    id: "king",
+    name: "King",
+    rank: 4,
+    income: "noble",
+    crown: true,
+    summary: "Take the crown and 1 gold per noble district in your city.",
+  },
+  {
+    id: "emperor",
+    name: "Emperor",
+    rank: 4,
+    income: "noble",
+    crown: true,
+    summary: "Take the crown, give the crown to a player, and collect 1 gold per noble district.",
+  },
+  {
+    id: "patrician",
+    name: "Patrician",
+    rank: 4,
+    income: "noble",
+    crown: true,
+    summary: "Take the crown and collect 1 gold per noble district in your city.",
+  },
+  {
+    id: "bishop",
+    name: "Bishop",
+    rank: 5,
+    income: "religious",
+    crown: false,
+    summary: "Collect 1 gold per religious district; name a player who pays you 1 gold per noble.",
+  },
+  {
+    id: "abbot",
+    name: "Abbot",
+    rank: 5,
+    income: "religious",
+    crown: false,
+    summary: "Collect 1 gold per religious district; take 1 gold or 1 card from the richest player.",
+  },
+  {
+    id: "cardinal",
+    name: "Cardinal",
+    rank: 5,
+    income: "religious",
+    crown: false,
+    summary: "Collect 1 gold per religious district; a rival gives you 1 gold or 1 card.",
+  },
+  {
+    id: "merchant",
+    name: "Merchant",
+    rank: 6,
+    income: "trade",
+    crown: false,
+    summary: "Collect 1 gold per trade district and gain 1 extra gold.",
+  },
+  {
+    id: "alchemist",
+    name: "Alchemist",
+    rank: 6,
+    income: null,
+    crown: false,
+    summary: "At the end of your turn, take back all the gold you spent this turn.",
+  },
+  {
+    id: "trader",
+    name: "Trader",
+    rank: 6,
+    income: "trade",
+    crown: false,
+    summary: "Collect 1 gold per trade district and build any number of districts.",
+  },
+  {
+    id: "architect",
+    name: "Architect",
+    rank: 7,
+    income: null,
+    crown: false,
+    summary: "Draw two extra cards and build up to three districts.",
+  },
+  {
+    id: "navigator",
+    name: "Navigator",
+    rank: 7,
+    income: null,
+    crown: false,
+    summary: "Take 4 gold, or draw 4 cards and keep 1.",
+  },
+  {
+    id: "scholar",
+    name: "Scholar",
+    rank: 7,
+    income: null,
+    crown: false,
+    summary: "Draw seven cards; keep one and return the rest to the bottom of the deck.",
+  },
+  {
+    id: "warlord",
+    name: "Warlord",
+    rank: 8,
+    income: "military",
+    crown: false,
+    summary: "Collect 1 gold per military district; pay to destroy one district.",
+  },
+  {
+    id: "diplomat",
+    name: "Diplomat",
+    rank: 8,
+    income: null,
+    crown: false,
+    summary: "Exchange a district in your city with one in a rival's city.",
+  },
+  {
+    id: "marshal",
+    name: "Marshal",
+    rank: 8,
+    income: "military",
+    crown: false,
+    summary: "Collect 1 gold per military district; seize a district from a rival's city.",
+  },
+  {
+    id: "artist",
+    name: "Artist",
+    rank: 9,
+    income: null,
+    crown: false,
+    summary: "Beautify up to two districts, placing gold on them for end-game points.",
+  },
+  {
+    id: "queen",
+    name: "Queen",
+    rank: 9,
+    income: null,
+    crown: false,
+    summary: "Gain 3 gold if the rank-4 character was called this round.",
+  },
+  {
+    id: "tax-collector",
+    name: "Tax Collector",
+    rank: 9,
+    income: null,
+    crown: false,
+    summary: "Name a character; every player holding it gives you 1 gold.",
+  },
+];
+
+/** The eight rank 1-8 basics: the cast of the base game. */
+export const BASE_CAST: readonly CharacterId[] = [
+  "assassin",
+  "thief",
+  "magician",
+  "king",
+  "bishop",
+  "merchant",
+  "architect",
+  "warlord",
+];
+
+const BY_ID: ReadonlyMap<CharacterId, CharacterSpec> = new Map(
+  CHARACTER_CATALOG.map((spec) => [spec.id, spec]),
+);
+
+export const isCharacterId = (value: string): value is CharacterId =>
+  BY_ID.has(value as CharacterId);
+
+export const asCharacterId = (value: string): CharacterId => {
+  if (!isCharacterId(value)) throw new CitadelsError(`unknown character: ${value}`);
+  return value;
+};
+
+export const isRank = (value: number): value is Rank =>
+  Number.isInteger(value) && value >= 1 && value <= 9;
+
+export const asRank = (value: number): Rank => {
+  if (!isRank(value)) throw new CitadelsError(`unknown rank: ${String(value)}`);
+  return value;
+};
+
+export const specOfCharacter = (id: CharacterId): CharacterSpec => {
+  const spec = BY_ID.get(id);
+  if (spec === undefined) throw new CitadelsError(`unknown character: ${id}`);
+  return spec;
+};
+
+export const charactersOfRank = (rank: Rank): readonly CharacterId[] =>
+  CHARACTER_CATALOG.filter((spec) => spec.rank === rank).map((spec) => spec.id);
