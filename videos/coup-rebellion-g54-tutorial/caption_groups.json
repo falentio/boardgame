@@ -1,0 +1,634 @@
+{
+  "total_duration_s": 69.696,
+  "width": 1920,
+  "height": 1080,
+  "groups": [
+    {
+      "id": "caption-group-0",
+      "frame": 8,
+      "start": 46.827,
+      "end": 47.227,
+      "text": "If you're",
+      "words": [
+        {
+          "id": "caption-word-0-0",
+          "text": "If",
+          "start": 46.827,
+          "end": 46.987
+        },
+        {
+          "id": "caption-word-0-1",
+          "text": "you're",
+          "start": 46.987,
+          "end": 47.227
+        }
+      ]
+    },
+    {
+      "id": "caption-group-1",
+      "frame": 8,
+      "start": 47.227,
+      "end": 47.627,
+      "text": "lying,",
+      "words": [
+        {
+          "id": "caption-word-1-0",
+          "text": "lying,",
+          "start": 47.227,
+          "end": 47.627
+        }
+      ]
+    },
+    {
+      "id": "caption-group-2",
+      "frame": 8,
+      "start": 47.627,
+      "end": 48.027,
+      "text": "you lose",
+      "words": [
+        {
+          "id": "caption-word-2-0",
+          "text": "you",
+          "start": 47.627,
+          "end": 47.787
+        },
+        {
+          "id": "caption-word-2-1",
+          "text": "lose",
+          "start": 47.787,
+          "end": 48.027
+        }
+      ]
+    },
+    {
+      "id": "caption-group-3",
+      "frame": 8,
+      "start": 48.027,
+      "end": 48.667,
+      "text": "the life,",
+      "words": [
+        {
+          "id": "caption-word-3-0",
+          "text": "the",
+          "start": 48.027,
+          "end": 48.187
+        },
+        {
+          "id": "caption-word-3-1",
+          "text": "life,",
+          "start": 48.187,
+          "end": 48.667
+        }
+      ]
+    },
+    {
+      "id": "caption-group-4",
+      "frame": 8,
+      "start": 48.667,
+      "end": 49.067,
+      "text": "and the",
+      "words": [
+        {
+          "id": "caption-word-4-0",
+          "text": "and",
+          "start": 48.667,
+          "end": 48.907
+        },
+        {
+          "id": "caption-word-4-1",
+          "text": "the",
+          "start": 48.907,
+          "end": 49.067
+        }
+      ]
+    },
+    {
+      "id": "caption-group-5",
+      "frame": 8,
+      "start": 49.067,
+      "end": 50.147,
+      "text": "action fails.",
+      "words": [
+        {
+          "id": "caption-word-5-0",
+          "text": "action",
+          "start": 49.067,
+          "end": 49.467
+        },
+        {
+          "id": "caption-word-5-1",
+          "text": "fails.",
+          "start": 49.467,
+          "end": 50.027
+        }
+      ]
+    },
+    {
+      "id": "caption-group-6",
+      "frame": 9,
+      "start": 50.176,
+      "end": 50.976,
+      "text": "Some actions",
+      "words": [
+        {
+          "id": "caption-word-6-0",
+          "text": "Some",
+          "start": 50.176,
+          "end": 50.496
+        },
+        {
+          "id": "caption-word-6-1",
+          "text": "actions",
+          "start": 50.496,
+          "end": 50.976
+        }
+      ]
+    },
+    {
+      "id": "caption-group-7",
+      "frame": 9,
+      "start": 50.976,
+      "end": 51.296,
+      "text": "can be",
+      "words": [
+        {
+          "id": "caption-word-7-0",
+          "text": "can",
+          "start": 50.976,
+          "end": 51.136
+        },
+        {
+          "id": "caption-word-7-1",
+          "text": "be",
+          "start": 51.136,
+          "end": 51.296
+        }
+      ]
+    },
+    {
+      "id": "caption-group-8",
+      "frame": 9,
+      "start": 51.296,
+      "end": 51.936,
+      "text": "blocked,",
+      "words": [
+        {
+          "id": "caption-word-8-0",
+          "text": "blocked,",
+          "start": 51.296,
+          "end": 51.936
+        }
+      ]
+    },
+    {
+      "id": "caption-group-9",
+      "frame": 9,
+      "start": 51.936,
+      "end": 52.336,
+      "text": "and in",
+      "words": [
+        {
+          "id": "caption-word-9-0",
+          "text": "and",
+          "start": 51.936,
+          "end": 52.096
+        },
+        {
+          "id": "caption-word-9-1",
+          "text": "in",
+          "start": 52.096,
+          "end": 52.336
+        }
+      ]
+    },
+    {
+      "id": "caption-group-10",
+      "frame": 9,
+      "start": 52.336,
+      "end": 53.376,
+      "text": "G fifty,",
+      "words": [
+        {
+          "id": "caption-word-10-0",
+          "text": "G",
+          "start": 52.336,
+          "end": 52.656
+        },
+        {
+          "id": "caption-word-10-1",
+          "text": "fifty,",
+          "start": 52.736,
+          "end": 53.376
+        }
+      ]
+    },
+    {
+      "id": "caption-group-11",
+      "frame": 9,
+      "start": 53.376,
+      "end": 54.496,
+      "text": "each force roll",
+      "words": [
+        {
+          "id": "caption-word-11-0",
+          "text": "each",
+          "start": 53.376,
+          "end": 53.696
+        },
+        {
+          "id": "caption-word-11-1",
+          "text": "force",
+          "start": 53.696,
+          "end": 54.096
+        },
+        {
+          "id": "caption-word-11-2",
+          "text": "roll",
+          "start": 54.096,
+          "end": 54.496
+        }
+      ]
+    },
+    {
+      "id": "caption-group-12",
+      "frame": 9,
+      "start": 54.496,
+      "end": 56.016,
+      "text": "blocks only itself.",
+      "words": [
+        {
+          "id": "caption-word-12-0",
+          "text": "blocks",
+          "start": 54.496,
+          "end": 54.976
+        },
+        {
+          "id": "caption-word-12-1",
+          "text": "only",
+          "start": 54.976,
+          "end": 55.216
+        },
+        {
+          "id": "caption-word-12-2",
+          "text": "itself.",
+          "start": 55.216,
+          "end": 56.016
+        }
+      ]
+    },
+    {
+      "id": "caption-group-13",
+      "frame": 9,
+      "start": 56.016,
+      "end": 57.792,
+      "text": "Guerilla stops guerrilla.",
+      "words": [
+        {
+          "id": "caption-word-13-0",
+          "text": "Guerilla",
+          "start": 56.016,
+          "end": 56.496
+        },
+        {
+          "id": "caption-word-13-1",
+          "text": "stops",
+          "start": 56.656,
+          "end": 56.896
+        },
+        {
+          "id": "caption-word-13-2",
+          "text": "guerrilla.",
+          "start": 57.056,
+          "end": 57.696
+        }
+      ]
+    },
+    {
+      "id": "caption-group-14",
+      "frame": 10,
+      "start": 57.792,
+      "end": 59.072,
+      "text": "Seven coins buys",
+      "words": [
+        {
+          "id": "caption-word-14-0",
+          "text": "Seven",
+          "start": 57.792,
+          "end": 58.192
+        },
+        {
+          "id": "caption-word-14-1",
+          "text": "coins",
+          "start": 58.192,
+          "end": 58.672
+        },
+        {
+          "id": "caption-word-14-2",
+          "text": "buys",
+          "start": 58.672,
+          "end": 59.072
+        }
+      ]
+    },
+    {
+      "id": "caption-group-15",
+      "frame": 10,
+      "start": 59.072,
+      "end": 59.872,
+      "text": "a coop,",
+      "words": [
+        {
+          "id": "caption-word-15-0",
+          "text": "a",
+          "start": 59.072,
+          "end": 59.232
+        },
+        {
+          "id": "caption-word-15-1",
+          "text": "coop,",
+          "start": 59.232,
+          "end": 59.872
+        }
+      ]
+    },
+    {
+      "id": "caption-group-16",
+      "frame": 10,
+      "start": 59.872,
+      "end": 60.912,
+      "text": "unblockable,",
+      "words": [
+        {
+          "id": "caption-word-16-0",
+          "text": "unblockable,",
+          "start": 59.872,
+          "end": 60.912
+        }
+      ]
+    },
+    {
+      "id": "caption-group-17",
+      "frame": 10,
+      "start": 60.912,
+      "end": 61.872,
+      "text": "unchallengeable,",
+      "words": [
+        {
+          "id": "caption-word-17-0",
+          "text": "unchallengeable,",
+          "start": 60.912,
+          "end": 61.872
+        }
+      ]
+    },
+    {
+      "id": "caption-group-18",
+      "frame": 10,
+      "start": 61.872,
+      "end": 63.152,
+      "text": "one life gone.",
+      "words": [
+        {
+          "id": "caption-word-18-0",
+          "text": "one",
+          "start": 61.872,
+          "end": 62.032
+        },
+        {
+          "id": "caption-word-18-1",
+          "text": "life",
+          "start": 62.112,
+          "end": 62.512
+        },
+        {
+          "id": "caption-word-18-2",
+          "text": "gone.",
+          "start": 62.512,
+          "end": 63.152
+        }
+      ]
+    },
+    {
+      "id": "caption-group-19",
+      "frame": 10,
+      "start": 63.152,
+      "end": 64.272,
+      "text": "At ten coins",
+      "words": [
+        {
+          "id": "caption-word-19-0",
+          "text": "At",
+          "start": 63.152,
+          "end": 63.392
+        },
+        {
+          "id": "caption-word-19-1",
+          "text": "ten",
+          "start": 63.392,
+          "end": 63.632
+        },
+        {
+          "id": "caption-word-19-2",
+          "text": "coins",
+          "start": 63.792,
+          "end": 64.192
+        }
+      ]
+    },
+    {
+      "id": "caption-group-20",
+      "frame": 10,
+      "start": 64.272,
+      "end": 64.752,
+      "text": "it's your",
+      "words": [
+        {
+          "id": "caption-word-20-0",
+          "text": "it's",
+          "start": 64.272,
+          "end": 64.592
+        },
+        {
+          "id": "caption-word-20-1",
+          "text": "your",
+          "start": 64.592,
+          "end": 64.752
+        }
+      ]
+    },
+    {
+      "id": "caption-group-21",
+      "frame": 10,
+      "start": 64.752,
+      "end": 65.643,
+      "text": "only move.",
+      "words": [
+        {
+          "id": "caption-word-21-0",
+          "text": "only",
+          "start": 64.752,
+          "end": 65.072
+        },
+        {
+          "id": "caption-word-21-1",
+          "text": "move.",
+          "start": 65.072,
+          "end": 65.552
+        }
+      ]
+    },
+    {
+      "id": "caption-group-22",
+      "frame": 11,
+      "start": 65.643,
+      "end": 65.963,
+      "text": "So the",
+      "words": [
+        {
+          "id": "caption-word-22-0",
+          "text": "So",
+          "start": 65.643,
+          "end": 65.883
+        },
+        {
+          "id": "caption-word-22-1",
+          "text": "the",
+          "start": 65.883,
+          "end": 65.963
+        }
+      ]
+    },
+    {
+      "id": "caption-group-23",
+      "frame": 11,
+      "start": 65.963,
+      "end": 67.163,
+      "text": "game is simple.",
+      "words": [
+        {
+          "id": "caption-word-23-0",
+          "text": "game",
+          "start": 65.963,
+          "end": 66.283
+        },
+        {
+          "id": "caption-word-23-1",
+          "text": "is",
+          "start": 66.283,
+          "end": 66.443
+        },
+        {
+          "id": "caption-word-23-2",
+          "text": "simple.",
+          "start": 66.443,
+          "end": 67.163
+        }
+      ]
+    },
+    {
+      "id": "caption-group-24",
+      "frame": 11,
+      "start": 67.163,
+      "end": 67.723,
+      "text": "Know when",
+      "words": [
+        {
+          "id": "caption-word-24-0",
+          "text": "Know",
+          "start": 67.163,
+          "end": 67.483
+        },
+        {
+          "id": "caption-word-24-1",
+          "text": "when",
+          "start": 67.483,
+          "end": 67.723
+        }
+      ]
+    },
+    {
+      "id": "caption-group-25",
+      "frame": 11,
+      "start": 67.723,
+      "end": 68.043,
+      "text": "to tell",
+      "words": [
+        {
+          "id": "caption-word-25-0",
+          "text": "to",
+          "start": 67.723,
+          "end": 67.883
+        },
+        {
+          "id": "caption-word-25-1",
+          "text": "tell",
+          "start": 67.883,
+          "end": 68.043
+        }
+      ]
+    },
+    {
+      "id": "caption-group-26",
+      "frame": 11,
+      "start": 68.043,
+      "end": 68.523,
+      "text": "the truth",
+      "words": [
+        {
+          "id": "caption-word-26-0",
+          "text": "the",
+          "start": 68.043,
+          "end": 68.203
+        },
+        {
+          "id": "caption-word-26-1",
+          "text": "truth",
+          "start": 68.203,
+          "end": 68.443
+        }
+      ]
+    },
+    {
+      "id": "caption-group-27",
+      "frame": 11,
+      "start": 68.523,
+      "end": 69.003,
+      "text": "and when",
+      "words": [
+        {
+          "id": "caption-word-27-0",
+          "text": "and",
+          "start": 68.523,
+          "end": 68.763
+        },
+        {
+          "id": "caption-word-27-1",
+          "text": "when",
+          "start": 68.763,
+          "end": 69.003
+        }
+      ]
+    },
+    {
+      "id": "caption-group-28",
+      "frame": 11,
+      "start": 69.003,
+      "end": 69.683,
+      "text": "not to.",
+      "words": [
+        {
+          "id": "caption-word-28-0",
+          "text": "not",
+          "start": 69.003,
+          "end": 69.243
+        },
+        {
+          "id": "caption-word-28-1",
+          "text": "to.",
+          "start": 69.243,
+          "end": 69.563
+        }
+      ]
+    }
+  ]
+}

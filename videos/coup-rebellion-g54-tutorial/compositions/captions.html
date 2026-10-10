@@ -1,0 +1,228 @@
+<template id="captions-template" data-composition-id="captions" data-width="1920" data-height="1080">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+
+
+<style data-brand-tokens="">
+      @font-face { font-family: 'Barlow'; src: url('assets/fonts/Barlow-400.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: block; }
+      @font-face { font-family: 'Barlow'; src: url('assets/fonts/Barlow-600.woff2') format('woff2'); font-weight: 600; font-style: normal; font-display: block; }
+      @font-face { font-family: 'Barlow'; src: url('assets/fonts/Barlow-700.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: block; }
+      @font-face { font-family: 'Barlow'; src: url('assets/fonts/Barlow-800.woff2') format('woff2'); font-weight: 800; font-style: normal; font-display: block; }
+      @font-face { font-family: 'Barlow'; src: url('assets/fonts/Barlow-900.woff2') format('woff2'); font-weight: 900; font-style: normal; font-display: block; }
+      :root {
+      --ink-black: #273136;
+      --ink-black-alt: #212B30;
+      --fire-orange: #FFED72;
+      --cream: #F2FFFC;
+      --cream-muted: #8B9798;
+      --cream-hint: #616C6F;
+      --border-dark: #414B50;
+      --ink-on-orange-muted: rgba(39,49,54,0.75);
+      --ink-on-orange-hint: rgba(39,49,54,0.55);
+      --ink-on-orange-faint: rgba(39,49,54,0.40);
+      --ink-on-orange-border: rgba(39,49,54,0.20);
+      --mk-red: #FF6D7E;
+      --mk-orange: #FFB270;
+      --mk-green: #A2E57B;
+      --mk-cyan: #7CD5F1;
+      --mk-purple: #BAA0F8;
+      --mk-raised: #3A4449;
+      --mk-deep: #01151B;
+      --cap-ink: #273136;
+      --cap-canvas: #F2FFFC;
+      --cap-accent: #FF6D7E;
+      --cap-accent-2: #FFB270;
+      --font-display: "Barlow", system-ui, serif;
+      --font-body: "Barlow", system-ui, sans-serif;
+      --cap-band-top: 900px;
+      --cap-band-height: 180px;
+      }
+    </style>
+
+<style>
+  #captions-root {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .caption-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    pointer-events: none;
+  }
+  /* the keep-out band, from captionBand(H) — frame content stays above it */
+  .caption-stage {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: var(--cap-band-top, 900px);
+    height: var(--cap-band-height, 180px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .caption-group {
+    /* every group is absolutely stacked over the SAME band — exactly one shown at a
+       time via opacity. Must be absolute: in-flow groups would lay out side-by-side. */
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+  }
+
+  /* THE ink-black plate — single 1px fire-orange hairline (broadside's lone accent),
+     SHARP corners (0 radius), NO shadow (the plane is flat) */
+  .caption-pill {
+    max-width: 80%;
+    padding: 18px 44px 22px;
+    background: var(--cap-ink, #111111);
+    border: 1px solid var(--cap-accent, #e85d26);
+    border-radius: 0;
+  }
+  .caption-line {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.04em 0.3em;
+    font-family: "Barlow", system-ui, sans-serif;
+    font-weight: 900;
+    font-size: clamp(38px, 4.2vw, 56px);
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+    text-transform: lowercase;
+  }
+
+  /* upcoming — faint cream, no block (massive lowercase Barlow 900 as graphic primitive) */
+  .caption-word {
+    display: inline-block;
+    padding: 0 0.08em;
+    color: color-mix(in srgb, var(--cap-canvas, #f0ece5) 42%, var(--cap-ink, #111111));
+  }
+  /* current word — THE register flip: a hard flat fire-orange block (box-shadow spread =
+     a sharp rectangle w/o layout shift; no blur), ink reading on top — the lone accent */
+  .caption-word.is-active {
+    color: var(--cap-ink, #111111);
+    background: var(--cap-accent, #e85d26);
+    box-shadow: 0 0 0 0.06em var(--cap-accent, #e85d26);
+  }
+  /* already spoken — solid cream, the orange block cleared */
+  .caption-word.is-spoken {
+    color: var(--cap-canvas, #f0ece5);
+    background: transparent;
+    box-shadow: none;
+  }
+
+  /* optional per-word accents (dormant until a word-classer tags them) */
+  /* brand / key term — fire-orange ink, the cream-on-ink register's only inflection */
+  .caption-word.cap-brand {
+    color: var(--cap-accent, #e85d26);
+  }
+  /* numerals / data — the IBM Plex Mono chrome voice, uppercase + tracked, recessed */
+  .caption-word.cap-num {
+    font-family: "Barlow", ui-monospace, monospace;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: color-mix(in srgb, var(--cap-canvas, #f0ece5) 72%, var(--cap-ink, #111111));
+  }
+  /* emphasis — a fire-orange hairline underline (no second hue; the lone accent again) */
+  .caption-word.cap-cta {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-decoration-color: var(--cap-accent-2, #e85d26);
+    text-underline-offset: 0.1em;
+  }
+
+  @media (max-aspect-ratio: 9/16) {
+    .caption-pill {
+      max-width: 92%;
+    }
+    .caption-line {
+      font-size: clamp(32px, 5.2vw, 46px);
+    }
+  }
+</style>
+
+<div data-hf-id="hf-4w9m" id="captions-root" data-composition-id="captions" data-timeline-locked="" data-start="0" data-duration="69.696" data-fps="30" data-width="1920" data-height="1080">
+  <div data-hf-id="hf-9flp" class="caption-layer" aria-hidden="true">
+    <div data-hf-id="hf-ajrg" id="caption-stage" class="caption-stage"></div>
+  </div>
+</div>
+
+<script>
+  // captions.mjs injects the engine's scene-aware groups + real duration here.
+  var GROUPS = [{"id":"caption-group-0","frame":8,"start":46.827,"end":47.227,"text":"If you're","words":[{"id":"caption-word-0-0","text":"If","start":46.827,"end":46.987},{"id":"caption-word-0-1","text":"you're","start":46.987,"end":47.227}]},{"id":"caption-group-1","frame":8,"start":47.227,"end":47.627,"text":"lying,","words":[{"id":"caption-word-1-0","text":"lying,","start":47.227,"end":47.627}]},{"id":"caption-group-2","frame":8,"start":47.627,"end":48.027,"text":"you lose","words":[{"id":"caption-word-2-0","text":"you","start":47.627,"end":47.787},{"id":"caption-word-2-1","text":"lose","start":47.787,"end":48.027}]},{"id":"caption-group-3","frame":8,"start":48.027,"end":48.667,"text":"the life,","words":[{"id":"caption-word-3-0","text":"the","start":48.027,"end":48.187},{"id":"caption-word-3-1","text":"life,","start":48.187,"end":48.667}]},{"id":"caption-group-4","frame":8,"start":48.667,"end":49.067,"text":"and the","words":[{"id":"caption-word-4-0","text":"and","start":48.667,"end":48.907},{"id":"caption-word-4-1","text":"the","start":48.907,"end":49.067}]},{"id":"caption-group-5","frame":8,"start":49.067,"end":50.147,"text":"action fails.","words":[{"id":"caption-word-5-0","text":"action","start":49.067,"end":49.467},{"id":"caption-word-5-1","text":"fails.","start":49.467,"end":50.027}]},{"id":"caption-group-6","frame":9,"start":50.176,"end":50.976,"text":"Some actions","words":[{"id":"caption-word-6-0","text":"Some","start":50.176,"end":50.496},{"id":"caption-word-6-1","text":"actions","start":50.496,"end":50.976}]},{"id":"caption-group-7","frame":9,"start":50.976,"end":51.296,"text":"can be","words":[{"id":"caption-word-7-0","text":"can","start":50.976,"end":51.136},{"id":"caption-word-7-1","text":"be","start":51.136,"end":51.296}]},{"id":"caption-group-8","frame":9,"start":51.296,"end":51.936,"text":"blocked,","words":[{"id":"caption-word-8-0","text":"blocked,","start":51.296,"end":51.936}]},{"id":"caption-group-9","frame":9,"start":51.936,"end":52.336,"text":"and in","words":[{"id":"caption-word-9-0","text":"and","start":51.936,"end":52.096},{"id":"caption-word-9-1","text":"in","start":52.096,"end":52.336}]},{"id":"caption-group-10","frame":9,"start":52.336,"end":53.376,"text":"G fifty,","words":[{"id":"caption-word-10-0","text":"G","start":52.336,"end":52.656},{"id":"caption-word-10-1","text":"fifty,","start":52.736,"end":53.376}]},{"id":"caption-group-11","frame":9,"start":53.376,"end":54.496,"text":"each force roll","words":[{"id":"caption-word-11-0","text":"each","start":53.376,"end":53.696},{"id":"caption-word-11-1","text":"force","start":53.696,"end":54.096},{"id":"caption-word-11-2","text":"roll","start":54.096,"end":54.496}]},{"id":"caption-group-12","frame":9,"start":54.496,"end":56.016,"text":"blocks only itself.","words":[{"id":"caption-word-12-0","text":"blocks","start":54.496,"end":54.976},{"id":"caption-word-12-1","text":"only","start":54.976,"end":55.216},{"id":"caption-word-12-2","text":"itself.","start":55.216,"end":56.016}]},{"id":"caption-group-13","frame":9,"start":56.016,"end":57.792,"text":"Guerilla stops guerrilla.","words":[{"id":"caption-word-13-0","text":"Guerilla","start":56.016,"end":56.496},{"id":"caption-word-13-1","text":"stops","start":56.656,"end":56.896},{"id":"caption-word-13-2","text":"guerrilla.","start":57.056,"end":57.696}]},{"id":"caption-group-14","frame":10,"start":57.792,"end":59.072,"text":"Seven coins buys","words":[{"id":"caption-word-14-0","text":"Seven","start":57.792,"end":58.192},{"id":"caption-word-14-1","text":"coins","start":58.192,"end":58.672},{"id":"caption-word-14-2","text":"buys","start":58.672,"end":59.072}]},{"id":"caption-group-15","frame":10,"start":59.072,"end":59.872,"text":"a coop,","words":[{"id":"caption-word-15-0","text":"a","start":59.072,"end":59.232},{"id":"caption-word-15-1","text":"coop,","start":59.232,"end":59.872}]},{"id":"caption-group-16","frame":10,"start":59.872,"end":60.912,"text":"unblockable,","words":[{"id":"caption-word-16-0","text":"unblockable,","start":59.872,"end":60.912}]},{"id":"caption-group-17","frame":10,"start":60.912,"end":61.872,"text":"unchallengeable,","words":[{"id":"caption-word-17-0","text":"unchallengeable,","start":60.912,"end":61.872}]},{"id":"caption-group-18","frame":10,"start":61.872,"end":63.152,"text":"one life gone.","words":[{"id":"caption-word-18-0","text":"one","start":61.872,"end":62.032},{"id":"caption-word-18-1","text":"life","start":62.112,"end":62.512},{"id":"caption-word-18-2","text":"gone.","start":62.512,"end":63.152}]},{"id":"caption-group-19","frame":10,"start":63.152,"end":64.272,"text":"At ten coins","words":[{"id":"caption-word-19-0","text":"At","start":63.152,"end":63.392},{"id":"caption-word-19-1","text":"ten","start":63.392,"end":63.632},{"id":"caption-word-19-2","text":"coins","start":63.792,"end":64.192}]},{"id":"caption-group-20","frame":10,"start":64.272,"end":64.752,"text":"it's your","words":[{"id":"caption-word-20-0","text":"it's","start":64.272,"end":64.592},{"id":"caption-word-20-1","text":"your","start":64.592,"end":64.752}]},{"id":"caption-group-21","frame":10,"start":64.752,"end":65.643,"text":"only move.","words":[{"id":"caption-word-21-0","text":"only","start":64.752,"end":65.072},{"id":"caption-word-21-1","text":"move.","start":65.072,"end":65.552}]},{"id":"caption-group-22","frame":11,"start":65.643,"end":65.963,"text":"So the","words":[{"id":"caption-word-22-0","text":"So","start":65.643,"end":65.883},{"id":"caption-word-22-1","text":"the","start":65.883,"end":65.963}]},{"id":"caption-group-23","frame":11,"start":65.963,"end":67.163,"text":"game is simple.","words":[{"id":"caption-word-23-0","text":"game","start":65.963,"end":66.283},{"id":"caption-word-23-1","text":"is","start":66.283,"end":66.443},{"id":"caption-word-23-2","text":"simple.","start":66.443,"end":67.163}]},{"id":"caption-group-24","frame":11,"start":67.163,"end":67.723,"text":"Know when","words":[{"id":"caption-word-24-0","text":"Know","start":67.163,"end":67.483},{"id":"caption-word-24-1","text":"when","start":67.483,"end":67.723}]},{"id":"caption-group-25","frame":11,"start":67.723,"end":68.043,"text":"to tell","words":[{"id":"caption-word-25-0","text":"to","start":67.723,"end":67.883},{"id":"caption-word-25-1","text":"tell","start":67.883,"end":68.043}]},{"id":"caption-group-26","frame":11,"start":68.043,"end":68.523,"text":"the truth","words":[{"id":"caption-word-26-0","text":"the","start":68.043,"end":68.203},{"id":"caption-word-26-1","text":"truth","start":68.203,"end":68.443}]},{"id":"caption-group-27","frame":11,"start":68.523,"end":69.003,"text":"and when","words":[{"id":"caption-word-27-0","text":"and","start":68.523,"end":68.763},{"id":"caption-word-27-1","text":"when","start":68.763,"end":69.003}]},{"id":"caption-group-28","frame":11,"start":69.003,"end":69.683,"text":"not to.","words":[{"id":"caption-word-28-0","text":"not","start":69.003,"end":69.243},{"id":"caption-word-28-1","text":"to.","start":69.243,"end":69.563}]}];
+  var DURATION = 69.696;
+
+  (function () {
+    var stage = document.getElementById("caption-stage");
+
+    // build DOM: one .caption-group per group, .caption-word per word
+    GROUPS.forEach(function (group, g) {
+      var groupEl = document.createElement("div");
+      groupEl.className = "caption-group";
+      groupEl.id = "caption-group-" + g;
+      var pill = document.createElement("div");
+      pill.className = "caption-pill";
+      var line = document.createElement("div");
+      line.className = "caption-line";
+      (group.words || []).forEach(function (w, i) {
+        var span = document.createElement("span");
+        span.className = "caption-word";
+        span.id = "caption-word-" + g + "-" + i;
+        span.textContent = String(w.text);
+        line.appendChild(span);
+      });
+      pill.appendChild(line);
+      groupEl.appendChild(pill);
+      stage.appendChild(groupEl);
+    });
+
+    window.__timelines = window.__timelines || {};
+    var tl = gsap.timeline({ paused: true });
+
+    GROUPS.forEach(function (group, g) {
+      var groupEl = document.getElementById("caption-group-" + g);
+      var words = group.words || [];
+      var next = GROUPS[g + 1];
+      var isLast = g === GROUPS.length - 1;
+      var start = Math.max(0, Number(group.start));
+      var end = isLast ? DURATION : Math.min(Number(next.start), Number(group.end) + 0.3);
+      if (end <= start) end = start + 0.01;
+
+      // group on/off — exactly one group visible at a time
+      tl.set(groupEl, { opacity: 1 }, start);
+      tl.set(groupEl, { opacity: 0 }, end);
+
+      // 3-state karaoke via className SETS — seek-safe (gsap.set applies on the
+      // engine's frame-by-frame seek; .call callbacks would NOT fire).
+      words.forEach(function (w, i) {
+        var el = document.getElementById("caption-word-" + g + "-" + i);
+        var at = Math.max(start, Number(w.start));
+        tl.set(el, { className: "caption-word" }, start); // upcoming (also resets on reverse-seek)
+        tl.set(el, { className: "caption-word is-active" }, at); // current
+        tl.fromTo(el, { scale: 0.92 }, { scale: 1, duration: 0.1, ease: "power3.out" }, at);
+        if (i + 1 < words.length) {
+          var nextAt = Math.max(start, Number(words[i + 1].start));
+          tl.set(el, { className: "caption-word is-spoken" }, nextAt); // demote when next activates
+        }
+      });
+      if (words.length) {
+        var lastEl = document.getElementById("caption-word-" + g + "-" + (words.length - 1));
+        var lastSpoken = Math.min(end, Number(words[words.length - 1].end) + 0.1);
+        tl.set(lastEl, { className: "caption-word is-spoken" }, lastSpoken);
+      }
+    });
+
+    // full-span anchor so the sub-comp timeline spans the whole video
+    tl.to({}, { duration: DURATION }, 0);
+    window.__timelines["captions"] = tl;
+  })();
+</script>
+
+<style>
+  .caption-line { line-height: 1.1 !important; }
+</style>
+</template>

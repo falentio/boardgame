@@ -1,0 +1,453 @@
+{
+  "tts_provider": "kokoro",
+  "voice_id": "am_michael",
+  "bgm": null,
+  "bgm_pending": false,
+  "bgm_provider": null,
+  "bgm_pid": null,
+  "bgm_log": null,
+  "bgm_mode": null,
+  "bgm_target_duration_s": null,
+  "bgm_seed_duration_s": null,
+  "bgm_loop_count": null,
+  "voices": [
+    {
+      "id": "01",
+      "path": "assets/voice/01.wav",
+      "duration_s": 5.419,
+      "words": []
+    },
+    {
+      "id": "02",
+      "path": "assets/voice/02.wav",
+      "duration_s": 7.253,
+      "words": []
+    },
+    {
+      "id": "03",
+      "path": "assets/voice/03.wav",
+      "duration_s": 6.677,
+      "words": []
+    },
+    {
+      "id": "04",
+      "path": "assets/voice/04.wav",
+      "duration_s": 6.251,
+      "words": []
+    },
+    {
+      "id": "05",
+      "path": "assets/voice/05.wav",
+      "duration_s": 6.763,
+      "words": []
+    },
+    {
+      "id": "06",
+      "path": "assets/voice/06.wav",
+      "duration_s": 4.565,
+      "words": []
+    },
+    {
+      "id": "07",
+      "path": "assets/voice/07.wav",
+      "duration_s": 9.899,
+      "words": []
+    },
+    {
+      "id": "08",
+      "path": "assets/voice/08.wav",
+      "duration_s": 3.349,
+      "words": [
+        {
+          "id": "w0",
+          "text": "If",
+          "start": 0,
+          "end": 0.16
+        },
+        {
+          "id": "w1",
+          "text": "you're",
+          "start": 0.16,
+          "end": 0.4
+        },
+        {
+          "id": "w2",
+          "text": "lying,",
+          "start": 0.4,
+          "end": 0.8
+        },
+        {
+          "id": "w3",
+          "text": "you",
+          "start": 0.8,
+          "end": 0.96
+        },
+        {
+          "id": "w4",
+          "text": "lose",
+          "start": 0.96,
+          "end": 1.2
+        },
+        {
+          "id": "w5",
+          "text": "the",
+          "start": 1.2,
+          "end": 1.36
+        },
+        {
+          "id": "w6",
+          "text": "life,",
+          "start": 1.36,
+          "end": 1.84
+        },
+        {
+          "id": "w7",
+          "text": "and",
+          "start": 1.84,
+          "end": 2.08
+        },
+        {
+          "id": "w8",
+          "text": "the",
+          "start": 2.08,
+          "end": 2.24
+        },
+        {
+          "id": "w9",
+          "text": "action",
+          "start": 2.24,
+          "end": 2.64
+        },
+        {
+          "id": "w10",
+          "text": "fails.",
+          "start": 2.64,
+          "end": 3.2
+        }
+      ]
+    },
+    {
+      "id": "09",
+      "path": "assets/voice/09.wav",
+      "duration_s": 7.616,
+      "words": [
+        {
+          "id": "w0",
+          "text": "Some",
+          "start": 0,
+          "end": 0.32
+        },
+        {
+          "id": "w1",
+          "text": "actions",
+          "start": 0.32,
+          "end": 0.8
+        },
+        {
+          "id": "w2",
+          "text": "can",
+          "start": 0.8,
+          "end": 0.96
+        },
+        {
+          "id": "w3",
+          "text": "be",
+          "start": 0.96,
+          "end": 1.12
+        },
+        {
+          "id": "w4",
+          "text": "blocked,",
+          "start": 1.12,
+          "end": 1.76
+        },
+        {
+          "id": "w5",
+          "text": "and",
+          "start": 1.76,
+          "end": 1.92
+        },
+        {
+          "id": "w6",
+          "text": "in",
+          "start": 1.92,
+          "end": 2.16
+        },
+        {
+          "id": "w7",
+          "text": "G",
+          "start": 2.16,
+          "end": 2.48
+        },
+        {
+          "id": "w8",
+          "text": "fifty,",
+          "start": 2.56,
+          "end": 3.2
+        },
+        {
+          "id": "w9",
+          "text": "each",
+          "start": 3.2,
+          "end": 3.52
+        },
+        {
+          "id": "w10",
+          "text": "force",
+          "start": 3.52,
+          "end": 3.92
+        },
+        {
+          "id": "w11",
+          "text": "roll",
+          "start": 3.92,
+          "end": 4.32
+        },
+        {
+          "id": "w12",
+          "text": "blocks",
+          "start": 4.32,
+          "end": 4.8
+        },
+        {
+          "id": "w13",
+          "text": "only",
+          "start": 4.8,
+          "end": 5.04
+        },
+        {
+          "id": "w14",
+          "text": "itself.",
+          "start": 5.04,
+          "end": 5.84
+        },
+        {
+          "id": "w15",
+          "text": "Guerilla",
+          "start": 5.84,
+          "end": 6.32
+        },
+        {
+          "id": "w16",
+          "text": "stops",
+          "start": 6.48,
+          "end": 6.72
+        },
+        {
+          "id": "w17",
+          "text": "guerrilla.",
+          "start": 6.88,
+          "end": 7.52
+        }
+      ]
+    },
+    {
+      "id": "10",
+      "path": "assets/voice/10.wav",
+      "duration_s": 7.851,
+      "words": [
+        {
+          "id": "w0",
+          "text": "Seven",
+          "start": 0,
+          "end": 0.4
+        },
+        {
+          "id": "w1",
+          "text": "coins",
+          "start": 0.4,
+          "end": 0.88
+        },
+        {
+          "id": "w2",
+          "text": "buys",
+          "start": 0.88,
+          "end": 1.28
+        },
+        {
+          "id": "w3",
+          "text": "a",
+          "start": 1.28,
+          "end": 1.44
+        },
+        {
+          "id": "w4",
+          "text": "coop,",
+          "start": 1.44,
+          "end": 2.08
+        },
+        {
+          "id": "w5",
+          "text": "unblockable,",
+          "start": 2.08,
+          "end": 3.12
+        },
+        {
+          "id": "w6",
+          "text": "unchallengeable,",
+          "start": 3.12,
+          "end": 4.08
+        },
+        {
+          "id": "w7",
+          "text": "one",
+          "start": 4.08,
+          "end": 4.24
+        },
+        {
+          "id": "w8",
+          "text": "life",
+          "start": 4.32,
+          "end": 4.72
+        },
+        {
+          "id": "w9",
+          "text": "gone.",
+          "start": 4.72,
+          "end": 5.36
+        },
+        {
+          "id": "w10",
+          "text": "At",
+          "start": 5.36,
+          "end": 5.6
+        },
+        {
+          "id": "w11",
+          "text": "ten",
+          "start": 5.6,
+          "end": 5.84
+        },
+        {
+          "id": "w12",
+          "text": "coins",
+          "start": 6,
+          "end": 6.4
+        },
+        {
+          "id": "w13",
+          "text": "it's",
+          "start": 6.48,
+          "end": 6.8
+        },
+        {
+          "id": "w14",
+          "text": "your",
+          "start": 6.8,
+          "end": 6.96
+        },
+        {
+          "id": "w15",
+          "text": "only",
+          "start": 6.96,
+          "end": 7.28
+        },
+        {
+          "id": "w16",
+          "text": "move.",
+          "start": 7.28,
+          "end": 7.76
+        }
+      ]
+    },
+    {
+      "id": "11",
+      "path": "assets/voice/11.wav",
+      "duration_s": 4.053,
+      "words": [
+        {
+          "id": "w0",
+          "text": "So",
+          "start": 0,
+          "end": 0.24
+        },
+        {
+          "id": "w1",
+          "text": "the",
+          "start": 0.24,
+          "end": 0.32
+        },
+        {
+          "id": "w2",
+          "text": "game",
+          "start": 0.32,
+          "end": 0.64
+        },
+        {
+          "id": "w3",
+          "text": "is",
+          "start": 0.64,
+          "end": 0.8
+        },
+        {
+          "id": "w4",
+          "text": "simple.",
+          "start": 0.8,
+          "end": 1.52
+        },
+        {
+          "id": "w5",
+          "text": "Know",
+          "start": 1.52,
+          "end": 1.84
+        },
+        {
+          "id": "w6",
+          "text": "when",
+          "start": 1.84,
+          "end": 2.08
+        },
+        {
+          "id": "w7",
+          "text": "to",
+          "start": 2.08,
+          "end": 2.24
+        },
+        {
+          "id": "w8",
+          "text": "tell",
+          "start": 2.24,
+          "end": 2.4
+        },
+        {
+          "id": "w9",
+          "text": "the",
+          "start": 2.4,
+          "end": 2.56
+        },
+        {
+          "id": "w10",
+          "text": "truth",
+          "start": 2.56,
+          "end": 2.8
+        },
+        {
+          "id": "w11",
+          "text": "and",
+          "start": 2.88,
+          "end": 3.12
+        },
+        {
+          "id": "w12",
+          "text": "when",
+          "start": 3.12,
+          "end": 3.36
+        },
+        {
+          "id": "w13",
+          "text": "not",
+          "start": 3.36,
+          "end": 3.6
+        },
+        {
+          "id": "w14",
+          "text": "to.",
+          "start": 3.6,
+          "end": 3.92
+        }
+      ]
+    }
+  ],
+  "sfx": [],
+  "total_duration_s": 69.696
+}
