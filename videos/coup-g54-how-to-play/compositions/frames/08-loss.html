@@ -1,0 +1,830 @@
+<template>
+  <style>
+    /* ═══════════════════════════════════════════════════════════════════
+       frame 08 — loss · the worked example: two flips, one turn
+       1920 × 1080 · broadside (frame.md): ink ground, cream type, one
+       fire-orange accent, lowercase Barlow display, mono chrome.
+       ═══════════════════════════════════════════════════════════════════ */
+
+    /* ── fonts — the weights this frame sets, shipped in assets/fonts/ ── */
+    @font-face {
+      font-family: "Barlow";
+      font-style: normal;
+      font-weight: 700;
+      font-display: block;
+      src: url("../../assets/fonts/Barlow-700.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "Barlow";
+      font-style: normal;
+      font-weight: 900;
+      font-display: block;
+      src: url("../../assets/fonts/Barlow-900.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      font-style: normal;
+      font-weight: 500;
+      font-display: block;
+      src: url("../../assets/fonts/IBMPlexMono-500.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      font-style: normal;
+      font-weight: 600;
+      font-display: block;
+      src: url("../../assets/fonts/IBMPlexMono-600.woff2") format("woff2");
+    }
+
+    /* ── tokens — every one pulled from frame.md ─────────────────────────── */
+    #root {
+      --ink: #111111;
+      --ink-alt: #1a1a18;
+      --fire: #e85d26;
+      --cream: #f0ece5;
+      --cream-muted: #888880;
+      --cream-hint: #505048;
+      --border: #282826;
+      /* inherited by the nested count-up mount: its “green” accent resolves
+         to the sole fire-orange of this system */
+      --brand: #e85d26;
+      --accent: #e85d26;
+      --font-display: "Barlow", system-ui, sans-serif;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    /* ── root — styled by #root, never a class on the composition root ───── */
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      container-type: size;
+      font-family: "Barlow", system-ui, sans-serif;
+      color: var(--cream);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+    }
+
+    /* ── track 0 — the flat ink ground, full duration ───────────────────── */
+    .f08-ground {
+      position: absolute;
+      inset: 0;
+      background: var(--ink);
+    }
+
+    /* ── track 1 — ambient (background, dimmed far back) ────────────────── */
+    .f08-ambient {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+    .f08-grid {
+      position: absolute;
+      left: 0;
+      top: 96px;
+      width: 1920px;
+      height: 800px;
+      background-image: repeating-linear-gradient(
+          0deg,
+          rgba(240, 236, 229, 0.05) 0 1px,
+          transparent 1px 96px
+        ),
+        repeating-linear-gradient(
+          90deg,
+          rgba(240, 236, 229, 0.05) 0 1px,
+          transparent 1px 96px
+        );
+      opacity: 0;
+    }
+    .f08-table {
+      position: absolute;
+      left: 0;
+      top: 812px;
+      width: 1920px;
+      height: 1px;
+      background: rgba(240, 236, 229, 0.08);
+      opacity: 0;
+    }
+    .f08-halo {
+      position: absolute;
+      background: radial-gradient(closest-side, rgba(232, 93, 38, 1), rgba(232, 93, 38, 0));
+      opacity: 0;
+      will-change: opacity;
+    }
+    #f08-halo-hand {
+      left: 510px;
+      top: 240px;
+      width: 900px;
+      height: 520px;
+    }
+    #f08-halo-surv {
+      left: 140px;
+      top: 280px;
+      width: 520px;
+      height: 440px;
+    }
+
+    /* ── track 2 — the two tokens that collide at the hand ──────────────── */
+    .f08-tokens {
+      position: absolute;
+      inset: 0;
+    }
+    .f08-tokslot {
+      position: absolute;
+      left: 730px;
+      top: 140px;
+      width: 460px;
+      height: 92px;
+    }
+    .f08-tok {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      background: var(--ink-alt);
+      border: 1px solid var(--fire);
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+    #f08-tok-a {
+      opacity: 0;
+    }
+    #f08-tok-b {
+      opacity: 0;
+      z-index: 2;
+    }
+    .f08-tokmain {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 1cqw;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream);
+      white-space: nowrap;
+    }
+    .f08-tokmark {
+      font-family: "Barlow", system-ui, sans-serif;
+      font-size: 1.6cqw;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      color: var(--fire);
+    }
+    .f08-tokchip {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.85cqw;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--fire);
+      border: 1px solid rgba(232, 93, 38, 0.45);
+      padding: 5px 10px 4px;
+      white-space: nowrap;
+    }
+
+    /* ── track 3 — the hand (foreground subject) ───────────────────────── */
+    .f08-handclip {
+      position: absolute;
+      inset: 0;
+    }
+    .f08-hand {
+      position: absolute;
+      left: 766px;
+      top: 386px;
+      width: 388px;
+      height: 246px;
+      will-change: transform;
+    }
+    .f08-card {
+      position: absolute;
+      top: 0;
+      width: 176px;
+      height: 246px;
+      perspective: 900px;
+    }
+    #f08-card-l {
+      left: 0;
+    }
+    #f08-card-r {
+      left: 212px;
+    }
+    .f08-flip {
+      position: absolute;
+      inset: 0;
+      transform-style: preserve-3d;
+      will-change: transform;
+    }
+    .f08-cface {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      border: 1px solid var(--border);
+    }
+    .f08-cback {
+      background-color: var(--ink-alt);
+      background-image: repeating-linear-gradient(
+          0deg,
+          rgba(240, 236, 229, 0.05) 0 1px,
+          transparent 1px 22px
+        ),
+        repeating-linear-gradient(
+          90deg,
+          rgba(240, 236, 229, 0.05) 0 1px,
+          transparent 1px 22px
+        );
+      transform: rotateY(180deg);
+    }
+    .f08-cback::after {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border: 1px solid rgba(240, 236, 229, 0.07);
+    }
+    .f08-cmark {
+      position: absolute;
+      left: 0;
+      top: calc(50% - 0.6em);
+      width: 100%;
+      text-align: center;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 1.1cqw;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: rgba(240, 236, 229, 0.18);
+    }
+    .f08-cfront {
+      background: var(--ink);
+    }
+    .f08-cidx {
+      position: absolute;
+      left: 14px;
+      top: 12px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.82cqw;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+    }
+    .f08-cname {
+      position: absolute;
+      left: 0;
+      bottom: 46px;
+      width: 100%;
+      text-align: center;
+      font-family: "Barlow", system-ui, sans-serif;
+      font-size: 1.7cqw;
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      color: var(--cream);
+    }
+    .f08-cstub {
+      position: absolute;
+      left: 14px;
+      bottom: 14px;
+      width: 36px;
+      height: 2px;
+      background: var(--fire);
+    }
+    .f08-stamp {
+      position: absolute;
+      width: 64px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--fire);
+      font-family: "Barlow", system-ui, sans-serif;
+      font-size: 2.4cqw;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      color: var(--fire);
+      opacity: 0;
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+    #f08-stamp-l {
+      left: -4px;
+      top: 186px;
+    }
+    #f08-stamp-r {
+      left: 328px;
+      top: 186px;
+    }
+    /* the loser's choice, arcing over the hand */
+    .f08-arc {
+      position: absolute;
+      left: 700px;
+      top: 258px;
+      width: 520px;
+      height: 116px;
+      overflow: visible;
+    }
+    #f08-arcline {
+      fill: none;
+      stroke: var(--cream-hint);
+      stroke-width: 1;
+      stroke-dasharray: 620;
+    }
+    .f08-arctxt {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 19px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      fill: var(--cream);
+      opacity: 0;
+    }
+
+    /* ── track 4 — the seat readout: card state, coins, coin counter ───── */
+    .f08-seat {
+      position: absolute;
+      inset: 0;
+    }
+    .f08-cardlbl {
+      position: absolute;
+      top: 656px;
+      width: 200px;
+      text-align: center;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.95cqw;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+      opacity: 0;
+    }
+    #f08-lbl-l {
+      left: 754px;
+    }
+    #f08-lbl-r {
+      left: 966px;
+    }
+    .f08-seatchip {
+      position: absolute;
+      left: 860px;
+      top: 690px;
+      width: 200px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 1cqw;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+      opacity: 0;
+      transform-origin: 50% 50%;
+    }
+    .f08-coincount {
+      position: absolute;
+      left: 860px;
+      top: 744px;
+      width: 200px;
+      text-align: center;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.95cqw;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--fire);
+      opacity: 0;
+      transform-origin: 50% 50%;
+    }
+    .f08-coin {
+      position: absolute;
+      width: 30px;
+      height: 30px;
+      background: var(--fire);
+      border: 1px solid rgba(17, 17, 17, 0.35);
+      opacity: 0;
+      will-change: transform, opacity;
+    }
+    #f08-coin-1 {
+      left: 1186px;
+      top: 496px;
+    }
+    #f08-coin-2 {
+      left: 1226px;
+      top: 496px;
+    }
+    #f08-coin-3 {
+      left: 1186px;
+      top: 536px;
+    }
+    #f08-coin-4 {
+      left: 1226px;
+      top: 536px;
+    }
+
+    /* ── track 5 — the treasury, its tally, and the survivor ───────────── */
+    .f08-bottom {
+      position: absolute;
+      inset: 0;
+    }
+    .f08-trezbox {
+      position: absolute;
+      left: 1300px;
+      top: 420px;
+      width: 600px;
+      height: 260px;
+      background: var(--ink-alt);
+      border: 1px solid var(--border);
+      opacity: 0;
+    }
+    .f08-trezinner {
+      position: absolute;
+      inset: 0;
+      clip-path: inset(0 100% 0 0);
+    }
+    .f08-trezlbl {
+      position: absolute;
+      left: 28px;
+      top: 22px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.95cqw;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--fire);
+    }
+    .f08-dock {
+      position: absolute;
+      left: 1320px;
+      top: 650px;
+      width: 180px;
+      height: 1px;
+      background: rgba(240, 236, 229, 0.1);
+      opacity: 0;
+    }
+    .f08-cumount {
+      position: absolute;
+      z-index: 2;
+    }
+    .f08-surv {
+      position: absolute;
+      left: 315px;
+      top: 381px;
+      width: 170px;
+      height: 238px;
+      perspective: 900px;
+      opacity: 0;
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+    .f08-survlbl {
+      position: absolute;
+      left: 250px;
+      top: 660px;
+      width: 300px;
+      text-align: center;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.95cqw;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+      opacity: 0;
+    }
+
+    /* ── track 6 — chrome, fixed in frame ──────────────────────────────── */
+    .f08-chrome {
+      position: absolute;
+      inset: 0;
+    }
+    .f08-chromerule {
+      position: absolute;
+      left: 0;
+      top: 96px;
+      width: 1920px;
+      height: 1px;
+      background: var(--border);
+      opacity: 0;
+    }
+    .f08-chromel {
+      position: absolute;
+      left: 120px;
+      top: 62px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.8cqw;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+      opacity: 0;
+      white-space: nowrap;
+    }
+    .f08-chromer {
+      position: absolute;
+      left: 1660px;
+      top: 62px;
+      width: 140px;
+      text-align: right;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.8cqw;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+      opacity: 0;
+      white-space: nowrap;
+    }
+  </style>
+
+  <div data-hf-id="hf-t1jo" id="root" data-composition-id="08-loss" data-start="0" data-duration="14.101" data-width="1920" data-height="1080">
+    <!-- track 0 — the flat ink ground -->
+    <div data-hf-id="hf-9kh1" class="clip f08-ground" data-start="0" data-duration="14.101" data-track-index="0" id="f08-ground"></div>
+
+    <!-- track 1 — ambient: hairline field, table edge, two halos -->
+    <div data-hf-id="hf-x2j8" class="clip f08-ambient" data-start="0" data-duration="14.101" data-track-index="1" id="f08-ambient">
+      <div data-hf-id="hf-cty6" class="f08-grid" id="f08-grid"></div>
+      <div data-hf-id="hf-6f20" class="f08-table" id="f08-table"></div>
+      <div data-hf-id="hf-l9k8" class="f08-halo" id="f08-halo-hand"></div>
+      <div data-hf-id="hf-1mf7" class="f08-halo" id="f08-halo-surv"></div>
+    </div>
+
+    <!-- track 2 — the tokens that collide at the hand -->
+    <div data-hf-id="hf-lcq1" class="clip f08-tokens" data-start="0" data-duration="14.101" data-track-index="2" id="f08-tokens">
+      <div data-hf-id="hf-o4mj" class="f08-tokslot">
+        <div data-hf-id="hf-yygu" class="f08-tok" id="f08-tok-a">
+          <span data-hf-id="hf-5ntw" class="f08-tokmain">challenge</span>
+          <span data-hf-id="hf-gpsw" class="f08-tokmark">?</span>
+        </div>
+        <div data-hf-id="hf-v0ct" class="f08-tok" id="f08-tok-b">
+          <span data-hf-id="hf-0zqr" class="f08-tokmain">guerrilla · execution</span>
+          <span data-hf-id="hf-67mp" class="f08-tokchip" id="f08-tokchip">4 coins</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- track 3 — the hand: two cards, two reveals, the loser's choice -->
+    <div data-hf-id="hf-mu46" class="clip f08-handclip" data-start="0" data-duration="14.101" data-track-index="3" id="f08-handclip">
+      <div data-hf-id="hf-ox0m" class="f08-hand" id="f08-hand">
+        <div data-hf-id="hf-9hxd" class="f08-card" id="f08-card-l">
+          <div data-hf-id="hf-dn9x" class="f08-flip" id="f08-flip-l">
+            <div data-hf-id="hf-1yvu" class="f08-cface f08-cback"><div data-hf-id="hf-qqs3" class="f08-cmark">g54</div></div>
+            <div data-hf-id="hf-2618" class="f08-cface f08-cfront">
+              <div data-hf-id="hf-ly47" class="f08-cidx">no. 03</div>
+              <div data-hf-id="hf-5ld6" class="f08-cname">banker</div>
+              <div data-hf-id="hf-crw2" class="f08-cstub"></div>
+            </div>
+          </div>
+        </div>
+        <div data-hf-id="hf-s9r3" class="f08-card" id="f08-card-r">
+          <div data-hf-id="hf-rsp7" class="f08-flip" id="f08-flip-r">
+            <div data-hf-id="hf-zym6" class="f08-cface f08-cback"><div data-hf-id="hf-0kfn" class="f08-cmark">g54</div></div>
+            <div data-hf-id="hf-i90k" class="f08-cface f08-cfront">
+              <div data-hf-id="hf-l5i5" class="f08-cidx">no. 01</div>
+              <div data-hf-id="hf-5vlg" class="f08-cname">guerrilla</div>
+              <div data-hf-id="hf-wjxy" class="f08-cstub"></div>
+            </div>
+          </div>
+        </div>
+        <div data-hf-id="hf-2p1f" class="f08-stamp" id="f08-stamp-l">-1</div>
+        <div data-hf-id="hf-i92p" class="f08-stamp" id="f08-stamp-r">-1</div>
+      </div>
+      <svg data-hf-id="hf-hwbk" class="f08-arc" id="f08-arcsvg" viewBox="0 0 520 116" width="520" height="116" aria-hidden="true">
+        <path data-hf-id="hf-ad3p" id="f08-arcline" d="M 36 92 Q 260 -6 484 92" />
+        <text data-hf-id="hf-yg2w" class="f08-arctxt" id="f08-arctxt">
+          <textpath data-hf-id="hf-m4k7" href="#f08-arcline" startOffset="50%" text-anchor="middle">you choose</textpath>
+        </text>
+      </svg>
+    </div>
+
+    <!-- track 4 — the seat readout: reveal state, card count, coins -->
+    <div data-hf-id="hf-bjep" class="clip f08-seat" data-start="0" data-duration="14.101" data-track-index="4" id="f08-seat">
+      <div data-hf-id="hf-k12h" class="f08-cardlbl" id="f08-lbl-l">revealed</div>
+      <div data-hf-id="hf-5j83" class="f08-cardlbl" id="f08-lbl-r">hidden</div>
+      <div data-hf-id="hf-i5k7" class="f08-seatchip" id="f08-seatchip">2 cards</div>
+      <div data-hf-id="hf-zfoy" class="f08-coincount" id="f08-coincount">4 coins</div>
+      <div data-hf-id="hf-mpm4" class="f08-coin" id="f08-coin-1"></div>
+      <div data-hf-id="hf-xl3r" class="f08-coin" id="f08-coin-2"></div>
+      <div data-hf-id="hf-rfdy" class="f08-coin" id="f08-coin-3"></div>
+      <div data-hf-id="hf-2avl" class="f08-coin" id="f08-coin-4"></div>
+    </div>
+
+    <!-- track 5 — the treasury tally and the surviving hand -->
+    <div data-hf-id="hf-3lxw" class="clip f08-bottom" data-start="0" data-duration="14.101" data-track-index="5" id="f08-bottom">
+      <div data-hf-id="hf-viwg" class="f08-trezbox" id="f08-trezbox">
+        <div data-hf-id="hf-940y" class="f08-trezinner" id="f08-trezinner">
+          <div data-hf-id="hf-t697" class="f08-trezlbl" id="f08-trezlbl">treasury</div>
+        </div>
+      </div>
+      <div data-hf-id="hf-ic1u" class="f08-dock" id="f08-dock"></div>
+      <div data-hf-id="hf-gwwz" class="clip f08-cumount" id="f08-cumount" data-composition-id="count-up" data-composition-src="compositions/components/count-up.html" data-variable-values="{&quot;start&quot;:0,&quot;end&quot;:4,&quot;prefix&quot;:&quot;&quot;,&quot;suffix&quot;:&quot;&quot;,&quot;accent&quot;:&quot;green&quot;,&quot;glow&quot;:false,&quot;exit&quot;:&quot;none&quot;}" data-start="12.3" data-duration="1.55" data-track-index="0" data-width="360" data-height="215" style="left: 1500px; top: 455px; width: 360px; height: 215px"></div>
+      <div data-hf-id="hf-rvji" class="f08-surv" id="f08-surv">
+        <div data-hf-id="hf-8tju" class="f08-flip">
+          <div data-hf-id="hf-0cx7" class="f08-cface f08-cback"><div data-hf-id="hf-064m" class="f08-cmark">g54</div></div>
+        </div>
+      </div>
+      <div data-hf-id="hf-1g6r" class="f08-survlbl" id="f08-survlbl">one life left</div>
+    </div>
+
+    <!-- track 6 — chrome -->
+    <div data-hf-id="hf-pkah" class="clip f08-chrome" data-start="0" data-duration="14.101" data-track-index="6" id="f08-chrome">
+      <div data-hf-id="hf-0qxa" class="f08-chromerule" id="f08-chromerule"></div>
+      <div data-hf-id="hf-9vys" class="f08-chromel" id="f08-chromel">coup · rebellion g54</div>
+      <div data-hf-id="hf-63ap" class="f08-chromer" id="f08-chromer">no. 08</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      window.__timelines = window.__timelines || {};
+      var DUR = 14.101;
+      var tl = gsap.timeline({ paused: true });
+
+      /* Landed ease: zero-slope hang, ONE small overshoot past the target,
+         then a zero-slope settle. Pure function of progress, so a seek in
+         either direction reproduces the same frame. */
+      function landEase(overshoot) {
+        return function (u) {
+          if (u < 0.62) {
+            var a = u / 0.62;
+            return (1 + overshoot) * a * a * (3 - 2 * a);
+          }
+          var b = (u - 0.62) / 0.38;
+          return 1 + overshoot - overshoot * b * b * (3 - 2 * b);
+        };
+      }
+      var LAND = landEase(0.08);
+
+      /* ══ Scene 1 (0.0–3.4s) — the hand settles, the loser picks the flip ══
+         "Lose a life, and you choose which card flips face-up."
+         Ground, ambient and chrome arrive first; the two cards settle in on
+         the beat; the LEFT card flips on "which card", the mono choice label
+         arcs over the hand on "you choose". Hero readable by t = 0.5s. */
+      tl.fromTo("#f08-grid", { opacity: 0 }, { opacity: 1, duration: 1.2, ease: "power2.out" }, 0.05);
+      tl.fromTo("#f08-table", { opacity: 0 }, { opacity: 1, duration: 1.2, ease: "power2.out" }, 0.2);
+      tl.fromTo("#f08-halo-hand", { opacity: 0 }, { opacity: 1, duration: 1.4, ease: "power2.out" }, 0.2);
+      tl.fromTo("#f08-chromerule", { opacity: 0 }, { opacity: 1, duration: 0.6, ease: "power2.out" }, 0.1);
+      tl.fromTo(
+        ["#f08-chromel", "#f08-chromer"],
+        { opacity: 0, y: -8 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", stagger: 0.07 },
+        0.18
+      );
+      tl.fromTo(
+        ["#f08-flip-l", "#f08-flip-r"],
+        { opacity: 0, y: 26 },
+        { opacity: 1, y: 0, duration: 0.6, ease: "power3.out", stagger: 0.09 },
+        0.15
+      );
+      tl.fromTo(
+        ["#f08-coin-1", "#f08-coin-2", "#f08-coin-3", "#f08-coin-4"],
+        { opacity: 0, y: 14 },
+        { opacity: 1, y: 0, duration: 0.45, ease: "power3.out", stagger: 0.05 },
+        0.62
+      );
+      tl.fromTo("#f08-seatchip", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 0.55);
+      tl.fromTo("#f08-coincount", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 0.95);
+
+      /* the beat: the loser's choice of reveal */
+      tl.fromTo("#f08-flip-l", { rotationY: 180 }, { rotationY: 0, duration: 0.62, ease: "power3.out" }, 1.72);
+      tl.fromTo("#f08-arcline", { strokeDashoffset: 620 }, { strokeDashoffset: 0, duration: 0.75, ease: "power2.inOut" }, 1.95);
+      tl.fromTo("#f08-arctxt", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 2.25);
+      tl.fromTo("#f08-lbl-l", { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.35, ease: "power2.out" }, 2.4);
+      tl.fromTo(
+        "#f08-stamp-l",
+        { opacity: 0, scale: 1.5 },
+        { opacity: 1, scale: 1, duration: 0.42, ease: LAND },
+        2.42
+      );
+      /* discrete-text-sequence: the seat's card count swaps on the reveal */
+      tl.set("#f08-seatchip", { textContent: "1 card" }, 2.44);
+      tl.to("#f08-seatchip", { scale: 1.14, duration: 0.12, ease: "power2.out" }, 2.44);
+      tl.to("#f08-seatchip", { scale: 1, duration: 0.2, ease: "power2.out" }, 2.56);
+
+      /* "reveal as little as you can" — the other card stays down */
+      tl.fromTo("#f08-lbl-r", { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 4.1);
+
+      /* ══ Scene 2 (3.4–8.9s) — double loss: two reveals from one turn ═════
+         "A bad challenge plus a real attack can cost two lives in one turn."
+         The challenge token slams in from the wing; the guerrilla execution
+         token takes its place by scale-swap; the SECOND card flips on the
+         beat and both lost lives land stamped orange. Tension peak. */
+      tl.fromTo(
+        "#f08-tok-a",
+        { opacity: 0, x: -460, scale: 0.9 },
+        { opacity: 1, x: 0, scale: 1, duration: 0.5, ease: "expo.out" },
+        5.95
+      );
+      tl.to("#f08-tok-a", { scale: 0.68, opacity: 0, duration: 0.32, ease: "power2.in" }, 6.98);
+      tl.fromTo(
+        "#f08-tok-b",
+        { opacity: 0, scale: 0.68, x: 34 },
+        { opacity: 1, scale: 1, x: 0, duration: 0.55, ease: "back.out(1.8)" },
+        7.18
+      );
+      tl.fromTo("#f08-tokchip", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.3, ease: "power3.out" }, 7.72);
+      tl.fromTo("#f08-flip-r", { rotationY: 180 }, { rotationY: 0, duration: 0.6, ease: "power3.out" }, 8.86);
+      tl.set("#f08-lbl-r", { textContent: "revealed" }, 9.46);
+      tl.set("#f08-seatchip", { textContent: "out" }, 9.46);
+      tl.to("#f08-seatchip", { scale: 1.14, duration: 0.12, ease: "power2.out" }, 9.46);
+      tl.to("#f08-seatchip", { scale: 1, duration: 0.2, ease: "power2.out" }, 9.58);
+      tl.fromTo(
+        "#f08-stamp-r",
+        { opacity: 0, scale: 1.5 },
+        { opacity: 1, scale: 1, duration: 0.42, ease: LAND },
+        9.5
+      );
+
+      /* multi-phase-camera (push): a slow dolly onto the hand under the peak */
+      tl.fromTo("#f08-hand", { scale: 1 }, { scale: 1.035, duration: DUR - 9.4, ease: "none" }, 9.4);
+
+      /* ══ Scene 3 (9.4–14.1s) — out of cards: the payout and the survivor ═
+         "Out of cards? Hand your coins to the Treasury."
+         The treasury draws in on the question; the eliminated seat's four
+         coins fly into it as the VO lands while count-up absorbs them and the
+         seat counter resets; the surviving hand springs in beside it and
+         holds on its single remaining face-down card. */
+      tl.fromTo("#f08-trezbox", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.out" }, 11.5);
+      tl.fromTo(
+        "#f08-trezinner",
+        { clipPath: "inset(0 100% 0 0)" },
+        { clipPath: "inset(0 0% 0 0)", duration: 0.6, ease: "power2.inOut" },
+        11.5
+      );
+      tl.fromTo("#f08-trezlbl", { opacity: 0, x: -10 }, { opacity: 1, x: 0, duration: 0.4, ease: "power2.out" }, 11.85);
+      tl.fromTo("#f08-dock", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.out" }, 11.9);
+
+      tl.fromTo(
+        "#f08-surv",
+        { opacity: 0, x: -140, scale: 0.86 },
+        { opacity: 1, x: 0, scale: 1, duration: 0.6, ease: "back.out(1.6)" },
+        12.2
+      );
+      tl.fromTo("#f08-halo-surv", { opacity: 0 }, { opacity: 1, duration: 0.7, ease: "power2.out" }, 12.3);
+      tl.fromTo("#f08-survlbl", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 12.75);
+
+      /* the payout: four coins fly to the treasury, then the counter resets */
+      var COINS = [
+        { el: "#f08-coin-1", dx: 150, dy: 124 },
+        { el: "#f08-coin-2", dx: 154, dy: 124 },
+        { el: "#f08-coin-3", dx: 238, dy: 84 },
+        { el: "#f08-coin-4", dx: 242, dy: 84 }
+      ];
+      COINS.forEach(function (coin, i) {
+        var at = 12.45 + i * 0.085;
+        tl.to(coin.el, { x: coin.dx * 0.5, y: -26, duration: 0.28, ease: "power1.out" }, at);
+        tl.to(coin.el, { x: coin.dx, y: coin.dy, duration: 0.3, ease: "power1.in" }, at + 0.28);
+        tl.to(coin.el, { scale: 1.22, duration: 0.09, ease: "power2.out" }, at + 0.58);
+        tl.to(coin.el, { scale: 1, duration: 0.14, ease: "power2.out" }, at + 0.67);
+      });
+      tl.set("#f08-coincount", { textContent: "0 coins" }, 13.45);
+      tl.to("#f08-coincount", { scale: 1.16, duration: 0.12, ease: "power2.out" }, 13.45);
+      tl.to("#f08-coincount", { scale: 1, duration: 0.2, ease: "power2.out" }, 13.57);
+
+      /* sine-wave-loop: the halo behind the hand breathes, so the held peak
+         never sits dead. Deterministic — one sweep, pure function of time. */
+      var halo = document.getElementById("f08-halo-hand");
+      var phase = { p: 0 };
+      tl.to(
+        phase,
+        {
+          p: Math.PI * 4,
+          duration: 10.5,
+          ease: "none",
+          onUpdate: function () {
+            halo.style.opacity = (0.12 + Math.sin(phase.p) * 0.028).toFixed(4);
+          }
+        },
+        1.8
+      );
+
+      /* no exit tween — the root transition owns the exit */
+
+      tl.seek(0);
+      window.__timelines["08-loss"] = tl;
+    })();
+  </script>
+</template>

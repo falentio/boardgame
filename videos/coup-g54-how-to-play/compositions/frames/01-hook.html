@@ -1,0 +1,236 @@
+<template>
+<!--
+  Frame 1 — 01-hook (hook · counterintuitive claim · beat: intrigue + recognition)
+  Blueprint: kinetic-type-beats (Reproduce) — flat centered broadside field, the line lands in
+  three beats and the last beat hard-swaps to the point.
+    Scene 1 (0.0–2.6s)  dark register, kicker chrome, "everyone at this table is" assembles
+                        per word, centered, staggered      → dynamic-content-sequencing
+    Scene 2 (2.6–5.4s)  "lying to you." slams in beneath on its own beat, "lying" in
+                        fire-orange + a drawn rule          → kinetic-beat-slam
+    Scene 3 (5.4–8.0s)  instant swap: "coup: rebellion g54" mono-stamps above the line, then
+                        "that's the entire point." spring-pops large in fire-orange; hold to seam
+  Seam: cut-catalog zoom-through (Z-scale + blur + opacity, hard cut at the blur peak) — a
+        within-frame Scene seam, not the frame exit (transition_in owns that).
+  Register: dark — ink-black ground, cream type, fire-orange the only accent.
+  Canvas 1920x1080 · every element above y<=900 (the bottom 180px is the caption pill band).
+-->
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+
+<style>
+  @font-face { font-family: 'Barlow'; src: url('../../assets/fonts/Barlow-800.woff2') format('woff2'); font-weight: 800; font-style: normal; font-display: block; }
+  @font-face { font-family: 'Barlow'; src: url('../../assets/fonts/Barlow-900.woff2') format('woff2'); font-weight: 900; font-style: normal; font-display: block; }
+  @font-face { font-family: 'IBM Plex Mono'; src: url('../../assets/fonts/IBMPlexMono-500.woff2') format('woff2'); font-weight: 500; font-style: normal; font-display: block; }
+
+  /* ---- frame root: styled via #root (never a class on the composition element) ---- */
+  #root {
+    position: absolute;
+    inset: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    container-type: size;
+    font-family: 'Barlow', system-ui, sans-serif;
+    font-weight: 400;
+    color: #F0ECE5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .hk-layer { position: absolute; inset: 0; }
+
+  /* ---- background role: flat ink ground + hairline grid + low-opacity scanlines ---- */
+  .hk-bg { background: #111111; }
+  .hk-grid {
+    position: absolute;
+    inset: -2%;
+    background-image:
+      repeating-linear-gradient(to right, #282826 0 1px, rgba(0, 0, 0, 0) 1px 160px),
+      repeating-linear-gradient(to bottom, #282826 0 1px, rgba(0, 0, 0, 0) 1px 160px);
+  }
+  .hk-scan {
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(to bottom, rgba(240, 236, 229, 0.03) 0 1px, rgba(0, 0, 0, 0) 1px 4px);
+  }
+
+  /* ---- chrome: IBM Plex Mono, uppercase, 0.14em ---- */
+  .hk-mono {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+  .hk-kicker {
+    position: absolute;
+    left: 106px;
+    top: 86px;
+    font-size: 1.05cqw;
+    line-height: 1.2;
+    color: #E85D26;
+  }
+  .hk-stub {
+    position: absolute;
+    left: 106px;
+    top: 128px;
+    width: 36px;
+    height: 2px;
+    background: #E85D26;
+  }
+
+  /* ---- the statement: two lines, one display moment, centered near y = 0.42h ---- */
+  .hk-hero {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 325px;
+    text-align: center;
+    filter: blur(0px);
+  }
+  .hk-line { white-space: nowrap; }
+  .hk-line-1 {
+    font-size: 6.4cqw;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    text-transform: lowercase;
+  }
+  .hk-line-2 {
+    font-size: 7cqw;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    text-transform: lowercase;
+  }
+  .hk-w { display: inline-block; }
+  .hk-accent { position: relative; color: #E85D26; }
+  .hk-mark {
+    position: absolute;
+    left: 0.02em;
+    right: 0.02em;
+    bottom: -0.06em;
+    height: 2px;
+    background: #E85D26;
+  }
+
+  /* ---- Scene 3: the name stamp above the payoff line ---- */
+  .hk-name {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 288px;
+    text-align: center;
+    font-size: 1.6cqw;
+    line-height: 1.2;
+    color: #E85D26;
+  }
+  .hk-payoff {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 380px;
+    text-align: center;
+    font-size: 7.8cqw;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -0.035em;
+    text-transform: lowercase;
+    color: #E85D26;
+    white-space: nowrap;
+  }
+</style>
+
+<div data-hf-id="hf-ckhv" id="root" data-composition-id="01-hook" data-start="0" data-duration="8.607" data-width="1920" data-height="1080">
+  <!-- full-bleed ground on its own clip layer, lowest content track -->
+  <div data-hf-id="hf-x45a" class="clip hk-layer hk-bg" data-start="0" data-duration="8.607" data-track-index="0" id="hk-layer">
+    <div data-hf-id="hf-a9xo" class="hk-grid"></div>
+    <div data-hf-id="hf-evpj" class="hk-scan"></div>
+  </div>
+
+  <div data-hf-id="hf-x6by" class="clip hk-layer" data-start="0" data-duration="8.607" data-track-index="1" id="hk-layer">
+    <div data-hf-id="hf-8liy" class="hk-mono hk-kicker">how to play · 2026</div>
+    <div data-hf-id="hf-dv94" class="hk-stub"></div>
+
+    <div data-hf-id="hf-arpo" class="hk-hero">
+      <div data-hf-id="hf-fa7m" class="hk-line hk-line-1">
+        <span data-hf-id="hf-3u7n" class="hk-w">everyone</span> <span data-hf-id="hf-k4of" class="hk-w">at</span> <span data-hf-id="hf-iiru" class="hk-w">this</span> <span data-hf-id="hf-r2oe" class="hk-w">table</span> <span data-hf-id="hf-lbhq" class="hk-w">is</span>
+      </div>
+      <div data-hf-id="hf-bc3l" class="hk-line hk-line-2">
+        <span data-hf-id="hf-jw9d" class="hk-w hk-accent">lying<span data-hf-id="hf-57vc" class="hk-mark"></span></span> <span data-hf-id="hf-di4f" class="hk-w">to</span> <span data-hf-id="hf-r0u9" class="hk-w">you.</span>
+      </div>
+    </div>
+
+    <div data-hf-id="hf-e5jd" class="hk-mono hk-name">coup: rebellion g54</div>
+    <div data-hf-id="hf-nbte" class="hk-payoff">that's the entire point.</div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    window.__timelines = window.__timelines || {};
+    var tl = gsap.timeline({ paused: true });
+    var DUR = 8.107;
+
+    /* ONE beat grid drives every entrance — no scattered magic offsets */
+    var GROUND_IN = 0.0;
+    var KICKER_IN = 0.3;
+    var LINE1_IN = 0.38;
+    var LINE1_GAP = 0.1;
+    var LINE2_IN = 2.7;
+    var MARK_IN = 2.98;
+    var BREATH_IN = 3.25;
+    var SWAP_OUT = 5.4;
+    var NAME_IN = 5.62;
+    var PAYOFF_IN = 5.95;
+
+    /* ambient ground: field up, hairline grid up, then a slow push underneath the whole shot */
+    tl.fromTo('.hk-bg', { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'power2.out' }, GROUND_IN);
+    tl.fromTo('.hk-grid', { opacity: 0 }, { opacity: 1, duration: 1.0, ease: 'power1.out' }, 0.1);
+    tl.fromTo('.hk-grid', { scale: 1 }, { scale: 1.06, duration: DUR, ease: 'none' }, GROUND_IN);
+    tl.fromTo('.hk-scan', { opacity: 0 }, { opacity: 1, duration: 1.2, ease: 'power1.out' }, 0.2);
+
+    /* Scene 1 — chrome, then the first line assembles word by word on the voice */
+    tl.fromTo('.hk-kicker', { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power3.out' }, KICKER_IN);
+    tl.fromTo('.hk-stub', { scaleX: 0, opacity: 0 }, { scaleX: 1, opacity: 1, transformOrigin: 'left center', duration: 0.35, ease: 'power3.out' }, KICKER_IN + 0.06);
+    tl.fromTo(
+      '.hk-line-1 .hk-w',
+      { opacity: 0, y: 26, filter: 'blur(7px)' },
+      { opacity: 1, y: 0, filter: 'blur(0px)', duration: 0.5, ease: 'power3.out', stagger: LINE1_GAP },
+      LINE1_IN
+    );
+
+    /* Scene 2 — the slam beneath, on its own beat; the rule draws under the accent word */
+    tl.fromTo(
+      '.hk-line-2',
+      { opacity: 0, scale: 1.55, filter: 'blur(10px)' },
+      { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 0.42, ease: 'power4.out' },
+      LINE2_IN
+    );
+    tl.fromTo('.hk-mark', { scaleX: 0, opacity: 0 }, { scaleX: 1, opacity: 1, transformOrigin: 'left center', duration: 0.3, ease: 'power3.out' }, MARK_IN);
+
+    /* hold: a finite low-amplitude breath — never a ceiling that overshoots data-duration */
+    var breathDur = 0.9;
+    tl.fromTo('.hk-hero', { scale: 1 }, { scale: 1.014, duration: breathDur, ease: 'sine.inOut', yoyo: true, repeat: 1 }, BREATH_IN);
+
+    /* Scene 3 — the state change. Phase 1: the line accelerates forward off a blur peak;
+       Phase 2: the hard cut hides the swap; Phase 3: the name stamps in above the line. */
+    tl.to('.hk-hero', { scale: 1.2, filter: 'blur(10px)', duration: 0.2, ease: 'power3.in' }, SWAP_OUT);
+    tl.to('.hk-hero', { opacity: 0.15, duration: 0.2, ease: 'none' }, SWAP_OUT);
+    tl.set('.hk-hero', { opacity: 0 }, SWAP_OUT + 0.2);
+    tl.fromTo('.hk-name', { opacity: 0, scale: 1.06 }, { opacity: 1, scale: 1, duration: 0.18, ease: 'power4.out' }, NAME_IN);
+
+    /* the payoff spring-pops at large scale in fire-orange */
+    tl.fromTo(
+      '.hk-payoff',
+      { opacity: 0, scale: 0.62, filter: 'blur(8px)' },
+      { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 0.55, ease: 'back.out(1.9)' },
+      PAYOFF_IN
+    );
+
+    /* hold still to the seam — the next frame's transition_in is the only exit */
+
+    /* full-span anchor so the sub-composition timeline spans its whole scene window */
+    tl.to({}, { duration: DUR }, 0);
+
+    window.__timelines['01-hook'] = tl;
+    tl.seek(0);
+  })();
+</script>
+</template>

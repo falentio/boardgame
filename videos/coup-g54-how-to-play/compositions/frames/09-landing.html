@@ -1,0 +1,594 @@
+<template>
+  <style>
+    /* ── fonts — local woff2 only, declared inside the template ───────────── */
+    @font-face {
+      font-family: "Barlow";
+      font-style: normal;
+      font-weight: 700;
+      font-display: block;
+      src: url("../../assets/fonts/Barlow-700.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "Barlow";
+      font-style: normal;
+      font-weight: 900;
+      font-display: block;
+      src: url("../../assets/fonts/Barlow-900.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      font-style: normal;
+      font-weight: 500;
+      font-display: block;
+      src: url("../../assets/fonts/IBMPlexMono-500.woff2") format("woff2");
+    }
+
+    /* ── root — styled via #root, never a class on the composition-id element ─ */
+    #root {
+      position: absolute;
+      inset: 0;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      container-type: size;
+      color: #f0ece5;
+      font-family: "Barlow", sans-serif;
+    }
+
+    /* ── full-bleed grounds ride on their own clip layers, never on #root ──── */
+    .f09-bg {
+      position: absolute;
+      inset: 0;
+    }
+    #f09-bg-dark {
+      z-index: 0;
+      background: #111111;
+    }
+    #f09-bg-orange {
+      z-index: 1;
+      background: #e85d26;
+    }
+
+    .f09-layer {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+    }
+
+    /* ── chrome — mono kicker left, catalogue numeral right, no bars ───────── */
+    .f09-chrome {
+      position: absolute;
+      left: 105.6px;
+      right: 105.6px;
+      top: 64px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+    }
+    .f09-stub {
+      display: block;
+      width: 36px;
+      height: 2px;
+      background: #e85d26;
+      transform-origin: 0% 50%;
+    }
+    .f09-kicker {
+      margin-left: 16px;
+      font-family: "IBM Plex Mono", monospace;
+      font-weight: 500;
+      font-size: 0.72cqw;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      line-height: 1;
+      color: #e85d26;
+    }
+    .f09-num {
+      margin-left: auto;
+      font-family: "IBM Plex Mono", monospace;
+      font-weight: 500;
+      font-size: 0.72cqw;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      line-height: 1;
+      color: #505048;
+    }
+    /* orange register — the stub is the only ornament, so it inks over */
+    #f09-stub-orange {
+      background: #111111;
+    }
+    #f09-kicker-orange {
+      color: #111111;
+    }
+    #f09-num-orange {
+      color: #111111;
+    }
+
+    /* ── ambient hairlines — the only structure the flat plane allows ─────── */
+    .f09-hr {
+      position: absolute;
+      left: 105.6px;
+      width: 1708.8px;
+      height: 1px;
+      background: #282826;
+      transform-origin: 0% 50%;
+    }
+    #f09-hr-chrome {
+      top: 112px;
+    }
+    #f09-hr-count {
+      top: 560px;
+    }
+    #f09-hr-orange {
+      background: rgba(17, 17, 17, 0.2);
+      top: 112px;
+    }
+
+    /* ── Scene 1 · the five starter roles, one lockup strip ───────────────── */
+    .f09-lockup {
+      position: absolute;
+      left: 105.6px;
+      top: 190px;
+      width: 1708.8px;
+      height: 310px;
+    }
+    .f09-slot {
+      position: absolute;
+      top: 0;
+      width: 341.76px;
+      height: 310px;
+      padding: 22px 24px 0;
+      border-top: 1px solid #282826;
+    }
+    .f09-s1 {
+      left: 0;
+    }
+    .f09-s2 {
+      left: 341.76px;
+    }
+    .f09-s3 {
+      left: 683.52px;
+    }
+    .f09-s4 {
+      left: 1025.28px;
+    }
+    .f09-s5 {
+      left: 1367.04px;
+    }
+    .f09-idx {
+      font-family: "IBM Plex Mono", monospace;
+      font-weight: 500;
+      font-size: 0.72cqw;
+      letter-spacing: 0.14em;
+      line-height: 1;
+      color: #505048;
+    }
+    .f09-role {
+      margin-top: 26px;
+      font-family: "Barlow", sans-serif;
+      font-weight: 900;
+      font-size: 2.4cqw;
+      line-height: 1;
+      letter-spacing: -0.035em;
+      text-transform: lowercase;
+      color: #f0ece5;
+      white-space: nowrap;
+    }
+    .f09-tagrow {
+      margin-top: 34px;
+    }
+    .f09-tag {
+      display: inline-block;
+      padding: 9px 14px;
+      border: 1px solid #282826;
+      font-family: "IBM Plex Mono", monospace;
+      font-weight: 500;
+      font-size: 0.82cqw;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      line-height: 1;
+      color: #888880;
+      white-space: nowrap;
+      transform-origin: 0% 50%;
+    }
+    .f09-tag-accent {
+      background: #e85d26;
+      border-color: #e85d26;
+      color: #111111;
+    }
+
+    /* ── Scene 1 · the count-up — focal of the dark register ──────────────── */
+    .f09-count {
+      position: absolute;
+      left: 105.6px;
+      top: 620px;
+      display: flex;
+      align-items: baseline;
+    }
+    .f09-count-num {
+      width: 22.2cqw;
+      font-family: "Barlow", sans-serif;
+      font-weight: 900;
+      font-size: 8.4cqw;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      color: #e85d26;
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum" 1;
+      transform-origin: 0% 50%;
+      white-space: nowrap;
+    }
+    .f09-count-label {
+      margin-left: 1.4cqw;
+      font-family: "IBM Plex Mono", monospace;
+      font-weight: 500;
+      font-size: 1.8cqw;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #888880;
+      line-height: 1;
+    }
+
+    /* ── Scene 2 · the win condition, ink on fire ─────────────────────────── */
+    .f09-hero {
+      position: absolute;
+      left: 105.6px;
+      right: 105.6px;
+      text-align: center;
+    }
+    #f09-win1 {
+      top: 262px;
+    }
+    .f09-win-line {
+      font-family: "Barlow", sans-serif;
+      font-weight: 900;
+      font-size: 7.2cqw;
+      line-height: 0.96;
+      letter-spacing: -0.03em;
+      text-transform: lowercase;
+      color: #111111;
+    }
+    #f09-win2 {
+      top: 562px;
+      font-family: "Barlow", sans-serif;
+      font-weight: 700;
+      font-size: 3.4cqw;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+      text-transform: lowercase;
+      color: #111111;
+    }
+
+    /* ── Scene 3 · the URL card, held to the final frame ──────────────────── */
+    .f09-urlstub-row {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 372px;
+      text-align: center;
+    }
+    .f09-url-stub {
+      display: inline-block;
+      width: 36px;
+      height: 2px;
+      background: #111111;
+      transform-origin: 50% 50%;
+    }
+    #f09-url {
+      top: 404px;
+      font-family: "Barlow", sans-serif;
+      font-weight: 900;
+      font-size: 4.6cqw;
+      line-height: 1.05;
+      letter-spacing: -0.025em;
+      text-transform: lowercase;
+      color: #111111;
+      white-space: nowrap;
+    }
+  </style>
+
+  <div data-hf-id="hf-xb68" id="root" data-composition-id="09-landing" data-start="0" data-width="1920" data-height="1080" data-duration="17.365">
+    <div data-hf-id="hf-23el" class="clip f09-bg" id="f09-bg-dark" data-start="0" data-duration="17.365" data-track-index="0"></div>
+    <div data-hf-id="hf-pukt" class="clip f09-bg" id="f09-bg-orange" data-start="6.5" data-duration="10.865" data-track-index="1"></div>
+
+    <!-- Scene 1 · dark register — the starter set settles, the count lands -->
+    <div data-hf-id="hf-ycoh" class="f09-layer" id="f09-dark">
+      <div data-hf-id="hf-ezye" class="f09-chrome">
+        <span data-hf-id="hf-fuy8" class="f09-stub" id="f09-stub-dark"></span>
+        <span data-hf-id="hf-rhe0" class="f09-kicker" id="f09-kicker-dark">the starter set</span>
+        <span data-hf-id="hf-f6me" class="f09-num" id="f09-num-dark">no. 09</span>
+      </div>
+      <div data-hf-id="hf-700t" class="f09-hr" id="f09-hr-chrome"></div>
+
+      <div data-hf-id="hf-kygq" class="f09-lockup" id="f09-lockup">
+        <div data-hf-id="hf-2lcs" class="f09-slot f09-s1">
+          <div data-hf-id="hf-mg3l" class="f09-idx">/01</div>
+          <div data-hf-id="hf-ytkh" class="f09-role">banker</div>
+          <div data-hf-id="hf-ulbo" class="f09-tagrow"><span data-hf-id="hf-654j" class="f09-tag">finance</span></div>
+        </div>
+        <div data-hf-id="hf-b98n" class="f09-slot f09-s2">
+          <div data-hf-id="hf-nn0o" class="f09-idx">/02</div>
+          <div data-hf-id="hf-nsxs" class="f09-role">director</div>
+          <div data-hf-id="hf-3hqk" class="f09-tagrow"><span data-hf-id="hf-ehiu" class="f09-tag">communications</span></div>
+        </div>
+        <div data-hf-id="hf-7b4m" class="f09-slot f09-s3">
+          <div data-hf-id="hf-n8pn" class="f09-idx">/03</div>
+          <div data-hf-id="hf-vtqp" class="f09-role">guerrilla</div>
+          <div data-hf-id="hf-2ath" class="f09-tagrow"><span data-hf-id="hf-ouuy" class="f09-tag">force</span></div>
+        </div>
+        <div data-hf-id="hf-fz0h" class="f09-slot f09-s4">
+          <div data-hf-id="hf-l96i" class="f09-idx">/04</div>
+          <div data-hf-id="hf-akle" class="f09-role">politician</div>
+          <div data-hf-id="hf-2p4i" class="f09-tagrow"><span data-hf-id="hf-l66l" class="f09-tag f09-tag-accent">special interest</span></div>
+        </div>
+        <div data-hf-id="hf-f7co" class="f09-slot f09-s5">
+          <div data-hf-id="hf-kuvh" class="f09-idx">/05</div>
+          <div data-hf-id="hf-t18c" class="f09-role">peacekeeper</div>
+          <div data-hf-id="hf-4onn" class="f09-tagrow"><span data-hf-id="hf-u401" class="f09-tag f09-tag-accent">special interest</span></div>
+        </div>
+      </div>
+
+      <div data-hf-id="hf-fus8" class="f09-hr" id="f09-hr-count"></div>
+
+      <div data-hf-id="hf-rhdc" class="f09-count" id="f09-count">
+        <div data-hf-id="hf-siiq" class="f09-count-num" id="f09-count-num"><span data-hf-id="hf-7be7" id="f09-count-val">0</span></div>
+        <div data-hf-id="hf-997y" class="f09-count-label" id="f09-count-label">combinations</div>
+      </div>
+    </div>
+
+    <!-- Scene 2 + 3 · orange register — the win condition, then the URL card -->
+    <div data-hf-id="hf-3qkr" class="f09-layer" id="f09-orange">
+      <div data-hf-id="hf-py8a" class="f09-chrome">
+        <span data-hf-id="hf-nhua" class="f09-stub" id="f09-stub-orange"></span>
+        <span data-hf-id="hf-qigi" class="f09-kicker" id="f09-kicker-orange">the win condition</span>
+        <span data-hf-id="hf-cgf8" class="f09-num" id="f09-num-orange">no. 09</span>
+      </div>
+      <div data-hf-id="hf-brxx" class="f09-hr" id="f09-hr-orange"></div>
+
+      <div data-hf-id="hf-pu8x" class="f09-hero" id="f09-win1">
+        <div data-hf-id="hf-xgvd" class="f09-win-line">last face-down</div>
+        <div data-hf-id="hf-x6vg" class="f09-win-line">card wins.</div>
+      </div>
+      <div data-hf-id="hf-nof8" class="f09-hero" id="f09-win2">there is no second place.</div>
+
+      <div data-hf-id="hf-x980" class="f09-urlstub-row"><span data-hf-id="hf-1my7" class="f09-url-stub" id="f09-url-stub"></span></div>
+      <div data-hf-id="hf-3t71" class="f09-hero" id="f09-url">boardgame.falent.workers.dev</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      var DUR = 17.365;
+      var REGISTER_AT = 6.5;
+
+      var tl = gsap.timeline({ paused: true });
+
+      /* start-states are authored in code, never in CSS, so a seek to any
+         frame lands on a deterministic state */
+      gsap.set("#f09-orange", { opacity: 0 });
+      gsap.set(
+        [
+          "#f09-stub-orange",
+          "#f09-kicker-orange",
+          "#f09-num-orange",
+          "#f09-hr-orange",
+          "#f09-win1",
+          "#f09-win2",
+          "#f09-url-stub",
+          "#f09-url",
+          "#f09-stub-dark",
+          "#f09-kicker-dark",
+          "#f09-num-dark",
+          "#f09-hr-chrome",
+          "#f09-hr-count",
+          "#f09-count",
+          "#f09-count-label",
+        ],
+        { opacity: 0 },
+      );
+      gsap.set(".f09-slot", { opacity: 0 });
+      /* the figure opens at its count-up start scale, never at full size */
+      gsap.set("#f09-count-num", { scale: 0.86 });
+      gsap.set(".f09-idx, .f09-role, .f09-tag", { opacity: 0 });
+
+      /* ══ Scene 1 · 0.00–6.50s — the five roles assemble, then sit absolutely
+         still; the count-up lands beside them on the numbers cue ═══════════ */
+      tl.fromTo(
+        "#f09-kicker-dark",
+        { opacity: 0, y: -10 },
+        { opacity: 1, y: 0, duration: 0.42, ease: "power3.out" },
+        0.0,
+      );
+      tl.fromTo("#f09-num-dark", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 0.04);
+      tl.fromTo("#f09-stub-dark", { scaleX: 0 }, { scaleX: 1, duration: 0.4, ease: "power3.out" }, 0.06);
+      tl.fromTo(
+        "#f09-hr-chrome",
+        { scaleX: 0, opacity: 0 },
+        { scaleX: 1, opacity: 1, duration: 0.42, ease: "power3.out" },
+        0.08,
+      );
+
+      /* the lockup: five cards converge on the row from a shallow scatter */
+      gsap.utils.toArray(".f09-slot").forEach(function (el, i) {
+        var t0 = i * 0.08;
+        tl.fromTo(
+          el,
+          { opacity: 0, x: (i - 2) * 24, y: 24, rotation: i % 2 ? -1.3 : 1.3, scale: 0.94 },
+          { opacity: 1, x: 0, y: 0, rotation: 0, scale: 1, duration: 0.46, ease: "power3.out" },
+          t0,
+        );
+        tl.fromTo(
+          el.querySelector(".f09-idx"),
+          { opacity: 0, y: 8 },
+          { opacity: 1, y: 0, duration: 0.3, ease: "power2.out" },
+          t0 + 0.1,
+        );
+        tl.fromTo(
+          el.querySelector(".f09-role"),
+          { opacity: 0, y: 16 },
+          { opacity: 1, y: 0, duration: 0.38, ease: "power3.out" },
+          t0 + 0.14,
+        );
+        tl.fromTo(
+          el.querySelector(".f09-tag"),
+          { scaleX: 0, opacity: 0 },
+          { scaleX: 1, opacity: 1, duration: 0.34, ease: "power3.out" },
+          t0 + 0.22,
+        );
+      });
+
+      /* the count-up — digits are precomputed rows, so any seek shows the
+         same value without an update callback */
+      var COUNT_AT = 2.38;
+      var COUNT_DUR = 1.5;
+      var COUNT_TO = 5625;
+      var STEPS = 30;
+      var countEase = gsap.parseEase("sine.inOut");
+      var rows = [];
+      for (var f = 0; f <= STEPS; f += 1) {
+        rows.push(Math.round(COUNT_TO * countEase(f / STEPS)).toLocaleString("en-US"));
+      }
+
+      tl.fromTo(
+        "#f09-hr-count",
+        { scaleX: 0, opacity: 0 },
+        { scaleX: 1, opacity: 1, duration: 0.45, ease: "power3.out" },
+        2.28,
+      );
+      tl.fromTo(
+        "#f09-count",
+        { opacity: 0, y: 24 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" },
+        2.3,
+      );
+      /* the figure grows in place while it counts — never a font-size tween */
+      tl.fromTo("#f09-count-num", { scale: 0.86 }, { scale: 1, duration: COUNT_DUR, ease: "sine.inOut" }, COUNT_AT);
+      rows.forEach(function (row, i) {
+        tl.set("#f09-count-val", { textContent: row }, COUNT_AT + COUNT_DUR * (i / STEPS));
+      });
+      /* one restrained pulse on the landing, then the label takes its own beat */
+      tl.to("#f09-count-num", { scale: 1.055, duration: 0.1, ease: "power3.out" }, COUNT_AT + COUNT_DUR);
+      tl.to("#f09-count-num", { scale: 1, duration: 0.18, ease: "power2.out" }, COUNT_AT + COUNT_DUR + 0.1);
+      tl.fromTo(
+        "#f09-count-label",
+        { opacity: 0, y: 14 },
+        { opacity: 1, y: 0, duration: 0.42, ease: "power3.out" },
+        COUNT_AT + COUNT_DUR + 0.1,
+      );
+
+      /* ══ Scene 2 · 6.50s — the register swap: the video's one surface change ═ */
+      tl.set("#f09-orange", { opacity: 1 }, REGISTER_AT);
+      tl.set("#f09-dark", { opacity: 0 }, REGISTER_AT);
+      tl.set("#f09-bg-orange", { opacity: 1 }, REGISTER_AT);
+
+      tl.fromTo(
+        "#f09-hr-orange",
+        { scaleX: 0, opacity: 0 },
+        { scaleX: 1, opacity: 1, duration: 0.45, ease: "power3.out" },
+        6.64,
+      );
+      tl.fromTo(
+        "#f09-stub-orange",
+        { scaleX: 0, opacity: 0 },
+        { scaleX: 1, opacity: 1, duration: 0.42, ease: "power3.out" },
+        6.62,
+      );
+      tl.fromTo(
+        "#f09-kicker-orange",
+        { opacity: 0, x: -10 },
+        { opacity: 1, x: 0, duration: 0.42, ease: "power3.out" },
+        6.66,
+      );
+      tl.fromTo("#f09-num-orange", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 6.7);
+
+      /* dynamic-content-sequencing — one flat timeline reduced from content
+         length; every entry earns its own window, and the DOM is written only
+         at the entry boundaries */
+      var SEQ_AT = 6.75;
+      var BASE_DURATION = 0.5;
+      var SEC_PER_CHAR = 0.032;
+      var TAIL_PAD = 1.0;
+      var SEQUENCE = [
+        { eyebrow: "the win condition", title: "last face-down card wins.", hold: 1.3 },
+        { eyebrow: "the win condition", title: "there is no second place.", hold: 0.95 },
+        { eyebrow: "play online", title: "boardgame.falent.workers.dev", hold: 3.4 },
+      ];
+
+      var cumulative = 0;
+      var TIMELINE = SEQUENCE.map(function (entry) {
+        var dur = BASE_DURATION + entry.title.length * SEC_PER_CHAR + entry.hold;
+        var start = cumulative;
+        cumulative += dur;
+        return { title: entry.title, eyebrow: entry.eyebrow, start: start, end: cumulative };
+      });
+
+      var lastEyebrow = "";
+      TIMELINE.forEach(function (entry) {
+        if (entry.eyebrow !== lastEyebrow) {
+          tl.set("#f09-kicker-orange", { textContent: entry.eyebrow }, SEQ_AT + entry.start);
+          lastEyebrow = entry.eyebrow;
+        }
+      });
+
+      var ENTRY_WIN = TIMELINE[0].start;
+      var ENTRY_SECOND = TIMELINE[1].start;
+      var ENTRY_URL = TIMELINE[2].start;
+
+      /* the win condition builds centered on the orange field */
+      tl.fromTo(
+        "#f09-win1",
+        { opacity: 0, y: 34 },
+        { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" },
+        SEQ_AT + ENTRY_WIN,
+      );
+      /* the second line lands beneath — it accumulates, never replaces */
+      tl.fromTo(
+        "#f09-win2",
+        { opacity: 0, y: 28 },
+        { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" },
+        SEQ_AT + ENTRY_SECOND,
+      );
+
+      /* ══ Scene 3 · the URL card — one slide-up crossfade, then stillness ═══ */
+      var URL_AT = SEQ_AT + ENTRY_URL;
+      tl.to("#f09-win1", { opacity: 0, y: -26, duration: 0.5, ease: "power2.in" }, URL_AT);
+      tl.to("#f09-win2", { opacity: 0, y: -22, duration: 0.5, ease: "power2.in" }, URL_AT + 0.06);
+      tl.fromTo(
+        "#f09-url-stub",
+        { scaleX: 0, opacity: 0 },
+        { scaleX: 1, opacity: 1, duration: 0.42, ease: "power3.out" },
+        URL_AT + 0.14,
+      );
+      tl.fromTo(
+        "#f09-url",
+        { opacity: 0, y: 30 },
+        { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" },
+        URL_AT + 0.14,
+      );
+
+      /* the one live element across the hold: a jitter you feel, not see.
+         A seek never fires an onUpdate, so the offsets are precomputed and
+         written as sets — every seek lands on the same sub-pixel state. */
+      var JITTER_AT = URL_AT + 0.75;
+      var JITTER_STEP = 0.05;
+      var urlEl = document.getElementById("f09-url");
+      function jitterAt(t) {
+        return {
+          x: Math.sin(t * 11.3) * 1.2 + Math.sin(t * 6.1) * 0.5,
+          y: Math.cos(t * 9.7) * 0.8 + Math.sin(t * 4.7) * 0.3,
+        };
+      }
+      tl.set(urlEl, { x: 0, y: 0 }, URL_AT + 0.6);
+      for (var jt = JITTER_AT; jt <= DUR + 1e-6; jt += JITTER_STEP) {
+        var off = jitterAt(jt - JITTER_AT);
+        tl.set(urlEl, { x: off.x, y: off.y }, Math.min(jt, DUR));
+      }
+
+      tl.to({}, { duration: DUR }, 0);
+
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["09-landing"] = tl;
+    })();
+  </script>
+</template>

@@ -1,0 +1,924 @@
+<template>
+  <style>
+    /* ═══════════════════════════════════════════════════════════════════
+       frame 06 — challenge · mirrored outcomes + court shuffle
+       1920 × 1080 · broadside (frame.md): ink ground, cream type, one
+       fire-orange accent, lowercase Barlow display, mono chrome.
+       ═══════════════════════════════════════════════════════════════════ */
+
+    /* ── fonts — the four weights this frame sets, shipped in assets/fonts/ ── */
+    @font-face {
+      font-family: "Barlow";
+      font-style: normal;
+      font-weight: 700;
+      font-display: block;
+      src: url("../../assets/fonts/Barlow-700.woff2") format("woff2"),
+        url("assets/fonts/Barlow-700.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "Barlow";
+      font-style: normal;
+      font-weight: 800;
+      font-display: block;
+      src: url("../../assets/fonts/Barlow-800.woff2") format("woff2"),
+        url("assets/fonts/Barlow-800.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      font-style: normal;
+      font-weight: 500;
+      font-display: block;
+      src: url("../../assets/fonts/IBMPlexMono-500.woff2") format("woff2"),
+        url("assets/fonts/IBMPlexMono-500.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      font-style: normal;
+      font-weight: 600;
+      font-display: block;
+      src: url("../../assets/fonts/IBMPlexMono-600.woff2") format("woff2"),
+        url("assets/fonts/IBMPlexMono-600.woff2") format("woff2");
+    }
+
+    /* ── tokens — every one pulled from frame.md ─────────────────────────── */
+    #root {
+      --ink: #111111;
+      --ink-alt: #1a1a18;
+      --fire: #e85d26;
+      --cream: #f0ece5;
+      --cream-muted: #888880;
+      --cream-hint: #505048;
+      --border: #282826;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    /* ── root — styled by #root, never a class on the composition root ───── */
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      container-type: size;
+      font-family: "Barlow", system-ui, sans-serif;
+      color: var(--cream);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+    }
+
+    /* ── track 0 — the flat ink ground, full duration ───────────────────── */
+    .f06-ground {
+      position: absolute;
+      inset: 0;
+      background: var(--ink);
+    }
+
+    /* ── track 1 — the hairline field (background), dimmed far back ─────── */
+    .f06-field {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+    .f06-grid {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1920px;
+      height: 860px;
+      background-image: repeating-linear-gradient(
+          0deg,
+          rgba(240, 236, 229, 0.035) 0 1px,
+          transparent 1px 96px
+        ),
+        repeating-linear-gradient(
+          90deg,
+          rgba(240, 236, 229, 0.035) 0 1px,
+          transparent 1px 96px
+        );
+    }
+    /* the 50% symmetry axis the comparison splits on */
+    .f06-axis {
+      position: absolute;
+      left: 959px;
+      top: 240px;
+      width: 1px;
+      height: 580px;
+      background: rgba(240, 236, 229, 0.08);
+    }
+    /* ambient-glow-bloom: one un-triggered halo per side, so each wing owns
+       the same color identity across the axis. Peak stays low. */
+    .f06-glow {
+      position: absolute;
+      top: 150px;
+      width: 1120px;
+      height: 660px;
+      background: radial-gradient(closest-side, rgba(232, 93, 38, 1), rgba(232, 93, 38, 0));
+      opacity: 0;
+      will-change: transform, opacity;
+    }
+    #f06-glow-l {
+      left: -160px;
+      transform-origin: 50% 50%;
+    }
+    #f06-glow-r {
+      left: 960px;
+      transform-origin: 50% 50%;
+    }
+
+    /* ── track 2 — the challenge window: one hairline rect, four brackets ── */
+    .f06-window {
+      position: absolute;
+      inset: 0;
+    }
+    .f06-wrect {
+      position: absolute;
+      left: 120px;
+      top: 290px;
+      width: 1680px;
+      height: 550px;
+      border: 1px solid var(--border);
+    }
+    .f06-brk {
+      position: absolute;
+      width: 74px;
+      height: 74px;
+      will-change: transform, opacity;
+    }
+    .f06-brk-tl {
+      left: 120px;
+      top: 290px;
+      border-left: 1px solid var(--cream-hint);
+      border-top: 1px solid var(--cream-hint);
+      transform-origin: 0 0;
+    }
+    .f06-brk-tr {
+      left: 1726px;
+      top: 290px;
+      border-right: 1px solid var(--cream-hint);
+      border-top: 1px solid var(--cream-hint);
+      transform-origin: 100% 0;
+    }
+    .f06-brk-bl {
+      left: 120px;
+      top: 766px;
+      border-left: 1px solid var(--cream-hint);
+      border-bottom: 1px solid var(--cream-hint);
+      transform-origin: 0 100%;
+    }
+    .f06-brk-br {
+      left: 1726px;
+      top: 766px;
+      border-right: 1px solid var(--cream-hint);
+      border-bottom: 1px solid var(--cream-hint);
+      transform-origin: 100% 100%;
+    }
+
+    /* ── track 3 — split-tilt-cards: one perspective stage, two mirrored
+         panels, and the two outcome badges parked OUTSIDE the panels so they
+         never inherit the rotateY ───────────────────────────────────────── */
+    .f06-splitclip {
+      position: absolute;
+      inset: 0;
+    }
+    .f06-stage {
+      position: absolute;
+      inset: 0;
+      perspective: 1600px;
+    }
+    .f06-panel {
+      position: absolute;
+      top: 320px;
+      width: 500px;
+      height: 480px;
+      background: var(--ink-alt);
+      border: 1px solid var(--border);
+      transform-style: preserve-3d;
+      will-change: transform, opacity;
+    }
+    #f06-panel-l {
+      left: 150px;
+    }
+    #f06-panel-r {
+      left: 1270px;
+    }
+    .f06-peye {
+      position: absolute;
+      left: 40px;
+      top: 28px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 18px;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+      white-space: nowrap;
+    }
+    .f06-phead {
+      position: absolute;
+      left: 40px;
+      top: 62px;
+      width: 420px;
+      font-family: "Barlow", system-ui, sans-serif;
+      font-size: 50px;
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      color: var(--cream);
+      white-space: nowrap;
+    }
+    .f06-psub {
+      position: absolute;
+      left: 40px;
+      top: 130px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 19px;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-hint);
+      white-space: nowrap;
+    }
+    /* the influence card that flips — back to front, 3D, in the panel's own
+       3D space */
+    .f06-card {
+      position: absolute;
+      left: 166px;
+      top: 172px;
+      width: 168px;
+      height: 218px;
+      perspective: 900px;
+    }
+    .f06-flip {
+      position: absolute;
+      inset: 0;
+      transform-style: preserve-3d;
+      will-change: transform;
+    }
+    .f06-cface {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      border: 1px solid var(--border);
+    }
+    .f06-cback {
+      background-color: var(--ink-alt);
+      background-image: repeating-linear-gradient(
+          0deg,
+          rgba(240, 236, 229, 0.05) 0 1px,
+          transparent 1px 26px
+        ),
+        repeating-linear-gradient(
+          90deg,
+          rgba(240, 236, 229, 0.05) 0 1px,
+          transparent 1px 26px
+        );
+      transform: rotateY(180deg);
+    }
+    .f06-cfront {
+      background: var(--ink);
+    }
+    .f06-cidx {
+      position: absolute;
+      left: 16px;
+      top: 14px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+    }
+    .f06-cstub {
+      position: absolute;
+      left: 16px;
+      bottom: 16px;
+      width: 36px;
+      height: 2px;
+      background: var(--fire);
+    }
+    .f06-cname {
+      position: absolute;
+      left: 0;
+      bottom: 52px;
+      width: 100%;
+      font-family: "Barlow", system-ui, sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.01em;
+      text-align: center;
+      color: var(--cream);
+    }
+    .f06-cwho {
+      position: absolute;
+      left: 140px;
+      top: 402px;
+      width: 220px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 17px;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      text-align: center;
+      color: var(--cream-hint);
+      white-space: nowrap;
+    }
+    /* the orange life stamp — one per panel, mirrored to the outer corner */
+    .f06-stamp {
+      position: absolute;
+      top: 648px;
+      width: 62px;
+      height: 62px;
+      background: var(--fire);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "Barlow", system-ui, sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+    #f06-stamp-l {
+      left: 330px;
+    }
+    #f06-stamp-r {
+      left: 1542px;
+    }
+    /* inner-edge badges — the one sanctioned overshoot of the shot */
+    .f06-badge {
+      position: absolute;
+      top: 645px;
+      width: 240px;
+      height: 54px;
+      background: var(--fire);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 20px;
+      font-weight: 600;
+      line-height: 1;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink);
+      white-space: nowrap;
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+    #f06-badge-l {
+      left: 439px;
+    }
+    #f06-badge-r {
+      left: 1241px;
+    }
+
+    /* ── track 4 — the centre stage: the Court deck mount ───────────────── */
+    .f06-center {
+      position: absolute;
+      inset: 0;
+    }
+    /* the slot box IS the component's coordinate space, so cqw/cqh inside
+       spring-stack-shuffle resolve against 460 × 560. Its #root fills this
+       box; geometry + contract tokens live here and inherit inward. */
+    #f06-deckmount {
+      position: absolute;
+      left: 730px;
+      top: 230px;
+      width: 460px;
+      height: 560px;
+      --brand: #e85d26;
+      --surface: #111111;
+      --border: #282826;
+      --fg: #f0ece5;
+      --muted: #888880;
+      --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+      --radius: 0px;
+      --bg: transparent;
+    }
+    /* the proven card — same geometry as the mount's front slot
+       (left 50% / top 58% / 46cqw × 42cqh of 460 × 560), so the swap with the
+       component's own front card is invisible */
+    .f06-proven {
+      position: absolute;
+      left: 854px;
+      top: 437px;
+      width: 212px;
+      height: 235px;
+      perspective: 900px;
+      opacity: 0;
+      will-change: transform, opacity;
+    }
+    .f06-provenflip {
+      position: absolute;
+      inset: 0;
+      transform-style: preserve-3d;
+      will-change: transform;
+    }
+    .f06-pface {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      border: 1px solid var(--border);
+    }
+    .f06-pback {
+      background-color: var(--ink);
+      background-image: repeating-linear-gradient(
+          0deg,
+          rgba(240, 236, 229, 0.05) 0 1px,
+          transparent 1px 26px
+        ),
+        repeating-linear-gradient(
+          90deg,
+          rgba(240, 236, 229, 0.05) 0 1px,
+          transparent 1px 26px
+        );
+      transform: rotateY(180deg);
+    }
+    /* matches the component's active-card ring so the two read as one card */
+    .f06-pring {
+      position: absolute;
+      inset: 0;
+      border: 1.5px solid rgba(232, 93, 38, 0.75);
+      pointer-events: none;
+    }
+    .f06-pfront {
+      background: var(--ink);
+    }
+    .f06-pidx {
+      position: absolute;
+      left: 18px;
+      top: 16px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 17px;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+    }
+    .f06-pstub {
+      position: absolute;
+      left: 18px;
+      bottom: 18px;
+      width: 36px;
+      height: 2px;
+      background: var(--fire);
+    }
+    .f06-pname {
+      position: absolute;
+      left: 0;
+      bottom: 62px;
+      width: 100%;
+      font-family: "Barlow", system-ui, sans-serif;
+      font-size: 34px;
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -0.01em;
+      text-align: center;
+      color: var(--cream);
+    }
+    /* the detail everyone forgets — lands in the sole accent */
+    .f06-hiddenrule {
+      position: absolute;
+      left: 942px;
+      top: 712px;
+      width: 36px;
+      height: 2px;
+      background: var(--fire);
+      transform-origin: 0 50%;
+      will-change: transform, opacity;
+    }
+    .f06-hidden {
+      position: absolute;
+      left: 810px;
+      top: 730px;
+      width: 300px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 24px;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      text-align: center;
+      color: var(--fire);
+      white-space: nowrap;
+      will-change: transform, opacity;
+    }
+
+    /* ── track 5 — chrome + the claim, fixed in frame ───────────────────── */
+    .f06-chrome {
+      position: absolute;
+      inset: 0;
+    }
+    .f06-chromerule {
+      position: absolute;
+      left: 105px;
+      top: 88px;
+      width: 1710px;
+      height: 1px;
+      background: var(--border);
+    }
+    .f06-chromel,
+    .f06-chromer {
+      position: absolute;
+      top: 100px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 17px;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      will-change: transform, opacity;
+    }
+    .f06-chromel {
+      left: 105px;
+      color: var(--fire);
+      white-space: nowrap;
+    }
+    .f06-chromer {
+      left: 1310px;
+      width: 505px;
+      text-align: right;
+      color: var(--cream-hint);
+    }
+    /* the claim chip — the one thing the whole shot argues about */
+    .f06-claim {
+      position: absolute;
+      left: 835px;
+      top: 164px;
+      width: 250px;
+      height: 54px;
+      border: 1px solid var(--cream-hint);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 20px;
+      font-weight: 500;
+      line-height: 1;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+    .f06-claimk {
+      color: var(--cream-muted);
+    }
+    .f06-claimv {
+      color: var(--fire);
+      font-weight: 600;
+    }
+    .f06-anyone {
+      position: absolute;
+      left: 1120px;
+      top: 178px;
+      width: 400px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 19px;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+      white-space: nowrap;
+      will-change: transform, opacity;
+    }
+    .f06-anyone b {
+      color: var(--fire);
+      font-weight: 600;
+    }
+  </style>
+
+  <div data-hf-id="hf-9fkx" id="root" data-composition-id="06-challenge" data-start="0" data-duration="15.839" data-width="1920" data-height="1080">
+    <!-- track 0 — the flat ink ground -->
+    <div data-hf-id="hf-hhv4" class="clip f06-ground" data-start="0" data-duration="15.839" data-track-index="0" id="f06-ground"></div>
+
+    <!-- track 1 — the hairline field: background, dimmed far back -->
+    <div data-hf-id="hf-ex7f" class="clip f06-field" data-start="0" data-duration="15.839" data-track-index="1" id="f06-field">
+      <div data-hf-id="hf-ytsu" class="f06-grid" id="f06-grid"></div>
+      <div data-hf-id="hf-5gwa" class="f06-axis" id="f06-axis"></div>
+      <div data-hf-id="hf-qwrx" class="f06-glow" id="f06-glow-l"></div>
+      <div data-hf-id="hf-jzeb" class="f06-glow" id="f06-glow-r"></div>
+    </div>
+
+    <!-- track 2 — the challenge window opens around the table -->
+    <div data-hf-id="hf-23lc" class="clip f06-window" data-start="0" data-duration="15.839" data-track-index="2" id="f06-window">
+      <div data-hf-id="hf-v22q" class="f06-wrect" id="f06-wrect"></div>
+      <div data-hf-id="hf-fq3i" class="f06-brk f06-brk-tl" id="f06-brk-tl"></div>
+      <div data-hf-id="hf-x8xi" class="f06-brk f06-brk-tr" id="f06-brk-tr"></div>
+      <div data-hf-id="hf-j18y" class="f06-brk f06-brk-bl" id="f06-brk-bl"></div>
+      <div data-hf-id="hf-z8he" class="f06-brk f06-brk-br" id="f06-brk-br"></div>
+    </div>
+
+    <!-- track 3 — the mirrored comparison: two panels, two outcome badges -->
+    <div data-hf-id="hf-1mtx" class="clip f06-splitclip" data-start="0" data-duration="15.839" data-track-index="3" id="f06-splitclip">
+      <div data-hf-id="hf-0ng1" class="f06-stage">
+        <section data-hf-id="hf-r8ej" class="f06-panel" id="f06-panel-l">
+          <div data-hf-id="hf-fbwm" class="f06-peye f06-pcopy">a · the bluff</div>
+          <div data-hf-id="hf-zf3m" class="f06-phead f06-pcopy">catch a bluff</div>
+          <div data-hf-id="hf-7i6l" class="f06-psub f06-pcopy">the claim is false</div>
+          <div data-hf-id="hf-ndsz" class="f06-card">
+            <div data-hf-id="hf-bp71" class="f06-flip" id="f06-flip-l">
+              <div data-hf-id="hf-uxcy" class="f06-cface f06-cback"></div>
+              <div data-hf-id="hf-u3ys" class="f06-cface f06-cfront">
+                <div data-hf-id="hf-ep0h" class="f06-cidx">no. 03</div>
+                <div data-hf-id="hf-apng" class="f06-cname">banker</div>
+                <div data-hf-id="hf-3ap4" class="f06-cstub"></div>
+              </div>
+            </div>
+          </div>
+          <div data-hf-id="hf-zjtz" class="f06-cwho f06-pcopy">claimant's card</div>
+        </section>
+
+        <section data-hf-id="hf-d2z9" class="f06-panel" id="f06-panel-r">
+          <div data-hf-id="hf-odpr" class="f06-peye f06-pcopy">b · the truth</div>
+          <div data-hf-id="hf-5hvu" class="f06-phead f06-pcopy">wrong call</div>
+          <div data-hf-id="hf-7h8a" class="f06-psub f06-pcopy">the claim is true</div>
+          <div data-hf-id="hf-svxf" class="f06-card">
+            <div data-hf-id="hf-6zf7" class="f06-flip" id="f06-flip-r">
+              <div data-hf-id="hf-v686" class="f06-cface f06-cback"></div>
+              <div data-hf-id="hf-ccrw" class="f06-cface f06-cfront">
+                <div data-hf-id="hf-fhmj" class="f06-cidx">no. 01</div>
+                <div data-hf-id="hf-xxq6" class="f06-cname">guerrilla</div>
+                <div data-hf-id="hf-tof4" class="f06-cstub"></div>
+              </div>
+            </div>
+          </div>
+          <div data-hf-id="hf-ehf7" class="f06-cwho f06-pcopy">challenger's card</div>
+        </section>
+
+        <div data-hf-id="hf-7f6z" class="f06-stamp" id="f06-stamp-l">-1</div>
+        <div data-hf-id="hf-iq2x" class="f06-stamp" id="f06-stamp-r">-1</div>
+        <div data-hf-id="hf-wyie" class="f06-badge" id="f06-badge-l">claimant loses</div>
+        <div data-hf-id="hf-bzuv" class="f06-badge" id="f06-badge-r">you lose</div>
+      </div>
+    </div>
+
+    <!-- track 4 — centre stage: the Court deck, the proven card, the answer -->
+    <div data-hf-id="hf-6tyg" class="clip f06-center" data-start="0" data-duration="15.839" data-track-index="4" id="f06-center">
+      <div data-hf-id="hf-781d" class="clip f06-mount" id="f06-deckmount" data-composition-id="spring-stack-shuffle" data-composition-src="compositions/components/spring-stack-shuffle.html" data-layout-allow-overlap="card stack slots layer by design" data-variable-values="{&quot;cards&quot;:4,&quot;cues&quot;:&quot;2.45&quot;,&quot;accent&quot;:&quot;green&quot;,&quot;exit&quot;:&quot;none&quot;}" data-start="7.3" data-duration="4" data-track-index="0" data-width="460" data-height="560" style="left: 730px; top: 230px; width: 460px; height: 560px"></div>
+
+      <div data-hf-id="hf-soti" class="f06-proven" id="f06-proven">
+        <div data-hf-id="hf-waxe" class="f06-provenflip" id="f06-provenflip">
+          <div data-hf-id="hf-fyyq" class="f06-pface f06-pback"><div data-hf-id="hf-ibj5" class="f06-pring"></div></div>
+          <div data-hf-id="hf-d6k4" class="f06-pface f06-pfront">
+            <div data-hf-id="hf-cn37" class="f06-pidx">no. 02</div>
+            <div data-hf-id="hf-xhk2" class="f06-pname">director</div>
+            <div data-hf-id="hf-a687" class="f06-pstub"></div>
+          </div>
+        </div>
+      </div>
+
+      <div data-hf-id="hf-djny" class="f06-hiddenrule" id="f06-hiddenrule"></div>
+      <div data-hf-id="hf-dhcw" class="f06-hidden" id="f06-hidden">still hidden</div>
+    </div>
+
+    <!-- track 5 — chrome and the claim, fixed in frame -->
+    <div data-hf-id="hf-7u2r" class="clip f06-chrome" data-start="0" data-duration="15.839" data-track-index="5" id="f06-chrome">
+      <div data-hf-id="hf-7z8e" class="f06-chromerule" id="f06-chromerule"></div>
+      <div data-hf-id="hf-3p10" class="f06-chromel" id="f06-chromel">coup · rebellion g54</div>
+      <div data-hf-id="hf-axw7" class="f06-chromer" id="f06-chromer">no. 06</div>
+      <div data-hf-id="hf-i2a4" class="f06-claim" id="f06-claim">
+        <span data-hf-id="hf-ls7t" class="f06-claimk">claim:</span><span data-hf-id="hf-sglm" class="f06-claimv">director</span>
+      </div>
+      <div data-hf-id="hf-isqx" class="f06-anyone" id="f06-anyone"><b data-hf-id="hf-x3pa">/</b> challenge window</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      window.__timelines = window.__timelines || {};
+      var tl = gsap.timeline({ paused: true });
+
+      /* Landing ease borrowed from spring-stack-shuffle's own landEase: a
+         zero-slope hang, ONE small sanctioned overshoot past the target, then
+         a zero-slope settle. Pure function of progress, so any seek in either
+         direction reproduces the same frame. */
+      function landEase(overshoot) {
+        return function (u) {
+          if (u < 0.62) {
+            var a = u / 0.62;
+            return (1 + overshoot) * a * a * (3 - 2 * a);
+          }
+          var b = (u - 0.62) / 0.38;
+          return 1 + overshoot - overshoot * b * b * (3 - 2 * b);
+        };
+      }
+      var POP = landEase(0.06);
+      var STAMP = landEase(0.08);
+
+      /* ══ Scene 1 (0.0–3.0s) — the claim, then the window opens ═══════════
+         "Anyone can challenge any claim — even someone not involved."
+         The claim chip pills in and settles down from above (gsap-effects:
+         translate + opacity on a long-tail power3), forming a T against the
+         panels that arrive from the wings next. Hero readable by t = 0.5s. */
+      tl.fromTo(
+        "#f06-grid",
+        { opacity: 0 },
+        { opacity: 1, duration: 1, ease: "power2.out" },
+        0.05
+      );
+      tl.fromTo("#f06-axis", { opacity: 0 }, { opacity: 1, duration: 1, ease: "power2.out" }, 0.15);
+      tl.fromTo("#f06-chromerule", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.out" }, 0.1);
+      tl.fromTo(
+        ["#f06-chromel", "#f06-chromer"],
+        { opacity: 0, y: -8 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", stagger: 0.07 },
+        0.18
+      );
+      tl.fromTo(
+        "#f06-claim",
+        { opacity: 0, scale: 0.92, y: -18 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.4, ease: "power3.out" },
+        0.08
+      );
+      tl.fromTo("#f06-anyone", { opacity: 0, x: -14 }, { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, 0.55);
+
+      /* the challenge window — one beat, then settle */
+      tl.fromTo("#f06-wrect", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.out" }, 0.9);
+      tl.fromTo(
+        ".f06-brk",
+        { opacity: 0, scale: 0 },
+        { opacity: 1, scale: 1, duration: 0.4, ease: "power3.out", stagger: 0.07 },
+        0.98
+      );
+
+      /* ══ Scene 2 (3.0–7.2s) — split-tilt-cards, the signature move ═══════
+         Two equal-weight panels arrive from opposite wings with a mirrored
+         book-open rotateY, the right ~0.25s behind; copy fades up during the
+         settle, never after. */
+      tl.fromTo(
+        "#f06-panel-l",
+        { opacity: 0, x: -360, rotateY: 22, scale: 0.85 },
+        { opacity: 1, x: 0, rotateY: 14, scale: 1, duration: 0.75, ease: "power3.out" },
+        3.05
+      );
+      tl.fromTo(
+        "#f06-panel-r",
+        { opacity: 0, x: 360, rotateY: -22, scale: 0.85 },
+        { opacity: 1, x: 0, rotateY: -14, scale: 1, duration: 0.75, ease: "power3.out" },
+        3.3
+      );
+      tl.fromTo(
+        "#f06-panel-l .f06-pcopy",
+        { opacity: 0, y: 14 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out", stagger: 0.07 },
+        3.45
+      );
+      tl.fromTo(
+        "#f06-panel-r .f06-pcopy",
+        { opacity: 0, y: 14 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out", stagger: 0.07 },
+        3.7
+      );
+
+      /* ambient-glow-bloom — one halo per wing, landing on the panels' settle */
+      var GLOW = 0.16;
+      tl.fromTo(
+        "#f06-glow-l",
+        { opacity: 0, scale: 0.8 },
+        { opacity: GLOW, scale: 1, duration: 0.9, ease: "power2.out" },
+        3.55
+      );
+      tl.fromTo(
+        "#f06-glow-r",
+        { opacity: 0, scale: 0.8 },
+        { opacity: GLOW, scale: 1, duration: 0.9, ease: "power2.out" },
+        3.85
+      );
+
+      /* left outcome — "Catch a bluff: the claimant loses a life." */
+      tl.fromTo("#f06-flip-l", { rotationY: 180 }, { rotationY: 0, duration: 0.55, ease: "power3.out" }, 4.15);
+      tl.fromTo(
+        "#f06-stamp-l",
+        { opacity: 0, scale: 0, rotation: -12 },
+        { opacity: 1, scale: 1, rotation: 0, duration: 0.45, ease: STAMP },
+        4.6
+      );
+      tl.fromTo(
+        "#f06-badge-l",
+        { opacity: 0, scale: 0, y: 10 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.5, ease: POP },
+        5.05
+      );
+
+      /* right outcome — "Wrong call: you lose one instead." */
+      tl.fromTo("#f06-flip-r", { rotationY: 180 }, { rotationY: 0, duration: 0.55, ease: "power3.out" }, 6.15);
+      tl.fromTo(
+        "#f06-stamp-r",
+        { opacity: 0, scale: 0, rotation: 12 },
+        { opacity: 1, scale: 1, rotation: 0, duration: 0.45, ease: STAMP },
+        6.55
+      );
+      tl.fromTo(
+        "#f06-badge-r",
+        { opacity: 0, scale: 0, y: 10 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.5, ease: POP },
+        6.95
+      );
+
+      /* ══ Scene 3 (7.2–11.0s) — the court shuffle ═════════════════════════
+         "Truth proven: the card flips back into the Court, and a fresh one
+         replaces it. Still hidden."
+         The panels settle into the background, the proven card takes the
+         deck's front slot, shows itself once, flips back in, and the mounted
+         spring-stack-shuffle throws a fresh card over the top at 9.75. */
+      tl.to([".f06-panel", ".f06-badge"], { opacity: 0.82, duration: 0.5, ease: "power2.out" }, 7.35);
+
+      tl.fromTo("#f06-proven", { opacity: 0, scale: 0.97 }, { opacity: 1, scale: 1, duration: 0.3, ease: "power2.out" }, 8);
+      tl.fromTo(
+        "#f06-provenflip",
+        { rotationY: 180 },
+        { rotationY: 0, duration: 0.45, ease: "power3.out" },
+        8.3
+      );
+      tl.fromTo(
+        "#f06-provenflip",
+        { rotationY: 0 },
+        { rotationY: 180, duration: 0.45, ease: "power3.inOut", immediateRender: false },
+        9.15
+      );
+      /* it is face-down again, sitting as the deck's front card — the mount's
+         own front card takes over from here, so the hand-off is invisible */
+      tl.set("#f06-proven", { opacity: 0 }, 9.62);
+
+      /* the detail everyone forgets, in the sole accent */
+      tl.fromTo(
+        "#f06-hiddenrule",
+        { opacity: 0, scaleX: 0 },
+        { opacity: 1, scaleX: 1, duration: 0.4, ease: "power3.out" },
+        10.8
+      );
+      tl.fromTo(
+        "#f06-hidden",
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" },
+        10.9
+      );
+
+      /* ══ hold — sine-wave-loop, the low register only ════════════════════
+         Counter-phase jitter on the mirrored pair (left sin, right sin+π) so
+         they never conveyor-belt, and two halo breathes on staggered periods.
+         Both run out at ~13.8s, leaving the closing read dead still. */
+      tl.to("#f06-panel-l", { y: -3, duration: 1.6, ease: "sine.inOut", yoyo: true, repeat: 3 }, 7.4);
+      tl.to("#f06-panel-r", { y: 3, duration: 1.6, ease: "sine.inOut", yoyo: true, repeat: 3 }, 7.4);
+
+      var AMP = 0.014; /* default / √2 for two concurrent halos */
+      var glowLPhase = { p: 0 };
+      var glowRPhase = { p: 0 };
+      var glowL = document.getElementById("f06-glow-l");
+      var glowR = document.getElementById("f06-glow-r");
+      tl.to(
+        glowLPhase,
+        {
+          p: Math.PI * 4,
+          duration: 8,
+          ease: "none",
+          onUpdate: function () {
+            var s = Math.sin(glowLPhase.p);
+            glowL.style.opacity = String(GLOW + s * AMP);
+          }
+        },
+        4.8
+      );
+      tl.to(
+        glowRPhase,
+        {
+          p: Math.PI * 4,
+          duration: 9,
+          ease: "none",
+          onUpdate: function () {
+            var s = Math.sin(glowRPhase.p);
+            glowR.style.opacity = String(GLOW + s * AMP);
+          }
+        },
+        4.8
+      );
+
+      /* no exit tween — the root transition owns the exit */
+
+      tl.seek(0);
+      window.__timelines["06-challenge"] = tl;
+    })();
+  </script>
+</template>

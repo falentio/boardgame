@@ -1,0 +1,769 @@
+<template>
+  <style>
+    /* ── fonts — local, shipped in assets/fonts/ ──────────────────────────
+       Two bases: the assembled index.html is the render document (project
+       root), the frame file itself sits at compositions/frames/. Exactly the
+       weights this frame sets. */
+    @font-face {
+      font-family: "Barlow";
+      font-style: normal;
+      font-weight: 700;
+      font-display: block;
+      src: url("../../assets/fonts/Barlow-700.woff2") format("woff2"),
+        url("assets/fonts/Barlow-700.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "Barlow";
+      font-style: normal;
+      font-weight: 900;
+      font-display: block;
+      src: url("../../assets/fonts/Barlow-900.woff2") format("woff2"),
+        url("assets/fonts/Barlow-900.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      font-style: normal;
+      font-weight: 400;
+      font-display: block;
+      src: url("../../assets/fonts/IBMPlexMono-400.woff2") format("woff2"),
+        url("assets/fonts/IBMPlexMono-400.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      font-style: normal;
+      font-weight: 500;
+      font-display: block;
+      src: url("../../assets/fonts/IBMPlexMono-500.woff2") format("woff2"),
+        url("assets/fonts/IBMPlexMono-500.woff2") format("woff2");
+    }
+
+    /* ── tokens, all pulled from frame.md ───────────────────────────────── */
+    #root {
+      --ink: #111111;
+      --ink-alt: #1a1a18;
+      --fire: #e85d26;
+      --cream: #f0ece5;
+      --cream-muted: #888880;
+      --cream-hint: #505048;
+      --border: #282826;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    /* ── root — styled by #root, never a class on the composition root ──── */
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      container-type: size;
+      font-family: "Barlow", system-ui, sans-serif;
+      color: var(--cream);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+    }
+
+    /* ── ground: flat ink-black on its own class="clip" track ───────────── */
+    .f03-ground {
+      position: absolute;
+      inset: 0;
+      background: var(--ink);
+    }
+
+    /* ── camera — multi-phase-camera: ONE wrapper, one writer.
+          transform-origin sits on the anchor so the pinned "25 → 5" line is
+          mathematically fixed while the world pushes in beneath it. ─────── */
+    .f03-camera {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      transform-origin: 960px 443px;
+      will-change: transform;
+    }
+
+    /* ambient hairline grid — the background element, dimmed well back */
+    .f03-grid {
+      position: absolute;
+      inset: 0;
+      background-image: repeating-linear-gradient(
+          0deg,
+          rgba(240, 236, 229, 0.045) 0 1px,
+          transparent 1px 96px
+        ),
+        repeating-linear-gradient(
+          90deg,
+          rgba(240, 236, 229, 0.045) 0 1px,
+          transparent 1px 96px
+        );
+    }
+
+    /* ── slide-chrome: one hairline, mono marks either side ─────────────── */
+    .f03-chrome-rule {
+      position: absolute;
+      left: 105px;
+      top: 88px;
+      width: 1710px;
+      height: 1px;
+      background: var(--border);
+      transform-origin: 0 50%;
+      will-change: transform, opacity;
+    }
+    .f03-chrome-left,
+    .f03-chrome-right {
+      position: absolute;
+      top: 100px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.72cqw;
+      font-weight: 400;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+      will-change: opacity;
+    }
+    .f03-chrome-left {
+      left: 105px;
+    }
+    .f03-chrome-right {
+      right: 105px;
+    }
+
+    /* ── the anchor — fixed, dead-centre, zero movement after it lands ──── */
+    .f03-anchor {
+      position: absolute;
+      left: 105px;
+      right: 105px;
+      top: 318px;
+      height: 250px;
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      font-size: 13cqw;
+      gap: 0.14em;
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+    .f03-anchor-num {
+      font-family: "Barlow", system-ui, sans-serif;
+      font-size: 13cqw;
+      font-weight: 900;
+      line-height: 250px;
+      letter-spacing: -0.04em;
+      color: var(--cream);
+      will-change: transform, color;
+    }
+    /* the "5" is pending until the voiceover reaches "only five" */
+    .f03-n5 {
+      color: var(--cream-muted);
+    }
+    .f03-anchor-arrow {
+      display: block;
+      align-self: center;
+      width: 5.6cqw;
+      height: 1.72cqw;
+    }
+
+    /* ── the cycling rule strip — full width, one token at a time ───────── */
+    .f03-strip {
+      position: absolute;
+      left: 105px;
+      top: 596px;
+      width: 1710px;
+      height: 120px;
+    }
+    .f03-hair {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--border);
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+    .f03-hair-top {
+      top: 0;
+    }
+    .f03-hair-bottom {
+      top: 119px;
+    }
+
+    /* the system's only ornament: a 36×2 fire-orange rule stub */
+    .f03-stub {
+      position: absolute;
+      left: 0;
+      top: 59px;
+      width: 36px;
+      height: 2px;
+      background: var(--fire);
+      transform-origin: 0 50%;
+      will-change: transform, opacity;
+    }
+
+    /* the token slot — empty until the first spoken category slaps in */
+    .f03-token {
+      position: absolute;
+      left: 55px;
+      top: 0;
+      width: 1180px;
+      height: 120px;
+      display: flex;
+      align-items: baseline;
+      will-change: transform;
+    }
+    .f03-token-num {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 6cqw;
+      font-weight: 500;
+      line-height: 120px;
+      letter-spacing: 0.01em;
+      color: var(--cream);
+      font-variant-numeric: tabular-nums;
+    }
+    .f03-token-cat {
+      margin-left: 26px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 1.05cqw;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+    }
+
+    /* four-step progress: pips + mono counter, right-anchored ──────────── */
+    .f03-pips {
+      position: absolute;
+      right: 0;
+      top: 50px;
+      display: flex;
+      gap: 10px;
+      will-change: opacity;
+    }
+    .f03-pip {
+      width: 24px;
+      height: 2px;
+      background: var(--border);
+      transform-origin: 0 50%;
+      will-change: transform;
+    }
+    .f03-count {
+      position: absolute;
+      right: 0;
+      top: 66px;
+      width: 90px;
+      text-align: right;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.78cqw;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+      font-variant-numeric: tabular-nums;
+      will-change: opacity;
+    }
+
+    /* ── the public row: five starter-role tiles, flat, 0 radius ────────── */
+    .f03-public {
+      position: absolute;
+      left: 105px;
+      right: 105px;
+      top: 726px;
+      text-align: center;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 1cqw;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream);
+      will-change: transform, opacity;
+    }
+    .f03-public b {
+      font-weight: 500;
+      color: var(--fire);
+    }
+
+    .f03-row {
+      position: absolute;
+      left: 162px;
+      top: 756px;
+      width: 1596px;
+      height: 130px;
+      perspective: 1000px;
+    }
+    .f03-tile {
+      position: absolute;
+      top: 0;
+      width: 300px;
+      height: 130px;
+      transform-style: preserve-3d;
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+    .f03-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    /* face-down: the silhouette the row arrives as */
+    .f03-face-back {
+      transform: rotateY(180deg);
+      background: var(--ink-alt);
+      border: 1px solid var(--border);
+    }
+    /* face-up: what is legal, public, all game */
+    .f03-face-front {
+      background: var(--ink-alt);
+      border: 1px solid rgba(240, 236, 229, 0.28);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 0 22px;
+    }
+    .f03-tile-bar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 2px;
+      background: var(--border);
+      transform-origin: 0 50%;
+      will-change: transform, background-color;
+    }
+    .f03-tile-name {
+      font-family: "Barlow", system-ui, sans-serif;
+      font-size: 2.4cqw;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -0.01em;
+      color: var(--cream);
+    }
+    .f03-tile-cat {
+      margin-top: 8px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.8cqw;
+      font-weight: 400;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+    }
+    .f03-face-frame {
+      position: absolute;
+      inset: 12px;
+      border: 1px solid var(--border);
+    }
+    .f03-seal {
+      position: absolute;
+      left: 150px;
+      top: 55px;
+      width: 20px;
+      height: 20px;
+      border: 1px solid var(--cream-hint);
+      transform: rotate(45deg);
+    }
+    .f03-seal-dot {
+      position: absolute;
+      left: 158px;
+      top: 63px;
+      width: 4px;
+      height: 4px;
+      background: var(--cream-hint);
+    }
+  </style>
+
+  <div data-hf-id="hf-891g" id="root" data-composition-id="03-role-twist" data-start="0" data-duration="15.007" data-width="1920" data-height="1080">
+    <!-- track 0 — the flat ground the assembler paints over -->
+    <div data-hf-id="hf-5x6d" class="clip f03-ground" data-start="0" data-duration="15.007" data-track-index="0" id="f03-ground"></div>
+
+    <!-- track 1 — the camera: everything the shot contains -->
+    <div data-hf-id="hf-t2ng" class="clip f03-camera" id="f03-camera" data-start="0" data-duration="15.007" data-track-index="1">
+      <div data-hf-id="hf-lrea" class="f03-grid"></div>
+
+      <!-- chrome -->
+      <div data-hf-id="hf-xwpg" class="f03-chrome-rule" id="f03-chrome-rule"></div>
+      <div data-hf-id="hf-hjsq" class="f03-chrome-left" id="f03-chrome-left">no. 03</div>
+      <div data-hf-id="hf-hiwr" class="f03-chrome-right" id="f03-chrome-right">the role set</div>
+
+      <!-- the pinned anchor: 25 in the box → 5 per game -->
+      <div data-hf-id="hf-6iuy" class="f03-anchor" id="f03-anchor">
+        <span data-hf-id="hf-q5v9" class="f03-anchor-num" id="f03-n25">25</span>
+        <svg data-hf-id="hf-azrg" class="f03-anchor-arrow" viewBox="0 0 130 40" preserveAspectRatio="xMidYMid meet" fill="none" aria-hidden="true">
+          <path data-hf-id="hf-8262" d="M2 20 H116" stroke="#505048" stroke-width="3" />
+          <path data-hf-id="hf-la85" d="M103 5 L123 20 L103 35" stroke="#505048" stroke-width="3" />
+        </svg>
+        <span data-hf-id="hf-u8pi" class="f03-anchor-num f03-n5" id="f03-n5">5</span>
+      </div>
+
+      <!-- the cycling rule strip -->
+      <div data-hf-id="hf-opr4" class="f03-strip">
+        <div data-hf-id="hf-yo8c" class="f03-hair f03-hair-top" id="f03-hair-top"></div>
+        <div data-hf-id="hf-brzs" class="f03-hair f03-hair-bottom" id="f03-hair-bottom"></div>
+        <div data-hf-id="hf-x3gy" class="f03-stub" id="f03-stub"></div>
+        <div data-hf-id="hf-mtyp" class="f03-token">
+          <span data-hf-id="hf-8zbn" class="f03-token-num" id="f03-token-num"></span>
+          <span data-hf-id="hf-a5or" class="f03-token-cat" id="f03-token-cat"></span>
+        </div>
+        <div data-hf-id="hf-akoi" class="f03-pips" id="f03-pips">
+          <div data-hf-id="hf-i1dq" class="f03-pip" id="f03-pip-1"></div>
+          <div data-hf-id="hf-e39p" class="f03-pip" id="f03-pip-2"></div>
+          <div data-hf-id="hf-dblw" class="f03-pip" id="f03-pip-3"></div>
+          <div data-hf-id="hf-0t3f" class="f03-pip" id="f03-pip-4"></div>
+        </div>
+        <div data-hf-id="hf-dafr" class="f03-count" id="f03-count">00 / 04</div>
+      </div>
+
+      <!-- the five that sit face up, public, all game -->
+      <div data-hf-id="hf-g1ze" class="f03-public" id="f03-public">
+        face up <b data-hf-id="hf-cufq">·</b> public <b data-hf-id="hf-gq2i">·</b> all game
+      </div>
+      <div data-hf-id="hf-jh3u" class="f03-row" id="f03-row">
+        <div data-hf-id="hf-rx2m" class="f03-tile">
+          <div data-hf-id="hf-pwaa" class="f03-face f03-face-back">
+            <div data-hf-id="hf-457h" class="f03-face-frame"></div>
+            <div data-hf-id="hf-thjt" class="f03-seal"></div>
+            <div data-hf-id="hf-l1tf" class="f03-seal-dot"></div>
+          </div>
+          <div data-hf-id="hf-ugzo" class="f03-face f03-face-front">
+            <div data-hf-id="hf-j59i" class="f03-tile-bar"></div>
+            <div data-hf-id="hf-bx8z" class="f03-tile-name">banker</div>
+            <div data-hf-id="hf-cwp1" class="f03-tile-cat">finance</div>
+          </div>
+        </div>
+        <div data-hf-id="hf-c302" class="f03-tile">
+          <div data-hf-id="hf-1n5i" class="f03-face f03-face-back">
+            <div data-hf-id="hf-4fw1" class="f03-face-frame"></div>
+            <div data-hf-id="hf-bawd" class="f03-seal"></div>
+            <div data-hf-id="hf-4d77" class="f03-seal-dot"></div>
+          </div>
+          <div data-hf-id="hf-h77g" class="f03-face f03-face-front">
+            <div data-hf-id="hf-g82y" class="f03-tile-bar"></div>
+            <div data-hf-id="hf-z5wi" class="f03-tile-name">director</div>
+            <div data-hf-id="hf-a1fs" class="f03-tile-cat">communications</div>
+          </div>
+        </div>
+        <div data-hf-id="hf-chb3" class="f03-tile">
+          <div data-hf-id="hf-21gj" class="f03-face f03-face-back">
+            <div data-hf-id="hf-5mt4" class="f03-face-frame"></div>
+            <div data-hf-id="hf-chtg" class="f03-seal"></div>
+            <div data-hf-id="hf-3yw6" class="f03-seal-dot"></div>
+          </div>
+          <div data-hf-id="hf-g0ad" class="f03-face f03-face-front">
+            <div data-hf-id="hf-gmdz" class="f03-tile-bar"></div>
+            <div data-hf-id="hf-ybxf" class="f03-tile-name">guerrilla</div>
+            <div data-hf-id="hf-5b5o" class="f03-tile-cat">force</div>
+          </div>
+        </div>
+        <div data-hf-id="hf-cvm4" class="f03-tile">
+          <div data-hf-id="hf-2frk" class="f03-face f03-face-back">
+            <div data-hf-id="hf-58i3" class="f03-face-frame"></div>
+            <div data-hf-id="hf-c3if" class="f03-seal"></div>
+            <div data-hf-id="hf-3kl5" class="f03-seal-dot"></div>
+          </div>
+          <div data-hf-id="hf-gele" class="f03-face f03-face-front">
+            <div data-hf-id="hf-h0p0" class="f03-tile-bar"></div>
+            <div data-hf-id="hf-7we0" class="f03-tile-name">politician</div>
+            <div data-hf-id="hf-a3qa" class="f03-tile-cat">special interest</div>
+          </div>
+        </div>
+        <div data-hf-id="hf-d9x5" class="f03-tile">
+          <div data-hf-id="hf-znmd" class="f03-face f03-face-back">
+            <div data-hf-id="hf-38yy" class="f03-face-frame"></div>
+            <div data-hf-id="hf-dafi" class="f03-seal"></div>
+            <div data-hf-id="hf-36a4" class="f03-seal-dot"></div>
+          </div>
+          <div data-hf-id="hf-ie4j" class="f03-face f03-face-front">
+            <div data-hf-id="hf-hf01" class="f03-tile-bar"></div>
+            <div data-hf-id="hf-590u" class="f03-tile-name">peacekeeper</div>
+            <div data-hf-id="hf-oifa" class="f03-tile-cat">special interest</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      var DURATION = 14.507;
+
+      var ORANGE = "#e85d26";
+      var BORDER = "#282826";
+
+      window.__timelines = window.__timelines || {};
+      var tl = gsap.timeline({ paused: true });
+
+      /* ── multi-phase-camera: phase scale + sine drift, one writer ──────
+         Steady push underneath the shot. The origin sits on the anchor, so
+         the pinned line is fixed to the pixel while the world moves. ──── */
+      var camera = document.getElementById("f03-camera");
+      var phase = { scale: 1 };
+      tl.to(phase, { scale: 1.008, duration: 2.6, ease: "power2.inOut" }, 3.2);
+      tl.to(phase, { scale: 1.02, duration: 3.2, ease: "power2.inOut" }, 8.2);
+
+      var drift = { p: 0 };
+      tl.to(
+        drift,
+        {
+          p: Math.PI * 2 * 2,
+          duration: DURATION,
+          ease: "none",
+          onUpdate: function () {
+            var dx = Math.sin(drift.p) * 3;
+            var dy = Math.sin(drift.p * 1.3) * 2;
+            camera.style.transform =
+              "scale(" + phase.scale + ") translate(" + dx + "px, " + dy + "px)";
+          }
+        },
+        0
+      );
+
+      /* ── discrete-text-sequence: the rule strip's four states ──────────
+         One driver spans the whole composition, so any seek re-derives the
+         same frame. States are reverse-searched, never indexed. ────────── */
+      var STRIP_START = 3.2;
+      var STATES = [
+        { t: 3.5, num: "1", cat: "finance" },
+        { t: 4.9, num: "1", cat: "communications" },
+        { t: 6.3, num: "1", cat: "force" },
+        { t: 7.7, num: "2", cat: "special interest" }
+      ];
+      var STAMP_DUR = 0.22;
+      var PULSE_UP = 0.16;
+      var PULSE_DOWN = 0.28;
+      var PULSE_AMP = 0.05;
+      var FINAL_T = STATES[STATES.length - 1].t;
+
+      var numEl = document.getElementById("f03-token-num");
+      var catEl = document.getElementById("f03-token-cat");
+      var countEl = document.getElementById("f03-count");
+      var stubEl = document.getElementById("f03-stub");
+      var tokenEl = document.querySelector(".f03-token");
+      var pipEls = [
+        document.getElementById("f03-pip-1"),
+        document.getElementById("f03-pip-2"),
+        document.getElementById("f03-pip-3"),
+        document.getElementById("f03-pip-4")
+      ];
+
+      function easeOut3(u) {
+        return 1 - Math.pow(1 - u, 3);
+      }
+      /* the stub re-stamps over each new phrase; the pip lights under it */
+      function stampScale(now, t0) {
+        if (now < t0) return 1;
+        var u = (now - t0) / STAMP_DUR;
+        if (u >= 1) return 1;
+        return 0.25 + 0.75 * easeOut3(u);
+      }
+      /* state pulse on the weightiest state, once, then still */
+      function tokenScale(now) {
+        if (now < FINAL_T) return 1;
+        var u = now - FINAL_T;
+        if (u < PULSE_UP) return 1 + PULSE_AMP * easeOut3(u / PULSE_UP);
+        u = (u - PULSE_UP) / PULSE_DOWN;
+        if (u >= 1) return 1;
+        return 1 + PULSE_AMP * (1 - easeOut3(u));
+      }
+      function pad2(n) {
+        return n < 10 ? "0" + n : "" + n;
+      }
+      function stateIndexAt(now) {
+        for (var i = STATES.length - 1; i >= 0; i--) {
+          if (now >= STATES[i].t) return i;
+        }
+        return -1;
+      }
+
+      var lastState = -2;
+      function paintStrip(now) {
+        var idx = stateIndexAt(now);
+        if (idx !== lastState) {
+          lastState = idx;
+          if (idx < 0) {
+            numEl.textContent = "";
+            catEl.textContent = "";
+            countEl.textContent = pad2(0) + " / 04";
+          } else {
+            numEl.textContent = STATES[idx].num;
+            catEl.textContent = STATES[idx].cat;
+            countEl.textContent = pad2(idx + 1) + " / 04";
+          }
+          for (var j = 0; j < pipEls.length; j++) {
+            pipEls[j].style.backgroundColor = idx >= 0 && j <= idx ? ORANGE : BORDER;
+          }
+        }
+        for (var k = 0; k < pipEls.length; k++) {
+          pipEls[k].style.transform = "scaleX(" + stampScale(now, STATES[k].t).toFixed(4) + ")";
+        }
+        tokenEl.style.transform = "scale(" + tokenScale(now).toFixed(4) + ")";
+        /* the driver takes the stub over only once its entrance is done */
+        if (now >= STRIP_START) {
+          var origin = idx >= 0 ? STATES[idx].t : STATES[0].t;
+          stubEl.style.transform = "scaleX(" + stampScale(now, origin).toFixed(4) + ")";
+        }
+      }
+
+      var stripDriver = { t: 0 };
+      tl.to(
+        stripDriver,
+        {
+          t: DURATION,
+          duration: DURATION,
+          ease: "none",
+          onUpdate: function () {
+            paintStrip(stripDriver.t);
+          }
+        },
+        0
+      );
+      paintStrip(0);
+
+      /* ── collapsed start states pinned at t = 0 ──────────────────────────
+         A delayed entrance never flashes its CSS-visible state, and a seek
+         back to zero restores it. */
+      tl.set(
+        [
+          "#f03-chrome-rule",
+          "#f03-chrome-left",
+          "#f03-chrome-right",
+          "#f03-hair-top",
+          "#f03-hair-bottom",
+          "#f03-pips",
+          "#f03-count",
+          "#f03-stub",
+          "#f03-public",
+          ".f03-tile",
+          ".f03-tile-bar"
+        ],
+        { opacity: 0 },
+        0
+      );
+      tl.set("#f03-stub", { scaleX: 0 }, 0);
+      tl.set(".f03-tile", { y: 0, scale: 1, rotationY: 0 }, 0);
+      tl.set(".f03-tile-bar", { backgroundColor: BORDER, scaleX: 1 }, 0);
+      tl.set("#f03-anchor", { opacity: 0, scale: 1, y: 0 }, 0);
+      tl.set("#f03-n5", { scale: 1 }, 0);
+
+      /* ── Scene 1 (0.0–3.2): the anchor lands and PINS ──────────────────
+         It never moves again. The push-in runs underneath it. ─────────── */
+      tl.fromTo(
+        "#f03-anchor",
+        { opacity: 0, scale: 0.9, y: 16 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.46, ease: "power3.out" },
+        0.1
+      );
+
+      tl.fromTo(
+        "#f03-chrome-rule",
+        { opacity: 0, scaleX: 0 },
+        { opacity: 1, scaleX: 1, duration: 0.5, ease: "power2.inOut" },
+        0.12
+      );
+      tl.fromTo(
+        ["#f03-chrome-left", "#f03-chrome-right"],
+        { opacity: 0 },
+        { opacity: 1, duration: 0.4, ease: "power1.out" },
+        0.35
+      );
+
+      /* the rule strip's structure arrives before the rule itself does */
+      tl.fromTo(
+        ["#f03-hair-top", "#f03-hair-bottom"],
+        { opacity: 0, scaleX: 0 },
+        { opacity: 1, scaleX: 1, duration: 0.6, ease: "power2.inOut" },
+        1.5
+      );
+      tl.fromTo(
+        ["#f03-pips", "#f03-count"],
+        { opacity: 0 },
+        { opacity: 1, duration: 0.35, ease: "power1.out" },
+        1.85
+      );
+      tl.fromTo(
+        "#f03-stub",
+        { opacity: 0, scaleX: 0 },
+        { opacity: 1, scaleX: 1, duration: 0.4, ease: "power3.out" },
+        2.6
+      );
+
+      /* ── Scene 2 (3.2–8.0): the world cycles, the anchor holds (camera push is authored above) ────────── */
+
+      /* "but every game uses only five" — the five illuminates */
+      tl.fromTo(
+        "#f03-n5",
+        { color: "#505048" },
+        { color: "#e85d26", duration: 0.24, ease: "power2.out" },
+        3.9
+      );
+      tl.fromTo("#f03-n5", { scale: 1 }, { scale: 1.07, duration: 0.14, ease: "power2.out" }, 3.9);
+      tl.fromTo(
+        "#f03-n5",
+        { scale: 1.07 },
+        { scale: 1, duration: 0.26, ease: "power2.inOut", immediateRender: false },
+        4.04
+      );
+
+      /* the four states, their stub re-stamps and their pips are all derived
+         inside paintStrip above — instant text, no smear between states. */
+
+      /* ── Scene 3 (8.0–12.0): the five land face up, public (camera phase three already runs) ────────────── */
+
+      var tiles = document.querySelectorAll(".f03-tile");
+      for (var i = 0; i < tiles.length; i++) {
+        var posX = i * 324;
+        gsap.set(tiles[i], { x: posX });
+
+        tl.fromTo(
+          tiles[i],
+          { opacity: 0, y: 28, scale: 0.94 },
+          { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "power3.out" },
+          8.2 + i * 0.16
+        );
+
+        /* flip face-up: the back face carries the silhouette, the front face
+           the public role. The bar colour snaps while the tile is edge-on. */
+        var flipAt = 9.0 + i * 0.28;
+        tl.fromTo(
+          tiles[i],
+          { rotationY: 0 },
+          { rotationY: 180, duration: 0.52, ease: "power2.inOut", immediateRender: false },
+          flipAt
+        );
+        var barEl = tiles[i].querySelector(".f03-tile-bar");
+        tl.set(barEl, { backgroundColor: ORANGE }, flipAt + 0.26);
+      }
+
+      /* "face up · public · all game" lands on its cue, the row holds still */
+      tl.fromTo(
+        "#f03-public",
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" },
+        11.7
+      );
+
+      /* last quiet beat: all five bars re-stamp — public, confirmed */
+      for (var b = 0; b < tiles.length; b++) {
+        var bar = tiles[b].querySelector(".f03-tile-bar");
+        tl.fromTo(
+          bar,
+          { scaleX: 0.3 },
+          { scaleX: 1, duration: 0.2, ease: "power3.out", immediateRender: false },
+          13.2 + b * 0.06
+        );
+      }
+
+      /* hold to the cut — no exit: the root transition owns it. */
+
+      tl.seek(0);
+      window.__timelines["03-role-twist"] = tl;
+    })();
+  </script>
+</template>

@@ -1,0 +1,857 @@
+<template>
+  <style>
+    /* ── fonts — local, shipped in assets/fonts/ ──────────────────────────
+       Two bases: the assembled index.html is the render document (project
+       root), the frame file itself sits at compositions/frames/. Exactly the
+       weights this frame sets. */
+    @font-face {
+      font-family: "Barlow";
+      font-style: normal;
+      font-weight: 700;
+      font-display: block;
+      src: url("../../assets/fonts/Barlow-700.woff2") format("woff2"),
+        url("assets/fonts/Barlow-700.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "Barlow";
+      font-style: normal;
+      font-weight: 900;
+      font-display: block;
+      src: url("../../assets/fonts/Barlow-900.woff2") format("woff2"),
+        url("assets/fonts/Barlow-900.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      font-style: normal;
+      font-weight: 500;
+      font-display: block;
+      src: url("../../assets/fonts/IBMPlexMono-500.woff2") format("woff2"),
+        url("assets/fonts/IBMPlexMono-500.woff2") format("woff2");
+    }
+
+    /* ── tokens, all pulled from frame.md ───────────────────────────────── */
+    #root {
+      --ink: #111111;
+      --ink-alt: #1a1a18;
+      --fire: #e85d26;
+      --cream: #f0ece5;
+      --cream-muted: #888880;
+      --cream-hint: #505048;
+      --border: #282826;
+      /* consumed by the mounted count-up sub-composition so its numerals land
+         in the one accent hue instead of the registry default */
+      --brand: #e85d26;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    /* ── root — styled by #root, never a class on the composition root ──── */
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      container-type: size;
+      font-family: "Barlow", system-ui, sans-serif;
+      color: var(--cream);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+    }
+
+    /* ── ground: flat ink-black on its own class="clip" track ───────────── */
+    .f05-ground {
+      position: absolute;
+      inset: 0;
+      background: var(--ink);
+    }
+
+    /* ── camera — multi-phase-camera: ONE wrapper, one writer.
+          The origin sits on the pinned headline so the line is mathematically
+          fixed while the world pushes in beneath it. ────────────────────── */
+    .f05-camera {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      transform-origin: 960px 382px;
+      will-change: transform;
+    }
+
+    /* ambient hairlines — the background element, dimmed well back */
+    .f05-grid {
+      position: absolute;
+      inset: 0;
+      background-image: repeating-linear-gradient(
+          0deg,
+          rgba(240, 236, 229, 0.04) 0 1px,
+          transparent 1px 96px
+        ),
+        repeating-linear-gradient(
+          90deg,
+          rgba(240, 236, 229, 0.04) 0 1px,
+          transparent 1px 96px
+        );
+    }
+
+    /* ── slide-chrome: one hairline, mono marks either side ─────────────── */
+    .f05-chrome-rule {
+      position: absolute;
+      left: 105px;
+      top: 88px;
+      width: 1710px;
+      height: 1px;
+      background: var(--border);
+      transform-origin: 0 50%;
+      will-change: transform, opacity;
+    }
+    .f05-chrome-l,
+    .f05-chrome-r {
+      position: absolute;
+      top: 106px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.72cqw;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+      will-change: opacity, transform;
+    }
+    .f05-chrome-l {
+      left: 105px;
+    }
+    .f05-chrome-r {
+      right: 105px;
+    }
+
+    /* ── the pinned headline — fixed, dead-centre, zero movement once landed ─ */
+    .f05-headline {
+      position: absolute;
+      left: 105px;
+      right: 105px;
+      top: 306px;
+      height: 152px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      column-gap: 0.26em;
+      font-family: "Barlow", system-ui, sans-serif;
+      font-size: 7cqw;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -0.035em;
+      text-transform: lowercase;
+      color: var(--cream);
+      transform-origin: 50% 50%;
+      will-change: transform, opacity, filter;
+    }
+    .f05-hl-accent {
+      color: var(--fire);
+    }
+
+    /* the system's only ornament: a fire-orange rule stub, centred by margin */
+    .f05-stub {
+      position: absolute;
+      left: 50%;
+      top: 472px;
+      width: 72px;
+      height: 3px;
+      margin-left: -36px;
+      background: var(--fire);
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+
+    /* ── the action strip — one band, two zones, a divider that opens ───── */
+    .f05-band {
+      position: absolute;
+      left: 105px;
+      top: 528px;
+      width: 1710px;
+      height: 310px;
+    }
+    .f05-band-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--border);
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+    .f05-band-top {
+      top: 0;
+    }
+    .f05-band-bottom {
+      top: 309px;
+    }
+    .f05-divider {
+      position: absolute;
+      left: 880px;
+      top: 0;
+      width: 1px;
+      height: 310px;
+      background: var(--border);
+      transform-origin: 50% 0;
+      will-change: transform, opacity;
+    }
+
+    /* every slot state shares ONE fixed footprint, so the swap is a morph */
+    .f05-slotwrap {
+      position: absolute;
+      inset: 0;
+    }
+.f05-slot {
+      position: absolute;
+      inset: 0;
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+    /* perspective reaches the flip only through the card's own parent */
+    .f05-slot-c {
+      perspective: 900px;
+    }
+    .f05-slot-b,
+    .f05-slot-c {
+      z-index: 2;
+    }
+
+    /* mono chrome shared by every slot */
+    .f05-kicker {
+      position: absolute;
+      left: 40px;
+      top: 42px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.86cqw;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--fire);
+      will-change: transform, opacity;
+    }
+    .f05-slotword {
+      position: absolute;
+      left: 40px;
+      top: 72px;
+      font-family: "Barlow", system-ui, sans-serif;
+      font-size: 4.8cqw;
+      font-weight: 700;
+      line-height: 1;
+      letter-spacing: -0.02em;
+      text-transform: lowercase;
+      color: var(--cream);
+      will-change: transform, opacity;
+    }
+    .f05-chip {
+      position: absolute;
+      left: 40px;
+      padding: 9px 16px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.86cqw;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+    .f05-a-chip {
+      top: 214px;
+      background: var(--fire);
+      color: var(--ink);
+    }
+    .f05-b-chip {
+      top: 214px;
+      border: 1px solid var(--border);
+      color: var(--cream-muted);
+    }
+
+    /* slot B: the face-down role card and its one-shot "?" stamp */
+    .f05-b-card {
+      position: absolute;
+      left: 700px;
+      top: 60px;
+      width: 92px;
+      height: 128px;
+      background: var(--ink-alt);
+      border: 1px solid var(--border);
+      will-change: transform, opacity;
+    }
+    .f05-token-frame {
+      position: absolute;
+      inset: 11px;
+      border: 1px solid var(--border);
+    }
+    .f05-token-seal {
+      position: absolute;
+      left: 36px;
+      top: 54px;
+      width: 20px;
+      height: 20px;
+      border: 1px solid var(--cream-hint);
+      transform: rotate(45deg);
+    }
+    .f05-token-seal-dot {
+      position: absolute;
+      left: 43px;
+      top: 61px;
+      width: 6px;
+      height: 6px;
+      background: var(--cream-hint);
+    }
+    .f05-b-stamp {
+      position: absolute;
+      left: 700px;
+      top: 206px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 3.6cqw;
+      font-weight: 500;
+      line-height: 1;
+      letter-spacing: 0.02em;
+      color: var(--fire);
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+
+    /* slot C: the forced coup, full-width across the opened band */
+    .f05-c-kicker {
+      top: 40px;
+    }
+    .f05-c-word {
+      position: absolute;
+      left: 40px;
+      top: 58px;
+      font-family: "Barlow", system-ui, sans-serif;
+      font-size: 8cqw;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      text-transform: lowercase;
+      color: var(--fire);
+      transform-origin: 50% 50%;
+      will-change: transform, opacity, filter;
+    }
+    .f05-c-stamp {
+      top: 226px;
+      background: var(--fire);
+      color: var(--ink);
+    }
+    .f05-c-card {
+      position: absolute;
+      left: 695px;
+      top: 58px;
+      width: 92px;
+      height: 128px;
+      transform-style: preserve-3d;
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+    .f05-cface {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    .f05-cface-back {
+      background: var(--ink-alt);
+      border: 1px solid var(--border);
+      transform: rotateY(180deg);
+    }
+    .f05-cface-front {
+      background: var(--ink-alt);
+      border: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+    .f05-cface-bar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 3px;
+      background: var(--fire);
+    }
+    .f05-cface-you {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.86cqw;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream);
+    }
+    .f05-c-gone {
+      position: absolute;
+      left: 815px;
+      top: 100px;
+      width: 220px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.86cqw;
+      font-weight: 500;
+      line-height: 1.35;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--fire);
+      will-change: transform, opacity;
+    }
+
+    /* the coin bank: value climbs while the numeral grows — counting-dynamic-scale */
+    .f05-c-bank {
+      position: absolute;
+      left: 1095px;
+      top: 88px;
+      width: 590px;
+      height: 176px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "Barlow", system-ui, sans-serif;
+      font-size: 6.8cqw;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      font-variant-numeric: tabular-nums;
+      color: var(--cream);
+      transform-origin: 50% 50%;
+      will-change: transform, color;
+    }
+    .f05-c-note {
+      position: absolute;
+      left: 1095px;
+      top: 268px;
+      width: 590px;
+      text-align: center;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.86cqw;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+      will-change: transform, opacity;
+    }
+
+    /* ── the coin zone — standing column the count-up reads into ────────── */
+    .f05-coins-label {
+      position: absolute;
+      left: 880px;
+      top: 28px;
+      width: 830px;
+      text-align: center;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.86cqw;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+      will-change: transform, opacity;
+    }
+    /* the coin token: sharp rectangle — no radius anywhere in this system */
+    .f05-coindisc {
+      position: absolute;
+      left: 1055px;
+      top: 124px;
+      width: 96px;
+      height: 96px;
+      border: 1px solid var(--cream-hint);
+      will-change: transform, opacity;
+    }
+    .f05-coindisc-frame {
+      position: absolute;
+      inset: 12px;
+      border: 1px solid var(--cream-hint);
+    }
+    .f05-coindisc-dot {
+      position: absolute;
+      left: 41px;
+      top: 41px;
+      width: 14px;
+      height: 14px;
+      background: var(--cream);
+    }
+
+    /* the mounted registry count-up, parked in the coin zone */
+    .f05-cu {
+      position: absolute;
+      left: 985px;
+      top: 570px;
+      width: 830px;
+      height: 260px;
+    }
+  </style>
+
+  <div data-hf-id="hf-pwjv" id="root" data-composition-id="05-turn" data-start="0" data-duration="13.535" data-width="1920" data-height="1080">
+    <!-- track 0 — the flat ground the assembler paints over -->
+    <div data-hf-id="hf-nhf1" class="clip f05-ground" data-start="0" data-duration="13.535" data-track-index="0" id="f05-ground"></div>
+
+    <!-- track 1 — the camera: everything the shot contains -->
+    <div data-hf-id="hf-3zrs" class="clip f05-camera" id="f05-camera" data-start="0" data-duration="13.535" data-track-index="1">
+      <div data-hf-id="hf-3q1w" class="f05-grid"></div>
+
+      <!-- chrome -->
+      <div data-hf-id="hf-9quc" class="f05-chrome-rule" id="f05-chrome-rule"></div>
+      <div data-hf-id="hf-wqoc" class="f05-chrome-l" id="f05-chrome-l">no. 05</div>
+      <div data-hf-id="hf-lefd" class="f05-chrome-r" id="f05-chrome-r">the loop</div>
+
+      <!-- the pinned anchor -->
+      <div data-hf-id="hf-ew1y" class="f05-headline" id="f05-headline">
+        <span data-hf-id="hf-q4s7">one action.</span><span data-hf-id="hf-0x5u" class="f05-hl-accent">no passing.</span>
+      </div>
+      <div data-hf-id="hf-c2p6" class="f05-stub" id="f05-stub"></div>
+
+      <!-- the action strip -->
+      <div data-hf-id="hf-mlzd" class="f05-band">
+        <div data-hf-id="hf-st1m" class="f05-band-line f05-band-top" id="f05-band-top"></div>
+        <div data-hf-id="hf-sh7w" class="f05-band-line f05-band-bottom" id="f05-band-bottom"></div>
+        <div data-hf-id="hf-axpg" class="f05-divider" id="f05-divider"></div>
+
+        <!-- the coin zone: standing column, standing label -->
+        <div data-hf-id="hf-61ct" class="f05-coins-label" id="f05-coins-label">your coins</div>
+        <div data-hf-id="hf-o3ta" class="f05-coindisc" id="f05-coindisc">
+          <div data-hf-id="hf-ewv8" class="f05-coindisc-frame"></div>
+          <div data-hf-id="hf-3jim" class="f05-coindisc-dot"></div>
+        </div>
+
+        <!-- slot A / B / C share one footprint: the swap is a morph -->
+        <div data-hf-id="hf-r7sc" class="f05-slotwrap">
+          <!-- slot A — income -->
+          <div data-hf-id="hf-sg1e" class="f05-slot f05-slot-a" id="f05-slot-a">
+            <div data-hf-id="hf-x2er" class="f05-kicker" id="f05-a-kicker">slot a</div>
+            <div data-hf-id="hf-o7wv" class="f05-slotword" id="f05-a-word">income</div>
+            <div data-hf-id="hf-hgzd" class="f05-chip f05-a-chip" id="f05-a-chip">+1 coin</div>
+          </div>
+
+          <!-- slot B — claim a role -->
+          <div data-hf-id="hf-dtly" class="f05-slot f05-slot-b" id="f05-slot-b">
+            <div data-hf-id="hf-8hl7" class="f05-kicker" id="f05-b-kicker">slot b</div>
+            <div data-hf-id="hf-em5s" class="f05-slotword" id="f05-b-word">claim a role</div>
+            <div data-hf-id="hf-g3sn" class="f05-chip f05-b-chip" id="f05-b-chip">truth optional</div>
+            <div data-hf-id="hf-pr4y" class="f05-b-card" id="f05-b-card">
+              <div data-hf-id="hf-c9or" class="f05-token-frame"></div>
+              <div data-hf-id="hf-sf8n" class="f05-token-seal"></div>
+              <div data-hf-id="hf-z7qt" class="f05-token-seal-dot"></div>
+            </div>
+            <div data-hf-id="hf-it2z" class="f05-b-stamp" id="f05-b-stamp">?</div>
+          </div>
+
+          <!-- slot C — the forced coup, full width across the opened band -->
+          <div data-hf-id="hf-sat2" class="f05-slot f05-slot-c" id="f05-slot-c">
+            <div data-hf-id="hf-axjd" class="f05-kicker f05-c-kicker" id="f05-c-kicker">slot c · at ten coins</div>
+            <div data-hf-id="hf-bcgh" class="f05-c-word" id="f05-c-word">coup</div>
+            <div data-hf-id="hf-j70s" class="f05-chip f05-c-stamp" id="f05-c-stamp">7 coins · unblockable</div>
+            <div data-hf-id="hf-n4yq" class="f05-c-card" id="f05-c-card">
+              <div data-hf-id="hf-18rc" class="f05-cface f05-cface-back">
+                <div data-hf-id="hf-xht7" class="f05-token-frame"></div>
+                <div data-hf-id="hf-xznr" class="f05-token-seal"></div>
+                <div data-hf-id="hf-7ju1" class="f05-token-seal-dot"></div>
+              </div>
+              <div data-hf-id="hf-ekpe" class="f05-cface f05-cface-front">
+                <div data-hf-id="hf-kon0" class="f05-cface-bar"></div>
+                <div data-hf-id="hf-y3s9" class="f05-cface-you">you</div>
+              </div>
+            </div>
+            <div data-hf-id="hf-droj" class="f05-c-gone" id="f05-c-gone">one life gone</div>
+            <div data-hf-id="hf-3kg9" class="f05-c-bank" id="f05-c-bank">1</div>
+            <div data-hf-id="hf-df85" class="f05-c-note" id="f05-c-note">no choice left</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- track 2 mounted inside the camera so it rides the push-in: the
+           registry count-up, ticking the income payout -->
+      <div data-hf-id="hf-9ki1" class="f05-cu" id="f05-cu" data-composition-id="count-up" data-composition-src="compositions/components/count-up.html" data-variable-values="{&quot;start&quot;:0,&quot;end&quot;:1,&quot;prefix&quot;:&quot;+&quot;,&quot;suffix&quot;:&quot;&quot;,&quot;accent&quot;:&quot;green&quot;}" data-start="2.25" data-duration="3.35" data-track-index="2"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      var DURATION = 13.035;
+
+      var ORANGE = "#e85d26";
+
+      window.__timelines = window.__timelines || {};
+      var tl = gsap.timeline({ paused: true });
+
+      /* ── multi-phase-camera: phase scale + sine drift, one writer ────────
+         Steady push underneath the shot. The origin sits on the headline, so
+         the pinned line is fixed to the pixel while the world moves. ────── */
+      var camera = document.getElementById("f05-camera");
+      var cam = { s: 1, p: 0 };
+
+      tl.to(cam, { s: 1.012, duration: 2.4, ease: "power2.inOut" }, 0);
+      tl.to(cam, { s: 1.026, duration: 3.4, ease: "power2.inOut" }, 5.6);
+      tl.to(cam, { s: 1.04, duration: 3.6, ease: "power2.inOut" }, 9.0);
+
+      var paintCamera = function () {
+        var dx = Math.sin(cam.p) * 2;
+        var dy = Math.sin(cam.p * 1.31) * 1.4;
+        camera.style.transform =
+          "scale(" + cam.s.toFixed(4) + ") translate(" + dx.toFixed(2) + "px, " + dy.toFixed(2) + "px)";
+      };
+      tl.to(
+        cam,
+        { p: Math.PI * 2 * 2, duration: DURATION, ease: "none", onUpdate: paintCamera },
+        0
+      );
+
+      /* ── Scene 1 (0.0–2.4): the headline slams and PINS ──────────────────
+         kinetic-beat-slam — scale + blur hit on the beat, distinct from every
+         other entrance in the shot. It never moves again. ──────────────── */
+      tl.fromTo(
+        "#f05-headline",
+        { opacity: 0, scale: 1.42, filter: "blur(16px)" },
+        { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.5, ease: "power4.out" },
+        0
+      );
+
+      tl.fromTo(
+        "#f05-chrome-rule",
+        { opacity: 0, scaleX: 0 },
+        { opacity: 1, scaleX: 1, duration: 0.5, ease: "power2.inOut" },
+        0.14
+      );
+      tl.fromTo(
+        ["#f05-chrome-l", "#f05-chrome-r"],
+        { opacity: 0 },
+        { opacity: 1, duration: 0.4, ease: "power1.out" },
+        0.42
+      );
+
+      /* the strip's structure arrives before the rule does — the beat builds */
+      tl.fromTo(
+        "#f05-stub",
+        { opacity: 0, scaleX: 0 },
+        { opacity: 1, scaleX: 1, duration: 0.4, ease: "power3.out" },
+        0.95
+      );
+      tl.fromTo(
+        ["#f05-band-top", "#f05-band-bottom"],
+        { opacity: 0, scaleX: 0 },
+        { opacity: 1, scaleX: 1, duration: 0.65, ease: "power2.inOut" },
+        1.15
+      );
+      tl.fromTo(
+        "#f05-divider",
+        { opacity: 0, scaleY: 0 },
+        { opacity: 1, scaleY: 1, duration: 0.5, ease: "power2.inOut" },
+        1.45
+      );
+      tl.fromTo(
+        "#f05-coins-label",
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" },
+        1.78
+      );
+
+      /* ── Scene 2 (2.4–5.6): slot A — income. The coin rolls in, the count
+         ticks +1, the cost chip pops on the landing. ───────────────────── */
+      tl.fromTo(
+        "#f05-slot-a",
+        { opacity: 0, scale: 0.78 },
+        { opacity: 1, scale: 1, duration: 0.55, ease: "back.out(1.8)" },
+        2.25
+      );
+      tl.fromTo(
+        "#f05-coindisc",
+        { opacity: 0, x: -300, rotation: -480 },
+        { opacity: 1, x: 0, rotation: 0, duration: 0.75, ease: "power3.out" },
+        2.3
+      );
+      tl.fromTo(
+        "#f05-a-kicker",
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" },
+        2.5
+      );
+      tl.fromTo(
+        "#f05-a-word",
+        { opacity: 0, y: 22 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" },
+        2.62
+      );
+      /* lands with the count-up's own landing pulse (its internal t ≈ 4.0) */
+      tl.fromTo(
+        "#f05-a-chip",
+        { opacity: 0, scale: 0.7 },
+        { opacity: 1, scale: 1, duration: 0.45, ease: "back.out(2)" },
+        4.0
+      );
+
+      /* ── Scene 3 (5.6–9.0): slot B — claim a role. scale-swap from slot A:
+         outgoing rushes away on power2.in, incoming overshoots on back.out,
+         both on the same footprint so it reads as one morph. ───────────── */
+      tl.to(
+        "#f05-slot-a",
+        { scale: 0.8, opacity: 0, duration: 0.4, ease: "power2.in", immediateRender: false },
+        5.6
+      );
+      tl.to(
+        ["#f05-a-chip", "#f05-coindisc"],
+        { opacity: 0, duration: 0.3, ease: "power2.in", immediateRender: false },
+        5.6
+      );
+
+      tl.fromTo(
+        "#f05-slot-b",
+        { opacity: 0, scale: 0.78 },
+        { opacity: 1, scale: 1, duration: 0.6, ease: "back.out(1.8)" },
+        5.85
+      );
+      tl.fromTo(
+        "#f05-b-kicker",
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" },
+        6.0
+      );
+      tl.fromTo(
+        "#f05-b-word",
+        { opacity: 0, y: 22 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" },
+        6.12
+      );
+      tl.fromTo(
+        "#f05-b-card",
+        { opacity: 0, x: 200 },
+        { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" },
+        6.3
+      );
+      tl.fromTo(
+        "#f05-b-chip",
+        { opacity: 0, scale: 0.7 },
+        { opacity: 1, scale: 1, duration: 0.45, ease: "back.out(2)" },
+        6.85
+      );
+      /* "no proof needed" — the stamp lands once and pulses once, then holds */
+      tl.fromTo(
+        "#f05-b-stamp",
+        { opacity: 0, scale: 0.6 },
+        { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(2.2)" },
+        7.78
+      );
+      tl.to(
+        "#f05-b-stamp",
+        { scale: 1.16, duration: 0.16, ease: "power2.out", immediateRender: false },
+        8.18
+      );
+      tl.to(
+        "#f05-b-stamp",
+        { scale: 1, duration: 0.32, ease: "power2.inOut", immediateRender: false },
+        8.34
+      );
+
+      /* ── Scene 4 (9.0–12.0): slot C — the clock runs out. The divider wipes
+         open so the strip goes full width, the bank climbs to ten with the
+         numeral growing as it goes, then "coup" slams on the beat. ─────── */
+      tl.to(
+        "#f05-divider",
+        { scaleY: 0, duration: 0.35, ease: "power2.in", immediateRender: false },
+        9.0
+      );
+      tl.to(
+        "#f05-slot-b",
+        { scale: 0.8, opacity: 0, duration: 0.4, ease: "power2.in", immediateRender: false },
+        9.0
+      );
+      tl.fromTo(
+        "#f05-slot-c",
+        { opacity: 0, scale: 0.8 },
+        { opacity: 1, scale: 1, duration: 0.6, ease: "back.out(1.8)" },
+        9.25
+      );
+
+      /* counting-dynamic-scale: one count, one scale tween, same ease and
+         position — the value climbs while the numeral gains weight. */
+      var COUNT_DUR = 1.6;
+      var bankEl = document.getElementById("f05-c-bank");
+      var bank = { value: 1 };
+      tl.fromTo(
+        "#f05-c-bank",
+        { scale: 0.5 },
+        { scale: 1, duration: COUNT_DUR, ease: "power3.out" },
+        9.25
+      );
+      tl.to(
+        bank,
+        {
+          value: 10,
+          duration: COUNT_DUR,
+          ease: "power3.out",
+          onUpdate: function () {
+            bankEl.textContent = Math.round(bank.value);
+          }
+        },
+        9.25
+      );
+
+      /* the headline steps back so the coup owns the finale */
+      tl.to(
+        "#f05-headline",
+        { scale: 0.9, duration: 0.6, ease: "power2.inOut", immediateRender: false },
+        10.9
+      );
+
+      /* on the beat — the counter has just hit ten */
+      tl.fromTo(
+        "#f05-c-kicker",
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" },
+        9.45
+      );
+      tl.fromTo(
+        "#f05-c-note",
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" },
+        9.45
+      );
+      /* the clock turns hot the instant the count lands */
+      tl.to(bankEl, { color: ORANGE, duration: 0.24, ease: "power2.out" }, 10.85);
+      tl.fromTo(
+        "#f05-c-word",
+        { opacity: 0, scale: 1.45, filter: "blur(14px)" },
+        { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.5, ease: "power4.out" },
+        10.85
+      );
+      tl.fromTo(
+        "#f05-c-stamp",
+        { opacity: 0, scale: 0.7 },
+        { opacity: 1, scale: 1, duration: 0.45, ease: "back.out(2)" },
+        11.0
+      );
+      /* one life gone: the target seat flips face-up and holds */
+      tl.fromTo(
+        "#f05-c-card",
+        { rotationY: 180, opacity: 0 },
+        { rotationY: 0, opacity: 1, duration: 0.52, ease: "power2.inOut" },
+        11.2
+      );
+      tl.fromTo(
+        "#f05-c-gone",
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" },
+        11.7
+      );
+      /* quiet settle — the strip lands and holds to the cut */
+      tl.to(
+        "#f05-slot-c",
+        { scale: 0.985, duration: 0.5, ease: "sine.inOut", immediateRender: false },
+        11.9
+      );
+
+      /* hold to the cut — no exit: the root transition owns it. */
+
+      paintCamera();
+      tl.seek(0);
+      window.__timelines["05-turn"] = tl;
+    })();
+  </script>
+</template>

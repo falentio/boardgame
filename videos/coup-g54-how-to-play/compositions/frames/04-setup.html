@@ -1,0 +1,789 @@
+<template>
+  <style>
+    /* ── fonts — local, shipped in assets/fonts/ ──────────────────────────
+       Two bases: the assembled index.html is the render document (project
+       root), the frame file itself sits at compositions/frames/. Exactly the
+       weights this frame sets. */
+    @font-face {
+      font-family: "Barlow";
+      font-style: normal;
+      font-weight: 600;
+      font-display: block;
+      src: url("../../assets/fonts/Barlow-600.woff2") format("woff2"),
+        url("assets/fonts/Barlow-600.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "Barlow";
+      font-style: normal;
+      font-weight: 700;
+      font-display: block;
+      src: url("../../assets/fonts/Barlow-700.woff2") format("woff2"),
+        url("assets/fonts/Barlow-700.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "Barlow";
+      font-style: normal;
+      font-weight: 800;
+      font-display: block;
+      src: url("../../assets/fonts/Barlow-800.woff2") format("woff2"),
+        url("assets/fonts/Barlow-800.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      font-style: normal;
+      font-weight: 500;
+      font-display: block;
+      src: url("../../assets/fonts/IBMPlexMono-500.woff2") format("woff2"),
+        url("assets/fonts/IBMPlexMono-500.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      font-style: normal;
+      font-weight: 600;
+      font-display: block;
+      src: url("../../assets/fonts/IBMPlexMono-600.woff2") format("woff2"),
+        url("assets/fonts/IBMPlexMono-600.woff2") format("woff2");
+    }
+
+    /* ── tokens, all pulled from frame.md ───────────────────────────────── */
+    #root {
+      --ink: #111111;
+      --ink-alt: #1a1a18;
+      --fire: #e85d26;
+      --cream: #f0ece5;
+      --cream-muted: #888880;
+      --cream-hint: #505048;
+      --border: #282826;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    /* ── root — styled by #root, never a class on the composition root ──── */
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      container-type: size;
+      font-family: "Barlow", system-ui, sans-serif;
+      color: var(--cream);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+    }
+
+    /* ── ground — flat ink-black on its own class="clip" track ──────────── */
+    .f04-ground {
+      position: absolute;
+      inset: 0;
+      background: var(--ink);
+    }
+
+    /* ── camera — viewport-change: ONE .world wrapper, one cam object, one
+          writer. The pan IS the camera; multi-phase-camera sequences the
+          stops and overlays one sine breath, decayed to zero for the held
+          full-table read. ─────────────────────────────────────────────── */
+    .f04-world {
+      position: absolute;
+      inset: 0;
+      transform-origin: 50% 50%;
+      will-change: transform;
+    }
+
+    /* ambient hairline grid — the background element, dimmed well back */
+    .f04-grid {
+      position: absolute;
+      left: -740px;
+      top: -160px;
+      width: 3400px;
+      height: 1400px;
+      background-image: repeating-linear-gradient(
+          0deg,
+          rgba(240, 236, 229, 0.045) 0 1px,
+          transparent 1px 96px
+        ),
+        repeating-linear-gradient(
+          90deg,
+          rgba(240, 236, 229, 0.045) 0 1px,
+          transparent 1px 96px
+        );
+    }
+
+    /* ── the table plane — one long mat, full-bleed across the frame ────── */
+    .f04-plane {
+      position: absolute;
+      left: -760px;
+      top: 150px;
+      width: 3440px;
+      height: 710px;
+      background: var(--ink-alt);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      will-change: transform, opacity;
+    }
+    .f04-zones {
+      position: absolute;
+      inset: 0;
+      background-image: repeating-linear-gradient(
+        90deg,
+        rgba(240, 236, 229, 0.055) 0 1px,
+        transparent 1px 260px
+      );
+    }
+
+    /* ── five seat positions along the near edge ───────────────────────── */
+    .f04-seat {
+      position: absolute;
+      top: 615px;
+      width: 250px;
+      height: 240px;
+      border: 1px solid var(--border);
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+    .f04-seatnum {
+      position: absolute;
+      top: 628px;
+      width: 70px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 16px;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-hint);
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+    /* each seat's two face-down influence cards */
+    .f04-card {
+      position: absolute;
+      top: 664px;
+      width: 96px;
+      height: 132px;
+      background-color: var(--ink-alt);
+      background-image: repeating-linear-gradient(
+          0deg,
+          rgba(240, 236, 229, 0.05) 0 1px,
+          transparent 1px 24px
+        ),
+        repeating-linear-gradient(
+          90deg,
+          rgba(240, 236, 229, 0.05) 0 1px,
+          transparent 1px 24px
+        );
+      border: 1px solid var(--border);
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+    /* each seat's two coin discs */
+    .f04-coin {
+      position: absolute;
+      top: 810px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--cream);
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+
+    /* ── Treasury station ──────────────────────────────────────────────── */
+    .f04-plate {
+      position: absolute;
+      left: -40px;
+      top: 340px;
+      width: 240px;
+      height: 140px;
+      background: var(--ink);
+      border: 1px solid var(--border);
+      will-change: transform, opacity;
+    }
+    .f04-platecoin {
+      position: absolute;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--cream);
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+    /* the count's coin-disc skin: a hairline ring the hero number sits in */
+    .f04-coindisc {
+      position: absolute;
+      left: 260px;
+      top: 280px;
+      width: 320px;
+      height: 320px;
+      border-radius: 50%;
+      background: var(--ink);
+      border: 1px solid var(--fire);
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+    .f04-coindisc-ring {
+      position: absolute;
+      inset: 28px;
+      border-radius: 50%;
+      border: 1px solid rgba(232, 93, 38, 0.3);
+    }
+
+    /* station labels — supporting chrome, mono, quiet */
+    .f04-label {
+      position: absolute;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 18px;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+      text-align: center;
+      white-space: nowrap;
+      will-change: transform, opacity;
+    }
+    /* the count's adjacent label — display copy, not a caption */
+    .f04-herolabel {
+      position: absolute;
+      left: 620px;
+      top: 392px;
+      width: 270px;
+      height: 96px;
+      font-family: "Barlow", system-ui, sans-serif;
+      font-size: 44px;
+      font-weight: 800;
+      line-height: 96px;
+      letter-spacing: -0.02em;
+      color: var(--cream);
+      will-change: transform, opacity;
+    }
+
+    /* ── Court deck station — the layered stack the mount takes over ────── */
+    .f04-deckcard {
+      position: absolute;
+      background: var(--ink);
+      border: 1px solid var(--border);
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+
+    /* ── starter-set role row ──────────────────────────────────────────── */
+    .f04-rc {
+      position: absolute;
+      top: 320px;
+      width: 160px;
+      height: 210px;
+      perspective: 900px;
+      will-change: transform, opacity;
+    }
+    .f04-rcflip {
+      position: absolute;
+      inset: 0;
+      transform-style: preserve-3d;
+      will-change: transform;
+    }
+    .f04-rcface {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      border: 1px solid var(--border);
+    }
+    .f04-rcback {
+      background-color: var(--ink-alt);
+      background-image: repeating-linear-gradient(
+          0deg,
+          rgba(240, 236, 229, 0.05) 0 1px,
+          transparent 1px 26px
+        ),
+        repeating-linear-gradient(
+          90deg,
+          rgba(240, 236, 229, 0.05) 0 1px,
+          transparent 1px 26px
+        );
+      transform: rotateY(180deg);
+    }
+    .f04-rcfront {
+      background: var(--ink);
+    }
+    .f04-rcseal {
+      position: absolute;
+      inset: 14px;
+      border: 1px solid var(--border);
+    }
+    .f04-rcseal::after {
+      content: "";
+      position: absolute;
+      left: 8px;
+      top: 8px;
+      width: 6px;
+      height: 6px;
+      background: var(--cream-hint);
+    }
+    .f04-rcidx {
+      position: absolute;
+      left: 16px;
+      top: 14px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+    }
+    /* the system's only ornament: a 36x2 fire-orange rule stub */
+    .f04-rcstub {
+      position: absolute;
+      left: 16px;
+      bottom: 16px;
+      width: 36px;
+      height: 2px;
+      background: var(--fire);
+    }
+    .f04-rcname {
+      position: absolute;
+      top: 546px;
+      width: 180px;
+      font-family: "Barlow", system-ui, sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+      text-align: center;
+      color: var(--cream);
+      will-change: transform, opacity;
+    }
+
+    /* ── sub-composition mounts (registry components) ─────────────────────
+       The slot box IS the component's coordinate space, so cqw/cqh inside
+       count-up and spring-stack-shuffle resolve against these boxes. */
+    .f04-mount {
+      position: absolute;
+    }
+    #f04-countmount {
+      left: -130px;
+      top: 120px;
+      width: 1100px;
+      height: 640px;
+      --brand: #e85d26;
+      --font-display: "Barlow", system-ui, sans-serif;
+      --fg: #f0ece5;
+    }
+    #f04-deckmount {
+      left: 800px;
+      top: 102px;
+      width: 440px;
+      height: 600px;
+      --brand: #e85d26;
+      --surface: #111111;
+      --border: #282826;
+      --fg: #f0ece5;
+      --muted: #888880;
+      --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+      --radius: 0px;
+      --bg: transparent;
+    }
+
+    /* ── frame chrome — outside the camera, so it never pans ───────────── */
+    .f04-chromerule {
+      position: absolute;
+      left: 105px;
+      top: 88px;
+      width: 1710px;
+      height: 1px;
+      background: var(--border);
+      will-change: transform, opacity;
+    }
+    .f04-chromel,
+    .f04-chromer {
+      position: absolute;
+      top: 100px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 16px;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      will-change: transform, opacity;
+    }
+    .f04-chromel {
+      left: 105px;
+      color: var(--fire);
+    }
+    .f04-chromer {
+      left: 1330px;
+      width: 485px;
+      text-align: right;
+      color: var(--cream-hint);
+    }
+    /* the Scene-4 stamp: rule stub + mono line, bottom-left, above the
+       caption keep-out (y = 0.83 x 1080 = 896) */
+    .f04-stamprule {
+      position: absolute;
+      left: 105px;
+      top: 836px;
+      width: 36px;
+      height: 2px;
+      background: var(--fire);
+      transform-origin: 0 50%;
+      will-change: transform, opacity;
+    }
+    .f04-stamp {
+      position: absolute;
+      left: 105px;
+      top: 854px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 26px;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      color: var(--cream);
+      will-change: transform, opacity;
+    }
+  </style>
+
+  <div data-hf-id="hf-4dq1" id="root" data-composition-id="04-setup" data-start="0" data-duration="16.777" data-width="1920" data-height="1080">
+    <!-- track 0 — the flat ink ground -->
+    <div data-hf-id="hf-amgm" class="clip f04-ground" data-start="0" data-duration="16.777" data-track-index="0" id="f04-ground"></div>
+
+    <!-- track 1 — the camera world: every piece of scene content lives here -->
+    <div data-hf-id="hf-eyt5" class="clip f04-world" id="f04-world" data-start="0" data-duration="16.777" data-track-index="1">
+      <div data-hf-id="hf-fqke" class="f04-grid" id="f04-grid"></div>
+
+      <div data-hf-id="hf-aoy0" class="f04-plane" id="f04-plane">
+        <div data-hf-id="hf-1n5c" class="f04-zones"></div>
+      </div>
+
+      <!-- Scene 1 — five seat positions as faint outlines down the near edge -->
+      <div data-hf-id="hf-g89u" class="f04-seat" id="f04-seat-0" style="left: 255px"></div>
+      <div data-hf-id="hf-zjfn" class="f04-seatnum" id="f04-seatnum-0" style="left: 262px">01</div>
+      <div data-hf-id="hf-1vv4" class="f04-card" id="f04-s0-c1" style="left: 272px"></div>
+      <div data-hf-id="hf-sh8c" class="f04-card" id="f04-s0-c2" style="left: 392px"></div>
+      <div data-hf-id="hf-d6pg" class="f04-coin" id="f04-s0-k1" style="left: 330px"></div>
+      <div data-hf-id="hf-kbpd" class="f04-coin" id="f04-s0-k2" style="left: 390px"></div>
+
+      <div data-hf-id="hf-y7he" class="f04-seat" id="f04-seat-1" style="left: 575px"></div>
+      <div data-hf-id="hf-7xea" class="f04-seatnum" id="f04-seatnum-1" style="left: 582px">02</div>
+      <div data-hf-id="hf-ad02" class="f04-card" id="f04-s1-c1" style="left: 592px"></div>
+      <div data-hf-id="hf-62j3" class="f04-card" id="f04-s1-c2" style="left: 712px"></div>
+      <div data-hf-id="hf-teh4" class="f04-coin" id="f04-s1-k1" style="left: 650px"></div>
+      <div data-hf-id="hf-rzay" class="f04-coin" id="f04-s1-k2" style="left: 710px"></div>
+
+      <!-- seat 02 sits directly under the Court deck — it takes the hero deal -->
+      <div data-hf-id="hf-p6zi" class="f04-seat" id="f04-seat-2" style="left: 895px"></div>
+      <div data-hf-id="hf-cvdy" class="f04-seatnum" id="f04-seatnum-2" style="left: 902px">03</div>
+      <div data-hf-id="hf-evze" class="f04-card f04-dealcard" id="f04-deal-a" style="left: 912px"></div>
+      <div data-hf-id="hf-4kwb" class="f04-card f04-dealcard" id="f04-deal-b" style="left: 1032px"></div>
+      <div data-hf-id="hf-ki3c" class="f04-coin" id="f04-s2-k1" style="left: 970px"></div>
+      <div data-hf-id="hf-skgn" class="f04-coin" id="f04-s2-k2" style="left: 1030px"></div>
+
+      <div data-hf-id="hf-gdvs" class="f04-seat" id="f04-seat-3" style="left: 1215px"></div>
+      <div data-hf-id="hf-n8j6" class="f04-seatnum" id="f04-seatnum-3" style="left: 1222px">04</div>
+      <div data-hf-id="hf-mcr2" class="f04-card" id="f04-s3-c1" style="left: 1232px"></div>
+      <div data-hf-id="hf-qt80" class="f04-card" id="f04-s3-c2" style="left: 1352px"></div>
+      <div data-hf-id="hf-mdoj" class="f04-coin" id="f04-s3-k1" style="left: 1290px"></div>
+      <div data-hf-id="hf-e83v" class="f04-coin" id="f04-s3-k2" style="left: 1350px"></div>
+
+      <div data-hf-id="hf-9050" class="f04-seat" id="f04-seat-4" style="left: 1535px"></div>
+      <div data-hf-id="hf-f691" class="f04-seatnum" id="f04-seatnum-4" style="left: 1542px">05</div>
+      <div data-hf-id="hf-cb94" class="f04-card" id="f04-s4-c1" style="left: 1552px"></div>
+      <div data-hf-id="hf-5p0g" class="f04-card" id="f04-s4-c2" style="left: 1672px"></div>
+      <div data-hf-id="hf-rezo" class="f04-coin" id="f04-s4-k1" style="left: 1610px"></div>
+      <div data-hf-id="hf-kp7j" class="f04-coin" id="f04-s4-k2" style="left: 1670px"></div>
+
+      <!-- Scene 2 — the Treasury station -->
+      <div data-hf-id="hf-0cpg" class="f04-plate" id="f04-plate">
+        <div data-hf-id="hf-i6qg" class="f04-platecoin" style="left: 26px; top: 30px"></div>
+        <div data-hf-id="hf-egci" class="f04-platecoin" style="left: 66px; top: 18px"></div>
+        <div data-hf-id="hf-qyjs" class="f04-platecoin" style="left: 106px; top: 28px"></div>
+        <div data-hf-id="hf-lsfn" class="f04-platecoin" style="left: 146px; top: 16px"></div>
+        <div data-hf-id="hf-18kr" class="f04-platecoin" style="left: 186px; top: 30px"></div>
+      </div>
+      <div data-hf-id="hf-stf1" class="f04-label" id="f04-treaslabel" style="left: -40px; top: 498px; width: 240px">the treasury</div>
+      <div data-hf-id="hf-diem" class="f04-coindisc" id="f04-coindisc">
+        <div data-hf-id="hf-7tr2" class="f04-coindisc-ring"></div>
+      </div>
+      <div data-hf-id="hf-jgsr" class="f04-herolabel" id="f04-herolabel">coins each</div>
+
+      <!-- Scene 3 — the Court deck station -->
+      <div data-hf-id="hf-muhs" class="f04-deckcard" id="f04-deckcard-0" style="left: 910px; top: 277px; width: 221px; height: 286px"></div>
+      <div data-hf-id="hf-xrnu" class="f04-deckcard" id="f04-deckcard-1" style="left: 916px; top: 272px; width: 213px; height: 276px"></div>
+      <div data-hf-id="hf-0jca" class="f04-deckcard" id="f04-deckcard-2" style="left: 922px; top: 267px; width: 205px; height: 266px"></div>
+      <div data-hf-id="hf-faz7" class="f04-label" id="f04-decklabel" style="left: 870px; top: 588px; width: 300px">15-card court deck</div>
+
+      <!-- Scene 3 — the starter-set role row, face down until its name -->
+      <div data-hf-id="hf-jf6r" class="f04-label" id="f04-starterlabel" style="left: 1520px; top: 276px; width: 280px">starter set</div>
+      <div data-hf-id="hf-8f7p" class="f04-rc" id="f04-rc-0" style="left: 1220px">
+        <div data-hf-id="hf-98ms" class="f04-rcflip" id="f04-flip-0">
+          <div data-hf-id="hf-2oiy" class="f04-rcface f04-rcfront"><div data-hf-id="hf-yh6o" class="f04-rcidx">01</div><div data-hf-id="hf-vx32" class="f04-rcstub"></div></div>
+          <div data-hf-id="hf-eads" class="f04-rcface f04-rcback"><div data-hf-id="hf-tih5" class="f04-rcseal"></div></div>
+        </div>
+      </div>
+      <div data-hf-id="hf-9q8x" class="f04-rcname" id="f04-rcname-0" style="left: 1210px">banker</div>
+      <div data-hf-id="hf-uyxq" class="f04-rc" id="f04-rc-1" style="left: 1400px">
+        <div data-hf-id="hf-a0al" class="f04-rcflip" id="f04-flip-1">
+          <div data-hf-id="hf-vnfy" class="f04-rcface f04-rcfront"><div data-hf-id="hf-xa9l" class="f04-rcidx">02</div><div data-hf-id="hf-z31e" class="f04-rcstub"></div></div>
+          <div data-hf-id="hf-nap4" class="f04-rcface f04-rcback"><div data-hf-id="hf-2htp" class="f04-rcseal"></div></div>
+        </div>
+      </div>
+      <div data-hf-id="hf-kwbu" class="f04-rcname" id="f04-rcname-1" style="left: 1390px">director</div>
+      <div data-hf-id="hf-m01m" class="f04-rc" id="f04-rc-2" style="left: 1580px">
+        <div data-hf-id="hf-dyem" class="f04-rcflip" id="f04-flip-2">
+          <div data-hf-id="hf-w1qz" class="f04-rcface f04-rcfront"><div data-hf-id="hf-xokm" class="f04-rcidx">03</div><div data-hf-id="hf-zhcf" class="f04-rcstub"></div></div>
+          <div data-hf-id="hf-m3s1" class="f04-rcface f04-rcback"><div data-hf-id="hf-3oqs" class="f04-rcseal"></div></div>
+        </div>
+      </div>
+      <div data-hf-id="hf-rqg8" class="f04-rcname" id="f04-rcname-2" style="left: 1570px">guerrilla</div>
+      <div data-hf-id="hf-86z1" class="f04-rc" id="f04-rc-3" style="left: 1760px">
+        <div data-hf-id="hf-hwin" class="f04-rcflip" id="f04-flip-3">
+          <div data-hf-id="hf-wg20" class="f04-rcface f04-rcfront"><div data-hf-id="hf-whnj" class="f04-rcidx">04</div><div data-hf-id="hf-zvng" class="f04-rcstub"></div></div>
+          <div data-hf-id="hf-mi32" class="f04-rcface f04-rcback"><div data-hf-id="hf-3afr" class="f04-rcseal"></div></div>
+        </div>
+      </div>
+      <div data-hf-id="hf-98qy" class="f04-rcname" id="f04-rcname-3" style="left: 1750px">politician</div>
+      <div data-hf-id="hf-p9l8" class="f04-rc" id="f04-rc-4" style="left: 1940px">
+        <div data-hf-id="hf-o28g" class="f04-rcflip" id="f04-flip-4">
+          <div data-hf-id="hf-tnwt" class="f04-rcface f04-rcfront"><div data-hf-id="hf-wvyk" class="f04-rcidx">05</div><div data-hf-id="hf-09yh" class="f04-rcstub"></div></div>
+          <div data-hf-id="hf-lb5z" class="f04-rcface f04-rcback"><div data-hf-id="hf-4hcu" class="f04-rcseal"></div></div>
+        </div>
+      </div>
+      <div data-hf-id="hf-1vsv" class="f04-rcname" id="f04-rcname-4" style="left: 1930px">peacekeeper</div>
+
+      <!-- registry components, mounted as nested sub-compositions -->
+      <div data-hf-id="hf-xlk3" class="clip f04-mount" id="f04-countmount" data-composition-id="count-up" data-composition-src="compositions/components/count-up.html" data-variable-values="{&quot;start&quot;:0,&quot;end&quot;:2,&quot;prefix&quot;:&quot;&quot;,&quot;suffix&quot;:&quot;&quot;,&quot;accent&quot;:&quot;green&quot;,&quot;glow&quot;:false,&quot;exit&quot;:&quot;none&quot;}" data-start="1.75" data-duration="2.5" data-track-index="2" data-width="1100" data-height="640"></div>
+      <div data-hf-id="hf-ukpu" class="clip f04-mount" id="f04-deckmount" data-composition-id="spring-stack-shuffle" data-composition-src="compositions/components/spring-stack-shuffle.html" data-variable-values="{&quot;cards&quot;:5,&quot;cues&quot;:&quot;1.15, 1.6&quot;,&quot;accent&quot;:&quot;green&quot;,&quot;exit&quot;:&quot;none&quot;}" data-start="4.7" data-duration="2.55" data-track-index="2" data-width="440" data-height="600"></div>
+    </div>
+
+    <!-- track 3 — chrome + the Scene-4 stamp, fixed in frame -->
+    <div data-hf-id="hf-kf43" class="clip f04-chrome" data-start="0" data-duration="16.777" data-track-index="3" id="f04-chrome">
+      <div data-hf-id="hf-pijq" class="f04-chromerule" id="f04-chromerule"></div>
+      <div data-hf-id="hf-amph" class="f04-chromel" id="f04-chromel">setup</div>
+      <div data-hf-id="hf-bgzx" class="f04-chromer" id="f04-chromer">no. 04</div>
+      <div data-hf-id="hf-o9nm" class="f04-stamprule" id="f04-stamprule"></div>
+      <div data-hf-id="hf-ysxx" class="f04-stamp" id="f04-stamp">last winner starts · clockwise</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      var DURATION = 16.277;
+
+      window.__timelines = window.__timelines || {};
+      var tl = gsap.timeline({ paused: true });
+
+      /* Landing ease, taken from spring-stack-shuffle's own landEase: a
+         zero-slope ballistic hang, ONE small sanctioned overshoot past the
+         target, then a zero-slope settle. Pure function of progress, so any
+         seek in either direction reproduces the same frame. */
+      function landEase(overshoot) {
+        return function (u) {
+          if (u < 0.62) {
+            var a = u / 0.62;
+            return (1 + overshoot) * a * a * (3 - 2 * a);
+          }
+          var b = (u - 0.62) / 0.38;
+          return 1 + overshoot - overshoot * b * b * (3 - 2 * b);
+        };
+      }
+      var LAND = landEase(0.05);
+
+      /* ── the camera — viewport-change PAN mode ───────────────────────────
+         Single .world wrapper, one cam object as the single source of truth,
+         one writer. World offset (ox, oy) lands at S*ox + x, so centring a
+         station means x = -S * (stationX - 960). */
+      var world = document.getElementById("f04-world");
+      var cam = { scale: 0.8, x: -32, y: 0 };
+      var drift = { p: 0 };
+      var dAmp = { x: 5, y: 3 };
+      function applyCamera() {
+        var dx = Math.sin(drift.p) * dAmp.x;
+        var dy = Math.sin(drift.p * 1.3) * dAmp.y;
+        world.style.transform =
+          "translate(" + (cam.x + dx).toFixed(2) + "px, " + (cam.y + dy).toFixed(2) + "px) scale(" +
+          cam.scale.toFixed(4) + ")";
+      }
+      applyCamera();
+
+      /* Scene 1 — wide establishing, then the slight push-in */
+      tl.to(cam, { scale: 0.9, x: -36, duration: 1.1, ease: "power2.inOut", onUpdate: applyCamera }, 0.05);
+      /* Scene 2 — pan to the Treasury station */
+      tl.to(cam, { x: 580, scale: 1, duration: 0.65, ease: "power3.inOut", onUpdate: applyCamera }, 1.7);
+      /* Scene 3 — pan to the Court deck, then to the role row */
+      tl.to(cam, { x: -63, scale: 1.05, duration: 0.8, ease: "power3.inOut", onUpdate: applyCamera }, 4.25);
+      tl.to(cam, { x: -735, duration: 1, ease: "power3.inOut", onUpdate: applyCamera }, 7.35);
+      /* Scene 4 — settle back out for the full-table read */
+      tl.to(cam, { x: -35, scale: 0.87, duration: 1.3, ease: "power2.inOut", onUpdate: applyCamera }, 12.9);
+
+      /* multi-phase-camera: one sine breath over the whole shot, amplitude
+         decayed to zero so the closing full-table read holds dead still. */
+      tl.to(drift, { p: Math.PI * 2 * 1.35, duration: DURATION, ease: "none", onUpdate: applyCamera }, 0);
+      tl.to(dAmp, { x: 0, y: 0, duration: 0.85, ease: "power2.inOut", onUpdate: applyCamera }, 12.95);
+
+      /* ── Scene 1 (0.0–1.7s): the stage assembles ─────────────────────────
+         spring-pop-entrance — scale grows into place with a long-tail
+         settle, no overshoot. Hero (the table) is readable by t = 0.5s. */
+      tl.fromTo("#f04-plane", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, 0.05);
+      tl.fromTo("#f04-grid", { opacity: 0 }, { opacity: 1, duration: 0.9, ease: "power2.out" }, 0.08);
+      tl.fromTo(
+        ["#f04-chromerule", "#f04-chromel", "#f04-chromer"],
+        { opacity: 0, y: -8 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", stagger: 0.06 },
+        0.2
+      );
+      tl.fromTo(
+        ".f04-seat",
+        { opacity: 0, scale: 0.96, y: 10 },
+        { opacity: 0.45, scale: 1, y: 0, duration: 0.45, ease: "power3.out", stagger: 0.05 },
+        0.25
+      );
+      tl.fromTo(
+        ".f04-deckcard",
+        { opacity: 0, scale: 0.94, y: 10 },
+        { opacity: 0.55, scale: 1, y: 0, duration: 0.45, ease: "power3.out", stagger: 0.07 },
+        0.45
+      );
+      tl.fromTo("#f04-plate", { opacity: 0, y: 12 }, { opacity: 0.6, y: 0, duration: 0.5, ease: "power3.out" }, 0.55);
+      tl.fromTo(
+        ".f04-platecoin",
+        { opacity: 0, scale: 0 },
+        { opacity: 1, scale: 1, duration: 0.4, ease: "power3.out", stagger: 0.05 },
+        0.62
+      );
+      tl.fromTo(".f04-rc", { opacity: 0, y: 12 }, { opacity: 0.4, y: 0, duration: 0.55, ease: "power3.out" }, 0.65);
+
+      /* the count's coin-disc skin seats before the number does */
+      tl.fromTo("#f04-coindisc", { opacity: 0, scale: 0.6 }, { opacity: 1, scale: 1, duration: 0.55, ease: "power3.out" }, 1.5);
+
+      /* ── Scene 2 (2.15–4.25s): the Treasury ──────────────────────────────
+         "two coins each" — the per-seat payout drops seat by seat, then the
+         count lands and the Treasury plate takes the weight of "the rest". */
+      tl.fromTo(
+        ".f04-coin",
+        {
+          opacity: 0,
+          y: -26,
+          scale: 0.7,
+          rotation: function (i) {
+            return i % 2 ? 14 : -14;
+          }
+        },
+        { opacity: 1, y: 0, scale: 1, rotation: 0, duration: 0.36, ease: LAND, stagger: 0.055 },
+        2.15
+      );
+      tl.fromTo("#f04-herolabel", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" }, 2.55);
+      tl.to("#f04-plate", { opacity: 1, duration: 0.4, ease: "power2.out" }, 3.2);
+      tl.fromTo("#f04-treaslabel", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, 3.25);
+      tl.to(".f04-seat", { opacity: 0.9, duration: 0.5, ease: "power2.out" }, 3.3);
+
+      /* counting-dynamic-scale: the component's own landing pulse, mirrored
+         on the disc so the ring and the figure breathe as one beat. */
+      tl.fromTo("#f04-coindisc", { scale: 1 }, { scale: 1.07, duration: 0.165, ease: "power3.out", immediateRender: false }, 3.47);
+      tl.fromTo("#f04-coindisc", { scale: 1.07 }, { scale: 1, duration: 0.165, ease: "power2.out", immediateRender: false }, 3.635);
+
+      /* ── Scene 3a (4.7–7.35s): the Court deck ────────────────────────────
+         The registry stack shuffles, deals two cards out to the seat beneath
+         it, and resettles under the weight; the rest of the table takes its
+         cards during "the rest is the Court deck". */
+      var DEX = 60;
+      var DEY = -280;
+      tl.fromTo(
+        "#f04-deal-a",
+        { opacity: 0, x: DEX, y: DEY, scale: 1.7, rotation: -10 },
+        { opacity: 1, x: 34, y: -168, scale: 1.3, rotation: -4, duration: 0.22, ease: "power2.out" },
+        5.1
+      );
+      tl.fromTo(
+        "#f04-deal-a",
+        { opacity: 1, x: 34, y: -168, scale: 1.3, rotation: -4 },
+        { opacity: 1, x: 0, y: 0, scale: 1, rotation: 0, duration: 0.48, ease: LAND, immediateRender: false },
+        5.32
+      );
+      tl.fromTo(
+        "#f04-deal-b",
+        { opacity: 0, x: -DEX, y: DEY, scale: 1.7, rotation: 10 },
+        { opacity: 1, x: -34, y: -168, scale: 1.3, rotation: 4, duration: 0.22, ease: "power2.out" },
+        5.42
+      );
+      tl.fromTo(
+        "#f04-deal-b",
+        { opacity: 1, x: -34, y: -168, scale: 1.3, rotation: 4 },
+        { opacity: 1, x: 0, y: 0, scale: 1, rotation: 0, duration: 0.48, ease: LAND, immediateRender: false },
+        5.64
+      );
+      /* compress-resettle: the deck takes the weight of each card leaving it */
+      tl.fromTo("#f04-deckmount", { y: 0 }, { y: 8, duration: 0.18, ease: "power2.out", immediateRender: false }, 5.8);
+      tl.fromTo("#f04-deckmount", { y: 8 }, { y: 0, duration: 0.3, ease: "power2.out", immediateRender: false }, 5.98);
+
+      /* the other seats take theirs — the hero deal keeps its own arc, so
+         the cascade skips the two cards already in flight */
+      tl.fromTo(
+        ".f04-card:not(.f04-dealcard)",
+        {
+          opacity: 0,
+          y: -42,
+          scale: 0.92,
+          rotation: function (i) {
+            return i % 2 ? 9 : -9;
+          }
+        },
+        { opacity: 1, y: 0, scale: 1, rotation: 0, duration: 0.4, ease: LAND, stagger: 0.065 },
+        5.55
+      );
+      tl.fromTo(
+        "#f04-decklabel",
+        { opacity: 0, scale: 0.9, y: 6 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.5, ease: "power3.out" },
+        6.25
+      );
+
+      /* ── Scene 3b (7.4–12.9s): the starter set ───────────────────────────
+         The row firms up as the camera arrives, then each role card flips
+         face-up on its spoken name. */
+      tl.to(".f04-rc", { opacity: 0.92, duration: 0.35, ease: "power2.out" }, 7.4);
+      tl.fromTo(
+        "#f04-starterlabel",
+        { opacity: 0, scale: 0.9, y: 10 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.5, ease: "power3.out" },
+        8.45
+      );
+
+      var FLIP_AT = [9.9, 10.35, 11.0, 11.55, 12.35];
+      FLIP_AT.forEach(function (t, i) {
+        tl.fromTo("#f04-flip-" + i, { rotationY: 180 }, { rotationY: 0, duration: 0.5, ease: "power3.out" }, t);
+        tl.fromTo(
+          "#f04-rcname-" + i,
+          { opacity: 0, y: 10 },
+          { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" },
+          t + 0.14
+        );
+      });
+
+      /* ── Scene 4 (12.9–16.277s): the full-table read, held ───────────────
+         Camera settles out, the breath decays to nothing, and the seat order
+         plus the turn rule stamp in. Deliberate stillness after that. */
+      tl.to(".f04-seat", { opacity: 1, duration: 0.5, ease: "power2.out" }, 12.95);
+      tl.fromTo(
+        ".f04-seatnum",
+        { opacity: 0, scale: 0.7 },
+        { opacity: 1, scale: 1, duration: 0.35, ease: "power3.out", stagger: 0.06 },
+        13.85
+      );
+      tl.fromTo("#f04-stamprule", { opacity: 0, scaleX: 0 }, { opacity: 1, scaleX: 1, duration: 0.4, ease: "power3.out" }, 13.75);
+      tl.fromTo("#f04-stamp", { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, 13.95);
+
+      /* no exit tween — the root transition owns the exit */
+
+      tl.seek(0);
+      window.__timelines["04-setup"] = tl;
+    })();
+  </script>
+</template>

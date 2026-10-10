@@ -1,0 +1,48 @@
+{
+  "provider": "auto",
+  "speed": "1.0",
+  "lines": [
+    {
+      "id": "01",
+      "text": "Everyone at this table is lying to you. In Coup: Rebellion G54, that's not a problem — that's the entire point."
+    },
+    {
+      "id": "02",
+      "text": "Your first game, start to finish. G54 is a standalone bluffing game — three to six players, fifteen minutes. You each get two face-down cards. Every card is a life, and a power you can claim. Truth is optional."
+    },
+    {
+      "id": "03",
+      "text": "Here's the twist. The box holds twenty-five roles — but every game uses only five: one finance, one communications, one force, two special interest. Those five sit face up, public, all game long."
+    },
+    {
+      "id": "04",
+      "text": "Setup takes a minute. Two coins each; the rest is the Treasury. Two cards each; the rest is the Court deck. For game one, run the starter set — Banker, Director, Guerrilla, Politician, Peacekeeper. Last winner starts; turns run clockwise."
+    },
+    {
+      "id": "05",
+      "text": "Your turn: one action, no passing. Income — take one coin. Or claim a role — no proof needed. Reach ten coins, and Coup is your only move: seven coins, unblockable, one life gone."
+    },
+    {
+      "id": "06",
+      "text": "Anyone can challenge any claim — even someone not involved. Catch a bluff: the claimant loses a life. Wrong call: you lose one instead. Truth proven: the card flips back into the Court, and a fresh one replaces it. Still hidden."
+    },
+    {
+      "id": "07",
+      "text": "Under attack? Only the target can block. Blocks are claims too — they can be lies. And in G54, force roles block themselves: Guerrilla blocks Guerrilla. A blocked attack still costs the attacker their coins."
+    },
+    {
+      "id": "08",
+      "text": "Lose a life, and you choose which card flips face-up — reveal as little as you can. A bad challenge plus a real attack can cost two lives in one turn. Out of cards? Hand your coins to the Treasury."
+    },
+    {
+      "id": "09",
+      "text": "Five roles. Fifteen minutes. Fifty-six twenty-five combinations — a different game every night. Last player with a face-down card wins. There is no second place. Now run your first game — online at boardgame dot falent dot workers dot dev."
+    }
+  ],
+  "bgm": {
+    "mode": "retrieve",
+    "query": "low tense pulse, sparse percussion — table tension, no melody",
+    "blob": "Watch once and your table can play a full first game of Coup: Rebellion G54",
+    "arc": "Hook → What it is → The role-set twist → Table setup → The turn → Challenges → Blocks → Losing influence → Landing"
+  }
+}

@@ -1,0 +1,861 @@
+<template>
+  <style>
+    /* ═══════════════════════════════════════════════════════════════════
+       frame 07 — blocks · the self-block pair
+       1920 × 1080 · broadside (frame.md): ink ground, cream type, one
+       fire-orange accent, lowercase Barlow display, mono chrome.
+       Same split stage as frame 06, deliberately — the rules core reads as
+       one continuous shot. Mirrored tilts kept; the paired roles swap to
+       attacker (left) / blocker (right).
+       ═══════════════════════════════════════════════════════════════════ */
+
+    /* ── fonts — exactly the four weights this frame sets ───────────────── */
+    @font-face {
+      font-family: "Barlow";
+      font-style: normal;
+      font-weight: 600;
+      font-display: block;
+      src: url("../../assets/fonts/Barlow-600.woff2") format("woff2"),
+        url("assets/fonts/Barlow-600.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "Barlow";
+      font-style: normal;
+      font-weight: 800;
+      font-display: block;
+      src: url("../../assets/fonts/Barlow-800.woff2") format("woff2"),
+        url("assets/fonts/Barlow-800.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      font-style: normal;
+      font-weight: 500;
+      font-display: block;
+      src: url("../../assets/fonts/IBMPlexMono-500.woff2") format("woff2"),
+        url("assets/fonts/IBMPlexMono-500.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      font-style: normal;
+      font-weight: 600;
+      font-display: block;
+      src: url("../../assets/fonts/IBMPlexMono-600.woff2") format("woff2"),
+        url("assets/fonts/IBMPlexMono-600.woff2") format("woff2");
+    }
+
+    /* ── tokens — every one pulled from frame.md ─────────────────────────── */
+    #root {
+      --ink: #111111;
+      --ink-alt: #1a1a18;
+      --fire: #e85d26;
+      --cream: #f0ece5;
+      --cream-muted: #888880;
+      --cream-hint: #505048;
+      --border: #282826;
+      /* consumed by the mounted count-up sub-composition so its numerals land
+         in the one accent hue and in Barlow, not the registry default */
+      --brand: #e85d26;
+      --font-display: "Barlow", system-ui, sans-serif;
+      --fg: #f0ece5;
+      --bg: transparent;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    /* ── root — styled by #root, never a class on the composition root ───── */
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      container-type: size;
+      font-family: "Barlow", system-ui, sans-serif;
+      color: var(--cream);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+    }
+
+    /* ── track 0 — the flat ink ground, full duration ───────────────────── */
+    .f07-ground {
+      position: absolute;
+      inset: 0;
+      background: var(--ink);
+    }
+
+    /* ── track 1 — the hairline field (background), dimmed far back ─────── */
+    .f07-field {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+    .f07-grid {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1920px;
+      height: 860px;
+      background-image: repeating-linear-gradient(
+          0deg,
+          rgba(240, 236, 229, 0.035) 0 1px,
+          transparent 1px 96px
+        ),
+        repeating-linear-gradient(
+          90deg,
+          rgba(240, 236, 229, 0.035) 0 1px,
+          transparent 1px 96px
+        );
+    }
+    /* the 50% symmetry axis the comparison splits on */
+    .f07-axis {
+      position: absolute;
+      left: 959px;
+      top: 210px;
+      width: 1px;
+      height: 470px;
+      background: rgba(240, 236, 229, 0.08);
+    }
+    /* ambient-glow-bloom: one un-triggered halo per wing, so each side owns
+       the same color identity across the axis. Peak stays low. */
+    .f07-glow {
+      position: absolute;
+      top: 150px;
+      width: 1120px;
+      height: 660px;
+      background: radial-gradient(closest-side, rgba(232, 93, 38, 1), rgba(232, 93, 38, 0));
+      opacity: 0;
+      will-change: transform, opacity;
+    }
+    #f07-glow-l {
+      left: -160px;
+      transform-origin: 50% 50%;
+    }
+    #f07-glow-r {
+      left: 960px;
+      transform-origin: 50% 50%;
+    }
+
+    /* ── track 2 — the attack hairline: fires out, snaps in two ─────────── */
+    .f07-attack {
+      position: absolute;
+      inset: 0;
+    }
+    .f07-atal,
+    .f07-atar {
+      position: absolute;
+      top: 261px;
+      height: 1px;
+      background: var(--cream-hint);
+      transform-origin: 0 50%;
+      will-change: transform, opacity;
+    }
+    .f07-atal {
+      left: 640px;
+      width: 315px;
+    }
+    .f07-atar {
+      left: 965px;
+      width: 277px;
+    }
+    .f07-chev {
+      position: absolute;
+      left: 1240px;
+      top: 250px;
+      will-change: transform, opacity;
+    }
+
+    /* ── track 3 — split-tilt-cards: one perspective stage, two mirrored
+         panels. The chips, the ring and the stamp sit OUTSIDE the panels so
+         they never inherit the rotateY. ─────────────────────────────────── */
+    .f07-splitclip {
+      position: absolute;
+      inset: 0;
+    }
+    .f07-stage {
+      position: absolute;
+      inset: 0;
+      perspective: 1600px;
+    }
+    .f07-panel {
+      position: absolute;
+      top: 200px;
+      width: 500px;
+      height: 480px;
+      background: var(--ink-alt);
+      border: 1px solid var(--border);
+      transform-style: preserve-3d;
+      will-change: transform, opacity;
+    }
+    #f07-panel-l {
+      left: 150px;
+    }
+    #f07-panel-r {
+      left: 1270px;
+    }
+    .f07-peye {
+      position: absolute;
+      left: 40px;
+      top: 24px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 18px;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+      white-space: nowrap;
+    }
+    .f07-phead {
+      position: absolute;
+      left: 40px;
+      top: 54px;
+      font-family: "Barlow", system-ui, sans-serif;
+      font-size: 56px;
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      color: var(--cream);
+      white-space: nowrap;
+    }
+    .f07-psub {
+      position: absolute;
+      left: 40px;
+      top: 128px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 19px;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+      white-space: nowrap;
+    }
+    /* the claimed role, face-down on both sides — the self-block pair */
+    .f07-card {
+      position: absolute;
+      left: 166px;
+      top: 164px;
+      width: 168px;
+      height: 218px;
+      will-change: transform, opacity;
+    }
+    .f07-cback {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background-color: var(--ink);
+      background-image: repeating-linear-gradient(
+          0deg,
+          rgba(240, 236, 229, 0.05) 0 1px,
+          transparent 1px 26px
+        ),
+        repeating-linear-gradient(
+          90deg,
+          rgba(240, 236, 229, 0.05) 0 1px,
+          transparent 1px 26px
+        );
+      border: 1px solid var(--cream-hint);
+    }
+    .f07-cidx {
+      position: absolute;
+      left: 16px;
+      top: 14px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+    }
+    .f07-cstub {
+      position: absolute;
+      left: 16px;
+      bottom: 16px;
+      width: 36px;
+      height: 2px;
+      background: var(--fire);
+    }
+    /* the closing read: neither card ever turned */
+    .f07-tag {
+      position: absolute;
+      left: 0;
+      top: 396px;
+      width: 100%;
+      text-align: center;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 17px;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+      white-space: nowrap;
+      will-change: transform, opacity;
+    }
+    /* the claim chips — mirrored to each panel's inner edge, identical on
+       both sides because the claim and the block are the same claim */
+    .f07-chip {
+      position: absolute;
+      top: 640px;
+      width: 260px;
+      height: 54px;
+      border: 1px solid var(--cream-hint);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 20px;
+      font-weight: 500;
+      line-height: 1;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+    #f07-chip-l {
+      left: 430px;
+    }
+    #f07-chip-r {
+      left: 1230px;
+    }
+    .f07-chipk {
+      color: var(--cream-muted);
+    }
+    .f07-chipv {
+      color: var(--fire);
+      font-weight: 600;
+    }
+    /* css-marker-patterns, circle mode: a hand-drawn ellipse around the
+       target's claim. No CSS transform on this element — the centring is
+       plain layout and GSAP owns scale/rotation. */
+    .f07-ring {
+      position: absolute;
+      left: 1218px;
+      top: 628px;
+      width: 284px;
+      height: 76px;
+      border: 2px solid var(--fire);
+      border-radius: 50%;
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+    .f07-stamp {
+      position: absolute;
+      left: 1180px;
+      width: 360px;
+      text-align: center;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 20px;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--fire);
+      white-space: nowrap;
+      will-change: transform, opacity;
+    }
+    #f07-stamp-1 {
+      top: 714px;
+    }
+    #f07-stamp-2 {
+      top: 740px;
+    }
+
+    /* ── track 4 — the sunk-coin counter: the mounted registry count-up ──── */
+    .f07-core {
+      position: absolute;
+      inset: 0;
+    }
+    #f07-countmount {
+      position: absolute;
+      left: 650px;
+      top: 300px;
+      width: 620px;
+      height: 380px;
+    }
+    /* the lock box — four hairlines closing around the landed figure, so
+       "unchanged" reads as something structural, not an absence */
+    .f07-lock {
+      position: absolute;
+      background: var(--cream-hint);
+      will-change: transform, opacity;
+    }
+    .f07-lock-t {
+      left: 840px;
+      top: 396px;
+      width: 240px;
+      height: 1px;
+      transform-origin: 0 50%;
+    }
+    .f07-lock-b {
+      left: 840px;
+      top: 566px;
+      width: 240px;
+      height: 1px;
+      transform-origin: 100% 50%;
+    }
+    .f07-lock-l {
+      left: 840px;
+      top: 396px;
+      width: 1px;
+      height: 170px;
+      transform-origin: 50% 0;
+    }
+    .f07-lock-r {
+      left: 1080px;
+      top: 396px;
+      width: 1px;
+      height: 170px;
+      transform-origin: 50% 100%;
+    }
+
+    /* ── track 5 — chrome, the bridge label, the payoff ─────────────────── */
+    .f07-chrome {
+      position: absolute;
+      inset: 0;
+    }
+    .f07-chromerule {
+      position: absolute;
+      left: 105px;
+      top: 88px;
+      width: 1710px;
+      height: 1px;
+      background: var(--border);
+    }
+    .f07-chromel,
+    .f07-chromer {
+      position: absolute;
+      top: 100px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 17px;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      will-change: transform, opacity;
+    }
+    .f07-chromel {
+      left: 105px;
+      color: var(--fire);
+      white-space: nowrap;
+    }
+    .f07-chromer {
+      left: 1310px;
+      width: 505px;
+      text-align: right;
+      color: var(--cream-muted);
+    }
+    /* the bridge: the one label that says what the pair actually is */
+    .f07-bridge {
+      position: absolute;
+      left: 700px;
+      top: 592px;
+      width: 520px;
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 14px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 24px;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      will-change: transform, opacity;
+    }
+    .f07-b1 {
+      color: var(--cream);
+    }
+    .f07-b2 {
+      color: var(--cream-muted);
+    }
+    .f07-b3 {
+      color: var(--fire);
+    }
+    .f07-brule {
+      position: absolute;
+      top: 606px;
+      width: 44px;
+      height: 1px;
+      background: var(--cream-hint);
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+    #f07-brule-l {
+      left: 674px;
+    }
+    #f07-brule-r {
+      left: 1202px;
+    }
+    .f07-sunk {
+      position: absolute;
+      left: 800px;
+      top: 656px;
+      width: 320px;
+      text-align: center;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 24px;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--fire);
+      white-space: nowrap;
+      will-change: transform, opacity;
+    }
+    /* the asymmetric outcome, one note under each wing */
+    .f07-note {
+      position: absolute;
+      top: 792px;
+      width: 400px;
+      text-align: center;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 19px;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--cream-muted);
+      white-space: nowrap;
+      will-change: transform, opacity;
+    }
+    #f07-note-l {
+      left: 200px;
+    }
+    #f07-note-r {
+      left: 1320px;
+    }
+  </style>
+
+  <div data-hf-id="hf-zoou" id="root" data-composition-id="07-blocks" data-start="0" data-duration="14.549" data-width="1920" data-height="1080">
+    <!-- track 0 — the flat ink ground -->
+    <div data-hf-id="hf-yys6" class="clip f07-ground" data-start="0" data-duration="14.549" data-track-index="0"></div>
+
+    <!-- track 1 — the hairline field: background, dimmed far back -->
+    <div data-hf-id="hf-kngo" class="clip f07-field" data-start="0" data-duration="14.549" data-track-index="1">
+      <div data-hf-id="hf-8ey2" class="f07-grid" id="f07-grid"></div>
+      <div data-hf-id="hf-n836" class="f07-axis" id="f07-axis"></div>
+      <div data-hf-id="hf-cgb1" class="f07-glow" id="f07-glow-l"></div>
+      <div data-hf-id="hf-5ixf" class="f07-glow" id="f07-glow-r"></div>
+    </div>
+
+    <!-- track 2 — the attack hairline -->
+    <div data-hf-id="hf-53xf" class="clip f07-attack" data-start="0" data-duration="14.549" data-track-index="2">
+      <div data-hf-id="hf-kau2" class="f07-atal" id="f07-atal"></div>
+      <div data-hf-id="hf-ts5m" class="f07-atar" id="f07-atar"></div>
+      <svg data-hf-id="hf-4806" class="f07-chev" id="f07-chev" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+        <path data-hf-id="hf-5sr8" d="M2,4 L20,12 L2,20" fill="none" stroke="#505048" stroke-width="1.5" />
+      </svg>
+    </div>
+
+    <!-- track 3 — the mirrored pair: attacker left, blocker right -->
+    <div data-hf-id="hf-jj6g" class="clip f07-splitclip" data-start="0" data-duration="14.549" data-track-index="3">
+      <div data-hf-id="hf-lqn0" class="f07-stage">
+        <section data-hf-id="hf-dyel" class="f07-panel" id="f07-panel-l">
+          <div data-hf-id="hf-15ad" class="f07-peye f07-copy">attacker</div>
+          <div data-hf-id="hf-uo74" class="f07-phead f07-copy">acts</div>
+          <div data-hf-id="hf-67so" class="f07-psub f07-copy">pays 4 coins</div>
+          <div data-hf-id="hf-nx8p" class="f07-card" id="f07-card-l">
+            <div data-hf-id="hf-rxb8" class="f07-cback">
+              <div data-hf-id="hf-4862" class="f07-cidx">g54</div>
+              <div data-hf-id="hf-6m3t" class="f07-cstub"></div>
+            </div>
+          </div>
+          <div data-hf-id="hf-dutf" class="f07-tag" id="f07-tag-l">still hidden</div>
+        </section>
+
+        <section data-hf-id="hf-710z" class="f07-panel" id="f07-panel-r">
+          <div data-hf-id="hf-b3kn" class="f07-peye f07-copy">target</div>
+          <div data-hf-id="hf-zia3" class="f07-phead f07-copy">blocks</div>
+          <div data-hf-id="hf-vb6l" class="f07-psub f07-copy">claims a role</div>
+          <div data-hf-id="hf-pk9j" class="f07-card" id="f07-card-r">
+            <div data-hf-id="hf-5p24" class="f07-cback">
+              <div data-hf-id="hf-ygla" class="f07-cidx">g54</div>
+              <div data-hf-id="hf-5rh9" class="f07-cstub"></div>
+            </div>
+          </div>
+          <div data-hf-id="hf-p4pb" class="f07-tag" id="f07-tag-r">still face-down</div>
+        </section>
+
+        <div data-hf-id="hf-z599" class="f07-chip" id="f07-chip-l">
+          <span data-hf-id="hf-a4sm" class="f07-chipk">claim:</span><span data-hf-id="hf-yzh6" class="f07-chipv">guerrilla</span>
+        </div>
+        <div data-hf-id="hf-w5vn" class="f07-chip" id="f07-chip-r">
+          <span data-hf-id="hf-w9px" class="f07-chipk">block:</span><span data-hf-id="hf-o37i" class="f07-chipv">guerrilla</span>
+        </div>
+        <div data-hf-id="hf-wj8q" class="f07-ring" id="f07-ring"></div>
+        <div data-hf-id="hf-xrfb" class="f07-stamp" id="f07-stamp-1">still a claim</div>
+        <div data-hf-id="hf-wwv5" class="f07-stamp" id="f07-stamp-2">can be challenged</div>
+      </div>
+    </div>
+
+    <!-- track 4 — the sunk-coin counter and the lock that closes on it -->
+    <div data-hf-id="hf-z9e6" class="clip f07-core" data-start="0" data-duration="14.549" data-track-index="4">
+      <div data-hf-id="hf-s3w2" class="clip f07-mount" id="f07-countmount" data-composition-id="count-up" data-composition-src="compositions/components/count-up.html" data-variable-values="{&quot;start&quot;:0,&quot;end&quot;:4,&quot;prefix&quot;:&quot;&quot;,&quot;suffix&quot;:&quot;&quot;,&quot;accent&quot;:&quot;green&quot;,&quot;glow&quot;:false,&quot;exit&quot;:&quot;none&quot;}" data-start="1.05" data-duration="13.499" data-track-index="0" data-width="620" data-height="380"></div>
+      <div data-hf-id="hf-dvt7" class="f07-lock f07-lock-t" id="f07-lock-t"></div>
+      <div data-hf-id="hf-o4ab" class="f07-lock f07-lock-r" id="f07-lock-r"></div>
+      <div data-hf-id="hf-848j" class="f07-lock f07-lock-b" id="f07-lock-b"></div>
+      <div data-hf-id="hf-t2d7" class="f07-lock f07-lock-l" id="f07-lock-l"></div>
+    </div>
+
+    <!-- track 5 — chrome, the bridge label, the payoff -->
+    <div data-hf-id="hf-cd02" class="clip f07-chrome" data-start="0" data-duration="14.549" data-track-index="5">
+      <div data-hf-id="hf-a7rm" class="f07-chromerule" id="f07-chromerule"></div>
+      <div data-hf-id="hf-qr5u" class="f07-chromel" id="f07-chromel">coup · rebellion g54</div>
+      <div data-hf-id="hf-shme" class="f07-chromer" id="f07-chromer">no. 07</div>
+      <div data-hf-id="hf-t8k2" class="f07-bridge" id="f07-bridge">
+        <span data-hf-id="hf-5b11" class="f07-b1">guerrilla</span><span data-hf-id="hf-ol41" class="f07-b2">blocks</span><span data-hf-id="hf-s0s7" class="f07-b3">guerrilla</span>
+      </div>
+      <div data-hf-id="hf-3qz9" class="f07-brule" id="f07-brule-l"></div>
+      <div data-hf-id="hf-hwej" class="f07-brule" id="f07-brule-r"></div>
+      <div data-hf-id="hf-qno9" class="f07-sunk" id="f07-sunk">sunk</div>
+      <div data-hf-id="hf-p2o8" class="f07-note" id="f07-note-l">attacker · 4 coins gone</div>
+      <div data-hf-id="hf-d9tz" class="f07-note" id="f07-note-r">blocker · nothing paid</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      window.__timelines = window.__timelines || {};
+      var tl = gsap.timeline({ paused: true });
+
+      /* Landing ease borrowed from the registry components' own landEase: a
+         zero-slope hang, ONE small sanctioned overshoot past the target, then
+         a zero-slope settle. Pure function of progress, so any seek in either
+         direction reproduces the same frame. */
+      function landEase(overshoot) {
+        return function (u) {
+          if (u < 0.62) {
+            var a = u / 0.62;
+            return (1 + overshoot) * a * a * (3 - 2 * a);
+          }
+          var b = (u - 0.62) / 0.38;
+          return 1 + overshoot - overshoot * b * b * (3 - 2 * b);
+        };
+      }
+      var POP = landEase(0.06);
+
+      /* ══ Scene 1 (0.0–3.0s) — the attack is staged ───────────────────────
+         "Under attack? Only the target can block."
+         The hairline field and chrome settle, then the attacker panel tilts
+         in from the left wing: face-down guerrilla, claim chip, and the
+         mounted count-up paying four to the Treasury. Hero readable by
+         t ≈ 0.5s. */
+      tl.fromTo("#f07-grid", { opacity: 0 }, { opacity: 1, duration: 1, ease: "power2.out" }, 0.05);
+      tl.fromTo("#f07-axis", { opacity: 0 }, { opacity: 1, duration: 1, ease: "power2.out" }, 0.15);
+      tl.fromTo("#f07-chromerule", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.out" }, 0.1);
+      tl.fromTo(
+        ["#f07-chromel", "#f07-chromer"],
+        { opacity: 0, y: -8 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "power2.out", stagger: 0.07 },
+        0.18
+      );
+
+      /* split-tilt-cards, the signature move — left wing first, mirrored
+         book-open rotateY (+14 left, −14 right) with the outward entry x */
+      tl.fromTo(
+        "#f07-panel-l",
+        { opacity: 0, x: -360, rotateY: 22, scale: 0.85 },
+        { opacity: 1, x: 0, rotateY: 14, scale: 1, duration: 0.75, ease: "power3.out" },
+        0.2
+      );
+      tl.fromTo(
+        "#f07-panel-l .f07-copy",
+        { opacity: 0, y: 14 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out", stagger: 0.07 },
+        0.5
+      );
+      tl.fromTo(
+        "#f07-card-l",
+        { opacity: 0, y: 20, scale: 0.96, rotation: -5 },
+        { opacity: 1, y: 0, scale: 1, rotation: 0, duration: 0.5, ease: "power3.out" },
+        0.8
+      );
+      tl.fromTo(
+        "#f07-chip-l",
+        { opacity: 0, scale: 0, y: 10 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.5, ease: POP },
+        1.2
+      );
+
+      /* ambient-glow-bloom — the left wing's halo lands on the panel settle */
+      var GLOW = 0.16;
+      tl.fromTo(
+        "#f07-glow-l",
+        { opacity: 0, scale: 0.8 },
+        { opacity: GLOW, scale: 1, duration: 0.9, ease: "power2.out" },
+        0.45
+      );
+
+      /* the count-up sub-composition owns its own arrival, its count (0 → 4
+         over 1.72s) and its landing pulse; it mounts at t = 1.05, lands at
+         ≈ 2.8 inside Scene 1, then holds its value untouched for the rest of
+         the shot — which is the whole point of the sunk-cost beat. */
+
+      /* the attack fires out across the gutter, chevron into the target wing */
+      tl.fromTo("#f07-atal", { scaleX: 0 }, { scaleX: 1, duration: 0.55, ease: "power2.out" }, 2.5);
+      tl.fromTo("#f07-atar", { scaleX: 0 }, { scaleX: 1, duration: 0.55, ease: "power2.out" }, 2.62);
+      tl.fromTo("#f07-chev", { opacity: 0, x: -10 }, { opacity: 1, x: 0, duration: 0.4, ease: "power2.out" }, 3.02);
+
+      /* ══ Scene 2 (3.0–7.2s) — the target answers, mirrored ──────────────
+         "Blocks are claims too — they can be lies. And in G54, force roles
+         block themselves: Guerrilla blocks Guerrilla."
+         The blocker panel tilts in from the right wing ~0.2s behind the left
+         entry, its claim chip lands at the inner edge and gets encircled, the
+         mono stamp reads the catch, and the bridge label names the pair. */
+      tl.fromTo(
+        "#f07-panel-r",
+        { opacity: 0, x: 360, rotateY: -22, scale: 0.85 },
+        { opacity: 1, x: 0, rotateY: -14, scale: 1, duration: 0.75, ease: "power3.out" },
+        3.55
+      );
+      tl.fromTo(
+        "#f07-panel-r .f07-copy",
+        { opacity: 0, y: 14 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out", stagger: 0.07 },
+        3.8
+      );
+      tl.fromTo(
+        "#f07-glow-r",
+        { opacity: 0, scale: 0.8 },
+        { opacity: GLOW, scale: 1, duration: 0.9, ease: "power2.out" },
+        3.8
+      );
+      tl.fromTo(
+        "#f07-card-r",
+        { opacity: 0, y: 20, scale: 0.96, rotation: 5 },
+        { opacity: 1, y: 0, scale: 1, rotation: 0, duration: 0.5, ease: "power3.out" },
+        4.15
+      );
+      tl.fromTo(
+        "#f07-chip-r",
+        { opacity: 0, scale: 0, y: 10 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.5, ease: POP },
+        4.45
+      );
+
+      /* css-marker-patterns, circle mode — the hand-drawn ellipse closes
+         around the target's claim, then the mono stamp reads under it */
+      tl.fromTo(
+        "#f07-ring",
+        { opacity: 0, scale: 0, rotation: 10 },
+        { opacity: 1, scale: 1, rotation: -3, duration: 0.6, ease: "back.out(1.7)" },
+        4.7
+      );
+      tl.fromTo(
+        ["#f07-stamp-1", "#f07-stamp-2"],
+        { opacity: 0, y: 8 },
+        { opacity: 1, y: 0, duration: 0.45, ease: "power3.out", stagger: 0.1 },
+        4.95
+      );
+
+      /* the bridge label — guerrilla blocks guerrilla, the second guerrilla
+         in the sole accent — with a hairline bracket drawing out each side */
+      tl.fromTo(
+        "#f07-bridge",
+        { opacity: 0, y: 14 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" },
+        5.3
+      );
+      tl.fromTo(
+        ["#f07-brule-l", "#f07-brule-r"],
+        { opacity: 0, scaleX: 0 },
+        { opacity: 1, scaleX: 1, duration: 0.4, ease: "power3.out", stagger: 0.08 },
+        5.4
+      );
+
+      /* ══ Scene 3 (7.2–14.549s) — the block resolves, the cost stands ─────
+         "A blocked attack still costs the attacker their coins."
+         The attack hairline snaps in two, the pair settles back, four
+         hairlines close around the landed four, the sunk label rises, and
+         neither card ever turns. Then hold the still pair. */
+      tl.to("#f07-atal", { x: -26, rotation: -7, opacity: 0.45, duration: 0.32, ease: "power3.in" }, 7.35);
+      tl.to("#f07-atar", { x: 26, rotation: 7, opacity: 0.45, duration: 0.32, ease: "power3.in" }, 7.35);
+      tl.to("#f07-chev", { opacity: 0, y: 12, duration: 0.3, ease: "power3.in" }, 7.35);
+
+      tl.to([".f07-panel", ".f07-chip"], { opacity: 0.86, duration: 0.5, ease: "power2.out" }, 7.55);
+
+      tl.fromTo(
+        ["#f07-lock-t", "#f07-lock-r", "#f07-lock-b", "#f07-lock-l"],
+        { opacity: 0, scale: 0 },
+        { opacity: 1, scale: 1, duration: 0.35, ease: "power2.out", stagger: 0.07 },
+        7.75
+      );
+      tl.fromTo(
+        "#f07-sunk",
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" },
+        8.3
+      );
+      tl.fromTo(
+        ["#f07-tag-l", "#f07-tag-r"],
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power2.out", stagger: 0.12 },
+        8.7
+      );
+
+      /* one quiet re-pulse on the circle — the claim is still a claim */
+      tl.to("#f07-ring", { scale: 1.035, duration: 0.22, ease: "power2.out" }, 9.4);
+      tl.to("#f07-ring", { scale: 1, duration: 0.22, ease: "power2.in" }, 9.62);
+
+      /* the asymmetric outcome, one note under each wing */
+      tl.fromTo(
+        ["#f07-note-l", "#f07-note-r"],
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.45, ease: "power3.out", stagger: 0.16 },
+        11.4
+      );
+
+      /* ══ hold — sine-wave-loop, the low register only ════════════════════
+         Counter-phase jitter on the mirrored pair (left down, right up) so
+         they never conveyor-belt. Runs out at ~14.4s, leaving the closing
+         read dead still. */
+      tl.to("#f07-panel-l", { y: -3, duration: 1.7, ease: "sine.inOut", yoyo: true, repeat: 3 }, 7.6);
+      tl.to("#f07-panel-r", { y: 3, duration: 1.7, ease: "sine.inOut", yoyo: true, repeat: 3 }, 7.6);
+
+      var AMP = 0.014; /* default / √2 for two concurrent halos */
+      var glowLPhase = { p: 0 };
+      var glowRPhase = { p: 0 };
+      var glowL = document.getElementById("f07-glow-l");
+      var glowR = document.getElementById("f07-glow-r");
+      tl.to(
+        glowLPhase,
+        {
+          p: Math.PI * 4,
+          duration: 8,
+          ease: "none",
+          onUpdate: function () {
+            glowL.style.opacity = String(GLOW + Math.sin(glowLPhase.p) * AMP);
+          }
+        },
+        4.8
+      );
+      tl.to(
+        glowRPhase,
+        {
+          p: Math.PI * 4,
+          duration: 9,
+          ease: "none",
+          onUpdate: function () {
+            glowR.style.opacity = String(GLOW + Math.sin(glowRPhase.p) * AMP);
+          }
+        },
+        5.2
+      );
+
+      /* no exit tween — the root transition owns the exit */
+
+      tl.seek(0);
+      window.__timelines["07-blocks"] = tl;
+    })();
+  </script>
+</template>

@@ -1,0 +1,706 @@
+<template>
+  <style>
+    /* ── fonts (local, shipped with the project in assets/fonts/) ───────────
+       Two srcs: the assembled index.html is the render document (project
+       root), while the frame file itself sits at compositions/frames/. Both
+       bases are declared so the face resolves in either context. */
+    @font-face {
+      font-family: "Barlow";
+      font-style: normal;
+      font-weight: 800;
+      font-display: block;
+      src: url("assets/fonts/Barlow-800.woff2") format("woff2"),
+        url("../../assets/fonts/Barlow-800.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      font-style: normal;
+      font-weight: 400;
+      font-display: block;
+      src: url("assets/fonts/IBMPlexMono-400.woff2") format("woff2"),
+        url("../../assets/fonts/IBMPlexMono-400.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      font-style: normal;
+      font-weight: 500;
+      font-display: block;
+      src: url("assets/fonts/IBMPlexMono-500.woff2") format("woff2"),
+        url("../../assets/fonts/IBMPlexMono-500.woff2") format("woff2");
+    }
+
+    /* ── root — styled by #root, never a class on the composition root ────── */
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      container-type: size;
+      font-family: "Barlow", system-ui, sans-serif;
+      color: #f0ece5;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+    }
+
+    /* ── background: ink-black ground + ambient hairline field ─────────────
+       Full-bleed ground rides on its own class="clip" layer (track 0), never
+       as a background on the root. */
+    .f02-bg {
+      position: absolute;
+      inset: 0;
+      background: #111111;
+    }
+    .f02-grid {
+      position: absolute;
+      inset: 0;
+      background-image: repeating-linear-gradient(
+          0deg,
+          rgba(240, 236, 229, 0.045) 0 1px,
+          transparent 1px 96px
+        ),
+        repeating-linear-gradient(
+          90deg,
+          rgba(240, 236, 229, 0.045) 0 1px,
+          transparent 1px 96px
+        );
+    }
+
+    .f02-scene {
+      position: absolute;
+      inset: 0;
+    }
+
+    /* ── Scene 1: the title prelude ──────────────────────────────────────── */
+    .f02-title {
+      position: absolute;
+      left: 105px;
+      right: 105px;
+      top: 88px;
+      margin: 0;
+      font-family: "Barlow", system-ui, sans-serif;
+      font-size: 6.4cqw;
+      font-weight: 800;
+      line-height: 0.95;
+      letter-spacing: -0.03em;
+      text-align: center;
+      color: #f0ece5;
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+
+    /* the system's only ornament: a 36x2 fire-orange rule stub */
+    .f02-stub {
+      position: absolute;
+      left: 942px;
+      top: 254px;
+      width: 36px;
+      height: 2px;
+      background: #e85d26;
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+
+    .f02-kicker {
+      position: absolute;
+      left: 105px;
+      right: 105px;
+      top: 272px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.85cqw;
+      font-weight: 500;
+      line-height: 1.2;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      text-align: center;
+      color: #e85d26;
+      will-change: transform, opacity;
+    }
+
+    /* ── Scene 2: the fact strip ─────────────────────────────────────────── */
+    .f02-strip-rule {
+      position: absolute;
+      left: 105px;
+      top: 306px;
+      width: 1710px;
+      height: 1px;
+      background: #282826;
+      transform-origin: 0 50%;
+      will-change: transform, opacity;
+    }
+
+    .f02-chip-div {
+      position: absolute;
+      top: 320px;
+      width: 1px;
+      height: 59px;
+      background: #282826;
+    }
+    .f02-div1 {
+      left: 675px;
+    }
+    .f02-div2 {
+      left: 1245px;
+    }
+
+    .f02-chip {
+      position: absolute;
+      top: 320px;
+      width: 570px;
+      transform-origin: 50% 100%;
+      will-change: transform, opacity;
+    }
+    #f02-chip1 {
+      left: 105px;
+    }
+    #f02-chip2 {
+      left: 675px;
+    }
+    #f02-chip3 {
+      left: 1245px;
+    }
+    .f02-chipval {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 1.7cqw;
+      font-weight: 500;
+      line-height: 1.1;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #888880;
+    }
+    .f02-chiplabel {
+      margin-top: 4px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.85cqw;
+      font-weight: 400;
+      line-height: 1.15;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #505048;
+    }
+
+    /* dynamic-content-sequencing: the strip's own 0 -> 100% run bar */
+    .f02-strip-progress {
+      position: absolute;
+      left: 105px;
+      top: 392px;
+      width: 1710px;
+      height: 1px;
+      background: rgba(240, 236, 229, 0.07);
+      transform-origin: 0 50%;
+    }
+    .f02-strip-fill {
+      width: 0%;
+      height: 100%;
+      background: #505048;
+    }
+
+    /* ── Scene 3: the court deck the deal comes out of ───────────────────── */
+    .f02-deck {
+      position: absolute;
+      left: 105px;
+      top: 96px;
+      width: 76px;
+      height: 106px;
+      will-change: transform, opacity;
+    }
+    .f02-deck-card {
+      position: absolute;
+      width: 76px;
+      height: 106px;
+      background: #1a1a18;
+      border: 1px solid #282826;
+    }
+    .f02-deck-c3 {
+      left: 0;
+      top: 0;
+      z-index: 1;
+    }
+    .f02-deck-c2 {
+      left: 7px;
+      top: 7px;
+      z-index: 2;
+    }
+    .f02-deck-c1 {
+      left: 14px;
+      top: 14px;
+      z-index: 3;
+    }
+
+    /* ── Scene 3: the two influence cards — the foreground subject ───────── */
+    .f02-card {
+      position: absolute;
+      top: 404px;
+      width: 400px;
+      height: 440px;
+      will-change: transform, opacity;
+    }
+    #f02-card1 {
+      left: 542px;
+    }
+    #f02-card2 {
+      left: 978px;
+    }
+    .f02-card-back {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #1a1a18;
+      border: 1px solid #282826;
+    }
+    .f02-card-lattice {
+      position: absolute;
+      inset: 0;
+      background-image: repeating-linear-gradient(
+          0deg,
+          rgba(240, 236, 229, 0.05) 0 1px,
+          transparent 1px 40px
+        ),
+        repeating-linear-gradient(
+          90deg,
+          rgba(240, 236, 229, 0.05) 0 1px,
+          transparent 1px 40px
+        );
+    }
+    .f02-card-frame {
+      position: absolute;
+      inset: 14px;
+      border: 1px solid #282826;
+    }
+    .f02-card-seal {
+      position: absolute;
+      left: 177px;
+      top: 150px;
+      width: 46px;
+      height: 46px;
+      border: 1px solid #505048;
+      transform: rotate(45deg);
+    }
+    .f02-card-dot {
+      position: absolute;
+      left: 20px;
+      top: 20px;
+      width: 6px;
+      height: 6px;
+      background: #505048;
+    }
+
+    /* each card is stamped "life · claimed power" in mono */
+    .f02-card-stamp {
+      position: absolute;
+      left: 26px;
+      right: 26px;
+      bottom: 26px;
+    }
+    .f02-stamp-rule {
+      height: 1px;
+      margin-bottom: 12px;
+      background: #282826;
+    }
+    .f02-stamp-life,
+    .f02-stamp-power {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.85cqw;
+      line-height: 1.15;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      will-change: transform, opacity;
+    }
+    .f02-stamp-life {
+      font-weight: 500;
+      color: #f0ece5;
+    }
+    .f02-stamp-power {
+      margin-top: 4px;
+      font-weight: 400;
+      color: #888880;
+    }
+
+    /* the sole accent in the frame: "truth: optional" */
+    .f02-truth {
+      position: absolute;
+      left: 850px;
+      top: 858px;
+      width: 220px;
+      height: 32px;
+      border: 1px solid #e85d26;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.85cqw;
+      font-weight: 500;
+      line-height: 30px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      text-align: center;
+      color: #e85d26;
+      transform-origin: 50% 100%;
+      will-change: transform, opacity;
+    }
+  </style>
+
+  <div data-hf-id="hf-upl6" id="root" data-composition-id="02-first-game" data-start="0" data-duration="15.625" data-width="1920" data-height="1080">
+    <div data-hf-id="hf-0rcp" class="clip f02-bg" data-start="0" data-duration="15.625" data-track-index="0" id="f02-bg">
+      <div data-hf-id="hf-35h9" class="f02-grid"></div>
+    </div>
+
+    <div data-hf-id="hf-vzb4" class="clip f02-scene" data-start="0" data-duration="15.625" data-track-index="1" id="f02-scene">
+      <!-- Scene 1 — title prelude -->
+      <div data-hf-id="hf-t61p" class="f02-title" id="f02-title">coup: rebellion g54</div>
+      <div data-hf-id="hf-q8zq" class="f02-stub" id="f02-stub"></div>
+      <div data-hf-id="hf-qggr" class="f02-kicker" id="f02-kicker">a standalone bluffing game</div>
+
+      <!-- Scene 2 — the fact strip -->
+      <div data-hf-id="hf-0t5m" class="f02-strip-rule" id="f02-strip-rule"></div>
+      <div data-hf-id="hf-z3xh" class="f02-chip-div f02-div1" id="f02-div1"></div>
+      <div data-hf-id="hf-z641" class="f02-chip-div f02-div2" id="f02-div2"></div>
+      <div data-hf-id="hf-x307" class="f02-chip" id="f02-chip1">
+        <div data-hf-id="hf-dm2x" class="f02-chipval" id="f02-chipval1">3–6</div>
+        <div data-hf-id="hf-fdqh" class="f02-chiplabel" id="f02-chiplabel1">players</div>
+      </div>
+      <div data-hf-id="hf-of4c" class="f02-chip" id="f02-chip2">
+        <div data-hf-id="hf-91e0" class="f02-chipval" id="f02-chipval2">~15</div>
+        <div data-hf-id="hf-ynz7" class="f02-chiplabel" id="f02-chiplabel2">minutes</div>
+      </div>
+      <div data-hf-id="hf-p6s5" class="f02-chip" id="f02-chip3">
+        <div data-hf-id="hf-r35f" class="f02-chipval" id="f02-chipval3">none</div>
+        <div data-hf-id="hf-wbdp" class="f02-chiplabel" id="f02-chiplabel3">coup required</div>
+      </div>
+      <div data-hf-id="hf-0hta" class="f02-strip-progress" id="f02-strip-progress">
+        <div data-hf-id="hf-uz8u" class="f02-strip-fill" id="f02-strip-fill"></div>
+      </div>
+
+      <!-- Scene 3 — the court deck, then the deal -->
+      <div data-hf-id="hf-qw6a" class="f02-deck" id="f02-deck">
+        <div data-hf-id="hf-ngus" class="f02-deck-card f02-deck-c3"></div>
+        <div data-hf-id="hf-o8il" class="f02-deck-card f02-deck-c2"></div>
+        <div data-hf-id="hf-ue8e" class="f02-deck-card f02-deck-c1"></div>
+      </div>
+
+      <div data-hf-id="hf-141b" class="f02-card" id="f02-card1">
+        <div data-hf-id="hf-1qnl" class="f02-card-back">
+          <div data-hf-id="hf-y3q6" class="f02-card-lattice"></div>
+          <div data-hf-id="hf-i1un" class="f02-card-frame"></div>
+          <div data-hf-id="hf-wzqz" class="f02-card-seal"><div data-hf-id="hf-isbx" class="f02-card-dot"></div></div>
+        </div>
+        <div data-hf-id="hf-jxvp" class="f02-card-stamp">
+          <div data-hf-id="hf-elx5" class="f02-stamp-rule"></div>
+          <div data-hf-id="hf-zgsd" class="f02-stamp-life" id="f02-stamp1-life">life</div>
+          <div data-hf-id="hf-bigx" class="f02-stamp-power" id="f02-stamp1-power">claimed power</div>
+        </div>
+      </div>
+
+      <div data-hf-id="hf-q8jo" class="f02-card" id="f02-card2">
+        <div data-hf-id="hf-xl45" class="f02-card-back">
+          <div data-hf-id="hf-0nk2" class="f02-card-lattice"></div>
+          <div data-hf-id="hf-zyov" class="f02-card-frame"></div>
+          <div data-hf-id="hf-y18b" class="f02-card-seal"><div data-hf-id="hf-hk0x" class="f02-card-dot"></div></div>
+        </div>
+        <div data-hf-id="hf-5hnd" class="f02-card-stamp">
+          <div data-hf-id="hf-cggd" class="f02-stamp-rule"></div>
+          <div data-hf-id="hf-kjw8" class="f02-stamp-life" id="f02-stamp2-life">life</div>
+          <div data-hf-id="hf-vh54" class="f02-stamp-power" id="f02-stamp2-power">claimed power</div>
+        </div>
+      </div>
+
+      <div data-hf-id="hf-kuc9" class="f02-truth" id="f02-truth">truth: optional</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      "use strict";
+
+      var DURATION = 15.125;
+      var STRIP_START = 3.05;
+
+      window.__timelines = window.__timelines || {};
+      var tl = gsap.timeline({ paused: true });
+
+      /* Landing ease, adapted from spring-stack-shuffle's landEase: a
+         zero-slope ballistic hang, ONE small sanctioned overshoot past the
+         target, then a zero-slope settle. Pure function of progress, so any
+         seek in either direction reproduces the same frame. */
+      function landEase(overshoot) {
+        return function (u) {
+          if (u < 0.62) {
+            var a = u / 0.62;
+            return (1 + overshoot) * a * a * (3 - 2 * a);
+          }
+          var b = (u - 0.62) / 0.38;
+          return 1 + overshoot - overshoot * b * b * (3 - 2 * b);
+        };
+      }
+
+      /* Collapsed start states pinned at t=0, so a delayed entrance never
+         flashes its CSS-visible state and a seek back to 0 restores it. */
+      tl.set(
+        [
+          "#f02-title",
+          "#f02-stub",
+          "#f02-kicker",
+          "#f02-strip-rule",
+          "#f02-div1",
+          "#f02-div2",
+          "#f02-chip1",
+          "#f02-chip2",
+          "#f02-chip3",
+          "#f02-strip-progress",
+          "#f02-deck",
+          "#f02-card1",
+          "#f02-card2",
+          "#f02-truth",
+          "#f02-stamp1-life",
+          "#f02-stamp1-power",
+          "#f02-stamp2-life",
+          "#f02-stamp2-power"
+        ],
+        { opacity: 0 },
+        0
+      );
+
+      /* ── Scene 1 (0.0–3.0) : the title pops, then the kicker slides up ────
+         spring-pop-entrance, smooth long-tail settle — power3.out, no
+         overshoot. Hero is on screen by t = 0.18 + first frames. */
+      tl.fromTo(
+        "#f02-title",
+        { opacity: 0, scale: 0.78, y: 20 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.72, ease: "power3.out" },
+        0.18
+      );
+      tl.fromTo(
+        "#f02-stub",
+        { opacity: 0, scaleX: 0 },
+        { opacity: 1, scaleX: 1, duration: 0.45, ease: "power3.out" },
+        0.55
+      );
+      tl.fromTo(
+        "#f02-kicker",
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" },
+        2.15
+      );
+
+      /* ── Scene 2 (3.0–7.0) : the fact strip assembles ─────────────────────
+         dynamic-content-sequencing — each chip's window is computed from its
+         content length plus a per-item hold, so the sequencer assigns every
+         start/end itself. Nothing is hand-offset per chip. */
+      var CHIPS = [
+        { value: "3-6", label: "players", chars: 10, hold: 0.55 },
+        { value: "~15", label: "minutes", chars: 10, hold: 0.55 },
+        { value: "none", label: "coup required", chars: 17, hold: 1.0 }
+      ];
+      var BASE_DURATION = 0.45;
+      var SEC_PER_CHAR = 0.03;
+      var CHIP_ENTRANCE = 0.5;
+
+      var cumulative = STRIP_START;
+      var CHIP_TIMELINE = CHIPS.map(function (entry) {
+        var dur = BASE_DURATION + entry.chars * SEC_PER_CHAR + entry.hold;
+        var start = cumulative;
+        cumulative += dur;
+        return { start: start, end: cumulative, activeAt: start + CHIP_ENTRANCE + 0.1 };
+      });
+      var STRIP_END = CHIP_TIMELINE[CHIP_TIMELINE.length - 1].end;
+
+      tl.fromTo(
+        ["#f02-strip-rule", "#f02-div1", "#f02-div2", "#f02-strip-progress"],
+        { opacity: 0, scaleX: 0 },
+        { opacity: 1, scaleX: 1, duration: 0.6, ease: "power2.inOut" },
+        3.05
+      );
+
+      var valueEls = [
+        document.getElementById("f02-chipval1"),
+        document.getElementById("f02-chipval2"),
+        document.getElementById("f02-chipval3")
+      ];
+      var labelEls = [
+        document.getElementById("f02-chiplabel1"),
+        document.getElementById("f02-chiplabel2"),
+        document.getElementById("f02-chiplabel3")
+      ];
+
+      /* Each chip lands on its spoken cue; the active one brightens out of the
+         monochrome field a beat after it seats. */
+      function paintStrip(activeIndex) {
+        for (var i = 0; i < CHIP_TIMELINE.length; i++) {
+          var on = i <= activeIndex;
+          valueEls[i].style.color = on ? "#f0ece5" : "#888880";
+          labelEls[i].style.color = on ? "#888880" : "#505048";
+        }
+      }
+      paintStrip(-1);
+
+      CHIP_TIMELINE.forEach(function (chip, i) {
+        tl.fromTo(
+          "#f02-chip" + (i + 1),
+          { opacity: 0, scale: 0.9, y: 14 },
+          { opacity: 1, scale: 1, y: 0, duration: CHIP_ENTRANCE, ease: "power3.out" },
+          chip.start
+        );
+      });
+
+      /* One linear driver carries the strip's own run bar; the active entry is
+         reverse-searched out of the pre-computed TIMELINE, and the colour swap
+         fires only on an entry change — no per-frame DOM thrash. */
+      var stripDriver = { t: STRIP_START };
+      var lastActive = -2;
+      var progressFill = document.getElementById("f02-strip-fill");
+
+      tl.to(
+        stripDriver,
+        {
+          t: STRIP_END,
+          duration: STRIP_END - STRIP_START,
+          ease: "none",
+          onUpdate: function () {
+            var active = -1;
+            for (var i = CHIP_TIMELINE.length - 1; i >= 0; i--) {
+              if (stripDriver.t >= CHIP_TIMELINE[i].activeAt) {
+                active = i;
+                break;
+              }
+            }
+            if (active !== lastActive) {
+              paintStrip(active);
+              lastActive = active;
+            }
+            var pct = ((stripDriver.t - STRIP_START) / (STRIP_END - STRIP_START)) * 100;
+            progressFill.style.width = Math.max(0, Math.min(100, pct)).toFixed(2) + "%";
+          }
+        },
+        STRIP_START
+      );
+
+      /* ── Scene 3 (7.0–13.0) : the deal, with real mass ────────────────────
+         spring-stack-shuffle's deal-and-settle: lift off the deck, arc in,
+         land with one small overshoot — and the settled card takes the weight
+         of the next one landing. Chained segments are explicit fromTo pairs
+         with immediateRender off, so neither clobbers the other at build. */
+      tl.fromTo(
+        "#f02-deck",
+        { opacity: 0, y: -10 },
+        { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" },
+        6.45
+      );
+
+      var A_X = -437;
+      var A_Y = -308;
+      gsap.set("#f02-card1", { x: A_X, y: A_Y, scale: 0.84, rotation: -14, opacity: 0 });
+
+      tl.fromTo(
+        "#f02-card1",
+        { opacity: 0, x: A_X, y: A_Y, scale: 0.84, rotation: -14 },
+        { opacity: 1, x: -205, y: -150, scale: 0.93, rotation: -7, duration: 0.26, ease: "power2.out" },
+        6.9
+      );
+      tl.fromTo(
+        "#f02-card1",
+        { opacity: 1, x: -205, y: -150, scale: 0.93, rotation: -7 },
+        {
+          opacity: 1,
+          x: 0,
+          y: 0,
+          scale: 1,
+          rotation: -1.6,
+          duration: 0.46,
+          ease: landEase(0.05),
+          immediateRender: false
+        },
+        7.16
+      );
+
+      var B_X = -859;
+      var B_Y = -294;
+      gsap.set("#f02-card2", { x: B_X, y: B_Y, scale: 0.84, rotation: 14, opacity: 0 });
+
+      tl.fromTo(
+        "#f02-card2",
+        { opacity: 0, x: B_X, y: B_Y, scale: 0.84, rotation: 14 },
+        { opacity: 1, x: -400, y: -140, scale: 0.93, rotation: 8, duration: 0.26, ease: "power2.out" },
+        7.55
+      );
+      tl.fromTo(
+        "#f02-card2",
+        { opacity: 1, x: -400, y: -140, scale: 0.93, rotation: 8 },
+        {
+          opacity: 1,
+          x: 0,
+          y: 0,
+          scale: 1,
+          rotation: 2.1,
+          duration: 0.46,
+          ease: landEase(0.05),
+          immediateRender: false
+        },
+        7.81
+      );
+
+      /* the deck gives up its weight, one card at a time */
+      tl.fromTo(
+        "#f02-deck",
+        { x: 0, y: 0 },
+        { x: -4, y: 5, duration: 0.4, ease: "power2.out", immediateRender: false },
+        6.92
+      );
+      tl.fromTo(
+        "#f02-deck",
+        { x: -4, y: 5 },
+        { x: -8, y: 10, duration: 0.4, ease: "power2.out", immediateRender: false },
+        7.58
+      );
+
+      /* compress-resettle: card one takes the weight of card two landing */
+      tl.fromTo(
+        "#f02-card1",
+        { y: 0 },
+        { y: 7, duration: 0.13, ease: "power2.out", immediateRender: false },
+        8.27
+      );
+      tl.fromTo(
+        "#f02-card1",
+        { y: 7 },
+        { y: 0, duration: 0.24, ease: "power2.out", immediateRender: false },
+        8.4
+      );
+
+      /* the stamps: "life" as each card seats, "claimed power" on the cue */
+      tl.fromTo(
+        "#f02-stamp1-life",
+        { opacity: 0, y: 6 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" },
+        7.64
+      );
+      tl.fromTo(
+        "#f02-stamp2-life",
+        { opacity: 0, y: 6 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" },
+        8.32
+      );
+      tl.fromTo(
+        "#f02-stamp1-power",
+        { opacity: 0, y: 6 },
+        { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" },
+        9.9
+      );
+      tl.fromTo(
+        "#f02-stamp2-power",
+        { opacity: 0, y: 6 },
+        { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" },
+        9.98
+      );
+
+      /* "Truth is optional." — the third chip springs beneath the pair */
+      tl.fromTo(
+        "#f02-truth",
+        { opacity: 0, scale: 0.72, y: 16 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.6, ease: "power3.out" },
+        11.85
+      );
+
+      /* hold to the cut — the cards stay still; the subject is not a
+         breathing card, and the frame's root transition owns the exit. */
+
+      tl.seek(0);
+      window.__timelines["02-first-game"] = tl;
+    })();
+  </script>
+</template>

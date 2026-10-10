@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "preferences": {
+    "destination": {
+      "value": "youtube",
+      "confirmed_in": [
+        "coup-g54-how-to-play"
+      ],
+      "updated_at": "2026-10-10T17:07:39.733Z"
+    },
+    "aspect": {
+      "value": "1920x1080",
+      "confirmed_in": [
+        "coup-g54-how-to-play"
+      ],
+      "updated_at": "2026-10-10T17:07:39.777Z"
+    },
+    "flow": {
+      "value": "automation",
+      "confirmed_in": [
+        "coup-g54-how-to-play"
+      ],
+      "updated_at": "2026-10-10T17:07:39.827Z"
+    },
+    "storyboard": {
+      "value": "yes",
+      "confirmed_in": [
+        "coup-g54-how-to-play"
+      ],
+      "updated_at": "2026-10-10T17:07:39.872Z"
+    },
+    "style_preset.faceless-explainer": {
+      "value": "broadside",
+      "confirmed_in": [
+        "coup-g54-how-to-play"
+      ],
+      "updated_at": "2026-10-10T17:08:43.281Z"
+    }
+  },
+  "sightings": {}
+}

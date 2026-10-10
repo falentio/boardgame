@@ -1,0 +1,93 @@
+USER REQUEST (verbatim): create tutorial video for coup rebellion g54 games
+
+SOURCE OF INFORMATION — distilled from this repo's rules research
+(docs/research/coup-rebellion-g54/*.md), the material the game implementation is built on.
+
+WHAT IT IS
+- Coup: Rebellion G54 ("G54"), 2014, designer Rikki Tahta, published by La Mame Games
+  and Indie Boards and Cards. Standalone game, NOT an expansion — owning base Coup is
+  not required.
+- Bluffing and deduction card game for 3-6 players (best 4-6; 2 players not supported;
+  Kickstarter edition with 4 copies per role supports 7-8). About 15 minutes per game.
+  Age 14+. "Easy to learn." Political-dystopia art.
+- Engine reuses classic Coup: hidden influence cards are lives; claims may be lies;
+  anything can be challenged; lost challenge costs a life; last player with a face-down
+  card wins. No scoring, no second place, game ends the instant one player remains.
+
+THE G54 TWIST — VARIABLE ROLE SETUP
+- Box holds 25 role cards. Every game uses only 5: 1 Finance + 1 Communications +
+  1 Force + 2 Special Interest. That makes 5x5x5x45 = 5,625 legal combinations, and
+  each combination plays differently.
+- Finance = money. Communications = card swap/filter. Force = remove influence for
+  coins. Special Interest = negotiation, protection, reactive effects.
+- The influence deck is 15 cards: 3 copies of each of the 5 active roles.
+- The 5 active role cards sit face up, public, all game — they and the 2 general
+  action cards are the only legal actions.
+- Suggested first-game "starter set": Banker (Finance), Director (Communications),
+  Guerrilla (Force), Politician + Peacekeeper (Special Interest). Advanced roles
+  (Spy, Speculator, Writer, Producer, General, Mercenary, Communist, Customs Officer,
+  Missionary, Intellectual, Lawyer, Protestor...) are saved for later games.
+
+SETUP (from the official steps)
+1. Put the 2 general action cards (Income, Coup) in the center.
+2. Choose 5 role cards by category (random or draft) — beginner set excludes advanced roles.
+3. Lay the 5 role cards face up so all players read them; pass them around.
+4. Build the influence deck from those 5 roles (15 cards), shuffle, deal 2 face down to each player.
+5. Remainder is the Court deck, face down, center.
+6. Give each player 2 coins (public), rest is the Treasury. Last winner starts; turns go clockwise.
+
+THE TURN
+- One action per turn. No passing. Any action you can afford.
+- 10 or more coins at the start of your turn: your ONLY legal action is Coup.
+- General actions (always available, no claim, cannot be challenged or blocked):
+  Income = take 1 coin. Coup = pay 7 coins, pick a target, target loses 1 influence
+  immediately; always works, no challenge, no block.
+- Role actions: claim a role (truth optional — proof only matters if challenged).
+  If several linked claims resolve from one action, resolve clockwise from the active player.
+
+CLAIMS, CHALLENGES, COUNTERS
+- Challenge: any player, even uninvolved, may challenge any role claim or counter.
+  One challenge resolves fully before play continues. General actions can never be challenged.
+- Resolution: the challenged player shows a real matching card (then shuffles it into the
+  Court and draws a replacement — identity stays hidden) or declines. Show = challenger
+  loses 1 life. Decline/cannot = claimant loses 1 life and the whole action fails; costs
+  paid for the failed action are returned.
+- Multiple challenges: first come, first served; ties break clockwise from active player.
+- Counteraction (block): the target claims a role to defend. May be a lie; may be challenged.
+  Unchallenged counter succeeds. Default rule: ONLY THE TARGET may block in self-defense
+  (exceptions: Protestor funding, Capitalist collection, General multi-block, Priest).
+- A successful block stops the loss or theft but does NOT refund the attacker's coins
+  (e.g. Judge pays 3, block succeeds, the 3 stays paid).
+- In G54 each Force role is blocked by ITSELF (Guerrilla blocks Guerrilla, Judge blocks
+  Judge) — unlike base Coup there are no guaranteed cross-role answers, because the
+  active role set varies every game.
+
+LOSING INFLUENCE AND ELIMINATION
+- Face-down cards are lives. On each life loss, the LOSER chooses which of their cards
+  to turn face up. Revealed cards stay face up and grant no power. Hidden info never leaks.
+- Zero face-down cards = eliminated immediately; return all coins to the Treasury.
+- Double life loss in one turn is legal: challenge an attack and lose (+1), suffer the
+  execution anyway (+1). Same with a false block that gets caught.
+- Reactive timing exists (Missionary, Intellectual after a loss; Lawyer on elimination)
+  — advanced territory, first games use the starter set.
+
+STARTER SET ROLES (teach these five)
+- Banker (Finance): take 3 coins. No target, no block.
+- Director (Communications): draw 2 from Court, return any 2. No block.
+- Guerrilla (Force): pay 4, choose a target, target loses 1 life unless blocked;
+  blocked only by Guerrilla (target only).
+- Politician (Special Interest): steal up to 2 coins from a target; blocked by
+  Politician (target only).
+- Peacekeeper (Special Interest): take 1 coin and the Peacekeeping token — holder
+  cannot be targeted by anything except Coup (challenges still allowed). One token;
+  a new claim steals it.
+
+TOKENS (in play only when their role is active)
+Treaty (Foreign Consular allies cannot target each other, even by Coup, until final two),
+Peacekeeping (Peacekeeper immunity except Coup), Disappear (Mercenary delayed kill after
+target's next turn), Tax (Customs Officer: every claim of the marked role pays the holder 1).
+
+TRUST RULES
+Deals are allowed, promises are never binding, no showing hidden cards, no lending or
+gifting coins unless a role forces it, use counters if coins run out, partial actions
+allowed when coins or cards are short.
