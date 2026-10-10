@@ -301,6 +301,35 @@ const main = async () => {
     else if (fits.top >= 0 && fits.bottom <= fits.innerHeight) pass(`the dialog fits the viewport (top ${fits.top.toFixed(1)}, bottom ${fits.bottom.toFixed(1)}, height ${fits.innerHeight})`);
     else fail(`the dialog overflows the viewport: top ${fits.top}, bottom ${fits.bottom}, height ${fits.innerHeight}`);
 
+    const scroll = await browser.page.eval(`(() => {
+      const d = document.querySelector(${JSON.stringify(DIALOG)});
+      if (!d) return null;
+      const strip = d.querySelector('[data-slot=role-strip]');
+      if (!strip) return null;
+      const dlgBefore = d.scrollLeft;
+      d.scrollLeft = 99999;
+      const dlgScrolled = d.scrollLeft;
+      d.scrollLeft = dlgBefore;
+      const stripBefore = strip.scrollLeft;
+      strip.scrollLeft = 99999;
+      const stripScrolled = strip.scrollLeft;
+      strip.scrollLeft = stripBefore;
+      return {
+        dialogOverflow: d.scrollWidth - d.clientWidth,
+        dialogScrolled: dlgScrolled,
+        stripOverflow: strip.scrollWidth - strip.clientWidth,
+        stripScrolled: stripScrolled,
+      };
+    })()`);
+    if (scroll === null) {
+      fail("the dialog's scroll behaviour could not be measured");
+    } else {
+      if (scroll.dialogOverflow === 0 && scroll.dialogScrolled === 0) pass("the dialog does not scroll horizontally");
+      else fail(`the dialog scrolls horizontally (overflow ${scroll.dialogOverflow}px, scrolled to ${scroll.dialogScrolled})`);
+      if (scroll.stripOverflow > 0 && scroll.stripScrolled > 0) pass(`only the role strip scrolls (overflow ${scroll.stripOverflow}px)`);
+      else fail(`the role strip should be the horizontal scroller, overflow ${scroll.stripOverflow}px scrolled to ${scroll.stripScrolled}`);
+    }
+
     await browser.page.pressEscape();
     const closed = await browser.page.waitFor(`!document.querySelector(${JSON.stringify(DIALOG)})`, { timeoutMs: 5000 });
     if (!closed) fail("Escape did not close the confirm dialog");
