@@ -5,7 +5,11 @@ import type { DistrictCtx, DistrictEffect, DistrictScoring } from "./effects.ts"
 /** Stub: the theater district's ability is filled in by its own worker. */
 export const theater: DistrictEffect = (ctx: DistrictCtx) => ctx.state;
 
-/** Stub: end-game points for theater; its own worker fills this in. */
+/**
+ * The Theater carries no end-game points: the catalog gives it an in-round
+ * ability (swap your character for another player's at the start of the round),
+ * not a scoring bonus. So it adds zero to its owner's final score.
+ */
 export const theaterScoring: DistrictScoring = () => 0;
 
 /** Stub: the theatre-swap window pops until the theater worker fills it in. */
@@ -14,5 +18,9 @@ export const theaterResolve: WindowResolver = (ctx) => ({
   steps: ctx.state.steps.slice(1),
 });
 
-/** The engine hooks this district responds to; empty means never called. */
+/**
+ * The Theater responds to no engine hook here. Its rulebook ability fires at the
+ * start of the round, and the engine has no round-start district hook, so this
+ * row stays empty; see the unit report for the shared-file change it needs.
+ */
 export const theaterTriggers: readonly DistrictHook[] = [];
