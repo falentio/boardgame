@@ -414,9 +414,8 @@ export const applyCall = (state: CitadelsState): CitadelsState => {
       CALL,
       ...rest,
     ];
-    // `active` stays the called character's owner: that seat's character was called.
     return withSteps(
-      { ...state, callRank: rank + 1 },
+      { ...state, active: seat, callRank: rank + 1 },
       withThreat(state, character, seat, takeover),
     );
   }
