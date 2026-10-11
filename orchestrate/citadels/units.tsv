@@ -59,3 +59,8 @@ fix4-clauses	verify	done				D4-5 bishop shield read by marshal/diplomat; D4-6 iv
 fix4-ivory-tests	verify	done				correct the 2 stale ivory-tower fixtures (fix-scoring D12, districts/ivory-tower.test.ts) to the catalog rule: undeclared HQ blocks the tower, declared non-unique HQ does not
 fix4-guards	verify	done				strengthen the Navigator/Spy/Thief engine-coverage rows from wiring assertions to behavioral teeth
 fix4-test-corrections	verify	done				correct the 10 stale fixtures the fix4 source fixes invalidated: hooks x2 + blackmailer.test.ts x6 (threat after gather), thieves-den.test.ts card-paid den, verification4.test.ts D4-1 re-aim
+verify-5	verify	done				fifth independent adversarial pass at a59355b: predicate audit, teeth audit incl the newly strengthened rows and the re-aimed D4-1, verification5.test.ts counterexamples
+fix5-engine	verify	done				D5-1..4 witch resume runs the bewitched character ability + build limit; D5-5 threat after gather before build; D5-6 cardinal shortfall reachable; D5-7 school-of-magic declaration before income; owns helpers.ts + witch + cardinal + school-of-magic + king/emperor/trader
+fix5-data	verify	done				D5-8 four stale character summaries (bishop, tax-collector, blackmailer, magician) reconciled to the implemented effects; owns characters.ts
+fix5-last-fixture	verify	done				correct the coordinator-ruled stale D4-1b fixture in verification4.test.ts (the resume now pays the bewitched ability, so the fold totals +3)
+verify-6	verify	running				sixth independent adversarial pass at 32b9c1d (fully green head): predicate audit, teeth audit, verification6.test.ts counterexamples

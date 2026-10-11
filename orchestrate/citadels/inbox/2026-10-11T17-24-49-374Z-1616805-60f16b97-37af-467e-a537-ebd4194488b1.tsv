@@ -1,0 +1,1 @@
+2026-10-11T17:24:49.374Z	fix5-engine	fix5-engine	completed	commits 646fe22 (D5-7), 1f86f08 (D5-1..5), c5bd7b6 (D5-6), c6cfee0 (D5-5 refinement); all 7 counterexamples green with rules.json citations; one remaining red = the coordinator-ruled stale fixture D4-1b (+3 rule-true under the corrected resume)
