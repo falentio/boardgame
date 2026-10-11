@@ -663,12 +663,6 @@ export const resolveTurn: WindowResolver = (ctx) => {
   const heldWitch =
     !resumedWitch && ctx.state.pending === null && activeCharacterOf(state, seat) === "witch";
   if (heldWitch) return withSteps(state, endTurnThen(rest));
-  // A threatened seat must gather resources, then resolve the threat, then use
-  // abilities or build. The engine's turn window does gather and build in one, so
-  // a threatened turn splits: this window only gathers, the threat window opens
-  // next (the post-gather gold sets the bribe), and the second turn window below
-  // the threat takes the build. A build answered here gathers instead, so no
-  // district can land ahead of the threat.
   const playedCharacter = activeCharacterOf(state, seat);
   const threatened =
     !resumedWitch &&
