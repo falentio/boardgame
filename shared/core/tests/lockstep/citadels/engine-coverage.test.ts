@@ -1111,3 +1111,118 @@ describe("engine coverage: an end-of-turn district fires once per turn", () => {
 
 
 
+
+// ---------------------------------------------------------------------------
+// A two-character seat. In a 2- or 3-player game each seat drafts two characters
+// (setup.ts perSeat = 2). No row above folds such a seat — every guard hands its
+// seats one claim — so a defect that lives only in the two-character dimension
+// (the seventh- and eighth-pass families) is unreachable by this guard suite.
+// These two rows fold a seat that holds two claims.
+// ---------------------------------------------------------------------------
+
+describe("engine coverage: a two-character seat", () => {
+  /**
+   * D8-1 teeth. ANN holds the Witch AND the Architect (a two-character seat);
+   * her city holds a School of Magic. The Witch bewitches the Bishop and resumes
+   * as it, playing the Bishop with her own city. The school must declare the
+   * Bishop's religious colour before the income above the turn window counts it.
+   * Remove the resume declaration (characters/witch.ts) and the card stays
+   * undeclared: declaredType undefined and the purse one gold short (4, not 5).
+   */
+  test("the Witch's resume declares the School of Magic of a two-character seat", () => {
+    const base = rawGenesis(SEATS3, castWith("witch"), "coverage-two-char-witch");
+    const armed: CitadelsState = {
+      ...base,
+      phase: "turn",
+      draft: null,
+      claimed: [
+        { seat: ANN, character: "witch" },
+        { seat: ANN, character: "architect" },
+        { seat: BOB, character: "bishop" },
+        { seat: CARA, character: "warlord" },
+      ],
+      callRank: 1,
+      active: ANN,
+      steps: [{ kind: "call" }, { kind: "end-round" }],
+      pending: null,
+      builtThisTurn: 0,
+      players: base.players.map((player) =>
+        player.seat === ANN
+          ? {
+              ...player,
+              gold: 0,
+              hand: ["tavern"] as DistrictId[],
+              city: [{ id: "school-of-magic" as DistrictId, gold: 0 }],
+            }
+          : player,
+      ),
+    };
+    const steps: CitadelsState[] = [armed];
+    for (let i = 0; i < 300 && steps[steps.length - 1]!.phase !== "draft"; i += 1) {
+      steps.push(
+        advance(steps[steps.length - 1]!, (_seat, state) => {
+          const purpose = openPurpose(state);
+          if (purpose === "choose-character") return { t: "name-character", character: "bishop" };
+          if (purpose === "witch-takeover" || purpose === "witch-resume") return { t: "pass" };
+          if (purpose === "turn") return { t: "gold" };
+          if (purpose === "keep") return { t: "keep", index: 0 };
+          return null;
+        }),
+      );
+    }
+    const end = steps[steps.length - 1] as CitadelsState;
+    const school = rawPlayer(end, ANN).city.find((district) => district.id === "school-of-magic");
+    expect(
+      school?.declaredType,
+      "the Witch's resumed turn declared her School of Magic the Bishop's colour",
+    ).toBe("religious");
+    // The Witch gathers +2 on her held turn (gold 2); the resumed Bishop turn then
+    // adds 1 per religious, counting the declared school (gold 3). Without the
+    // resume declaration the school is unique, the Bishop adds 0, and the fold
+    // never reaches 3 before the second character's gather moves it past.
+    expect(
+      steps.some((state) => rawGold(state, ANN) === 3),
+      "the Bishop income counted the declared school on the resume",
+    ).toBe(true);
+  });
+
+  /**
+   * D8-2 teeth. ANN holds two claims (assassin rank 1, merchant rank 6) and owns
+   * the Theater; the theatre-swap window is open owed by ANN. rules.json
+   * (theatre): "In 2-3 player games you choose which of your two characters to
+   * give and randomly take one of your opponent's." ANN answers with keep index
+   * 1 (the merchant). A resolver that always gives the lowest-rank claim keeps
+   * merchant and gives assassin, failing both rows.
+   */
+  test("the Theater owner gives the claim it chooses from a two-character seat", () => {
+    const base = rawGenesis(SEATS3, castWith("assassin"), "coverage-two-char-theater");
+    const armed: CitadelsState = {
+      ...base,
+      phase: "turn",
+      draft: null,
+      claimed: [
+        { seat: ANN, character: "assassin" },
+        { seat: ANN, character: "merchant" },
+        { seat: BOB, character: "king" },
+        { seat: BOB, character: "bishop" },
+        { seat: CARA, character: "architect" },
+        { seat: CARA, character: "warlord" },
+      ],
+      callRank: 1,
+      active: ANN,
+      steps: [
+        { kind: "window", window: { kind: "oneOf", purpose: "theatre-swap", seats: [ANN] } },
+        { kind: "call" },
+        { kind: "end-round" },
+      ],
+      pending: null,
+      builtThisTurn: 0,
+    };
+    const after = advance(armed, (seat) => (seat === ANN ? { t: "keep", index: 1 } : null));
+    const annAfter = after.claimed
+      .filter((claim) => claim.seat === ANN)
+      .map((claim) => claim.character);
+    expect(annAfter, "the owner gave its higher-rank claim").not.toContain("merchant");
+    expect(annAfter, "the owner kept its lowest-rank claim").toContain("assassin");
+  });
+});
