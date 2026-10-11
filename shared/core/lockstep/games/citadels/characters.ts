@@ -229,7 +229,7 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     rank: 7,
     income: null,
     crown: false,
-    summary: "Take 4 gold, or draw 4 cards and keep 1.",
+    summary: "Take 4 gold, or draw 4 cards.",
   },
   {
     id: "scholar",

@@ -62,14 +62,28 @@ const goldOf = (state: CitadelsState, seat: SeatId): number =>
   state.players.find((player) => player.seat === seat)?.gold ?? 0;
 
 /**
- * The documented tie-breaks: highest total, then most district points, then most
- * gold. Seats tied on all three have no winner.
+ * The catalog's tie-break, read off the terminal state: highest total, then the
+ * highest revealed rank, then district points, then gold; a seat tied on all
+ * four leaves the game with no winner. Catalog "Scoring (exact)", final line:
+ * "Tie-break: the tied player who revealed the highest-numbered rank in the last
+ * round wins." The catalog names no district-points or gold tie-break; those two
+ * tiers are the module's deterministic fallbacks, reached only where the rank
+ * tier leaves the seats still tied.
  */
+const revealedRankOf = (state: CitadelsState, seat: SeatId): number =>
+  state.claimed.reduce(
+    (best, claim) =>
+      claim.seat === seat ? Math.max(best, specOfCharacter(claim.character).rank) : best,
+    0,
+  );
+
 const documentedWinner = (state: CitadelsState): SeatId | null => {
   const scores = scoreGame(state);
+  const rankOf = (seat: SeatId): number => revealedRankOf(state, seat);
   const best = [...scores].sort(
     (a, b) =>
       b.total - a.total ||
+      rankOf(b.seat) - rankOf(a.seat) ||
       b.districts - a.districts ||
       goldOf(state, b.seat) - goldOf(state, a.seat),
   )[0];
@@ -77,6 +91,7 @@ const documentedWinner = (state: CitadelsState): SeatId | null => {
   const tied = scores.filter(
     (row) =>
       row.total === best.total &&
+      rankOf(row.seat) === rankOf(best.seat) &&
       row.districts === best.districts &&
       goldOf(state, row.seat) === goldOf(state, best.seat),
   );
@@ -266,7 +281,12 @@ test("at terminal every seat scores and the top scorer wins under the documented
   }
 });
 
-test("winnerOf breaks a tie on district points, then gold", () => {
+test("winnerOf breaks a tie by the highest revealed rank, then district points, then gold", () => {
+  // Catalog "Scoring (exact)", final line: "Tie-break: the tied player who
+  // revealed the highest-numbered rank in the last round wins." The catalog
+  // names no further tie-break; the district-points and gold tiers are the
+  // module's own deterministic fallbacks, exercised only where the tiers above
+  // them leave the seats still tied.
   const base = rawGenesis(SEATS3, BASE_CAST_IDS, "citadels-tiebreak");
   const withCities = (
     cities: readonly (readonly [SeatId, readonly { readonly id: string; readonly cards?: readonly string[] }[]])[],
@@ -286,8 +306,30 @@ test("winnerOf breaks a tie on district points, then gold", () => {
     }),
   });
 
-  // Ann's Dragon Gate: 6 district points plus 2 end-game points. Bob's Museum:
-  // 4 district points plus 4 for the cards tucked under it. Both total 8.
+  // Ann and Bob tie on total (8), district points (6), and gold (2); Ann
+  // revealed the rank-4 King, Bob the rank-8 Warlord. Teeth: the rank tier alone
+  // decides, so the old district-points-first rule returns null here.
+  const tiedOnRanks: CitadelsState = {
+    ...withCities([
+      [ANN, [{ id: "dragon-gate" }]],
+      [BOB, [{ id: "dragon-gate" }]],
+    ]),
+    claimed: [
+      { seat: ANN, character: "king" },
+      { seat: BOB, character: "warlord" },
+    ],
+  };
+  const rankScores = scoreGame(tiedOnRanks);
+  expect(rankScores.find((row) => row.seat === ANN)?.total).toBe(8);
+  expect(rankScores.find((row) => row.seat === BOB)?.total).toBe(8);
+  expect(rankScores.find((row) => row.seat === ANN)?.districts).toBe(6);
+  expect(rankScores.find((row) => row.seat === BOB)?.districts).toBe(6);
+  expect(goldOf(tiedOnRanks, ANN)).toBe(goldOf(tiedOnRanks, BOB));
+  expect(winnerOf(tiedOnRanks)).toBe(BOB);
+
+  // Ranks tie (both seats are unclaimed, rank 0), so district points decide:
+  // Ann's Dragon Gate (6) over Bob's Museum plus four tucked cards (4), both
+  // totaling 8.
   const split = withCities([
     [ANN, [{ id: "dragon-gate" }]],
     [BOB, [{ id: "museum", cards: ["manor", "manor", "manor", "manor"] }]],
@@ -299,7 +341,8 @@ test("winnerOf breaks a tie on district points, then gold", () => {
   expect(scores.find((row) => row.seat === BOB)?.districts).toBe(4);
   expect(winnerOf(split)).toBe(ANN);
 
-  // Equal totals and district points, so gold decides.
+  // Equal totals, ranks, and district points, so gold decides; equal gold too
+  // leaves the game with no winner.
   const even = withCities([
     [ANN, [{ id: "dragon-gate" }]],
     [BOB, [{ id: "dragon-gate" }]],
