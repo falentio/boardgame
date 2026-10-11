@@ -88,17 +88,26 @@ const armedTurn = (
 };
 
 // ---------------------------------------------------------------------------
-// D4-1: the Witch can build on her own (held) turn.
+// D4-1: the Witch builds exactly once, at the resume, never on her held turn.
 //
 // rules.json (witch): "Gather resources, then call the name of another
-// character to bewitch; your turn is put on hold and you cannot build." The
-// engine's applyCall pushes the round's own turn window below the naming window
-// for every character, so the Witch's held turn carries a full gather-and-build
-// window. A folded Witch turn that answers that window with a build adds the
-// district to the Witch's city.
+// character to bewitch; your turn is put on hold and you cannot build. When the
+// bewitched character is called, its owner gathers resources and their turn
+// immediately ends (no build, no character ability). You then resume your turn
+// as if you were playing the bewitched character: you use that character's
+// abilities and build limit..."
+//
+// This block previously asserted "the Witch's held turn carries no build
+// window" and read a build during the held turn as the defect (the old engine
+// let her build at her own rank). The corrected engine (commit 6788a55) closes
+// the held turn without a build and grants the build at the resume, so the
+// rule-true claim is the inverse: no build on the held turn, exactly one build
+// at the resume (the bewitched character's build limit). The fold and policy
+// are unchanged; only the assertion was re-aimed. Teeth: if the held turn
+// regains its build, the fold shows two builds and both assertions below fail.
 // ---------------------------------------------------------------------------
 
-test("D4-1 the Witch's held turn carries no build window", () => {
+test("D4-1 the Witch builds once, at the resume, and never on her held turn", () => {
   const cast = castWith("witch");
   const armed = armedTurn(
     [
@@ -124,12 +133,33 @@ test("D4-1 the Witch's held turn carries no build window", () => {
     },
     intoDraft,
   );
-  const built = steps.some((state) => cityOf(state, ANN).length > 0);
-  // The Witch cannot build during her held turn. Measured on head: she builds a
-  // tavern at her own rank. Through a real dealt-and-drafted game (a
-  // foldGame with ANN drafting the Witch) she ends the round with three
-  // districts, one per turn window.
-  expect(built, "the Witch built during her held turn").toBe(false);
+  const startCity = cityOf(armed, ANN).length;
+  // The held turn is ANN's turn window before the bewitch resolves; the resume is
+  // the later ANN turn window carrying the witch-resume marker. The policy answers
+  // both with a build.
+  const heldTurn = steps.findIndex(
+    (state) => openPurpose(state) === "turn" && state.active === ANN,
+  );
+  const resumeTurn = steps.findIndex(
+    (state) =>
+      openPurpose(state) === "turn" &&
+      state.active === ANN &&
+      state.pending?.note === "witch-resume",
+  );
+  expect(heldTurn, "the held turn opens a window").toBeGreaterThan(-1);
+  expect(resumeTurn, "the resume turn opens a window").toBeGreaterThan(heldTurn);
+  // The held turn refuses the build ("you cannot build"); the resume lands exactly
+  // one, as the bewitched character.
+  expect(
+    cityOf(steps[heldTurn + 1] as CitadelsState, ANN).length,
+    "the Witch built during her held turn",
+  ).toBe(startCity);
+  expect(
+    cityOf(steps[resumeTurn + 1] as CitadelsState, ANN).length,
+    "the Witch built at the resume",
+  ).toBe(startCity + 1);
+  const end = steps[steps.length - 1] as CitadelsState;
+  expect(cityOf(end, ANN).length, "the Witch's total builds this round").toBe(startCity + 1);
 });
 
 // ---------------------------------------------------------------------------
