@@ -11,11 +11,14 @@ import {
   type SeatInput,
 } from "../../../index.ts";
 import {
+  charactersOfRank,
+  specOfCharacter,
   type CharacterId,
   type CitadelsAction,
   type CitadelsSetup,
   type CitadelsState,
   type CitadelsView,
+  type Rank,
   citadels,
 } from "../../../lockstep/games/citadels/index.ts";
 import {
@@ -23,6 +26,10 @@ import {
   specOfDistrict,
   type DistrictId,
 } from "../../../lockstep/games/citadels/districts.ts";
+import {
+  UNIQUE_EFFECTS,
+  type DistrictCtx,
+} from "../../../lockstep/games/citadels/districts/effects.ts";
 import { at, fakeClock, makeTable, type Table } from "../harness.ts";
 
 export { citadels };
@@ -332,3 +339,232 @@ export const autoAction = (seat: SeatId, view: CitadelsView): CitadelsAction | n
   return null;
 };
 
+
+// ---------------------------------------------------------------------------
+// Folded games
+//
+// The folded-game guard these helpers serve: a character or district ability
+// that only its own unit test reaches (a hand-placed window, an effect called
+// directly) can be dead in a real game and nothing notices. Everything below
+// starts from `rawGenesis`, so the deal, the draft, the rank cursor, the turn
+// stack, and the end-of-turn hooks are the engine's own.
+// ---------------------------------------------------------------------------
+
+/** A legal cast containing `target`: the rank-1..8 defaults, the target at its own rank. */
+export const castWith = (target: CharacterId): readonly CharacterId[] => {
+  const cast: CharacterId[] = [];
+  for (let rank = 1 as Rank; rank <= 8; rank = (rank + 1) as Rank) {
+    const at = charactersOfRank(rank);
+    cast.push(at.includes(target) ? target : at[0]);
+  }
+  if (specOfCharacter(target).rank === 9) cast.push(target);
+  return cast;
+};
+
+/** Every state the engine passed through, in order, plus the deal that opened the game. */
+export interface Fold {
+  readonly steps: readonly CitadelsState[];
+  readonly entropy: string;
+}
+
+export const foldStart = (fold: Fold): CitadelsState => fold.steps[0] as CitadelsState;
+
+export const foldEnd = (fold: Fold): CitadelsState => fold.steps[fold.steps.length - 1] as CitadelsState;
+
+/** The window purpose open at each frame of the fold. */
+export const foldPurposes = (fold: Fold): readonly (string | null)[] =>
+  fold.steps.map(openPurpose);
+
+export const goldDelta = (fold: Fold, seat: SeatId): number =>
+  rawGold(foldEnd(fold), seat) - rawGold(foldStart(fold), seat);
+
+export const handDelta = (fold: Fold, seat: SeatId): number =>
+  rawHand(foldEnd(fold), seat).length - rawHand(foldStart(fold), seat).length;
+
+export const cityIds = (state: CitadelsState, seat: SeatId): readonly DistrictId[] =>
+  rawPlayer(state, seat).city.map((district) => district.id);
+
+/** A seeded board: cities, hands, gold, and the crown, laid over a real deal. */
+export interface Board {
+  readonly cities?: Readonly<Record<string, readonly DistrictId[]>>;
+  readonly hands?: Readonly<Record<string, readonly DistrictId[]>>;
+  readonly gold?: Readonly<Record<string, number>>;
+  readonly crown?: SeatId;
+}
+
+const seedBoard = (state: CitadelsState, board: Board): CitadelsState => ({
+  ...state,
+  ...(board.crown === undefined ? {} : { crown: board.crown }),
+  players: state.players.map((player) => ({
+    ...player,
+    ...(board.cities?.[player.seat] === undefined
+      ? {}
+      : { city: board.cities[player.seat].map((id) => ({ id, gold: 0 })) }),
+    ...(board.hands?.[player.seat] === undefined ? {} : { hand: [...board.hands[player.seat]] }),
+    ...(board.gold?.[player.seat] === undefined ? {} : { gold: board.gold[player.seat] }),
+  })),
+});
+
+/** The draft policy: take the wanted character when the pool offers it, else let the engine pick. */
+const draftPolicy =
+  (wanted: Readonly<Record<string, CharacterId>>) =>
+  (seat: SeatId, state: CitadelsState): CitadelsAction | null => {
+    const want = wanted[seat];
+    const pool = state.draft?.pool ?? [];
+    return want !== undefined && pool.includes(want) ? { t: "pick", character: want } : null;
+  };
+
+/**
+ * Fold real drafts until each named seat drafts its character. A seat that never
+ * sees its character in the passing hand gets the engine's pick, so the deal that
+ * comes back is a game the engine actually dealt.
+ */
+export const dealFor = (
+  cast: readonly CharacterId[],
+  seats: readonly SeatId[],
+  wanted: Readonly<Record<string, CharacterId>>,
+  uniques: readonly DistrictId[] = DEFAULT_UNIQUES,
+  prefix = "citadels-deal",
+): CitadelsState => {
+  for (let attempt = 0; attempt < 400; attempt += 1) {
+    const entropy = `${prefix}-${attempt}`;
+    let state = rawGenesis(seats, cast, entropy, uniques);
+    for (let i = 0; i < 60 && state.draft !== null; i += 1) {
+      state = advance(state, draftPolicy(wanted), entropy);
+    }
+    if (state.draft !== null) continue;
+    const dealt = Object.entries(wanted).every(([seat, character]) =>
+      state.claimed.some((claim) => claim.seat === seat && claim.character === character),
+    );
+    if (dealt) return state;
+  }
+  throw new Error(`no deal gave ${JSON.stringify(wanted)} from ${cast.join(",")}`);
+};
+
+/** Stop once `seat` has acted and the turn has moved on. */
+export const afterSeatTurn =
+  (seat: SeatId) =>
+  (steps: readonly CitadelsState[]): boolean => {
+    let acted = false;
+    for (const state of steps) {
+      if (state.active === seat) acted = true;
+      else if (acted) return true;
+    }
+    return false;
+  };
+
+/** Fold frames from `state` until `stop` holds, recording every state on the way. */
+export const foldFrom = (
+  state: CitadelsState,
+  answer: (seat: SeatId, state: CitadelsState) => CitadelsAction | null,
+  stop: (steps: readonly CitadelsState[]) => boolean,
+  guard = 250,
+  entropy = "citadels-fold",
+): Fold => {
+  const steps: CitadelsState[] = [state];
+  while (!stop(steps) && steps.length < guard) {
+    steps.push(advance(steps[steps.length - 1] as CitadelsState, answer, entropy));
+  }
+  return { steps, entropy };
+};
+
+/** A whole game folded from a real deal, on a board the caller arranges. */
+export const foldGame = (opts: {
+  readonly cast: readonly CharacterId[];
+  readonly seats: readonly SeatId[];
+  readonly wanted: Readonly<Record<string, CharacterId>>;
+  readonly board?: Board;
+  readonly uniques?: readonly DistrictId[];
+  readonly answer: (seat: SeatId, state: CitadelsState) => CitadelsAction | null;
+  readonly stop: (steps: readonly CitadelsState[]) => boolean;
+  readonly guard?: number;
+  readonly prefix?: string;
+}): Fold => {
+  const dealt = dealFor(
+    opts.cast,
+    opts.seats,
+    opts.wanted,
+    opts.uniques,
+    opts.prefix ?? `citadels-deal-${Object.values(opts.wanted).join("-")}`,
+  );
+  const seeded = seedBoard(dealt, opts.board ?? {});
+  return foldFrom(seeded, opts.answer, opts.stop, opts.guard ?? 250, "citadels-fold");
+};
+
+/** One character turn folded from an armed turn stack, on a board the caller arranges. */
+export const foldTurn = (opts: {
+  readonly character: CharacterId;
+  readonly board?: Board;
+  readonly cast?: readonly CharacterId[];
+  readonly seats?: readonly SeatId[];
+  readonly rank?: number;
+  readonly uniques?: readonly DistrictId[];
+  readonly answer: (seat: SeatId, state: CitadelsState) => CitadelsAction | null;
+  readonly stop?: (steps: readonly CitadelsState[]) => boolean;
+  readonly guard?: number;
+  readonly entropy?: string;
+}): Fold => {
+  const seats = opts.seats ?? SEATS3;
+  const character = opts.character;
+  const rank = opts.rank ?? specOfCharacter(character).rank;
+  const genesis = rawGenesis(
+    seats,
+    opts.cast ?? BASE_CAST_IDS,
+    opts.entropy ?? "citadels-turn",
+    opts.uniques,
+  );
+  const armed: CitadelsState = {
+    ...seedBoard(
+      {
+        ...genesis,
+        phase: "turn",
+        draft: null,
+        claimed: [{ seat: ANN, character }],
+        callRank: rank,
+        active: ANN,
+        steps: [{ kind: "call" }, { kind: "end-round" }],
+        pending: null,
+      },
+      opts.board ?? {},
+    ),
+    taxPot: 0,
+    builtThisTurn: 0,
+  };
+  return foldFrom(
+    armed,
+    opts.answer,
+    opts.stop ?? ((steps) => steps.length > 1 && foldEnd({ steps } as Fold).phase === "draft"),
+    opts.guard ?? 120,
+    opts.entropy ?? "citadels-turn",
+  );
+};
+
+/**
+ * Wrap every unique district effect so each call is counted, delegating to the
+ * real effect. The count is the proof the engine reached that district's hook:
+ * a district the engine never calls keeps a zero count.
+ */
+export interface SpiedEffects {
+  readonly calls: readonly DistrictId[];
+  readonly count: (district: DistrictId) => number;
+  restore(): void;
+}
+
+export const spyEffects = (): SpiedEffects => {
+  const originals = new Map<DistrictId, ReturnType<typeof UNIQUE_EFFECTS[keyof typeof UNIQUE_EFFECTS]>>();
+  const calls: DistrictId[] = [];
+  for (const [id, effect] of Object.entries(UNIQUE_EFFECTS)) {
+    originals.set(id, effect);
+    UNIQUE_EFFECTS[id] = (ctx: DistrictCtx) => {
+      calls.push(id);
+      return effect(ctx);
+    };
+  }
+  return {
+    calls,
+    count: (district) => calls.filter((call) => call === district).length,
+    restore: () => {
+      for (const [id, effect] of originals) UNIQUE_EFFECTS[id] = effect;
+    },
+  };
+};
