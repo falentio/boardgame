@@ -301,7 +301,7 @@ lockstep/
         ├── cards.ts           EVIDENCE_CARDS, HAND_SIZE, deckFor, colour helpers
         ├── actions.ts         ScapeGoatAction and its codec
         ├── setup.ts           ScapeGoatSetup, validation, genesis
-        ├── locations.ts       LOCATION_ACTIONS, the location-action registry
+        ├── locations.ts       LOCATION_LINE, faceOf, the location line
         ├── reducer.ts         seatsOwed, step, isTerminal, resolveFrame
         ├── view.ts            project, legalActions, winnersOf, view types
         └── index.ts           the scapeGoat GameDefinition and project

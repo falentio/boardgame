@@ -1,5 +1,16 @@
 import { expect, test } from "vitest";
-import { genesisSeed, makeRandom, makeRoster } from "../../../index.ts";
+import {
+  act,
+  buildFrame,
+  frameIndex,
+  genesisSeed,
+  idle,
+  makeRandom,
+  makeRoster,
+  resign,
+  type Json,
+  type SeatInput,
+} from "../../../index.ts";
 import {
   ANN,
   BOB,
@@ -7,20 +18,29 @@ import {
   DEE,
   EVE,
   HAND_SIZE,
+  MIN_SEATS,
   SEATS6,
+  ScapeGoatError,
   activeSeat,
+  activeSeats,
   antipodeOf,
+  atFrameReveal,
+  atOf,
+  capThenCops,
   cardId,
   deckFor,
   handOf,
   moveOwed,
   outcomeOf,
+  playRaw,
   project,
   rawGenesis,
   scapeGoat,
+  seatsFor,
   seatsOwedNow,
   stepResign,
   stepState,
+  winnersOf,
   withAt,
   withHand,
   withHands,
@@ -29,10 +49,13 @@ import {
   withPrepareTokens,
   withScapegoat,
   type Checkpoint,
+  type Phase,
+  type PlayerCount,
   type SeatId,
   type ScapeGoatAction,
   type ScapeGoatState,
 } from "./driver.ts";
+import { stateCodec } from "../../../lockstep/games/scape-goat/state.ts";
 
 const card = cardId;
 
@@ -65,6 +88,35 @@ const walkTurn = (
     next = advance(next, (state, seat) => (seat === active ? swap : null));
   }
   return next;
+};
+
+/** Fold one frame with explicit seat inputs, so a test can report a resign or an off-turn action. */
+const stepWith = (
+  state: ScapeGoatState,
+  count: PlayerCount,
+  inputs: readonly (readonly [SeatId, SeatInput<ScapeGoatAction>])[],
+): ScapeGoatState => {
+  const provided = new Map(inputs);
+  const owed = [...seatsOwedNow(state)];
+  // A frame is total over its owed seats, but a test may also report an action
+  // from a seat the phase does not owe, such as the six-player antipode.
+  for (const [seat] of inputs) if (!owed.includes(seat)) owed.push(seat);
+  const buffer = new Map<SeatId, SeatInput<ScapeGoatAction>>(
+    owed.map((seat): [SeatId, SeatInput<ScapeGoatAction>] => [
+      seat,
+      provided.get(seat) ?? idle<ScapeGoatAction>(),
+    ]),
+  );
+  const seed = genesisSeed("turn-step-with");
+  const frame = buildFrame(makeRoster(seatsFor(count)), owed, frameIndex(0), seed, buffer);
+  return scapeGoat.step(state, frame, makeRandom(seed));
+};
+
+/** How many player tokens sit on each occupied location, most tokens first. */
+const tokensPerLocation = (state: ScapeGoatState): readonly number[] => {
+  const counts = new Map<string, number>();
+  for (const player of state.players) counts.set(player.at, (counts.get(player.at) ?? 0) + 1);
+  return [...counts.values()].sort((a, b) => b - a);
 };
 
 // --- the three-step turn ---------------------------------------------------
@@ -305,11 +357,11 @@ test("a seat that resigns out of the Stash-put window still returns the drawn ca
   expect(seatsOwedNow(after).includes(actor)).toBe(false);
 });
 
-test("DOCUMENTED GAP: a revealed card later put in the Stash is still named by the persisted frame record", () => {
-  // `handTurn` clears the spy record but not the frame record, and the view
-  // carries `frame` whole. A card revealed in a failed attempt and later placed
-  // in the Stash is still named in every seat's view, so a hidden Stash identity
-  // appears in a view.
+test("a card revealed in a failed attempt and later stashed survives only in the public faceUp", () => {
+  // The reveal is public only for the turn that resolved it. `handTurn` clears the
+  // frame record, so no view may still name the card as a reveal. The one place it
+  // can appear is `faceUp.spy`, which the Evidence Swap made public by rule, and
+  // never the Stash identity the card now sits in.
   let checkpoint = withScapegoat(rawGenesis(3, "turn-gap-frame-stash"), ANN, BOB);
   checkpoint = withHands(checkpoint, [
     [ANN, ["goat-horns"]],
@@ -326,9 +378,14 @@ test("DOCUMENTED GAP: a revealed card later put in the Stash is still named by t
   next = { ...next, state: stepState(next.state, [[actor, { t: "stash", slot: 0 }]]) };
   const index = handOf(next.state, actor).indexOf(card("goat-horns"));
   next = { ...next, state: stepState(next.state, [[actor, { t: "put", index }]]) };
-  expect(next.state.stash).toContain("goat-horns");
-  const view = project(next.state, BOB);
-  expect(JSON.stringify(view)).toContain("goat-horns");
+  expect(next.state.stash, "the revealed card is facedown in the Stash").toContain("goat-horns");
+  for (const seat of [ANN, BOB, CARA]) {
+    expect(project(next.state, seat).frame, `no frame record survives the turn for ${seat}`).toBeNull();
+  }
+  const view = project(next.state, CARA);
+  expect(view.faceUp.spy, "the swap made the card public on faceUp.spy").toBe("goat-horns");
+  const occurrences = JSON.stringify(view).split("goat-horns").length - 1;
+  expect(occurrences, "the card appears exactly once, in the public faceUp").toBe(1);
 });
 
 // --- first player ----------------------------------------------------------
@@ -353,4 +410,245 @@ test("the first player starts on Prepare at every count", () => {
     const active = activeSeat(start.state);
     expect(start.state.players.find((player) => player.seat === active)?.at).toBe("prepare");
   }
+});
+
+// --- setup: token placement -------------------------------------------------
+
+test("no player token begins on Go to the Cops, at every count", () => {
+  for (const count of [3, 4, 5, 6] as const) {
+    for (const seed of [0, 1, 2]) {
+      const state = rawGenesis(count, `turn-placement-cops-${count}-${seed}`).state;
+      for (const player of state.players) {
+        expect(player.at, `${player.seat} does not start on the Cops at ${count} players`).not.toBe(
+          "cops",
+        );
+      }
+    }
+  }
+});
+
+test("at 3 and 4 players every location carries exactly one token", () => {
+  for (const count of [3, 4] as const) {
+    const state = rawGenesis(count, `turn-placement-single-${count}`).state;
+    expect(tokensPerLocation(state), `one token per location at ${count} players`).toEqual(
+      Array.from({ length: count }, () => 1),
+    );
+  }
+});
+
+test("at 5 players the second pass doubles exactly one location", () => {
+  const state = rawGenesis(5, "turn-placement-five").state;
+  expect(tokensPerLocation(state), "one location holds two tokens, the rest one").toEqual([
+    2, 1, 1, 1,
+  ]);
+});
+
+test("at 6 players the second pass doubles exactly two locations", () => {
+  const state = rawGenesis(6, "turn-placement-six").state;
+  expect(tokensPerLocation(state), "two locations hold two tokens, the rest one").toEqual([
+    2, 2, 1, 1,
+  ]);
+});
+
+test("no location carries more than two tokens, at every count", () => {
+  for (const count of [3, 4, 5, 6] as const) {
+    const state = rawGenesis(count, `turn-placement-cap-${count}`).state;
+    expect(
+      Math.max(...tokensPerLocation(state)),
+      `the rules cap a location at two tokens at ${count} players`,
+    ).toBeLessThanOrEqual(2);
+  }
+});
+
+// --- a resign in every phase -----------------------------------------------
+
+const FRAME_CAP = 400;
+
+/** Each of the six open phases, with ANN as the active seat. */
+const RESIGN_PHASES: readonly Phase[] = [
+  { kind: "move", active: ANN },
+  { kind: "action", active: ANN, location: "spy" },
+  { kind: "trade-give", active: ANN, target: BOB },
+  { kind: "stash-put", active: ANN },
+  { kind: "frame-reveal", active: ANN },
+  { kind: "swap", active: ANN },
+];
+
+test("a resign in every phase passes the turn to exactly the next seat, and the game still terminates", () => {
+  for (const phase of RESIGN_PHASES) {
+    const start = withPhase(rawGenesis(4, `turn-resign-${phase.kind}`), phase);
+    const next = stepResign(start.state, ANN);
+    expect(
+      activeSeat(next),
+      `the turn passes to the seat after the resigning one in the ${phase.kind} phase`,
+    ).toBe(BOB);
+    const { checkpoint } = playRaw({ ...start, state: next }, capThenCops(FRAME_CAP));
+    expect(
+      scapeGoat.isTerminal(checkpoint.state),
+      `the game still terminates after a resign in the ${phase.kind} phase`,
+    ).toBe(true);
+  }
+});
+
+// --- the six-player antipode ------------------------------------------------
+
+test("the six-player antipode may resign in the move phase and the active seat still moves", () => {
+  const start = rawGenesis(6, "turn-antipode-resign");
+  const active = activeSeat(start.state);
+  const antipode = antipodeOf(start.state, active);
+  if (antipode === null) throw new Error("no antipode");
+  const here = atOf(start.state, active);
+  const to = here === "spy" ? "trade" : "spy";
+  const next = stepWith(start.state, 6, [
+    [active, act({ t: "move", to })],
+    [antipode, resign()],
+  ]);
+  expect(atOf(next, active), "the active seat still moved").toBe(to);
+  expect(next.phase, "the active seat's action phase opens normally").toEqual({
+    kind: "action",
+    active,
+    location: to,
+  });
+});
+
+test("the six-player antipode's go-to-cops is coerced outside the move frame", () => {
+  const phases: readonly Phase[] = [
+    { kind: "action", active: ANN, location: "spy" },
+    { kind: "swap", active: ANN },
+  ];
+  for (const phase of phases) {
+    const state = { ...rawGenesis(6, `turn-offturn-cops-${phase.kind}`).state, phase };
+    const antipode = antipodeOf(state, ANN);
+    if (antipode === null) throw new Error("no antipode");
+    const next = stepWith(state, 6, [[antipode, act({ t: "go-to-cops" })]]);
+    expect(
+      scapeGoat.isTerminal(next),
+      `go-to-cops in the ${phase.kind} frame does not end the game`,
+    ).toBe(false);
+    expect(outcomeOf(next), `no outcome is declared in the ${phase.kind} frame`).toBeNull();
+  }
+});
+
+test("a resigning active seat does not discard the six-player antipode's run to the Cops", () => {
+  // The antipode's outside-turn run is not conditioned on the active seat acting,
+  // so it must survive the active seat resigning out of the same move frame. The
+  // scan for it runs before the resign short-circuit; a scan living inside stepMove
+  // would drop it and silently cancel the scapegoat's win.
+  const start = rawGenesis(6, "turn-antipode-cops-resign");
+  const active = activeSeat(start.state);
+  const antipode = antipodeOf(start.state, active);
+  if (antipode === null) throw new Error("no antipode");
+  const next = stepWith(start.state, 6, [
+    [active, resign()],
+    [antipode, act({ t: "go-to-cops" })],
+  ]);
+  expect(outcomeOf(next), "the antipode's run ends the game even though the active seat resigned").toEqual({
+    kind: "cops",
+    actor: antipode,
+  });
+  expect(scapeGoat.isTerminal(next), "the run to the Cops is terminal").toBe(true);
+});
+
+// --- movement ---------------------------------------------------------------
+
+test("a move onto an occupied location is legal and both tokens share it", () => {
+  const start = rawGenesis(4, "turn-occupied");
+  const actor = activeSeat(start.state);
+  const occupant = start.state.players.find((player) => player.seat !== actor);
+  if (occupant === undefined) throw new Error("no other seat");
+  const next = stepState(start.state, [[actor, { t: "move", to: occupant.at }]]);
+  const sharing = next.players.filter((player) => player.at === occupant.at).map((p) => p.seat);
+  expect(sharing, "the mover joins the token already there").toEqual([occupant.seat, actor]);
+});
+
+// --- frame reveal edge cases ------------------------------------------------
+
+test("a seat holding only grey is the odd card out, so the attempt frames it", () => {
+  const checkpoint = withScapegoat(
+    atFrameReveal(3, BOB, [
+      [ANN, ["goat-bystander"]],
+      [BOB, ["goat-horns"]],
+      [CARA, ["goat-beard"]],
+    ], "turn-all-grey"),
+    ANN,
+    BOB,
+  );
+  const next = stepState(checkpoint.state, [
+    [ANN, { t: "reveal", index: 0 }],
+    [BOB, { t: "reveal", index: 0 }],
+    [CARA, { t: "reveal", index: 0 }],
+  ]);
+  expect(next.frame?.framed, "the grey holder is the odd card out").toBe(ANN);
+  expect(next.frame?.colour, "the colour the others share is red").toBe("red");
+});
+
+test("a seat with no legal pick fails the attempt rather than framing the silent seat", () => {
+  const checkpoint = withScapegoat(
+    atFrameReveal(3, BOB, [
+      [ANN, []],
+      [BOB, ["goat-horns"]],
+      [CARA, ["goat-beard"]],
+    ], "turn-no-pick"),
+    ANN,
+    BOB,
+  );
+  const next = stepState(checkpoint.state, [
+    [ANN, { t: "reveal", index: 0 }],
+    [BOB, { t: "reveal", index: 0 }],
+    [CARA, { t: "reveal", index: 0 }],
+  ]);
+  expect(next.frame?.framed, "no seat is framed when a seat cannot pick").toBeNull();
+  expect(next.phase, "the failed attempt resumes the framer's swap").toEqual({
+    kind: "swap",
+    active: BOB,
+  });
+});
+
+// --- codec rejection --------------------------------------------------------
+
+/** The encoded state as a mutable wire object, so a test can tamper one field before decode. */
+interface WireState {
+  readonly players: { hand: string[] }[];
+  scapegoat: string;
+  scapegoatSuspect: string;
+  readonly [key: string]: Json;
+}
+
+const codecJson = (): WireState =>
+  JSON.parse(
+    JSON.stringify(stateCodec.encode(rawGenesis(4, "turn-codec-reject").state)),
+  ) as WireState;
+
+const CODEC_REJECTIONS: readonly (readonly [string, (json: WireState) => void])[] = [
+  ["an unknown card id in a hand", (json) => { json.players[0]!.hand[0] = "definitely-not-a-card"; }],
+  ["a scapegoat that is not a player", (json) => { json.scapegoat = "ghost"; }],
+  ["a suspect that is not a player", (json) => { json.scapegoatSuspect = "ghost"; }],
+  ["a scapegoat that suspects itself", (json) => { json.scapegoatSuspect = json.scapegoat; }],
+  ["a card held in two places", (json) => { json.players[0]!.hand[0] = json.players[1]!.hand[0]!; }],
+];
+
+test("stateCodec.decode rejects every state that shape checking cannot", () => {
+  for (const [what, mutate] of CODEC_REJECTIONS) {
+    const json = codecJson();
+    mutate(json);
+    expect(() => stateCodec.decode(json), what).toThrow(ScapeGoatError);
+  }
+});
+
+// --- abandoned outcome ------------------------------------------------------
+
+test("a table reduced below three seats ends abandoned with no winners", () => {
+  let state = rawGenesis(4, "turn-abandoned").state;
+  let guard = 0;
+  while (activeSeats(state).length >= MIN_SEATS && guard < 10) {
+    state = stepResign(state, seatsOwedNow(state)[0]!);
+    guard += 1;
+  }
+  expect(scapeGoat.isTerminal(state), "the shrunk table is terminal").toBe(true);
+  expect(seatsOwedNow(state), "a terminal table owes no seat").toEqual([]);
+  expect(outcomeOf(state), "the outcome is abandoned").toEqual({ kind: "abandoned" });
+  expect(winnersOf(state), "an abandoned table has no winners").toEqual([]);
+  const view = project(state, ANN);
+  expect(view.outcome?.kind, "the view carries the abandoned outcome").toBe("abandoned");
+  expect(view.outcome?.winners, "the view names no winner").toEqual([]);
 });

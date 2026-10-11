@@ -31,7 +31,7 @@ shared/core/lockstep/games/scape-goat/
 ├── cards.ts      EVIDENCE_CARDS, HAND_SIZE, deckFor, coloursOf
 ├── actions.ts    ScapeGoatAction and its codec
 ├── setup.ts      ScapeGoatSetup, validateSetup, genesisState
-├── locations.ts  LOCATION_ACTIONS, the location-action registry
+├── locations.ts  LOCATION_LINE, faceOf, the location line
 ├── reducer.ts    seatsOwed, step, isTerminal, resolveFrame
 ├── view.ts       project, legalActions, winnersOf, the view types
 └── error.ts      ScapeGoatError
@@ -99,13 +99,18 @@ open. The values are 3, 3, 3, and 2.
 
 Hand size is 3 below six players because at three players a two-card hand
 makes a frame need both other players to hold the colour, which is close to
-unwinnable. A 13-card deck at three players also keeps hands readable.
+unwinnable. A 16-card deck at three players also keeps hands readable.
 
 `cards.test.ts` asserts the 30-card total, each per-count deck size, and a
-colour floor: at `count` seats, every legal colour must appear on at least
-`count - 1` cards in that count's deck. Each card lands in a distinct hand, so
-`count - 1` cards bearing the colour is the floor that keeps a frame
-physically possible.
+colour floor: at `count` seats, every legal colour appears on at least
+`count - 1` cards in that count's deck. That is a deck-wide supply floor and
+nothing more. A frame needs a colour held by `count - 1` distinct other seats,
+and cards in the deck do not imply that spread across hands. Measured over
+genesis deals, the fraction where no colour is held by `count - 1` distinct
+seats is 24% at three players, 8% at four, 4% at five, and 16% at six. A pure
+framing policy can therefore fail to assemble a frame at every count, which is
+why `fullgame.test.ts` runs its policy to the Cops as a fallback rather than
+rest on the floor.
 
 Grey is the empty colour set, not a `Grey` variant. Every rule that mentions
 it treats grey as matching nothing: it never satisfies the own-colour swap
