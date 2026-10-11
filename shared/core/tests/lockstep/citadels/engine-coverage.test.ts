@@ -710,11 +710,19 @@ const DISTRICT_GUARDS: readonly DistrictGuard[] = [
     id: "school-of-magic",
     board: { cities: { ann: ["school-of-magic"] } },
     answer: takeGold,
-    check: (fold) =>
+    check: (fold) => {
       expect(
         rawPlayer(foldEnd(fold), ANN).city[0]?.declaredType,
         "the School of Magic declares the King's type",
-      ).toBe("noble"),
+      ).toBe("noble");
+      // The D5-7 timing: the type must be on the card before the King's income
+      // counts it, so the same turn's income sees it (gather 2 + noble 1 = 3).
+      // A declaration made only on the gather would leave the income at 2.
+      expect(
+        goldDelta(fold, ANN),
+        "the King's own income counted the School of Magic the turn it was declared",
+      ).toBe(3);
+    },
   },
   {
     id: "library",
