@@ -670,36 +670,34 @@ export const resolveTurn: WindowResolver = (ctx) => {
   // the threat takes the build. A build answered here gathers instead, so no
   // district can land ahead of the threat.
   const playedCharacter = activeCharacterOf(state, seat);
-  const threatPending =
+  const threatened =
     !resumedWitch &&
     playedCharacter !== null &&
     (state.threats ?? []).includes(playedCharacter);
-  if (threatPending) {
-    // A threatened seat gathers resources, then resolves the threat, then builds.
-    // The engine's turn window does gather and build in one, so the threatened
-    // turn splits: this first window gathers, the threat window below opens on the
-    // post-gather gold, and the build window below the threat takes the build. A
-    // seat that builds here defers it past the threat (the build window stays in
-    // the stack); a seat that gathers ends its turn after the threat, as gathering
-    // does on any other turn, so it never gathers twice.
-    if (action?.t === "build") return withSteps(state, rest);
-    const withoutBuild = rest.filter(
-      (step) =>
-        !(
-          step.kind === "window" &&
-          step.window.purpose === "turn" &&
-          step.window.seats.includes(seat)
-        ),
-    );
+  if (threatened) {
+    // rules.json (blackmailer): "When a threatened player is called, they must
+    // gather resources, then resolve the threat... A threatened player must
+    // resolve the threat before using abilities or building." The threat window
+    // is spliced directly below this turn window, so the threatened seat either
+    // gathers here (the threat then opens on the post-gather gold and the turn's
+    // END_TURN closes it), or names a build, which is deferred to a turn window
+    // placed below the threat: the district lands only after the threat resolves,
+    // so nothing stands in the city while the threat is open.
+    const threat = rest[0];
+    const hasThreat =
+      threat?.kind === "window" && threat.window.purpose === "blackmailer-threat";
+    if (action?.t === "build" && hasThreat) {
+      return withSteps(state, [threat, winStep("turn", [seat]), ...rest.slice(1)]);
+    }
     if (action?.t === "draw") {
       return withSteps(drawGather(state, seat, rest, ctx.rng), [
         winStep("keep", [seat]),
-        ...withoutBuild,
+        ...rest,
       ]);
     }
     return withSteps(
       runDistrictHooks(addGold(state, seat, 2), "onIncome", seat, rest, ctx.rng),
-      withoutBuild,
+      rest,
     );
   }
   // The Navigator's turn window is its gain choice, not a gather: a draw names the
@@ -861,7 +859,6 @@ const withThreat = (
   return [
     ...stack.slice(0, at + 1),
     winStep("blackmailer-threat", [seat]),
-    winStep("turn", [seat]),
     ...stack.slice(at + 1),
   ];
 };
