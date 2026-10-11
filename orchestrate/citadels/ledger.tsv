@@ -25,3 +25,8 @@ pr	sha	verdict	evidence	verifier	ts
 1	76474ee	unit-test-verified	codec-redaction 5 tests; mid-game round-trip, snapshot, redaction walk, digest sensitivity; no leaks; suite 496 passed		2026-10-11T00:51:38.824Z
 1	2dfd6a5	unit-test-verified	theater 14 tests; onRoundStart hook; all 30 districts implemented; suite 496 passed, tsc clean		2026-10-11T00:54:06.420Z
 1	7547f8d	verifier-failed	orchestrate/citadels/verification.md + verification-report.test.ts: 14 counterexamples, all fail; D1 blocking (no character ability is ever invoked)		2026-10-11T01:17:06.078Z
+1	fdf9d20	unit-test-verified	fix unit green; all 14 verifier counterexamples pass at 7b1a1c9		2026-10-11T02:28:50.778Z
+1	04db150	unit-test-verified	fix unit green; all 14 verifier counterexamples pass at 7b1a1c9		2026-10-11T02:28:50.785Z
+1	e887390	unit-test-verified	fix unit green; all 14 verifier counterexamples pass at 7b1a1c9		2026-10-11T02:28:50.792Z
+1	7b1a1c9	unit-test-verified	fix unit green; all 14 verifier counterexamples pass at 7b1a1c9		2026-10-11T02:28:50.799Z
+1	91a57df	unit-test-verified	all 14 verifier counterexamples pass; suite 531 passed; my own probe confirms character abilities now run and the crown moves		2026-10-11T03:16:19.176Z
