@@ -85,7 +85,7 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     rank: 1,
     income: null,
     crown: false,
-    summary: "Name a character; its owner is bewitched and takes the Witch's turn instead.",
+    summary: "Gather, then name a character to bewitch; its owner's turn is cut short and you resume as the bewitched character.",
   },
   {
     id: "magistrate",
@@ -93,7 +93,7 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     rank: 1,
     income: null,
     crown: false,
-    summary: "Confiscate a district from a player's city, paying its cost to the owner.",
+    summary: "Warrant a character; when they pay to build, confiscate that district for free and refund their gold.",
   },
   {
     id: "thief",
@@ -109,7 +109,7 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     rank: 2,
     income: null,
     crown: false,
-    summary: "Name a district type and a player; look at that player's hand and take 1 gold.",
+    summary: "Name a player and a district type; for each matching card in that player's hand, take 1 gold and gain 1 card.",
   },
   {
     id: "blackmailer",
@@ -117,7 +117,7 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     rank: 2,
     income: null,
     crown: false,
-    summary: "Pay 1 gold to a character; that character skips its turn this round.",
+    summary: "Assign two threat markers; a threatened player bribes you or lets you reveal the flowered lace to take all their gold.",
   },
   {
     id: "magician",
@@ -125,7 +125,7 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     rank: 3,
     income: null,
     crown: false,
-    summary: "Swap your whole hand with the deck, or exchange cards with another player.",
+    summary: "Swap your entire hand with another player's, or discard any number of cards to the bottom of the deck and draw an equal number.",
   },
   {
     id: "wizard",
@@ -141,7 +141,7 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     rank: 3,
     income: null,
     crown: false,
-    summary: "Draw a card, keep one and give one to a neighbour.",
+    summary: "Take a card at random from every other player's hand, then give one card back to each.",
   },
   {
     id: "king",
@@ -173,7 +173,7 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     rank: 5,
     income: goldFrom("religious"),
     crown: false,
-    summary: "Collect 1 gold per religious district; name a player who pays you 1 gold per noble.",
+    summary: "Collect 1 gold per religious district; the rank 8 character cannot use its ability on your districts this round.",
   },
   {
     id: "abbot",
@@ -181,7 +181,7 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     rank: 5,
     income: { counts: "religious", grants: { kind: "gold-or-cards" } },
     crown: false,
-    summary: "Collect 1 gold or 1 card per religious district; take 1 gold or 1 card from the richest player.",
+    summary: "Collect 1 gold or 1 card per religious district; if you are not the richest, the richest player gives you 1 gold.",
   },
   {
     id: "cardinal",
@@ -189,7 +189,7 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     rank: 5,
     income: { counts: "religious", grants: { kind: "cards" } },
     crown: false,
-    summary: "Collect 1 card per religious district; a rival gives you 1 gold or 1 card.",
+    summary: "Collect 1 card per religious district; cover a build shortfall from one player by giving them one card per gold taken.",
   },
   {
     id: "merchant",
@@ -205,7 +205,7 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     rank: 6,
     income: null,
     crown: false,
-    summary: "At the end of your turn, take back all the gold you spent this turn.",
+    summary: "At the end of your turn, take back the gold you paid to build districts this turn.",
   },
   {
     id: "trader",
@@ -213,7 +213,7 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     rank: 6,
     income: goldFrom("trade"),
     crown: false,
-    summary: "Collect 1 gold per trade district and build any number of districts.",
+    summary: "Collect 1 gold per trade district and build any number of trade districts beyond your limit.",
   },
   {
     id: "architect",
@@ -237,7 +237,7 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     rank: 7,
     income: null,
     crown: false,
-    summary: "Draw seven cards; keep one and return the rest to the bottom of the deck.",
+    summary: "Draw seven cards, keep one and shuffle the rest back into the deck.",
   },
   {
     id: "warlord",
@@ -277,7 +277,7 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     rank: 9,
     income: null,
     crown: false,
-    summary: "Gain 3 gold if the rank-4 character was called this round.",
+    summary: "Gain 3 gold if you sit next to the player who revealed the rank 4 character.",
   },
   {
     id: "tax-collector",
@@ -285,7 +285,7 @@ export const CHARACTER_CATALOG: readonly CharacterSpec[] = [
     rank: 9,
     income: null,
     crown: false,
-    summary: "Name a character; every player holding it gives you 1 gold.",
+    summary: "Every player who builds places 1 gold on your tax token; on your turn take all gold from the token.",
   },
 ];
 
