@@ -1,0 +1,1 @@
+2026-10-11T13:14:44.478Z	fix4-clauses	fix4-clauses	completed	commits ca779fc (D4-5 marshal/diplomat honour bishopShield, 2 lines) + 5428f3d (D4-6 ivory-tower reads typeOfPlaced, undeclared HQ blocks the tower per catalog); its 2 counterexamples green; flagged 2 stale pinned fixtures (fix-scoring D12, districts/ivory-tower.test.ts) encoding the old carve-out

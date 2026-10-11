@@ -53,4 +53,9 @@ fix3-scoring	verify	done				D3-2 capitol declared type; D3-3 basilica beautify; 
 fix3-rules	verify	done				D3-5 draft over-removal; D3-6 winnerOf tie-break; owns setup.ts + scoring.ts (serialized shared)
 fix3-guards	verify	done				harden engine-coverage guard rows the teeth audit found weak: Keep/GreatWall call-count rows, Trader declared-type row; owns engine-coverage.test.ts
 fix3-tie-tests	verify	done				correct the 3 stale integration.test.ts tie-break assertions to the catalog revealed-rank rule + reconcile the Navigator summary string
-verify-4	verify	running				fourth independent adversarial pass at 69aae2e: predicate audit, teeth audit of the strengthened guards, verification4.test.ts counterexamples
+verify-4	verify	done				fourth independent adversarial pass at 69aae2e: predicate audit, teeth audit of the strengthened guards, verification4.test.ts counterexamples
+fix4-engine	verify	done				D4-1/D4-1b witch held-turn build + triple gather; D4-2 tax-collector per-seat exemption; D4-3 destroyed museum cards; D4-4 blackmailer threat order; D4-7 card-paid den confiscate; owns helpers.ts + witch + blackmailer + warlord + museum + armory + thieves-den + magistrate
+fix4-clauses	verify	done				D4-5 bishop shield read by marshal/diplomat; D4-6 ivory tower vs undeclared haunted quarter; owns marshal.ts + diplomat.ts + ivory-tower.ts
+fix4-ivory-tests	verify	done				correct the 2 stale ivory-tower fixtures (fix-scoring D12, districts/ivory-tower.test.ts) to the catalog rule: undeclared HQ blocks the tower, declared non-unique HQ does not
+fix4-guards	verify	done				strengthen the Navigator/Spy/Thief engine-coverage rows from wiring assertions to behavioral teeth
+fix4-test-corrections	verify	done				correct the 10 stale fixtures the fix4 source fixes invalidated: hooks x2 + blackmailer.test.ts x6 (threat after gather), thieves-den.test.ts card-paid den, verification4.test.ts D4-1 re-aim
