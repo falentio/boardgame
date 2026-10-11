@@ -287,22 +287,44 @@ lockstep/
 ├── index.ts                   the public barrel
 └── games/
     ├── coinflip.ts            a small 3-seat game; the worked example
-    └── g54/                   the full game
-        ├── state.ts           G54State, Step, Window, codec
-        ├── windows.ts         the window stack machine and resolver registry
-        ├── effects.ts         ROLE_EFFECTS and EXTRA_EFFECTS
-        ├── helpers.ts         coin, deck, and token helpers
-        ├── roles.ts           the 25-role catalog
-        ├── setup.ts           draft validation, deck, deal
-        ├── actions.ts         G54Action and its codec
-        └── index.ts           the g54 GameDefinition and project
+    ├── g54/                   the full game
+    │   ├── state.ts           G54State, Step, Window, codec
+    │   ├── windows.ts         the window stack machine and resolver registry
+    │   ├── effects.ts         ROLE_EFFECTS and EXTRA_EFFECTS
+    │   ├── helpers.ts         coin, deck, and token helpers
+    │   ├── roles.ts           the 25-role catalog
+    │   ├── setup.ts           draft validation, deck, deal
+    │   ├── actions.ts         G54Action and its codec
+    │   └── index.ts           the g54 GameDefinition and project
+    └── scape-goat/            the social-deduction game
+        ├── state.ts           ScapeGoatState, Phase, Outcome, suspectOf, codec
+        ├── cards.ts           EVIDENCE_CARDS, HAND_SIZE, deckFor, colour helpers
+        ├── actions.ts         ScapeGoatAction and its codec
+        ├── setup.ts           ScapeGoatSetup, validation, genesis
+        ├── locations.ts       LOCATION_ACTIONS, the location-action registry
+        ├── reducer.ts         seatsOwed, step, isTerminal, resolveFrame
+        ├── view.ts            project, legalActions, winnersOf, view types
+        └── index.ts           the scapeGoat GameDefinition and project
+```
+
+## The Scape Goat game, as a second worked example
+
+`scape-goat` is the second full game. It drives its turn from one payload-carrying phase union instead of a window stack, because nothing in its turn nests. It sits beside `g54` to show that the primitive takes either shape, and that the shape follows the game.
+
+Two structures in it are worth copying. `suspectOf(state, seat)` derives every player's hidden suspect from two seat ids, so the map cannot disagree with the scapegoat, and the physical decoder matrix never has to be modelled. And `deckFor(count)` is dealt exactly at genesis, so the state holds no draw pile and `step` needs no `rng`.
+
+It closes three rule gaps the published rules leave open: an authored 30-card catalog whose marker groups hit the deal equation at every player count, a deterministic frame tiebreak on canonical seat order, and a missing card pick that fails the frame attempt rather than framing the silent seat. The design record is `docs/design/scape-goat.md`, and the rules research is `docs/research/scape-goat/`.
+
+```ts
+import { scapeGoat, legalActions } from "./lockstep/games/scape-goat/index.ts";
+import type { ScapeGoatAction, ScapeGoatSetup, ScapeGoatView } from "./lockstep/games/scape-goat/index.ts";
 ```
 
 ## Tests
 
 `tests/` mirrors the engine tree. The suite runs on Vitest through `vitest`.
 
-For a new game, drive it to terminal with a small policy and assert the outcome, the conservation of anything the rules conserve (cards, coins), and the redaction of hidden information. The primitive tests in `tests/lockstep/` show the shape: `session.test.ts` drives two independent sessions and checks they converge, and `convergence.test.ts` proves a game that reaches different state is caught at the next frame.
+For a new game, drive it to terminal with a small policy and assert the outcome, the conservation of anything the rules conserve (cards, coins), and the redaction of hidden information. The primitive tests in `tests/lockstep/` show the shape: `session.test.ts` drives two independent sessions and checks they converge, and `convergence.test.ts` proves a game that reaches different state is caught at the next frame. `tests/lockstep/scape-goat/` has the fuller case: `redaction.test.ts` checks the project boundary on every phase of a played game, and `fullgame.test.ts` drives every player count from three to six to terminal.
 
 ## Limits
 
