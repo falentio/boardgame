@@ -227,6 +227,16 @@ export const CARDINAL_BUILD_NOTE = "cardinal-build";
  */
 export const TURN_GATHERED_NOTE = "turn-gathered";
 
+/**
+ * The `pending.note` marker the Museum's once-per-turn placement offer carries.
+ * The offer reuses the `keep` purpose (a district-owned purpose would need a new
+ * WindowPurpose, a shared-file change); `resolveKeep` tells it apart from the
+ * gather keep — which always carries the drawn pool — by this tag. The tag rides
+ * the offer's pending so any standing pending the turn left (an Alchemist's build
+ * spend, whose refund resolve step sits below the offer) survives it untouched.
+ */
+export const MUSEUM_OFFER_NOTE = "museum-offer";
+
 export const CALL: Step = { kind: "call" };
 export const RESOLVE: Step = { kind: "resolve" };
 export const END_TURN: Step = { kind: "end-turn" };
@@ -613,24 +623,34 @@ const drawGather = (
  * the turn's continuation once the turn's last build window has resolved, so
  * the owner may tuck a card under it after gathering and building. The offer
  * reuses the `keep` purpose (a district-owned purpose would need a new
- * WindowPurpose, a shared-file change); `resolveKeep` tells it apart from the
- * gather keep, which always carries a pending pool, by the offer's bare pending
- * (`resolveTurn` clears any leftover character pending before the turn). A turn
- * window still standing in `cont` means the turn has another build, so no offer.
+ * WindowPurpose, a shared-file change) and tags its pending with
+ * MUSEUM_OFFER_NOTE so `resolveKeep` routes it to the Museum rather than the
+ * gather keep. The tag carries any standing pending the turn left — an
+ * Alchemist's build spend, whose refund resolve step sits below the offer — so
+ * that pending survives the offer untouched. A note an intervening window above
+ * owns (the Magistrate's confiscate refund) is left alone; that window clears
+ * pending before the offer opens. A turn window still standing in `cont` means
+ * the turn has another build, so no offer.
  */
 const withMuseumOffer = (
   state: CitadelsState,
   seat: SeatId,
   cont: readonly Step[],
-): readonly Step[] => {
-  if (!museumIn(state, seat)) return cont;
+): { readonly state: CitadelsState; readonly steps: readonly Step[] } => {
+  if (!museumIn(state, seat)) return { state, steps: cont };
   const hasTurn = cont.some(
     (step) =>
       step.kind === "window" &&
       step.window.purpose === "turn" &&
       step.window.seats.includes(seat),
   );
-  return hasTurn ? cont : [winStep("keep", [seat]), ...cont];
+  if (hasTurn) return { state, steps: cont };
+  const standing = state.pending;
+  const tagged: Pending =
+    standing !== null && standing.note !== null
+      ? standing
+      : { ...(standing ?? emptyPending(seat, null)), note: MUSEUM_OFFER_NOTE };
+  return { state: withPending(state, tagged), steps: [winStep("keep", [seat]), ...cont] };
 };
 
 /**
@@ -718,7 +738,19 @@ export const resolveTurn: WindowResolver = (ctx) => {
   // windows, so the turn carries no build either.
   if (playedCharacter === "navigator") {
     const note = action?.t === "draw" ? NAVIGATOR_CARDS_NOTE : null;
-    return withSteps(withPending(state, { ...emptyPending(seat, "navigator"), note }), rest);
+    const armed = withPending(state, { ...emptyPending(seat, "navigator"), note });
+    // The Navigator's gain resolves first (its choice rides pending.note), then the
+    // Museum's placement offer opens on the turn's close — the continuation an
+    // ordinary turn reaches through closeTurn. A threatened Navigator's threat
+    // window leads its resolve, so the offer follows the resolve, not the window.
+    const at = rest.findIndex((step) => step.kind === "resolve");
+    if (at < 0) return withSteps(armed, rest);
+    const offer = withMuseumOffer(
+      armed,
+      seat,
+      endTurnThen(withoutTurnWindows(rest.slice(at + 1), seat)),
+    );
+    return withSteps(offer.state, [...rest.slice(0, at + 1), ...offer.steps]);
   }
 
   // The turn's build window. The gather already landed above it (or the Witch
@@ -737,10 +769,8 @@ export const resolveTurn: WindowResolver = (ctx) => {
   };
   const closeTurn = (s: CitadelsState, cont: readonly Step[]): CitadelsState => {
     const cleared = clearMarker(s);
-    return withSteps(
-      cleared,
-      withMuseumOffer(cleared, seat, endTurnThen(withoutTurnWindows(cont, seat))),
-    );
+    const offer = withMuseumOffer(cleared, seat, endTurnThen(withoutTurnWindows(cont, seat)));
+    return withSteps(offer.state, offer.steps);
   };
   // Apply a build: a legal, affordable build lands; a Cardinal build short of gold
   // opens the shortfall offer and retries below it; a build under the limit re-offers
@@ -775,10 +805,8 @@ export const resolveTurn: WindowResolver = (ctx) => {
       ]);
     }
     const cleared = clearMarker(built);
-    return withSteps(cleared, [
-      ...built.steps,
-      ...withMuseumOffer(cleared, seat, endTurnThen(withoutTurnWindows(cont, seat))),
-    ]);
+    const offer = withMuseumOffer(cleared, seat, endTurnThen(withoutTurnWindows(cont, seat)));
+    return withSteps(offer.state, [...built.steps, ...offer.steps]);
   };
 
   const alreadyGathered = resumedWitch || gatheredPending !== null;
@@ -835,9 +863,11 @@ export const resolveKeep: WindowResolver = (ctx) => {
   const action = actionOf(ctx.frame, seat);
   const pending = ctx.state.pending;
   // The gather keep always carries the drawn pool on `pending`; the Museum's
-  // placement offer has a bare pending (resolveTurn clears any character
-  // leftover), so a null pending routes to the Museum.
-  if (pending === null) {
+  // placement offer is tagged MUSEUM_OFFER_NOTE (carrying any standing pending —
+  // an Alchemist's build spend — through untouched), a Navigator's offer keeps its
+  // gain record (its choice owns the note), and a hand-built offer window carries
+  // no pending at all. Anything else is the gather keep.
+  if (pending === null || pending.note === MUSEUM_OFFER_NOTE || pending.character === "navigator") {
     return withSteps(museumPlace(ctx.state, seat, action), rest);
   }
   const pool = pending.cards;
