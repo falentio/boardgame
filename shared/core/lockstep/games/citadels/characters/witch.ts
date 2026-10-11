@@ -14,6 +14,7 @@ import {
   type WindowCtx,
   type WindowResolver,
 } from "../helpers.ts";
+import { declareSchoolOfMagic } from "../districts/school-of-magic.ts";
 
 /** The Witch's fixed gather, taken before the bewitch. */
 const GATHER = 2;
@@ -91,7 +92,12 @@ export const witchResolve: WindowResolver = (ctx) => {
       { ...ctx.state, active: witchSeat, bewitched: null },
       { ...emptyPending(witchSeat, bewitched), note: WITCH_RESUME_NOTE },
     );
-    return withSteps(resumed, resumeStack(witchSeat, rest));
+    // The resumed turn is the bewitched character's turn played with the Witch's
+    // city, so her School of Magic declares that character's colour before the
+    // income above the turn window counts it, exactly as applyCall declares for
+    // an ordinary character.
+    const declared = bewitched === null ? resumed : declareSchoolOfMagic(resumed, witchSeat, bewitched);
+    return withSteps(declared, resumeStack(witchSeat, rest));
   }
   const bewitched = ctx.state.bewitched ?? null;
   const bewitchedSeat = bewitched === null ? null : seatHolding(ctx.state, bewitched);
