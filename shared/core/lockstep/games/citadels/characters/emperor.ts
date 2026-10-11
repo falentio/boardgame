@@ -1,6 +1,6 @@
 import type { SeatId } from "../../../index.ts";
 import type { CharacterCtx, CharacterEffect } from "../characters/index.ts";
-import { specOfDistrict } from "../districts.ts";
+import { typeOfPlaced } from "../districts.ts";
 import {
   actionOf,
   addGold,
@@ -24,7 +24,7 @@ const ownerOf = (ctx: CharacterCtx): SeatId => seatHolding(ctx.state, "emperor")
 
 /** The Emperor income unit: noble districts in a city. */
 const noblesIn = (state: CitadelsState, seat: SeatId): number =>
-  playerOf(state, seat).city.filter((district) => specOfDistrict(district.id).type === "noble").length;
+  playerOf(state, seat).city.filter((district) => typeOfPlaced(district) === "noble").length;
 
 /** The live seats the crown may be handed to: everyone but the Emperor. */
 const recipients = (state: CitadelsState, emperor: SeatId): readonly SeatId[] =>

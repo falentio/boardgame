@@ -1,6 +1,6 @@
 import type { SeatId } from "../../../index.ts";
 import type { CharacterCtx, CharacterEffect } from "../characters/index.ts";
-import { specOfDistrict } from "../districts.ts";
+import { specOfDistrict, typeOfPlaced } from "../districts.ts";
 import {
   actionOf,
   addGold,
@@ -19,8 +19,7 @@ const ownerOf = (ctx: CharacterCtx): SeatId => seatHolding(ctx.state, "trader") 
 
 /** The Trader's income unit: trade districts in a city. */
 const tradeIn = (state: CitadelsState, seat: SeatId): number =>
-  playerOf(state, seat).city.filter((district) => specOfDistrict(district.id).type === "trade")
-    .length;
+  playerOf(state, seat).city.filter((district) => typeOfPlaced(district) === "trade").length;
 
 /**
  * Gain 1 gold per trade district, then open the trader-build window: the Trader

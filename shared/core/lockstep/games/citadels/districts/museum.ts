@@ -26,10 +26,10 @@ export const museumIn = (state: CitadelsState, seat: SeatId): boolean =>
   playerOf(state, seat).city.some((district) => district.id === MUSEUM_ID);
 
 /**
- * Place one card from the owner's hand under the Museum. A `keep` action names
- * the card by index; any other explicit report coerces to the first card, so a
- * pass still exercises the once-per-turn placement. An absent report (idle) and
- * an empty hand leave the Museum untouched.
+ * Place one card from the owner's hand under the Museum. The rule is "you may
+ * place", so only a `keep` action names a card to tuck; any other report — a
+ * `pass` above all — declines and leaves the Museum untouched. An empty hand
+ * leaves it untouched too.
  *
  * This file is reached from the engine's `keep` resolver in helpers.ts, so it
  * may not import helpers at runtime: helpers imports `districts/effects.ts`,
@@ -41,10 +41,11 @@ export const museumPlace = (
   seat: SeatId,
   action: CitadelsAction | null,
 ): CitadelsState => {
-  if (action === null) return state;
+  if (action?.t !== "keep") return state;
   const player = playerOf(state, seat);
-  const wanted = action.t === "keep" ? action.index : 0;
-  const at = Number.isInteger(wanted) && wanted >= 0 && wanted < player.hand.length ? wanted : 0;
+  const wanted = action.index;
+  const at =
+    Number.isInteger(wanted) && wanted >= 0 && wanted < player.hand.length ? wanted : 0;
   const card = player.hand[at];
   if (card === undefined) return state;
   const city = player.city.map((district): PlacedDistrict =>

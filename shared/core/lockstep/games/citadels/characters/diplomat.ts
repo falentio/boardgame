@@ -1,6 +1,7 @@
 import type { SeatId } from "../../../index.ts";
 import type { CharacterCtx, CharacterEffect } from "../characters/index.ts";
 import { specOfDistrict, typeOfPlaced } from "../districts.ts";
+import { greatWallExchangeToll } from "../districts/great-wall.ts";
 import {
   actionOf,
   addGold,
@@ -112,7 +113,7 @@ export const diplomatResolve: WindowResolver = (ctx) => {
   if (rivalRemaining.some((district) => district.id === given.id)) {
     return withSteps(closed, rest);
   }
-  const owed = exchangeCost(taken.id, given.id);
+  const owed = exchangeCost(taken.id, given.id) + greatWallExchangeToll(rivalCity, myCity);
   if (playerOf(ctx.state, owner).gold < owed) return withSteps(closed, rest);
 
   const paid = spendGold(ctx.state, owner, owed);
