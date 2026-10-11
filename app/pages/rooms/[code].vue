@@ -15,11 +15,7 @@ import {
 import RoleStrip from "@/components/room/RoleStrip.vue"
 import SeatList from "@/components/room/SeatList.vue"
 import ShareLink from "@/components/room/ShareLink.vue"
-import HowToPlayVideo from "@/components/room/HowToPlayVideo.vue"
-import HowToPlayReveal from "@/components/room/HowToPlayReveal.vue"
-import { isRevealed, presenceOf } from "@/composables/how-to-play.ts"
-import { useHowToPlayVariant } from "@/composables/use-how-to-play-variant"
-import { cn } from "@/lib/utils"
+import HowToPlayDialog from "@/components/room/HowToPlayDialog.vue"
 import { parseRoomCode } from "#shared/rooms/code.ts"
 import { userId, type UserId } from "#shared/rooms/ids.ts"
 import { useAuthSession } from "@/composables/useAuthSession"
@@ -36,18 +32,9 @@ import {
 
 definePageMeta({ layout: "shell" })
 
-/** Dev-only: `import.meta.dev` folds to false in a production build, so Rollup drops the
- *  dynamic import and the picker chunk is never emitted. */
-const HowToPlayPicker = import.meta.dev
-  ? defineAsyncComponent(() => import("@/components/room/HowToPlayPicker.vue"))
-  : null
-
 const route = useRoute()
 const rawCode = route.params.code
 const code = parseRoomCode(Array.isArray(rawCode) ? (rawCode[0] ?? "") : String(rawCode ?? ""))
-
-const { variant } = useHowToPlayVariant()
-const presence = computed(() => presenceOf(variant.value))
 
 const { user } = await useAuthSession()
 const viewer = computed(() => (user.value ? userId(user.value.id) : null))
@@ -241,7 +228,7 @@ const onJoin = async () => {
 </script>
 
 <template>
-  <div :class="cn('mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-4 pt-0', presence.columnClass)">
+  <div class="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-4 pt-0">
     <Card>
       <CardContent class="pt-4">
         <div v-if="lobby.kind === 'loading'" class="flex flex-col gap-3">
@@ -424,8 +411,7 @@ const onJoin = async () => {
       </CardContent>
     </Card>
 
-    <HowToPlayVideo v-if="code !== null && !isRevealed(presence)" :presence="presence" />
-    <HowToPlayReveal v-else-if="code !== null" :presence="presence" />
+    <HowToPlayDialog v-if="code !== null" />
 
     <AlertDialog :open="leaveOpen" @update:open="(open) => { if (!open && !leaving) leaveOpen = false }">
       <AlertDialogContent>
@@ -491,9 +477,5 @@ const onJoin = async () => {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-
-    <ClientOnly v-if="HowToPlayPicker">
-      <component :is="HowToPlayPicker" />
-    </ClientOnly>
   </div>
 </template>
