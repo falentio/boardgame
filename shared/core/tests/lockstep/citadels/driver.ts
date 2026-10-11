@@ -390,11 +390,14 @@ export interface Board {
   readonly hands?: Readonly<Record<string, readonly DistrictId[]>>;
   readonly gold?: Readonly<Record<string, number>>;
   readonly crown?: SeatId;
+  /** Gold already charged onto the Tax Collector token; carries between rounds. */
+  readonly pot?: number;
 }
 
 const seedBoard = (state: CitadelsState, board: Board): CitadelsState => ({
   ...state,
   ...(board.crown === undefined ? {} : { crown: board.crown }),
+  ...(board.pot === undefined ? {} : { taxPot: board.pot }),
   players: state.players.map((player) => ({
     ...player,
     ...(board.cities?.[player.seat] === undefined
