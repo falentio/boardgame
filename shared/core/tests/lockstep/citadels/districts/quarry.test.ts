@@ -75,9 +75,10 @@ const turnState = (
 test("you may build a district identical to one already in your city", () => {
   const state = turnState(["quarry", "tavern"], ["tavern"], 10);
   const next = advance(state, () => ({ t: "build", card: 0 }));
-  // The second tavern is the one permitted duplicate.
+  // The second tavern is the one permitted duplicate. The build answer gathers 2
+  // gold first (commit 64420ca), then pays the Tavern's own cost.
   expect(cityIds(next, ANN)).toEqual(["quarry", "tavern", "tavern"]);
-  expect(rawGold(next, ANN)).toBe(10 - specOfDistrict("tavern").cost);
+  expect(rawGold(next, ANN)).toBe(10 + 2 - specOfDistrict("tavern").cost);
 });
 
 test("only one duplicate may exist: a third identical district is refused", () => {

@@ -64,8 +64,10 @@ test("your other unique districts cost one less gold to build", () => {
   const paidWithout = rawGold(build(withoutFactory), ANN);
   // Dragon Gate lists at 6; the Factory brings the net spend down to 5.
   expect(specOfDistrict("dragon-gate").cost).toBe(6);
-  expect(paidWithout).toBe(10 - 6);
-  expect(paid).toBe(10 - 6 + 1);
+  // Each turn gathers 2 gold first (commit 64420ca); the Factory then trims 1 off
+  // the Dragon Gate's 6.
+  expect(paidWithout).toBe(10 + 2 - 6);
+  expect(paid).toBe(10 + 2 - 6 + 1);
 });
 
 test("the discount applies to each of your other unique districts, not just one", () => {
@@ -73,8 +75,8 @@ test("the discount applies to each of your other unique districts, not just one"
     const cost = specOfDistrict(id).cost;
     const withFactory = turnState(["factory"], [id], 20);
     const withoutFactory = turnState([], [id], 20);
-    expect(rawGold(build(withFactory), ANN)).toBe(20 - cost + 1);
-    expect(rawGold(build(withoutFactory), ANN)).toBe(20 - cost);
+    expect(rawGold(build(withFactory), ANN)).toBe(20 + 2 - cost + 1);
+    expect(rawGold(build(withoutFactory), ANN)).toBe(20 + 2 - cost);
     expect(cityOf(build(withFactory), ANN)).toContain(id);
   }
 });
@@ -82,8 +84,9 @@ test("the discount applies to each of your other unique districts, not just one"
 test("a basic district is not discounted", () => {
   const state = turnState(["factory"], ["watchtower"], 10);
   const next = build(state);
-  // Watchtower lists at 1; the Factory discounts only unique districts.
-  expect(rawGold(next, ANN)).toBe(10 - specOfDistrict("watchtower").cost);
+  // Watchtower lists at 1; the Factory discounts only unique districts. The turn
+  // gathered 2 gold first.
+  expect(rawGold(next, ANN)).toBe(10 + 2 - specOfDistrict("watchtower").cost);
   expect(cityOf(next, ANN)).toContain("watchtower");
 });
 
@@ -91,7 +94,8 @@ test("the Factory does not discount its own build", () => {
   const state = turnState([], ["factory"], 10);
   const next = build(state);
   expect(specOfDistrict("factory").cost).toBe(5);
-  expect(rawGold(next, ANN)).toBe(10 - 5);
+  // The Factory is the card being built, so no discount; the turn gathered 2.
+  expect(rawGold(next, ANN)).toBe(10 + 2 - 5);
   expect(cityOf(next, ANN)).toContain("factory");
 });
 

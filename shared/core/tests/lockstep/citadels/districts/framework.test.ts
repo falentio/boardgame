@@ -78,7 +78,9 @@ test("you may build any district by destroying the Framework instead of paying i
   expect(cityIds(next, ANN)).toEqual(["dragon-gate"]);
   // Dragon Gate lists at 6, but the Framework paid for it: no gold left the stash.
   expect(specOfDistrict("dragon-gate").cost).toBe(6);
-  expect(rawGold(next, ANN)).toBe(10);
+  // The turn gathers 2 gold (commit 64420ca); the Framework pays the Dragon Gate's
+  // cost, so no gold left the stash for it.
+  expect(rawGold(next, ANN)).toBe(10 + 2);
   // The destroyed Framework sinks to the bottom of the deck, as the Warlord does.
   expect(next.deck[next.deck.length - 1]).toBe("framework");
 });
@@ -87,7 +89,8 @@ test("the Framework pays for a basic district too, not only a unique", () => {
   const state = turnState(["framework"], ["castle"], 10);
   const next = build(state);
   expect(cityIds(next, ANN)).toEqual(["castle"]);
-  expect(rawGold(next, ANN)).toBe(10);
+  // The gathered 2 gold, none of the Castle's cost: the Framework paid it.
+  expect(rawGold(next, ANN)).toBe(10 + 2);
 });
 
 test("without the Framework the same build charges its catalog cost", () => {
@@ -100,7 +103,8 @@ test("building the Framework itself pays its cost: the destroy needs a Framework
   const state = turnState([], ["framework"], 10);
   const next = build(state);
   expect(cityIds(next, ANN)).toEqual(["framework"]);
-  expect(rawGold(next, ANN)).toBe(10 - specOfDistrict("framework").cost);
+  // No Framework stands to destroy, so the build gathers 2 and pays the cost.
+  expect(rawGold(next, ANN)).toBe(10 + 2 - specOfDistrict("framework").cost);
 });
 
 test("the Framework declares the onBuild trigger", () => {
@@ -117,7 +121,9 @@ test("the Framework's effect is the build query: its hook changes no state", () 
 test("the ability is not a no-op: the Framework build spends no gold and moves the card to the deck", () => {
   const state = turnState(["framework"], ["palace"], 10);
   const next = build(state);
-  expect(rawGold(next, ANN)).toBe(rawGold(state, ANN));
+  // The turn gathers 2 gold and the Framework pays the Palace's cost, so the
+  // stash ends exactly 2 richer.
+  expect(rawGold(next, ANN)).toBe(rawGold(state, ANN) + 2);
   expect(cityIds(next, ANN)).toEqual(["palace"]);
   expect(next.deck).toContain("framework");
   expect(rawPlayer(next, ANN).city.some((district) => district.id === "framework")).toBe(false);

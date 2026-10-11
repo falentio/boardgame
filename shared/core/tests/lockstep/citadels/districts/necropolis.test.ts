@@ -79,7 +79,9 @@ test("instead of paying the Necropolis's cost, you destroy a district in your ci
   // The first district is spent, the Necropolis rises in its place, no gold paid.
   expect(cityIds(next, ANN)).toEqual(["watchtower", "necropolis"]);
   expect(specOfDistrict("necropolis").cost).toBe(5);
-  expect(rawGold(next, ANN)).toBe(10);
+  // The turn gathers 2 gold (commit 64420ca: a turn gathers, then optionally
+  // builds); the destroy trade pays none of the Necropolis's cost.
+  expect(rawGold(next, ANN)).toBe(10 + 2);
   // The destroyed district sinks to the bottom of the deck, as the Warlord does.
   expect(next.deck[next.deck.length - 1]).toBe("tavern");
   expect(totalCards(next)).toBe(totalCards(state));
@@ -90,7 +92,8 @@ test("the Necropolis may destroy any one district: the other districts are untou
   const next = build(state);
   expect(cityIds(next, ANN)).toEqual(["tavern", "docks", "necropolis"]);
   expect(cityIds(next, ANN)).not.toContain("watchtower");
-  expect(rawGold(next, ANN)).toBe(10);
+  // The turn gathered 2 gold; the destroy trade pays nothing.
+  expect(rawGold(next, ANN)).toBe(10 + 2);
 });
 
 test("with no district to destroy the Necropolis is not buildable by destruction", () => {
@@ -106,7 +109,9 @@ test("a Necropolis already in the city does not price a later build", () => {
   const next = build(state);
   // The tavern pays its own catalog cost; the standing Necropolis is not consumed.
   expect(cityIds(next, ANN)).toEqual(["necropolis", "tavern"]);
-  expect(rawGold(next, ANN)).toBe(10 - specOfDistrict("tavern").cost);
+  // The gather's 2 gold, then the Tavern's own cost; the standing Necropolis is
+  // not consumed.
+  expect(rawGold(next, ANN)).toBe(10 + 2 - specOfDistrict("tavern").cost);
 });
 
 test("the Necropolis declares the onBuild trigger", () => {
@@ -123,8 +128,10 @@ test("the Necropolis's effect is the build query: its hook changes no state", ()
 test("the ability is not a no-op: a paid Necropolis build leaves the city and stash untouched", () => {
   const paid = build(turnState([], ["necropolis"], 10));
   const destroyed = build(turnState(["tavern"], ["necropolis"], 10));
-  expect(rawGold(paid, ANN)).toBe(10 - specOfDistrict("necropolis").cost);
-  expect(rawGold(destroyed, ANN)).toBe(10);
+  // Both turns gathered 2 gold (64420ca); the paid build also pays the cost, the
+  // destroy trade does not.
+  expect(rawGold(paid, ANN)).toBe(10 + 2 - specOfDistrict("necropolis").cost);
+  expect(rawGold(destroyed, ANN)).toBe(10 + 2);
   expect(cityIds(paid, ANN)).toEqual(["necropolis"]);
   expect(cityIds(destroyed, ANN)).toEqual(["necropolis"]);
 });
