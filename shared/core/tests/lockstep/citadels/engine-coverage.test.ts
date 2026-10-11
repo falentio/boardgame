@@ -492,6 +492,49 @@ const CHARACTER_GUARDS: readonly CharacterGuard[] = [
         foldPurposes(fold).some((purpose) => purpose === "blackmailer-threat"),
         "a threatened player answers the threat",
       ).toBe(true);
+      // The D5-5 deferral: a threatened seat gathers, resolves the threat, then
+      // builds. Nothing stands in its city while the threat is open, and the
+      // build lands only after. A build that lands ahead of the threat, or one
+      // dropped with the deferral, both fail these two rows.
+      const base = rawGenesis(SEATS3, castWith("blackmailer"), "coverage-blackmailer-defer");
+      const armed: CitadelsState = {
+        ...base,
+        phase: "turn",
+        draft: null,
+        claimed: [
+          { seat: CARA, character: "king" },
+          { seat: ANN, character: "blackmailer" },
+          { seat: BOB, character: "merchant" },
+        ],
+        callRank: 6,
+        active: BOB,
+        steps: [{ kind: "call" }, { kind: "end-round" }],
+        pending: null,
+        builtThisTurn: 0,
+        threats: ["merchant", "king"],
+        players: base.players.map((player) =>
+          player.seat === BOB ? { ...player, gold: 4, hand: ["tavern"] } : player,
+        ),
+      };
+      const answerThreat = (_seat: SeatId, state: CitadelsState): CitadelsAction | null => {
+        const purpose = openPurpose(state);
+        if (purpose === "turn") return { t: "build", card: 0 };
+        if (purpose === "blackmailer-threat") return { t: "choose", value: "bribe" };
+        return null;
+      };
+      let threatState: CitadelsState | null = null;
+      let end = armed;
+      for (let i = 0; i < 40 && end.phase !== "draft"; i += 1) {
+        if (threatState === null && openPurpose(end) === "blackmailer-threat") threatState = end;
+        end = advance(end, answerThreat);
+      }
+      expect(
+        threatState === null ? [] : cityIdsOf(threatState, BOB),
+        "no district stands in the threatened seat's city while the threat is open",
+      ).toEqual([]);
+      expect(cityIdsOf(end, BOB), "the threatened build lands after the threat").toContain(
+        "tavern",
+      );
     },
   },
   {
