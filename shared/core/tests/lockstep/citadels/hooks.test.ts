@@ -159,7 +159,7 @@ test("bewitch beats rob: a character both bewitched and robbed yields only witch
   expect(windowPurposes(next)).not.toContain("thief-rob");
 });
 
-test("a threatened player's turn opens blackmailer-threat before their own window", () => {
+test("a threatened player's turn gathers before the blackmailer-threat opens", () => {
   const claimed: readonly Claim[] = [
     { seat: BOB, character: "blackmailer" },
     { seat: ANN, character: "merchant" },
@@ -169,13 +169,23 @@ test("a threatened player's turn opens blackmailer-threat before their own windo
     callRank: 6,
     threats: ["merchant", "thief"],
   };
-  const next = applyCall(state);
-  expect(topWindow(next).purpose).toBe("blackmailer-threat");
-  expect(topWindow(next).seats).toEqual([ANN]);
-  expect(next.steps[2]).toMatchObject({
+  const called = applyCall(state);
+  // rules.json (blackmailer): "When a threatened player is called, they must
+  // gather resources, then resolve the threat." The turn window (the gather)
+  // sits above the threat window, so the threat opens on the post-gather gold.
+  expect(windowPurposes(called).indexOf("turn")).toBeLessThan(
+    windowPurposes(called).indexOf("blackmailer-threat"),
+  );
+  expect(called.steps[2]).toMatchObject({
     kind: "window",
-    window: { purpose: "turn", seats: [ANN] },
+    window: { purpose: "blackmailer-threat", seats: [ANN] },
   });
+  // Driving the turn window (gather) is what opens the threat next.
+  const onTurn = advance(called, () => null);
+  expect(topWindow(onTurn).purpose).toBe("turn");
+  const gathered = advance(onTurn, (seat) => (seat === ANN ? { t: "gold" } : null));
+  expect(topWindow(gathered).purpose).toBe("blackmailer-threat");
+  expect(topWindow(gathered).seats).toEqual([ANN]);
 });
 
 test("a killed character opens nothing, exactly as before", () => {
@@ -301,7 +311,13 @@ test("a threat on the third seat's character opens too", () => {
     callRank: 6,
     threats: ["merchant"],
   };
-  const next = applyCall(state);
-  expect(topWindow(next).purpose).toBe("blackmailer-threat");
-  expect(topWindow(next).seats).toEqual([CARA]);
+  const called = applyCall(state);
+  // The turn window (gather) opens first, then the threat on the third seat.
+  expect(windowPurposes(called).indexOf("turn")).toBeLessThan(
+    windowPurposes(called).indexOf("blackmailer-threat"),
+  );
+  const onTurn = advance(called, () => null);
+  const gathered = advance(onTurn, (seat) => (seat === CARA ? { t: "gold" } : null));
+  expect(topWindow(gathered).purpose).toBe("blackmailer-threat");
+  expect(topWindow(gathered).seats).toEqual([CARA]);
 });
