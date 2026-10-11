@@ -4,7 +4,6 @@ import { specOfDistrict } from "../../../../lockstep/games/citadels/districts.ts
 import {
   monument,
   monumentBuild,
-  monumentExtraDistricts,
   monumentScoring,
   monumentTriggers,
 } from "../../../../lockstep/games/citadels/districts/monument.ts";
@@ -82,7 +81,7 @@ test("you cannot build the Monument when your city has more than five districts"
   expect(rawHand(next, ANN)).toEqual(["monument"]);
 });
 
-test("you may build the Monument when your city has four districts", () => {
+test("you may build the Monument when your city has four districts, paying its cost", () => {
   const state = withHand(withGold(turnState(cityOfSize(4)), ANN, 10), ANN, ["monument"]);
   const next = tryBuild(state, ANN, 0, rawRandom());
   expect(cityOf(next, ANN).map((district) => district.id)).toEqual([
@@ -117,35 +116,32 @@ test("the build gate refuses through the turn window, leaving the hand and gold 
   expect(openPurpose(next)).not.toBe("turn");
 });
 
-test("the Monument counts as two districts: a crafted city of one Monument scores one extra", () => {
-  const city: readonly PlacedDistrict[] = [{ id: "monument", gold: 0 }];
-  expect(monumentExtraDistricts(city)).toBe(1);
-  expect(city.length + monumentExtraDistricts(city)).toBe(2);
-  expect(monumentExtraDistricts([])).toBe(0);
-  expect(monumentExtraDistricts([{ id: "tavern", gold: 0 }])).toBe(0);
-  // Each Monument adds exactly one more, so two count as four.
-  const two: readonly PlacedDistrict[] = [
-    { id: "monument", gold: 0 },
-    { id: "monument", gold: 0 },
-  ];
-  expect(two.length + monumentExtraDistricts(two)).toBe(4);
-});
-
-test("the Monument scores no extra points of its own on a crafted city", () => {
+test("the Monument counts as two districts: a crafted city scores its cost a second time", () => {
   const city: readonly PlacedDistrict[] = [
     { id: "monument", gold: 0 },
     { id: "watchtower", gold: 0 },
   ];
-  expect(monumentScoring(city[0]!, city, ANN, turnState(city))).toBe(0);
-  const state = withCity(
-    { ...rawGenesis(SEATS3, BASE_CAST_IDS), completed: [ANN] },
-    ANN,
-    [...city],
-  );
+  const state = withCity(rawGenesis(SEATS3, BASE_CAST_IDS), ANN, [...city]);
+  // The second district is the Monument's cost paid again as unique points.
+  expect(monumentScoring(city[0]!, city, ANN, state)).toBe(specOfDistrict("monument").cost);
   const score = scoreGame(state).find((entry) => entry.seat === ANN);
-  // Cost sum only: 4 + 1; the Monument's rule is a district count, not points.
+  // Cost sum 4 + 1, plus the Monument's 4 as its second district.
   expect(score?.districts).toBe(5);
-  expect(score?.unique).toBe(0);
+  expect(score?.unique).toBe(4);
+  expect(score?.total).toBe(9);
+});
+
+test("two Monuments each count twice: a crafted city of two scores eight extra points", () => {
+  const city: readonly PlacedDistrict[] = [
+    { id: "monument", gold: 0 },
+    { id: "monument", gold: 0 },
+  ];
+  const state = withCity(rawGenesis(SEATS3, BASE_CAST_IDS), ANN, [...city]);
+  const score = scoreGame(state).find((entry) => entry.seat === ANN);
+  // Two cards at cost 4 = 8 in districts, and each pays 4 again = 8 in unique.
+  expect(score?.districts).toBe(8);
+  expect(score?.unique).toBe(8);
+  expect(score?.total).toBe(16);
 });
 
 test("the Monument declares the onBuild trigger and its build query is a real gate", () => {
@@ -163,7 +159,7 @@ test("the effect is not a no-op: the same Monument build succeeds at four distri
   expect(builtLow).toBe(0);
   expect(builtHigh).toBe(1);
   expect(builtLow).not.toBe(builtHigh);
-  // The effect body itself is inert: its rule lives in the build query and the count.
+  // The effect body itself is inert: its rule lives in the build query and the scorer.
   expect(monument({ state: low, owner: ANN, city: cityOf(low, ANN), rest: [], rng: rawRandom() })).toEqual(
     low,
   );
