@@ -16,3 +16,8 @@ pr	sha	verdict	evidence	verifier	ts
 1	2acbdaf	unit-test-verified	5 scoring districts green; 5 proven blocked on a missing state-aware scoring seam		2026-10-10T19:08:40.726Z
 1	e1827a3	unit-test-verified	citadels suite 348 passed; BuildTerms/BuildQuery/onDraw/state-aware scoring added		2026-10-10T19:49:10.704Z
 1	ce923f9	unit-test-verified	library+observatory+school-of-magic green; suite 371 passed		2026-10-10T20:11:58.104Z
+1	5c37fc8	unit-test-verified	citadels suite 466 passed at 5c37fc8		2026-10-10T23:57:47.231Z
+1	226a0b6	unit-test-verified	citadels suite 466 passed at 226a0b6		2026-10-10T23:57:47.238Z
+1	11f4650	unit-test-verified	quarry+framework+necropolis+stables all implemented; suite 466 passed; provider error hit after the last commit		2026-10-10T23:58:20.941Z
+1	088f423	unit-test-verified	citadels suite 466 passed; haunted-quarter + museum		2026-10-10T23:57:51.477Z
+1	37c4cf0	unit-test-verified	monument+secret-vault+thieves-den green; suite 466 passed		2026-10-11T00:05:37.061Z
