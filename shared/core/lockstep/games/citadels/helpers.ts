@@ -616,11 +616,11 @@ export const resolveTurn: WindowResolver = (ctx) => {
   // `completed` carries finish order and not roster order. Clear any character
   // pending the effect above the turn window left behind, so the gather's own
   // pending is the only one the keep windows see.
-  // The Witch's held turn carries no turn window (applyCall strips it), so any
-  // turn window on her seat is her resumed turn: the bewitched character's build
-  // turn, played with her hand/gold/city. She already gathered on the held turn,
-  // so the resume takes no gather of its own — the marker rides pending across
-  // the resume's build windows (a resumed Architect may build several times).
+  // A turn window on the Witch's seat is her resumed turn (the bewitched
+  // character's build turn, played with her hand/gold/city); the marker rides
+  // pending so it survives the resume's build windows (a resumed Architect may
+  // build several times). She already gathered on the held turn, so the resume
+  // takes no gather of its own.
   const resumePending =
     ctx.state.pending?.note === WITCH_RESUME_NOTE ? ctx.state.pending : null;
   const state = withPending(recordFinished(ctx.state), resumePending);
