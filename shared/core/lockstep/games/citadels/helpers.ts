@@ -383,6 +383,24 @@ const buildTerms = (
 };
 
 /**
+ * Record the gold a build paid on the turn-local pending, but only for the
+ * Alchemist, whose end-of-turn ability reads it back. Every other character
+ * leaves `pending` untouched, so the Museum's bare-pending sentinel is preserved
+ * and a build never misroutes the Museum's placement offer.
+ */
+const recordAlchemistSpend = (
+  state: CitadelsState,
+  seat: SeatId,
+  goldPaid: number,
+): CitadelsState =>
+  goldPaid <= 0 || claimOf(state, seat)?.character !== 'alchemist'
+    ? state
+    : withPending(state, {
+        ...emptyPending(seat, 'alchemist'),
+        gold: (state.pending?.gold ?? 0) + goldPaid,
+      });
+
+/**
  * Build a district from hand index `card` under the terms its city and the card
  * declare; otherwise do nothing. A build may be rejected for being illegal, for
  * an unaffordable gold cost, or for lacking the cards or city district an
@@ -413,6 +431,7 @@ export const tryBuild = (
   let discard = state.discard;
   let deck = state.deck;
   let paid = true;
+  let goldPaid = cost;
 
   if (destroy) {
     if (city.length === 0) return withSteps(state, []);
@@ -422,11 +441,18 @@ export const tryBuild = (
     // A destroyed district sinks to the bottom of the deck, as the Warlord and Armory do.
     if (gone !== undefined) deck = [...deck, gone.id];
     paid = false;
+    goldPaid = 0;
   } else if (payCards > 0) {
-    if (hand.length < payCards) return withSteps(state, []);
+    // The card share covers `payCards` gold of the cost; the builder still owes
+    // the remainder in gold. The Thieves' Den names the card share and so debits
+    // the difference here rather than building for free.
+    const goldShare = Math.max(0, cost - payCards);
+    if (hand.length < payCards || gold < goldShare) return withSteps(state, []);
     discard = [...discard, ...hand.slice(0, payCards)];
     hand = hand.slice(payCards);
+    gold -= goldShare;
     paid = false;
+    goldPaid = goldShare;
   } else {
     if (gold < cost) return withSteps(state, []);
     gold -= cost;
@@ -434,12 +460,16 @@ export const tryBuild = (
 
   const builtPlayer = { ...player, gold, hand, city: [...city, { id, gold: 0 }] };
   const counted = terms.countsAsBuild !== false;
-  const builtState: CitadelsState = recordFinished({
-    ...withPlayer(state, builtPlayer),
-    discard,
-    deck,
-    builtThisTurn: counted ? (state.builtThisTurn ?? 0) + 1 : (state.builtThisTurn ?? 0),
-  });
+  const builtState: CitadelsState = recordAlchemistSpend(
+    recordFinished({
+      ...withPlayer(state, builtPlayer),
+      discard,
+      deck,
+      builtThisTurn: counted ? (state.builtThisTurn ?? 0) + 1 : (state.builtThisTurn ?? 0),
+    }),
+    seat,
+    goldPaid,
+  );
   const taxed = chargeBuildTax(runDistrictHooks(builtState, "onBuild", seat, [], rng), seat);
   const magistrate = seatHolding(state, "magistrate");
   const warrant = state.warrants?.[0];
@@ -508,8 +538,12 @@ const withMuseumOffer = (
  * hand-built stack may omit it. Reuse the continuation's own END_TURN when it is
  * there, else supply one, so end-of-turn districts fire exactly once per turn.
  */
-const endTurnThen = (rest: readonly Step[]): readonly Step[] =>
-  rest[0]?.kind === "end-turn" ? rest : [END_TURN, ...rest];
+const endTurnThen = (rest: readonly Step[]): readonly Step[] => {
+  // The Alchemist's end-of-turn resolve sits directly above the turn's END_TURN
+  // (see alchemist.ts), so step past it to find the turn's own END_TURN.
+  const head = rest[0]?.kind === "resolve" ? rest.slice(1) : rest;
+  return head[0]?.kind === "end-turn" ? rest : [END_TURN, ...rest];
+};
 
 export const resolveTurn: WindowResolver = (ctx) => {
   // Record any seat that finished on an earlier turn before this turn's build, so
@@ -679,7 +713,12 @@ export const applyCall = (state: CitadelsState): CitadelsState => {
 export const applyEndTurn = (state: CitadelsState, rng: Random): CitadelsState => {
   const rest = state.steps.slice(1);
   const hooked = runDistrictHooks(state, "onEndTurn", state.active, rest, rng);
-  return withSteps(withPending({ ...hooked, builtThisTurn: 0 }, null), rest);
+  const cleared = withPending({ ...hooked, builtThisTurn: 0 }, null);
+  // The Armory's "on your turn" clause: offer its destroy window once per turn,
+  // at the end of the acting seat's turn, above the round's continuation. Every
+  // other onDestroy district (the Great Wall, the Keep) is a query, not a window.
+  const destroyed = runDistrictHooks(cleared, "onDestroy", state.active, rest, rng);
+  return destroyed === cleared ? withSteps(cleared, rest) : destroyed;
 };
 
 /** Clear the per-round markers; the Tax Collector's pot carries over. */
