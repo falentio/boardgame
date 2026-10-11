@@ -29,8 +29,16 @@ test("the Ivory Tower scores nothing when another unique district stands beside 
   expect(ivoryTowerScoring(placed("ivory-tower"), city, ANN)).toBe(0);
 });
 
-test("a Haunted Quarter counted as a non-unique type does not stop the Ivory Tower", () => {
+test("an undeclared Haunted Quarter is still a unique and stops the Ivory Tower", () => {
   const city = [placed("ivory-tower"), placed("haunted-quarter")];
+  expect(ivoryTowerScoring(placed("ivory-tower"), city, ANN)).toBe(0);
+});
+
+test("a Haunted Quarter counted as a non-unique type does not stop the Ivory Tower", () => {
+  const city: readonly PlacedDistrict[] = [
+    placed("ivory-tower"),
+    { id: "haunted-quarter", gold: 0, declaredType: "noble" },
+  ];
   expect(ivoryTowerScoring(placed("ivory-tower"), city, ANN)).toBe(5);
 });
 

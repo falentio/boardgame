@@ -40,7 +40,7 @@ test("D3: a Secret Vault still in hand scores three, a hand without it scores no
   expect(annScore(withHand(base, ANN, ["tavern", "market"]))?.unique).toBe(0);
 });
 
-test("D12: the Haunted Quarter counts as unique for the Ivory Tower only when declared unique", () => {
+test("D12: an undeclared Haunted Quarter is still unique and blocks the Ivory Tower", () => {
   const base = rawGenesis(SEATS3);
   const undeclared: readonly PlacedDistrict[] = [IVORY, { id: "haunted-quarter", gold: 0 }];
   const declaredNoble: readonly PlacedDistrict[] = [
@@ -51,10 +51,13 @@ test("D12: the Haunted Quarter counts as unique for the Ivory Tower only when de
     IVORY,
     { id: "haunted-quarter", gold: 0, declaredType: "unique" },
   ];
-  // Undeclared or declared non-unique, the Haunted Quarter does not stop the tower.
-  expect(ivoryTowerScoring(IVORY, undeclared, ANN)).toBe(5);
+  // Undeclared, the Haunted Quarter reports its catalog type unique, so the tower
+  // is not the city's only unique district and scores nothing.
+  expect(ivoryTowerScoring(IVORY, undeclared, ANN)).toBe(0);
+  expect(annScore(withCity(base, ANN, undeclared))?.unique).toBe(0);
+  // Declared a non-unique type, it no longer counts as unique and the tower scores.
   expect(ivoryTowerScoring(IVORY, declaredNoble, ANN)).toBe(5);
-  expect(annScore(withCity(base, ANN, undeclared))?.unique).toBe(5);
+  expect(annScore(withCity(base, ANN, declaredNoble))?.unique).toBe(5);
   // Declared unique, it is a second unique and the tower scores nothing.
   expect(ivoryTowerScoring(IVORY, declaredUnique, ANN)).toBe(0);
   expect(annScore(withCity(base, ANN, declaredUnique))?.unique).toBe(0);
