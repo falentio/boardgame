@@ -58,15 +58,20 @@ const allCharacters = (state: CitadelsState): readonly CharacterId[] =>
 const chooseTarget = (state: CitadelsState, seat: SeatId | null): CitadelsState =>
   advance(state, (s) => (s === ANN && seat !== null ? { t: "target", seat } : null));
 
+/** The owner answers the swap with the give-choice index into its claims in rank order. */
+const giveChoice = (state: CitadelsState, index: number): CitadelsState =>
+  advance(state, (s) => (s === ANN ? { t: "keep", index } : null));
+
 test("the Theater swaps its owner's claimed character for a random one from a chosen rival", () => {
   const state = turnState(twoEach(["king", "merchant"]));
   const next = chooseTarget(state, BOB);
-  // The owner gave up their lowest-rank character and took one of the rival's two.
+  // A target-only answer names the blind rival; with no give-choice named the
+  // engine defaults to the owner's lowest-rank claim (assassin).
   expect(charactersOf(next, ANN)).toHaveLength(2);
   expect(charactersOf(next, ANN)).toContain("thief");
   const received = charactersOf(next, ANN).find((id) => id !== "thief");
   expect(["king", "merchant"]).toContain(received);
-  // The rival now holds the owner's lowest-rank character.
+  // The rival now holds the owner's default (lowest-rank) character.
   expect(charactersOf(next, BOB)).toContain("assassin");
   // A true exchange: every character stays in play exactly once.
   expect(allCharacters(next)).toEqual(allCharacters(state));
@@ -128,13 +133,18 @@ test("a resigned target leaves both claim sets untouched", () => {
   expect(openPurpose(next)).not.toBe("theatre-swap");
 });
 
-test("the effect is not a no-op: the owner's claimed character differs after a swap", () => {
+test("a 2-3 player owner gives the claim it chooses, not always the lowest", () => {
   const state = turnState(twoEach(["king", "merchant"]));
   const before = charactersOf(state, ANN);
-  const next = chooseTarget(state, BOB);
+  // rules.json (theatre): "In 2-3 player games you choose which of your two
+  // characters to give and randomly take one of your opponent's." The owner
+  // chooses the higher-rank claim (index 1 = thief); a resolver that always gives
+  // the lowest would keep thief and hand over assassin, failing both rows below.
+  const next = giveChoice(state, 1);
+  expect(charactersOf(next, ANN)).not.toContain("thief");
+  expect(charactersOf(next, ANN)).toContain("assassin");
+  expect(charactersOf(next, BOB)).toContain("thief");
   expect(charactersOf(next, ANN)).not.toEqual(before);
-  // The owner's lowest-rank claim specifically changed.
-  expect(charactersOf(next, ANN)).not.toContain("assassin");
 });
 
 test("the Theater declares the onRoundStart hook, a member of DISTRICT_HOOKS", () => {
