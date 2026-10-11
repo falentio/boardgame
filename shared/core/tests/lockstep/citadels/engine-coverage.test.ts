@@ -16,6 +16,7 @@ import {
   EVE,
   SEATS3,
   SEATS5,
+  advance,
   castWith,
   foldEnd,
   foldGame,
@@ -26,6 +27,7 @@ import {
   handDelta,
   openPurpose,
   rawGold,
+  rawGenesis,
   rawHand,
   rawPlayer,
   spyEffects,
@@ -34,6 +36,7 @@ import {
   type CitadelsAction,
   type CitadelsState,
 } from "./driver.ts";
+import type { PlacedDistrict } from "../../../lockstep/games/citadels/state.ts";
 
 /**
  * The structural guard. Both verification passes reached the same root cause:
@@ -155,6 +158,83 @@ const buildFirst = policy(always({ t: "build", card: 0 }));
 
 const cityIdsOf = (state: CitadelsState, seat: SeatId): readonly DistrictId[] =>
   rawPlayer(state, seat).city.map((district) => district.id);
+
+/**
+ * A turn-phase state with ANN holding `character`, armed at its rank, over `city`.
+ * A declared type cannot ride a `Board` (its cities are ids), so a guard that needs
+ * one arms the engine's own turn stack, as the V2-5 counterexample does.
+ */
+const armedTurn = (character: CharacterId, city: readonly PlacedDistrict[]): CitadelsState => {
+  const genesis = rawGenesis(SEATS3, castWith(character), `coverage-${character}`);
+  return {
+    ...genesis,
+    phase: "turn",
+    draft: null,
+    claimed: [{ seat: ANN, character }],
+    callRank: specOfCharacter(character).rank,
+    active: ANN,
+    steps: [{ kind: "call" }, { kind: "end-round" }],
+    pending: null,
+    players: genesis.players.map((player) =>
+      player.seat === ANN ? { ...player, city } : player,
+    ),
+  };
+};
+
+/** Fold a Warlord turn destroying `index` in `target`'s city; return that city. */
+const warlordDestroy = (
+  target: SeatId,
+  cities: Readonly<Record<string, readonly DistrictId[]>>,
+  index: number,
+): readonly DistrictId[] =>
+  cityIdsOf(
+    foldEnd(
+      foldTurn({
+        character: "warlord",
+        cast: castWith("warlord"),
+        seats: SEATS3,
+        board: { cities, gold: { ann: 20 } },
+        answer: (_seat, state) => {
+          const purpose = openPurpose(state);
+          if (purpose === "warlord-destroy") {
+            const pending = state.pending;
+            return pending === null || pending.target === null
+              ? { t: "target", seat: target }
+              : { t: "keep", index };
+          }
+          return purpose === "turn" ? { t: "gold" } : null;
+        },
+      }),
+    ),
+    target,
+  );
+
+/** Fold a Diplomat exchange taking `takeIndex` from BOB for `giveIndex` from ANN; return ANN's gold. */
+const diplomatExchangeGold = (
+  rivalCity: readonly DistrictId[],
+  takeIndex: number,
+  giveIndex: number,
+): number =>
+  rawGold(
+    foldEnd(
+      foldTurn({
+        character: "diplomat",
+        cast: castWith("diplomat"),
+        seats: SEATS3,
+        board: { cities: { ann: ["tavern"], bob: rivalCity }, gold: { ann: 20 } },
+        answer: (_seat, state) => {
+          const purpose = openPurpose(state);
+          if (purpose === "diplomat-exchange") {
+            const pending = state.pending;
+            if (pending === null || pending.target === null) return { t: "target", seat: BOB };
+            return { t: "keep", index: pending.cards.length > 0 ? giveIndex : takeIndex };
+          }
+          return purpose === "turn" ? { t: "gold" } : null;
+        },
+      }),
+    ),
+    ANN,
+  );
 
 /** The largest card pool any gather window put in flight for `seat`. */
 const biggestPool = (fold: Fold, seat: SeatId): number =>
@@ -417,6 +497,14 @@ const CHARACTER_GUARDS: readonly CharacterGuard[] = [
         foldPurposes(fold),
         "the Trader opens its extra-build window",
       ).toContain("trader-build");
+      const declared = armedTurn("trader", [
+        { id: "school-of-magic", gold: 0, declaredType: "trade" },
+      ]);
+      const after = advance(declared, () => null);
+      expect(
+        rawGold(after, ANN) - rawGold(declared, ANN),
+        "the Trader counts a School of Magic declared trade, not the catalog type",
+      ).toBe(1);
     },
   },
   {
@@ -710,8 +798,32 @@ const DISTRICT_GUARDS: readonly DistrictGuard[] = [
       ).toBe(true);
     },
   },
-  { id: "great-wall", check: (_f, calls) => expect(calls, "the Great Wall is called").toBe(1) },
-  { id: "keep", check: (_f, calls) => expect(calls, "the Keep is called").toBe(1) },
+  {
+    id: "great-wall",
+    check: (_f, calls) => {
+      expect(calls, "the Great Wall's onDestroy hook is reached").toBe(1);
+      const walled = diplomatExchangeGold(["great-wall", "palace"], 1, 0);
+      const open = diplomatExchangeGold(["manor", "palace"], 1, 0);
+      expect(
+        open - walled,
+        "the Diplomat pays one extra gold to exchange out of a Great Wall city",
+      ).toBe(1);
+    },
+  },
+  {
+    id: "keep",
+    check: (_f, calls) => {
+      expect(calls, "the Keep's onDestroy hook is reached").toBe(1);
+      expect(
+        warlordDestroy(BOB, { ann: ["watchtower"], bob: ["keep"] }, 0),
+        "the Keep survives the Warlord's destroy",
+      ).toContain("keep");
+      expect(
+        warlordDestroy(BOB, { ann: ["watchtower"], bob: ["palace"] }, 0),
+        "an unprotected district does not survive the destroy",
+      ).toEqual([]);
+    },
+  },
   {
     id: "laboratory",
     board: { cities: { ann: ["laboratory"] }, hands: { ann: ["tavern", "market", "docks"] } },
