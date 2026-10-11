@@ -23,9 +23,11 @@ dist-build-remainder	districts	abandoned				1/8 done (factory); 7 blocked on the
 dist-scoring-remainder	districts	abandoned				5/10 done; 5 blocked on the scoring seam
 district-seams	core	done			e1827a3	orchestrate/citadels/briefs/district-seams.md
 dist-income-remainder	districts	done			ce923f9	3/6 done (gold-mine, park, poor-house); library/observatory/school-of-magic blocked on the draw hook
-integration-full-game	verify	pending				orchestrate/citadels/briefs/integration-full-game.md
+integration-full-game	verify	done			42ec6a1	orchestrate/citadels/briefs/integration-full-game.md
 dist-build-a	districts	done			11f4650	orchestrate/citadels/briefs/unit-dist-build-a.md
 dist-build-b	districts	done			37c4cf0	orchestrate/citadels/briefs/unit-dist-build-b.md
 dist-score-a	districts	done			5c37fc8	orchestrate/citadels/briefs/unit-dist-score-a.md
 dist-score-b	districts	done			088f423	orchestrate/citadels/briefs/unit-dist-score-b.md
-dist-theater	districts	pending				theater needs a round-start district hook (shared-file change)
+dist-theater	districts	done			2dfd6a5	theater needs a round-start district hook (shared-file change)
+codec-redaction	verify	done			76474ee	orchestrate/citadels/briefs/codec-redaction.md
+independent-verification	verify	pending				orchestrate/citadels/briefs/independent-verification.md

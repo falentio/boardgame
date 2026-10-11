@@ -21,3 +21,6 @@ pr	sha	verdict	evidence	verifier	ts
 1	11f4650	unit-test-verified	quarry+framework+necropolis+stables all implemented; suite 466 passed; provider error hit after the last commit		2026-10-10T23:58:20.941Z
 1	088f423	unit-test-verified	citadels suite 466 passed; haunted-quarter + museum		2026-10-10T23:57:51.477Z
 1	37c4cf0	unit-test-verified	monument+secret-vault+thieves-den green; suite 466 passed		2026-10-11T00:05:37.061Z
+1	42ec6a1	unit-test-verified	integration.test.ts 13 tests; full games terminal for 3-6 seats across 3 casts; redaction by keys; two peers converge byte-identical; suite 477 passed		2026-10-11T00:28:50.686Z
+1	76474ee	unit-test-verified	codec-redaction 5 tests; mid-game round-trip, snapshot, redaction walk, digest sensitivity; no leaks; suite 496 passed		2026-10-11T00:51:38.824Z
+1	2dfd6a5	unit-test-verified	theater 14 tests; onRoundStart hook; all 30 districts implemented; suite 496 passed, tsc clean		2026-10-11T00:54:06.420Z
