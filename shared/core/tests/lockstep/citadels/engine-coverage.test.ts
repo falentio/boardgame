@@ -376,6 +376,47 @@ const CHARACTER_GUARDS: readonly CharacterGuard[] = [
       const purposes = foldPurposes(fold);
       expect(purposes, "the bewitched turn is taken over").toContain("witch-takeover");
       expect(purposes, "the Witch resumes its held turn").toContain("witch-resume");
+      // The D5-1..4 resume: the bewitched character's own ability runs on the
+      // resumed turn. With the Architect bewitched, the resume draws its two
+      // cards onto the Witch's hand. Removing the resume's resolve step leaves
+      // the hand empty.
+      const witchCast = castWith("witch").slice();
+      witchCast[0] = "witch";
+      witchCast[specOfCharacter("architect").rank - 1] = "architect";
+      const base = rawGenesis(SEATS3, witchCast, "coverage-witch-resume");
+      let resumed: CitadelsState = {
+        ...base,
+        phase: "turn",
+        draft: null,
+        claimed: [
+          { seat: CARA, character: "architect" },
+          { seat: BOB, character: "thief" },
+          { seat: ANN, character: "witch" },
+        ],
+        callRank: 1,
+        active: ANN,
+        steps: [{ kind: "call" }, { kind: "end-round" }],
+        pending: null,
+        builtThisTurn: 0,
+        players: base.players.map((player) =>
+          player.seat === ANN ? { ...player, gold: 10, hand: [], city: [] } : player,
+        ),
+      };
+      for (let i = 0; i < 200 && resumed.phase !== "draft"; i += 1) {
+        resumed = advance(resumed, (seat, state) => {
+          const purpose = openPurpose(state);
+          if (purpose === "choose-character") {
+            return { t: "name-character", character: "architect" };
+          }
+          if (purpose === "turn") return { t: "gold" };
+          if (purpose === "keep") return { t: "keep", index: 0 };
+          return null;
+        });
+      }
+      expect(
+        rawHand(resumed, ANN),
+        "the resume ran the bewitched Architect's two-card draw",
+      ).toHaveLength(2);
     },
   },
   {
