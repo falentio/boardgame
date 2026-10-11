@@ -1,0 +1,361 @@
+<template>
+  <style>
+
+    @font-face { font-family: "Barlow"; src: url("../../assets/fonts/Barlow-900.woff2") format("woff2"); font-weight: 900; font-style: normal; font-display: block; }
+    @font-face { font-family: "IBM Plex Mono"; src: url("../../assets/fonts/IBMPlexMono-400.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: block; }
+    @font-face { font-family: "IBM Plex Mono"; src: url("../../assets/fonts/IBMPlexMono-500.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: block; }
+    @font-face { font-family: "IBM Plex Mono"; src: url("../../assets/fonts/IBMPlexMono-600.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: block; }
+
+    /* ---- root: styled by id (never a class on the composition element) ---- */
+    #root {
+      /* Monokai Filter Machine (frame.md, normative) */
+      --f03-ink: #273136;
+      --f03-ink-alt: #212B30;
+      --f03-accent: #FFED72;
+      --f03-cream: #F2FFFC;
+      --f03-cream-muted: #BDCAC9;
+      --f03-cream-hint: #B4BABB;
+      --f03-border: #414B50;
+      --f03-coin: #FFB270;
+      --f03-raised: #3A4449;
+      --f03-mono: "IBM Plex Mono", monospace;
+      --f03-sans: "Barlow", sans-serif;
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      container-type: size;
+      font-family: var(--f03-sans);
+      color: var(--f03-cream);
+      -webkit-font-smoothing: antialiased;
+    }
+    #root *, #root *::before, #root *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ---- layer shells (full-bleed grounds ride on clip layers) ---- */
+    .f03-layer { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+    .f03-ground { background: var(--f03-ink); }
+
+    /* ---- depth: faint border-dark hairline ring + top chrome bar ---- */
+    .f03-ring { position: absolute; border: 1px solid var(--f03-border); }
+    .f03-ring-outer { left: 40px; top: 40px; width: 1840px; height: 828px; }
+    .f03-ring-inner { left: 108px; top: 108px; width: 1704px; height: 692px; }
+    .f03-chrome {
+      position: absolute; left: 72px; right: 72px; top: 64px;
+      display: flex; justify-content: space-between;
+      font-family: var(--f03-mono); font-size: 14px; font-weight: 500;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--f03-cream-muted);
+    }
+
+    /* ---- camera wrapper: one faint push across the hold ---- */
+    .f03-cam { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 50% 42%; }
+
+    /* ---- seats (foreground subject) ---- */
+    .f03-seats { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+    .f03-seatwrap { position: absolute; left: 0; top: 0; width: 1920px; height: 908px; }
+    .f03-pad {
+      position: absolute; left: 50%; top: 50%; width: 264px; height: 176px; padding: 18px;
+      background: var(--f03-ink-alt); border: 1px solid var(--f03-border);
+      display: flex; flex-direction: column; justify-content: space-between;
+      will-change: transform;
+    }
+    .f03-pad-top { display: flex; align-items: baseline; justify-content: space-between; }
+    .f03-pad-label {
+      font-family: var(--f03-mono); font-size: 14px; font-weight: 500;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--f03-cream-muted);
+    }
+    .f03-pad-count { font-family: var(--f03-mono); font-size: 16px; font-weight: 600; color: var(--f03-cream-hint); }
+    .f03-pad-row { display: flex; align-items: flex-end; justify-content: space-between; }
+    .f03-coinbox, .f03-cardbox { display: flex; align-items: flex-end; gap: 8px; }
+    .f03-slot { position: relative; display: block; }
+    .f03-slot-coin { width: 38px; height: 38px; }
+    .f03-slot-card { width: 48px; height: 66px; }
+    .f03-slot::before { content: ""; position: absolute; inset: 0; border: 1px solid rgba(65, 75, 80, 0.6); }
+    .f03-coin { position: absolute; inset: 0; background: var(--f03-coin); border: 1px solid rgba(39, 49, 54, 0.3); }
+    .f03-coin::after { content: ""; position: absolute; inset: 5px; border: 1px solid rgba(39, 49, 54, 0.22); }
+    .f03-cardback { position: absolute; inset: 0; background: var(--f03-raised); border: 1px solid var(--f03-border); }
+    .f03-cardback::after {
+      content: ""; position: absolute; left: 50%; top: 50%; width: 16px; height: 16px;
+      margin: -8px 0 0 -8px; border: 1px solid rgba(139, 151, 152, 0.5);
+    }
+
+    /* ---- role rail: full-width strip across the centre ---- */
+    .f03-rail { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+    .f03-band-rule { position: absolute; left: 108px; width: 1704px; height: 1px; background: var(--f03-border); }
+    .f03-band-top { top: 338px; }
+    .f03-band-bottom { top: 570px; }
+    .f03-rail-kicker {
+      position: absolute; left: 108px; top: 445px;
+      font-family: var(--f03-mono); font-size: 15px; font-weight: 500;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--f03-accent);
+    }
+    .f03-rail-count {
+      position: absolute; right: 108px; top: 438px;
+      font-family: var(--f03-mono); font-size: 30px; font-weight: 600; line-height: 1; color: var(--f03-cream);
+    }
+    .f03-railrow {
+      position: absolute; left: 0; top: 350px; width: 1920px; height: 208px;
+      display: flex; justify-content: center; gap: 42px;
+    }
+    .f03-railcard { position: relative; width: 236px; height: 208px; will-change: transform; }
+    .f03-railback { position: absolute; inset: 0; background: var(--f03-raised); border: 1px solid var(--f03-border); z-index: 2; }
+    .f03-railback::after {
+      content: ""; position: absolute; left: 50%; top: 50%; width: 56px; height: 56px;
+      margin: -28px 0 0 -28px; border: 1px solid rgba(139, 151, 152, 0.45);
+    }
+    .f03-face { position: absolute; inset: 0; background: var(--f03-accent); z-index: 1; }
+    .f03-face-tag {
+      position: absolute; left: 16px; top: 14px;
+      font-family: var(--f03-mono); font-size: 12px; font-weight: 500;
+      letter-spacing: 0.14em; text-transform: uppercase; color: rgba(39, 49, 54, 0.72);
+    }
+    .f03-face-rule { position: absolute; left: 16px; top: 40px; width: 36px; height: 2px; background: var(--f03-ink); }
+    .f03-face-num {
+      position: absolute; left: 18px; bottom: 12px;
+      font-family: var(--f03-sans); font-size: 96px; font-weight: 900;
+      line-height: 0.9; letter-spacing: -0.04em; color: var(--f03-ink);
+    }
+  </style>
+
+  <div data-hf-id="hf-brfo" id="root" data-composition-id="03-setup-in-one-breath" data-width="1920" data-height="1080">
+
+    <div data-hf-id="hf-vopu" class="clip f03-layer f03-ground" data-start="0" data-duration="6.677" data-track-index="0"></div>
+
+    <div data-hf-id="hf-5u0v" class="clip f03-layer f03-depth" data-start="0" data-duration="6.677" data-track-index="1">
+      <div data-hf-id="hf-tv8a" class="f03-ring f03-ring-outer" data-op="0.5"></div>
+      <div data-hf-id="hf-qhpm" class="f03-ring f03-ring-inner" data-op="0.22"></div>
+      <div data-hf-id="hf-5sto" class="f03-chrome"><span data-hf-id="hf-5kxe">setup</span><span data-hf-id="hf-wqs1">No. 03</span></div>
+    </div>
+
+    <div data-hf-id="hf-fpsl" class="clip f03-layer f03-stage" data-start="0" data-duration="6.677" data-track-index="2">
+      <div data-hf-id="hf-u3tz" class="f03-cam">
+        <div data-hf-id="hf-lyv4" class="f03-seats">
+          <div data-hf-id="hf-uind" class="f03-seatwrap">
+          <div data-hf-id="hf-5zw0" class="f03-pad" data-tx="-690" data-ty="-238">
+            <div data-hf-id="hf-a683" class="f03-pad-top">
+              <span data-hf-id="hf-caqd" class="f03-pad-label">seat 1</span>
+              <span data-hf-id="hf-vp1c" class="f03-pad-count">0</span>
+            </div>
+            <div data-hf-id="hf-8zha" class="f03-pad-row">
+              <div data-hf-id="hf-r7cw" class="f03-coinbox">
+                <span data-hf-id="hf-gl3z" class="f03-slot f03-slot-coin"><i data-hf-id="hf-2hzd" class="f03-coin"></i></span>
+                <span data-hf-id="hf-bu5b" class="f03-slot f03-slot-coin"><i data-hf-id="hf-tcot" class="f03-coin"></i></span>
+              </div>
+              <div data-hf-id="hf-5sbb" class="f03-cardbox">
+                <span data-hf-id="hf-p6e2" class="f03-slot f03-slot-card"><i data-hf-id="hf-vi49" class="f03-cardback"></i></span>
+                <span data-hf-id="hf-4tdq" class="f03-slot f03-slot-card"><i data-hf-id="hf-innx" class="f03-cardback"></i></span>
+              </div>
+            </div>
+          </div>
+          <div data-hf-id="hf-bsxb" class="f03-pad" data-tx="690" data-ty="-238">
+            <div data-hf-id="hf-dzlv" class="f03-pad-top">
+              <span data-hf-id="hf-dhng" class="f03-pad-label">seat 2</span>
+              <span data-hf-id="hf-4i2g" class="f03-pad-count">0</span>
+            </div>
+            <div data-hf-id="hf-av7m" class="f03-pad-row">
+              <div data-hf-id="hf-bgfs" class="f03-coinbox">
+                <span data-hf-id="hf-bfua" class="f03-slot f03-slot-coin"><i data-hf-id="hf-ujlw" class="f03-coin"></i></span>
+                <span data-hf-id="hf-b1j9" class="f03-slot f03-slot-coin"><i data-hf-id="hf-u5av" class="f03-coin"></i></span>
+              </div>
+              <div data-hf-id="hf-1v2v" class="f03-cardbox">
+                <span data-hf-id="hf-57or" class="f03-slot f03-slot-card"><i data-hf-id="hf-jul0" class="f03-cardback"></i></span>
+                <span data-hf-id="hf-5lzs" class="f03-slot f03-slot-card"><i data-hf-id="hf-jg9z" class="f03-cardback"></i></span>
+              </div>
+            </div>
+          </div>
+          <div data-hf-id="hf-31gz" class="f03-pad" data-tx="-690" data-ty="238">
+            <div data-hf-id="hf-dlau" class="f03-pad-top">
+              <span data-hf-id="hf-d3cf" class="f03-pad-label">seat 3</span>
+              <span data-hf-id="hf-3b5d" class="f03-pad-count">0</span>
+            </div>
+            <div data-hf-id="hf-b9in" class="f03-pad-row">
+              <div data-hf-id="hf-a9ip" class="f03-coinbox">
+                <span data-hf-id="hf-dtog" class="f03-slot f03-slot-coin"><i data-hf-id="hf-vc7y" class="f03-coin"></i></span>
+                <span data-hf-id="hf-dfdf" class="f03-slot f03-slot-coin"><i data-hf-id="hf-uxwx" class="f03-coin"></i></span>
+              </div>
+              <div data-hf-id="hf-1gru" class="f03-cardbox">
+                <span data-hf-id="hf-2tul" class="f03-slot f03-slot-card"><i data-hf-id="hf-kn72" class="f03-cardback"></i></span>
+                <span data-hf-id="hf-385m" class="f03-slot f03-slot-card"><i data-hf-id="hf-k8w1" class="f03-cardback"></i></span>
+              </div>
+            </div>
+          </div>
+          <div data-hf-id="hf-qr42" class="f03-pad" data-tx="690" data-ty="238">
+            <div data-hf-id="hf-d6zt" class="f03-pad-top">
+              <span data-hf-id="hf-ea9i" class="f03-pad-label">seat 4</span>
+              <span data-hf-id="hf-3pge" class="f03-pad-count">0</span>
+            </div>
+            <div data-hf-id="hf-bnto" class="f03-pad-row">
+              <div data-hf-id="hf-antq" class="f03-coinbox">
+                <span data-hf-id="hf-d12e" class="f03-slot f03-slot-coin"><i data-hf-id="hf-w4u0" class="f03-coin"></i></span>
+                <span data-hf-id="hf-cmrd" class="f03-slot f03-slot-coin"><i data-hf-id="hf-vqiz" class="f03-coin"></i></span>
+              </div>
+              <div data-hf-id="hf-12gt" class="f03-cardbox">
+                <span data-hf-id="hf-3mgn" class="f03-slot f03-slot-card"><i data-hf-id="hf-lft4" class="f03-cardback"></i></span>
+                <span data-hf-id="hf-40ro" class="f03-slot f03-slot-card"><i data-hf-id="hf-l1i3" class="f03-cardback"></i></span>
+              </div>
+            </div>
+          </div>
+          </div>
+        </div>
+        <div data-hf-id="hf-f15q" class="f03-rail">
+          <div data-hf-id="hf-h18b" class="f03-band-rule f03-band-top"></div>
+          <div data-hf-id="hf-lv7b" class="f03-band-rule f03-band-bottom"></div>
+          <div data-hf-id="hf-zpit" class="f03-rail-kicker">roles</div>
+          <div data-hf-id="hf-btqs" class="f03-rail-count">0</div>
+          <div data-hf-id="hf-0gqq" class="f03-railrow">
+            <div data-hf-id="hf-kw20" class="f03-railcard">
+              <div data-hf-id="hf-im79" class="f03-face">
+                <span data-hf-id="hf-nafv" class="f03-face-tag">role</span>
+                <i data-hf-id="hf-kkok" class="f03-face-rule"></i>
+                <span data-hf-id="hf-y1hm" class="f03-face-num">1</span>
+              </div>
+              <div data-hf-id="hf-5ta3" class="f03-railback"></div>
+            </div>
+            <div data-hf-id="hf-05og" class="f03-railcard">
+              <div data-hf-id="hf-o7jt" class="f03-face">
+                <span data-hf-id="hf-vqhn" class="f03-face-tag">role</span>
+                <i data-hf-id="hf-p1os" class="f03-face-rule"></i>
+                <span data-hf-id="hf-yfsn" class="f03-face-num">2</span>
+              </div>
+              <div data-hf-id="hf-leez" class="f03-railback"></div>
+            </div>
+            <div data-hf-id="hf-yyrd" class="f03-railcard">
+              <div data-hf-id="hf-pegw" class="f03-face">
+                <span data-hf-id="hf-vc6m" class="f03-face-tag">role</span>
+                <i data-hf-id="hf-nurp" class="f03-face-rule"></i>
+                <span data-hf-id="hf-yu3o" class="f03-face-num">3</span>
+              </div>
+              <div data-hf-id="hf-l03y" class="f03-railback"></div>
+            </div>
+            <div data-hf-id="hf-zd2e" class="f03-railcard">
+              <div data-hf-id="hf-p05v" class="f03-face">
+                <span data-hf-id="hf-uxvl" class="f03-face-tag">role</span>
+                <i data-hf-id="hf-o92q" class="f03-face-rule"></i>
+                <span data-hf-id="hf-z8ep" class="f03-face-num">4</span>
+              </div>
+              <div data-hf-id="hf-klsx" class="f03-railback"></div>
+            </div>
+            <div data-hf-id="hf-y65b" class="f03-railcard">
+              <div data-hf-id="hf-n0mq" class="f03-face">
+                <span data-hf-id="hf-ujkk" class="f03-face-tag">role</span>
+                <i data-hf-id="hf-q8lv" class="f03-face-rule"></i>
+                <span data-hf-id="hf-zmpq" class="f03-face-num">5</span>
+              </div>
+              <div data-hf-id="hf-k7hw" class="f03-railback"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      var DUR = 6.677;
+      var tl = gsap.timeline({ paused: true });
+
+      function all(sel, scope) {
+        return Array.prototype.slice.call((scope || document).querySelectorAll(sel));
+      }
+
+      var pads = all(".f03-pad");
+      var railCards = all(".f03-railcard");
+      var railCount = document.querySelector(".f03-rail-count");
+
+      var CX = 960, CY = 454;
+      var SEATS = [[270, 216], [1650, 216], [270, 692], [1650, 692]];
+
+      /* Scene 1 (0.0-1.4s) - ink field, faint hairline ring, four seat markers
+         radiate outward from the table centre (center-outward-expansion). */
+      all(".f03-ring").forEach(function (el, i) {
+        tl.fromTo(el, { opacity: 0 },
+          { opacity: Number(el.getAttribute("data-op")), duration: 0.7, ease: "power2.out" },
+          0.05 + i * 0.09);
+      });
+      tl.fromTo(".f03-chrome", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.out" }, 0.34);
+
+      pads.forEach(function (pad, i) {
+        var at = 0.12 + i * 0.065;
+        tl.fromTo(pad,
+          { xPercent: -50, yPercent: -50, x: 0, y: 0, scale: 0.55, opacity: 0 },
+          {
+            x: Number(pad.getAttribute("data-tx")),
+            y: Number(pad.getAttribute("data-ty")),
+            scale: 1, opacity: 1, duration: 0.8, ease: "power3.out"
+          },
+          at);
+        tl.fromTo(pad.querySelector(".f03-pad-label"),
+          { opacity: 0, y: 8 },
+          { opacity: 1, y: 0, duration: 0.45, ease: "power3.out" },
+          at + 0.24);
+      });
+
+      /* Scene 2 (1.4-3.2s) - two mk-orange coins slide to each seat in a
+         staggered cascade (spring-pop-entrance); the mono counter ticks 0 -> 2. */
+      var COIN_AT = 1.45, COIN_STAG = 0.085, COIN_DUR = 0.55;
+      pads.forEach(function (pad, i) {
+        var seat = SEATS[i];
+        var dx = seat[0] - CX, dy = seat[1] - CY;
+        var len = Math.sqrt(dx * dx + dy * dy);
+        var sx = Math.round(-(dx / len) * 150);
+        var sy = Math.round(-(dy / len) * 150);
+        all(".f03-coin", pad).forEach(function (coin, j) {
+          var at = COIN_AT + (i * 2 + j) * COIN_STAG;
+          tl.fromTo(coin,
+            { x: sx, y: sy, scale: 0, opacity: 0 },
+            { x: 0, y: 0, scale: 1, opacity: 1, duration: COIN_DUR, ease: "power3.out" },
+            at);
+        });
+        var count = pad.querySelector(".f03-pad-count");
+        var tick = COIN_AT + (i * 2 + 1) * COIN_STAG + COIN_DUR + 0.05;
+        tl.set(count, { textContent: "0" }, 0);
+        tl.set(count, { textContent: "1" }, tick);
+        tl.set(count, { textContent: "2", color: "#F2FFFC" }, tick + 0.16);
+      });
+
+      /* Scene 3 (3.2-4.8s) - two card backs deal to every seat in the same
+         cascade order via staggered slide-up (spring-pop-entrance), face down. */
+      var CARD_AT = 3.3, CARD_STAG = 0.075, CARD_DUR = 0.5;
+      pads.forEach(function (pad, i) {
+        all(".f03-cardback", pad).forEach(function (card, j) {
+          var at = CARD_AT + (i * 2 + j) * CARD_STAG;
+          tl.fromTo(card,
+            { y: 34, opacity: 0, scale: 0.88 },
+            { y: 0, opacity: 1, scale: 1, duration: CARD_DUR, ease: "power3.out" },
+            at);
+        });
+      });
+
+      /* Scene 4 (4.8-6.68s) - the seats dim to 40% and the role rail assembles
+         across the centre (grid-card-assemble signature: staggered cascade into
+         the strip), then five faces flip up in sequence. */
+      tl.to(".f03-seats", { opacity: 0.4, duration: 0.55, ease: "power2.inOut" }, 4.5);
+      tl.fromTo(".f03-band-rule", { scaleX: 0 },
+        { scaleX: 1, duration: 0.55, ease: "power3.out", transformOrigin: "0% 50%", stagger: 0.08 }, 4.45);
+      tl.fromTo(".f03-rail-kicker", { opacity: 0, x: -14 }, { opacity: 1, x: 0, duration: 0.5, ease: "power3.out" }, 4.68);
+      tl.fromTo(".f03-rail-count", { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "power2.out" }, 4.68);
+      tl.set(railCount, { textContent: "0" }, 0);
+
+      railCards.forEach(function (card, i) {
+        tl.fromTo(card,
+          { y: 30, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.4, ease: "power3.out" },
+          4.52 + i * 0.06);
+      });
+      railCards.forEach(function (card, i) {
+        var t = 5.2 + i * 0.14;
+        tl.to(card, { scaleY: 0.02, duration: 0.16, ease: "power2.in" }, t);
+        tl.set(card.querySelector(".f03-railback"), { opacity: 0 }, t + 0.16);
+        tl.to(card, { scaleY: 1, duration: 0.22, ease: "power3.out" }, t + 0.16);
+        tl.set(railCount, { textContent: String(i + 1) }, t + 0.18);
+      });
+
+      /* one faint camera push under the whole shot (blueprint hold grammar) */
+      tl.fromTo(".f03-cam", { scale: 1 }, { scale: 1.018, duration: DUR, ease: "none" }, 0);
+
+      window.__timelines["03-setup-in-one-breath"] = tl;
+      tl.seek(0);
+    })();
+  </script>
+</template>

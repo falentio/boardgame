@@ -1,0 +1,405 @@
+<template>
+  <style>
+    /* ── fonts (local, shipped) ─────────────────────────────────────────── */
+    @font-face {
+      font-family: "IBM Plex Mono";
+      font-style: normal;
+      font-weight: 400;
+      font-display: block;
+      src: url("../../assets/fonts/IBMPlexMono-400.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      font-style: normal;
+      font-weight: 500;
+      font-display: block;
+      src: url("../../assets/fonts/IBMPlexMono-500.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      font-style: normal;
+      font-weight: 600;
+      font-display: block;
+      src: url("../../assets/fonts/IBMPlexMono-600.woff2") format("woff2");
+    }
+
+    /* ── root (styled by #root, never a class) ──────────────────────────── */
+    #root {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      container-type: size;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+    }
+
+    /* ── background: ink-black field + faint hairline grid ──────────────── */
+    .f01-bg {
+      position: absolute;
+      inset: 0;
+      background: #273136;
+    }
+    .f01-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        repeating-linear-gradient(
+          0deg,
+          rgba(139, 151, 152, 0.08) 0 1px,
+          transparent 1px 96px
+        ),
+        repeating-linear-gradient(
+          90deg,
+          rgba(139, 151, 152, 0.08) 0 1px,
+          transparent 1px 96px
+        );
+    }
+
+    /* ── content layer ─────────────────────────────────────────────────── */
+    .f01-scene {
+      position: absolute;
+      inset: 0;
+    }
+
+    /* chrome: rule stub + mono kicker (upper-left) */
+    .f01-rule-stub {
+      position: absolute;
+      left: 105px;
+      top: 104px;
+      width: 36px;
+      height: 2px;
+      background: #ffed72;
+      transform-origin: left center;
+    }
+    .f01-kicker {
+      position: absolute;
+      left: 105px;
+      top: 126px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-weight: 600;
+      font-size: 0.72cqw;
+      line-height: 1;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #ffed72;
+    }
+
+    /* hero: the dealt pair */
+    .f01-pair {
+      position: absolute;
+      inset: 0;
+      will-change: transform;
+    }
+    .f01-card {
+      position: absolute;
+      top: 238px;
+      width: 300px;
+      height: 432px;
+      background: #212b30;
+      border: 1px solid #414b50;
+      will-change: transform;
+    }
+    #f01-cardA {
+      left: 636px;
+    }
+    #f01-cardB {
+      left: 984px;
+    }
+    .f01-card-frame {
+      position: absolute;
+      inset: 14px;
+      border: 1px solid #414b50;
+      opacity: 0.55;
+    }
+    .f01-card-lattice {
+      position: absolute;
+      inset: 14px;
+      opacity: 0.5;
+      background-image:
+        repeating-linear-gradient(
+          45deg,
+          rgba(65, 75, 80, 0.55) 0 1px,
+          transparent 1px 26px
+        ),
+        repeating-linear-gradient(
+          -45deg,
+          rgba(65, 75, 80, 0.55) 0 1px,
+          transparent 1px 26px
+        );
+    }
+    .f01-card-emblem {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 78px;
+      height: 78px;
+      margin: -39px 0 0 -39px;
+      border: 1px solid #8b9798;
+      transform: rotate(45deg);
+    }
+    .f01-card-emblem::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 12px;
+      height: 12px;
+      margin: -6px 0 0 -6px;
+      background: #8b9798;
+    }
+
+    /* supporting: two coins (Finance hue — coins / treasury) */
+    .f01-coin {
+      position: absolute;
+      top: 572px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: #ffb270;
+      border: 1px solid rgba(39, 49, 54, 0.6);
+      will-change: transform;
+    }
+    #f01-coinA {
+      left: 556px;
+    }
+    #f01-coinB {
+      left: 1308px;
+    }
+    .f01-coin::after {
+      content: "";
+      position: absolute;
+      inset: 9px;
+      border-radius: 50%;
+      border: 1px solid rgba(39, 49, 54, 0.38);
+    }
+
+    /* the one ornament in the accent: a redaction bar over the hidden pair */
+    .f01-bar {
+      position: absolute;
+      left: 636px;
+      top: 446px;
+      width: 648px;
+      height: 16px;
+      background: #ffed72;
+      transform-origin: left center;
+      will-change: transform;
+    }
+
+    /* supporting chrome: mono coin readout */
+    .f01-counter {
+      position: absolute;
+      left: 636px;
+      top: 716px;
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 0.72cqw;
+      line-height: 1;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .f01-counter-label {
+      color: #B4BABB;
+      font-weight: 400;
+    }
+    .f01-counter-val {
+      display: inline-block;
+      min-width: 1.2ch;
+      color: #ffed72;
+      font-weight: 600;
+    }
+
+    /* low hairline rule */
+    .f01-rule {
+      position: absolute;
+      left: 105px;
+      top: 782px;
+      width: 1710px;
+      height: 1px;
+      background: #414b50;
+      transform-origin: left center;
+    }
+  </style>
+
+  <div data-hf-id="hf-r7h1" id="root" data-composition-id="01-two-cards-face-down" data-start="0" data-duration="5.419" data-width="1920" data-height="1080">
+    <div data-hf-id="hf-407i" class="clip f01-bg" data-start="0" data-duration="5.419" data-track-index="0">
+      <div data-hf-id="hf-llbe" class="f01-grid" id="f01-grid"></div>
+    </div>
+
+    <div data-hf-id="hf-mg82" class="clip f01-scene" data-start="0" data-duration="5.419" data-track-index="1">
+      <div data-hf-id="hf-wgag" class="f01-rule-stub" id="f01-rule-stub"></div>
+      <div data-hf-id="hf-zes6" class="f01-kicker" id="f01-kicker">g54</div>
+
+      <div data-hf-id="hf-5d4e" class="f01-pair" id="f01-pair">
+        <div data-hf-id="hf-5eyf" class="f01-card" id="f01-cardA">
+          <div data-hf-id="hf-di4e" class="f01-card-frame"></div>
+          <div data-hf-id="hf-xxcb" class="f01-card-lattice"></div>
+          <div data-hf-id="hf-1zw5" class="f01-card-emblem"></div>
+        </div>
+        <div data-hf-id="hf-wr2k" class="f01-card" id="f01-cardB">
+          <div data-hf-id="hf-93vm" class="f01-card-frame"></div>
+          <div data-hf-id="hf-zjor" class="f01-card-lattice"></div>
+          <div data-hf-id="hf-cisp" class="f01-card-emblem"></div>
+        </div>
+      </div>
+
+      <div data-hf-id="hf-fcj3" class="f01-coin" id="f01-coinA"></div>
+      <div data-hf-id="hf-4h1g" class="f01-coin" id="f01-coinB"></div>
+
+      <div data-hf-id="hf-snus" class="f01-bar" id="f01-bar"></div>
+
+      <div data-hf-id="hf-x6v2" class="f01-counter" id="f01-counter">
+        <span data-hf-id="hf-ii6k" class="f01-counter-label">coins</span>
+        <span data-hf-id="hf-6wxl" class="f01-counter-val" id="f01-counter-val">0</span>
+      </div>
+
+      <div data-hf-id="hf-lkea" class="f01-rule" id="f01-rule"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      var DURATION = 5.419;
+
+      window.__timelines = window.__timelines || {};
+      var tl = gsap.timeline({ paused: true });
+
+      /* collapsed start states pinned at t=0 — seek-safe, so a delayed
+         entrance never flashes its CSS-default (visible) state beforehand */
+      tl.set(
+        [
+          "#f01-cardA",
+          "#f01-cardB",
+          "#f01-coinA",
+          "#f01-coinB",
+          "#f01-counter"
+        ],
+        { opacity: 0 },
+        0
+      );
+      tl.set(["#f01-rule-stub", "#f01-rule", "#f01-bar"], { scaleX: 0 }, 0);
+      tl.set("#f01-kicker", { y: -12 }, 0);
+
+      /* ── Scene 1 (0.0–1.4) : ink field, chrome, ONE card back ─────────── */
+      tl.fromTo(
+        "#f01-grid",
+        { opacity: 0 },
+        { opacity: 1, duration: 1.1, ease: "power2.out" },
+        0
+      );
+      tl.fromTo(
+        "#f01-rule-stub",
+        { scaleX: 0, opacity: 0 },
+        { scaleX: 1, opacity: 1, duration: 0.5, ease: "power3.out" },
+        0.08
+      );
+      tl.fromTo(
+        "#f01-kicker",
+        { opacity: 0, y: -12 },
+        { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" },
+        0.18
+      );
+      tl.fromTo(
+        "#f01-rule",
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.75, ease: "power2.inOut" },
+        0.22
+      );
+
+      /* the first card back — slide-up settle (spring-pop-entrance, no overshoot) */
+      tl.fromTo(
+        "#f01-cardA",
+        { y: 132, scale: 0.62, opacity: 0 },
+        { y: 0, scale: 1, opacity: 1, duration: 0.75, ease: "power3.out" },
+        0.15
+      );
+
+      /* ── Scene 2 (1.4–2.8) : the second card lands, pair reads as one ─── */
+      tl.fromTo(
+        "#f01-cardB",
+        { y: 132, scale: 0.62, opacity: 0 },
+        { y: 0, scale: 1, opacity: 1, duration: 0.75, ease: "power3.out" },
+        1.45
+      );
+
+      /* ── Scene 3 (2.8–4.4) : coins, one per beat ────────────────────────
+         dynamic-content-sequencing: start/end computed from content config,
+         never hardcoded per item. */
+      var COINS = [
+        { id: "#f01-coinA", chars: 4, hold: 0.02 },
+        { id: "#f01-coinB", chars: 4, hold: 0.05 }
+      ];
+      var BASE_DURATION = 0.5;
+      var SEC_PER_CHAR = 0.02;
+      var cumulative = 2.9;
+      var COIN_TIMELINE = COINS.map(function (entry) {
+        var dur = BASE_DURATION + entry.chars * SEC_PER_CHAR + entry.hold;
+        var start = cumulative;
+        cumulative += dur;
+        return { id: entry.id, start: start, end: cumulative };
+      });
+
+      var DROP_DUR = 0.6;
+      COIN_TIMELINE.forEach(function (coin) {
+        tl.fromTo(
+          coin.id,
+          { y: -170, scale: 0.86, opacity: 0 },
+          { y: 0, scale: 1, opacity: 1, duration: DROP_DUR, ease: "power3.out" },
+          coin.start
+        );
+      });
+
+      tl.fromTo(
+        "#f01-counter",
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" },
+        2.88
+      );
+
+      /* mono counter — discrete-text-sequence: whole-state swap at thresholds,
+         guarded so there is no per-frame textContent thrash in render. */
+      var COUNTER_SEQ = [
+        { t: 0.0, text: "0" },
+        { t: COIN_TIMELINE[0].start + DROP_DUR, text: "1" },
+        { t: COIN_TIMELINE[1].start + DROP_DUR, text: "2" }
+      ];
+      var counterEl = document.getElementById("f01-counter-val");
+      /* discrete-text-sequence, seek-safe form: tl.set at each threshold. A
+         zero-duration set is a property tween, so it renders under a cold
+         suppressed seek (an onUpdate driver would not). */
+      COUNTER_SEQ.forEach(function (entry) {
+        tl.set(counterEl, { textContent: entry.text }, entry.t);
+      });
+
+      /* ── Scene 4 (4.4–end) : redaction sweep, then the held read ──────── */
+      tl.fromTo(
+        "#f01-bar",
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.7, ease: "power2.inOut" },
+        4.45
+      );
+
+      /* subtle jitter on the settled pair — sine-wave-loop, onUpdate form,
+         low amplitude, one long tween, sin(0)=0 at the settle so no jump. */
+      var IDLE_START = 4.7;
+      var IDLE_DUR = DURATION - IDLE_START;
+      var CYCLES = 0.4;
+      var Y_AMP_PX = 2;
+      var pairEl = document.getElementById("f01-pair");
+      /* sine-wave-loop, seek-safe form: a finite chain of pre-sampled keyframes
+         on a wrapper (values computed here, no callback under seek). */
+      var IDLE_STEPS = 16;
+      var idleFrames = [];
+      for (var si = 0; si <= IDLE_STEPS; si++) {
+        idleFrames.push({ y: Math.sin((si / IDLE_STEPS) * Math.PI * 2 * CYCLES) * Y_AMP_PX });
+      }
+      tl.to(pairEl, { keyframes: idleFrames, duration: IDLE_DUR, ease: "none" }, IDLE_START);
+
+      window.__timelines["01-two-cards-face-down"] = tl;
+    })();
+  </script>
+</template>

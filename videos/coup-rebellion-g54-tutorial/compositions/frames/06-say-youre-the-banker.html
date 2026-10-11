@@ -1,0 +1,395 @@
+<template data-composition-id="06-say-youre-the-banker" data-width="1920" data-height="1080">
+<style>
+  @font-face { font-family: 'Barlow'; src: url('../../assets/fonts/Barlow-400.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: block; }
+  @font-face { font-family: 'Barlow'; src: url('../../assets/fonts/Barlow-600.woff2') format('woff2'); font-weight: 600; font-style: normal; font-display: block; }
+  @font-face { font-family: 'Barlow'; src: url('../../assets/fonts/Barlow-700.woff2') format('woff2'); font-weight: 700; font-style: normal; font-display: block; }
+  @font-face { font-family: 'Barlow'; src: url('../../assets/fonts/Barlow-800.woff2') format('woff2'); font-weight: 800; font-style: normal; font-display: block; }
+  @font-face { font-family: 'Barlow'; src: url('../../assets/fonts/Barlow-900.woff2') format('woff2'); font-weight: 900; font-style: normal; font-display: block; }
+  @font-face { font-family: 'IBM Plex Mono'; src: url('../../assets/fonts/IBMPlexMono-400.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: block; }
+  @font-face { font-family: 'IBM Plex Mono'; src: url('../../assets/fonts/IBMPlexMono-500.woff2') format('woff2'); font-weight: 500; font-style: normal; font-display: block; }
+  @font-face { font-family: 'IBM Plex Mono'; src: url('../../assets/fonts/IBMPlexMono-600.woff2') format('woff2'); font-weight: 600; font-style: normal; font-display: block; }
+
+  #root {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background: transparent;
+    color: #F2FFFC;
+    font-family: 'Barlow', system-ui, sans-serif;
+    font-weight: 400;
+  }
+  #root *, #root *::before, #root *::after { box-sizing: border-box; }
+
+  /* every authored node is absolutely placed; ids are frame-prefixed so parallel
+     workers cannot collide. NOTE: ids beginning with a digit are not valid CSS
+     identifiers, so all rules address them through attribute selectors. */
+  [id^="06-say-youre-the-banker-"] { position: absolute; margin: 0; padding: 0; }
+
+  /* ---------- depth layer 1 — the field ---------- */
+  [id="06-say-youre-the-banker-ground"] {
+    inset: 0;
+    background-color: #273136;
+    background-image:
+      radial-gradient(125% 108% at 50% 44%, rgba(1, 21, 27, 0) 34%, rgba(1, 21, 27, 0.66) 100%),
+      linear-gradient(to right, rgba(65, 75, 80, 0.13) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(65, 75, 80, 0.13) 1px, transparent 1px);
+    background-size: 100% 100%, 96px 96px, 96px 96px;
+  }
+
+  /* ---------- the camera layer ---------- */
+  [id="06-say-youre-the-banker-world"] { inset: 0; transform-origin: 50% 45%; }
+
+  /* ---------- depth layer 2 — the table edge / challenge ring ---------- */
+  [id="06-say-youre-the-banker-ring-svg"] {
+    left: 0; top: 0; width: 1920px; height: 1080px;
+    z-index: 2; overflow: visible;
+  }
+  [id="06-say-youre-the-banker-ring-base"] { opacity: 0; }
+  [id="06-say-youre-the-banker-ring-draw"] { opacity: 0; }
+
+  /* ---------- depth layer 3 — the other seats (supporting) ---------- */
+  [id^="06-say-youre-the-banker-seat-mark-"] {
+    width: 16px; height: 16px; top: 490px;
+    border: 1px solid #616C6F; z-index: 3;
+  }
+  [id="06-say-youre-the-banker-seat-mark-0"] { left: 348px; }
+  [id="06-say-youre-the-banker-seat-mark-1"] { left: 1556px; }
+  [id^="06-say-youre-the-banker-seat-label-"] {
+    top: 518px; z-index: 3;
+    font-family: 'IBM Plex Mono', monospace; font-weight: 500; font-size: 22px;
+    line-height: 22px; letter-spacing: 0.14em; text-transform: uppercase; color: #B4BABB;
+  }
+  [id="06-say-youre-the-banker-seat-label-0"] { left: 340px; }
+  [id="06-say-youre-the-banker-seat-label-1"] { left: 1504px; }
+
+  /* ---------- depth layer 3 — the treasury ---------- */
+  [id="06-say-youre-the-banker-treasury"] {
+    left: 680px; top: 214px; width: 560px; height: 96px;
+    z-index: 4;
+    background: rgba(1, 21, 27, 0.34);
+    border-top: 1px solid #414B50;
+    border-bottom: 1px solid #414B50;
+  }
+  [id^="06-say-youre-the-banker-disc-"] {
+    width: 48px; height: 48px; top: 24px;
+    border-radius: 50%;
+    background: #FFB270;
+    border: 1px solid rgba(1, 21, 27, 0.42);
+  }
+  [id="06-say-youre-the-banker-disc-0"] { left: 76px; }
+  [id="06-say-youre-the-banker-disc-1"] { left: 151px; }
+  [id="06-say-youre-the-banker-disc-2"] { left: 226px; }
+  [id="06-say-youre-the-banker-disc-3"] { left: 301px; }
+  [id="06-say-youre-the-banker-disc-4"] { left: 376px; }
+  [id="06-say-youre-the-banker-disc-5"] { left: 451px; }
+
+  [id="06-say-youre-the-banker-treasury-label"] {
+    left: 680px; top: 162px; z-index: 4;
+    font-family: 'IBM Plex Mono', monospace; font-weight: 500; font-size: 24px;
+    line-height: 24px; letter-spacing: 0.14em; text-transform: uppercase; color: #8B9798;
+  }
+
+  /* ---------- depth layer 3 — the claimant seat card ---------- */
+  [id="06-say-youre-the-banker-card"] {
+    left: 620px; top: 684px; width: 680px; height: 180px;
+    z-index: 4;
+    background: rgba(1, 21, 27, 0.30);
+    border-top: 1px solid #414B50;
+  }
+  [id="06-say-youre-the-banker-card-seatmark"] {
+    left: 32px; top: 14px; width: 16px; height: 16px;
+    border: 1px solid #616C6F;
+  }
+  [id="06-say-youre-the-banker-card-claimant"] {
+    left: 64px; top: 10px;
+    font-family: 'IBM Plex Mono', monospace; font-weight: 500; font-size: 26px;
+    line-height: 26px; letter-spacing: 0.14em; text-transform: uppercase; color: #8B9798;
+  }
+  [id="06-say-youre-the-banker-card-coinslabel"] {
+    left: 359px; top: 10px;
+    font-family: 'IBM Plex Mono', monospace; font-weight: 500; font-size: 26px;
+    line-height: 26px; letter-spacing: 0.14em; text-transform: uppercase; color: #8B9798;
+  }
+  [id="06-say-youre-the-banker-counter-wrap"] { left: 32px; top: 58px; width: 120px; height: 112px; }
+  [id="06-say-youre-the-banker-counter"] {
+    left: 0; top: 0; width: 120px; height: 112px;
+    font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 104px;
+    line-height: 112px; text-align: center; color: #FFB270;
+    font-variant-numeric: tabular-nums;
+    transform-origin: 50% 50%;
+  }
+
+  /* ---------- depth layer 4 — the claim chip (hero) ---------- */
+  [id="06-say-youre-the-banker-chip"] {
+    left: 570px; top: 352px; width: 780px; height: 204px;
+    z-index: 6;
+    background: #3A4449;
+    border: 1px solid #FFB270;
+    transform-origin: 50% 100%;
+  }
+  [id="06-say-youre-the-banker-chip-word"] {
+    inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow', sans-serif; font-weight: 900; font-size: 190px;
+    line-height: 1; letter-spacing: -0.04em; text-transform: lowercase; color: #FFED72;
+  }
+  [id="06-say-youre-the-banker-chip-tag"] {
+    right: 0; top: -15px;
+    padding: 5px 14px 6px;
+    background: #01151B;
+    border: 1px solid #FFB270;
+    color: #FFB270;
+    font-family: 'IBM Plex Mono', monospace; font-weight: 500; font-size: 22px;
+    line-height: 22px; letter-spacing: 0.14em; text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  /* ---------- depth layer 4 — the coins the claim moves ---------- */
+  [id^="06-say-youre-the-banker-coin-"] {
+    width: 52px; height: 52px; top: 774px;
+    border-radius: 50%;
+    background: #FFB270;
+    border: 1px solid rgba(1, 21, 27, 0.42);
+    z-index: 6;
+  }
+  [id="06-say-youre-the-banker-coin-0"] { left: 979px; }
+  [id="06-say-youre-the-banker-coin-1"] { left: 1054px; }
+  [id="06-say-youre-the-banker-coin-2"] { left: 1129px; }
+
+  /* ---------- depth layer 4 — the verdict stamp ---------- */
+  [id="06-say-youre-the-banker-stamp"] {
+    left: 770px; top: 574px; width: 380px; height: 62px;
+    z-index: 6;
+    display: flex; align-items: center; justify-content: center;
+    background: #A2E57B;
+    color: #273136;
+    font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 30px;
+    line-height: 1; letter-spacing: 0.14em; text-transform: uppercase;
+    transform-origin: 50% 50%;
+  }
+
+  /* ---------- chrome ---------- */
+  [id="06-say-youre-the-banker-chrome-rule"] {
+    left: 105px; top: 58px; width: 1710px; height: 1px;
+    background: #414B50; z-index: 8;
+  }
+  [id^="06-say-youre-the-banker-chrome-label-"] {
+    top: 72px; z-index: 8;
+    font-family: 'IBM Plex Mono', monospace; font-weight: 500; font-size: 24px;
+    line-height: 24px; letter-spacing: 0.14em; text-transform: uppercase; color: #8B9798;
+  }
+  [id="06-say-youre-the-banker-chrome-label-left"] { left: 105px; }
+  [id="06-say-youre-the-banker-chrome-label-right"] { right: 105px; text-align: right; }
+</style>
+
+<div data-hf-id="hf-rsvg" id="root" data-composition-id="06-say-youre-the-banker" data-start="0" data-duration="4.565" data-width="1920" data-height="1080">
+  <div data-hf-id="hf-pjdt" id="06-say-youre-the-banker-ground" class="clip" data-start="0" data-duration="4.565" data-track-index="0"></div>
+
+  <div data-hf-id="hf-0byv" id="06-say-youre-the-banker-world">
+    <svg data-hf-id="hf-7lbm" id="06-say-youre-the-banker-ring-svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <ellipse data-hf-id="hf-hag0" id="06-say-youre-the-banker-ring-base" cx="960" cy="498" rx="604" ry="300" fill="none" stroke="#FFED72" stroke-width="2" stroke-dasharray="12 16" />
+      <ellipse data-hf-id="hf-6hgk" id="06-say-youre-the-banker-ring-draw" cx="960" cy="498" rx="604" ry="300" fill="none" stroke="#FFED72" stroke-width="3" stroke-linecap="round" transform="rotate(-90 960 498)" />
+    </svg>
+
+    <div data-hf-id="hf-ihub" id="06-say-youre-the-banker-seat-mark-0"></div>
+    <div data-hf-id="hf-eqad" id="06-say-youre-the-banker-seat-label-0">seat 02</div>
+    <div data-hf-id="hf-ejqa" id="06-say-youre-the-banker-seat-mark-1"></div>
+    <div data-hf-id="hf-pur5" id="06-say-youre-the-banker-seat-label-1">seat 03</div>
+
+    <div data-hf-id="hf-seu2" id="06-say-youre-the-banker-treasury">
+      <div data-hf-id="hf-cxd5" id="06-say-youre-the-banker-disc-0"></div>
+      <div data-hf-id="hf-c5pc" id="06-say-youre-the-banker-disc-1"></div>
+      <div data-hf-id="hf-n16z" id="06-say-youre-the-banker-disc-2"></div>
+      <div data-hf-id="hf-j32y" id="06-say-youre-the-banker-disc-3"></div>
+      <div data-hf-id="hf-0bd9" id="06-say-youre-the-banker-disc-4"></div>
+      <div data-hf-id="hf-zjpg" id="06-say-youre-the-banker-disc-5"></div>
+    </div>
+    <div data-hf-id="hf-4dz6" id="06-say-youre-the-banker-treasury-label">treasury</div>
+
+    <div data-hf-id="hf-n21v" id="06-say-youre-the-banker-card">
+      <div data-hf-id="hf-z748" id="06-say-youre-the-banker-card-seatmark"></div>
+      <div data-hf-id="hf-0azy" id="06-say-youre-the-banker-card-claimant">claimant</div>
+      <div data-hf-id="hf-9r6u" id="06-say-youre-the-banker-card-coinslabel">coins</div>
+      <div data-hf-id="hf-fmyw" id="06-say-youre-the-banker-counter-wrap">
+        <div data-hf-id="hf-y21f" id="06-say-youre-the-banker-counter">2</div>
+      </div>
+    </div>
+
+    <div data-hf-id="hf-bklj" id="06-say-youre-the-banker-chip">
+      <div data-hf-id="hf-4xrd" id="06-say-youre-the-banker-chip-word">banker</div>
+      <div data-hf-id="hf-w7eu" id="06-say-youre-the-banker-chip-tag">finance</div>
+    </div>
+
+    <div data-hf-id="hf-cbs5" id="06-say-youre-the-banker-coin-0"></div>
+    <div data-hf-id="hf-bk4c" id="06-say-youre-the-banker-coin-1"></div>
+    <div data-hf-id="hf-k807" id="06-say-youre-the-banker-coin-2"></div>
+
+    <div data-hf-id="hf-cpxb" id="06-say-youre-the-banker-stamp">claim stands</div>
+  </div>
+
+  <div data-hf-id="hf-wqku" id="06-say-youre-the-banker-chrome-rule"></div>
+  <div data-hf-id="hf-ofgb" id="06-say-youre-the-banker-chrome-label-left">the table</div>
+  <div data-hf-id="hf-ijt4" id="06-say-youre-the-banker-chrome-label-right">no. 06</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<script>
+  (function () {
+    var P = "06-say-youre-the-banker-";
+    function el(n) {
+      return document.getElementById(P + n);
+    }
+
+    var world = el("world");
+    var ringBase = el("ring-base");
+    var ringDraw = el("ring-draw");
+    var treasury = el("treasury");
+    var treasuryLabel = el("treasury-label");
+    var discs = [el("disc-0"), el("disc-1"), el("disc-2"), el("disc-3"), el("disc-4"), el("disc-5")];
+    var seatMarks = [el("seat-mark-0"), el("seat-mark-1")];
+    var seatLabels = [el("seat-label-0"), el("seat-label-1")];
+    var chip = el("chip");
+    var chipTag = el("chip-tag");
+    var card = el("card");
+    var cardSeat = el("card-seatmark");
+    var cardClaimant = el("card-claimant");
+    var cardCoins = el("card-coinslabel");
+    var counter = el("counter");
+    var coins = [el("coin-0"), el("coin-1"), el("coin-2")];
+    var stamp = el("stamp");
+    var chromeRule = el("chrome-rule");
+    var chromeLeft = el("chrome-label-left");
+    var chromeRight = el("chrome-label-right");
+
+    // The ring's length is MEASURED, never guessed (svg-path-draw).
+    var ringLen = 0;
+    try {
+      ringLen = ringDraw.getTotalLength();
+    } catch (err) {
+      ringLen = 0;
+    }
+    if (!ringLen || !isFinite(ringLen) || ringLen <= 0) ringLen = 3080;
+    ringDraw.style.strokeDasharray = String(ringLen);
+    ringDraw.style.strokeDashoffset = String(ringLen);
+
+    var DUR = 4.565;
+    var tl = gsap.timeline({ paused: true });
+
+    // ── camera: one short settle-in, then LOCKED. The table does the moving.
+    tl.fromTo(world, { scale: 1.038 }, { scale: 1, duration: 1.2, ease: "power2.out" }, 0);
+
+    // ── chrome
+    tl.fromTo(chromeRule, { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power1.out" }, 0.04);
+    tl.fromTo(
+      [chromeLeft, chromeRight],
+      { opacity: 0, y: -10 },
+      { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" },
+      0.1
+    );
+
+    // ══ Scene 1 (0.0–1.6s) — "Say you're the Banker"
+    //    the table establishes (60/40: treasury above, claimant seat below), then the
+    //    claim chip rises over the claimant in claimed-type (slide-up settle).
+    tl.fromTo(ringBase, { opacity: 0 }, { opacity: 0.22, duration: 0.7, ease: "power1.out" }, 0.1);
+    tl.fromTo(
+      seatMarks,
+      { opacity: 0, scale: 0 },
+      { opacity: 1, scale: 1, duration: 0.4, stagger: 0.08, ease: "power3.out" },
+      0.42
+    );
+    tl.fromTo(
+      seatLabels,
+      { opacity: 0, y: 8 },
+      { opacity: 1, y: 0, duration: 0.4, stagger: 0.08, ease: "power2.out" },
+      0.5
+    );
+
+    tl.fromTo(
+      treasury,
+      { opacity: 0, scale: 0.94, y: -14 },
+      { opacity: 1, scale: 1, y: 0, duration: 0.6, ease: "power3.out" },
+      0.06
+    );
+    discs.forEach(function (d, i) {
+      tl.fromTo(
+        d,
+        { opacity: 0, scale: 0 },
+        { opacity: 1, scale: 1, duration: 0.45, ease: "power3.out" },
+        0.18 + i * 0.05
+      );
+    });
+    tl.fromTo(treasuryLabel, { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" }, 0.34);
+
+    tl.fromTo(card, { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 0.16);
+    tl.fromTo(
+      [cardSeat, cardClaimant, cardCoins],
+      { opacity: 0 },
+      { opacity: 1, duration: 0.4, stagger: 0.07, ease: "power1.out" },
+      0.4
+    );
+
+    // the claim chip — slide-up settle (spring-pop-entrance, calm settle)
+    tl.fromTo(
+      chip,
+      { opacity: 0, scale: 0.62, y: 76 },
+      { opacity: 1, scale: 1, y: 0, duration: 0.62, ease: "power3.out" },
+      0.24
+    );
+    tl.fromTo(chipTag, { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.42, ease: "power2.out" }, 0.82);
+
+    // ══ Scene 2 (1.6–3.6s) — "and you take three coins"
+    //    three coins slide out of the treasury to the claimant, one per beat;
+    //    the mono counter ticks 2 → 5 while its scale grows to final size.
+    coins.forEach(function (c, i) {
+      tl.fromTo(
+        c,
+        { x: 0, y: -538, scale: 0.5, opacity: 0 },
+        { x: 0, y: 0, scale: 1, opacity: 1, duration: 0.64, ease: "power3.out" },
+        1.5 + i * 0.4
+      );
+    });
+    [3, 4, 5].forEach(function (di, i) {
+      tl.to(discs[di], { opacity: 0.14, duration: 0.42, ease: "power2.in" }, 1.5 + i * 0.4);
+    });
+
+    /* counting-dynamic-scale, seek-safe form: a numeric textContent tween with
+       snap — a real property tween, so it renders under a cold suppressed seek
+       (an onUpdate driver would freeze at the authored start value). */
+    tl.fromTo(counter, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "power1.out" }, 1.3);
+    tl.fromTo(counter, { scale: 0.45 }, { scale: 1, duration: 1.45, ease: "power3.out" }, 1.4);
+    tl.to(
+      counter,
+      {
+        textContent: 5,
+        snap: { textContent: 1 },
+        duration: 1.45,
+        ease: "power3.out",
+      },
+      1.4
+    );
+
+    // ══ Scene 3 (3.6–5.4s) — "Nobody's checked anything yet"
+    //    a dashed challenge ring DRAWS ON around the table, then retracts unclaimed.
+    tl.fromTo(ringDraw, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: "power1.out" }, 2.76);
+    tl.fromTo(ringDraw, { strokeDashoffset: ringLen }, { strokeDashoffset: 0, duration: 0.72, ease: "power2.out" }, 2.76);
+    tl.to(ringDraw, { strokeDashoffset: ringLen, duration: 0.46, ease: "power2.in" }, 3.56);
+
+    // ══ Scene 4 — the claim stands (the window closes, unclaimed) — held read
+    tl.fromTo(
+      stamp,
+      { opacity: 0, scale: 0.5, rotation: -7 },
+      { opacity: 1, scale: 1, rotation: -2, duration: 0.5, ease: "power3.out" },
+      3.9
+    );
+    tl.to(coins, { y: -6, duration: 0.18, ease: "power2.out" }, 3.86);
+    tl.to(coins, { y: 0, duration: 0.42, ease: "power3.out" }, 4.04);
+
+    // span the whole frame
+    tl.to({}, { duration: DUR }, 0);
+
+    window.__timelines = window.__timelines || {};
+    window.__timelines["06-say-youre-the-banker"] = tl;
+  })();
+</script>
+</template>

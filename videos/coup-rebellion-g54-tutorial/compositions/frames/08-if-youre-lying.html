@@ -1,0 +1,655 @@
+<template>
+  <style>
+    /* ── fonts (local, shipped) ─────────────────────────────────────────── */
+    @font-face {
+      font-family: "Barlow";
+      font-style: normal;
+      font-weight: 400;
+      font-display: block;
+      src: url("../../assets/fonts/Barlow-400.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "Barlow";
+      font-style: normal;
+      font-weight: 700;
+      font-display: block;
+      src: url("../../assets/fonts/Barlow-700.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "Barlow";
+      font-style: normal;
+      font-weight: 900;
+      font-display: block;
+      src: url("../../assets/fonts/Barlow-900.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      font-style: normal;
+      font-weight: 400;
+      font-display: block;
+      src: url("../../assets/fonts/IBMPlexMono-400.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      font-style: normal;
+      font-weight: 500;
+      font-display: block;
+      src: url("../../assets/fonts/IBMPlexMono-500.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "IBM Plex Mono";
+      font-style: normal;
+      font-weight: 600;
+      font-display: block;
+      src: url("../../assets/fonts/IBMPlexMono-600.woff2") format("woff2");
+    }
+
+    /* ── root (styled by #root, never a class) ──────────────────────────── */
+    #root,
+    #root * {
+      box-sizing: border-box;
+    }
+    #root {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      container-type: size;
+      font-family: "Barlow", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+    }
+
+    /* ── ground: the two-register field (dark → fire-orange accent) ──────── */
+    .f08-bg {
+      position: absolute;
+      inset: 0;
+    }
+    .f08-field-dark {
+      position: absolute;
+      inset: 0;
+      background: #273136;
+    }
+    .f08-field-accent {
+      position: absolute;
+      inset: 0;
+      background: #ffed72;
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+
+    /* ── content layer ─────────────────────────────────────────────────── */
+    .f08-scene {
+      position: absolute;
+      inset: 0;
+    }
+    .f08-defs {
+      position: absolute;
+      width: 0;
+      height: 0;
+    }
+
+    /* chrome — rule stub + mono kicker / catalogue mark (ink-on-accent) */
+    .f08-rule {
+      position: absolute;
+      left: 105px;
+      top: 104px;
+      width: 36px;
+      height: 2px;
+      background: #273136;
+      transform-origin: left center;
+    }
+    .f08-kicker {
+      position: absolute;
+      left: 105px;
+      top: 126px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-weight: 600;
+      font-size: 0.72cqw;
+      line-height: 1;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(39, 49, 54, 0.72);
+    }
+    .f08-num {
+      position: absolute;
+      right: 105px;
+      top: 126px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-weight: 500;
+      font-size: 0.72cqw;
+      line-height: 1;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(39, 49, 54, 0.72);
+    }
+
+    /* the challenge stamp — the same mark that landed in frame 7, now on the
+       accent register: mk-red at the moment of impact, flipping to ink-on-fire */
+    .f08-stamp {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 150px;
+      display: flex;
+      justify-content: center;
+      transform-origin: 50% 50%;
+      will-change: transform, opacity, filter;
+    }
+    .f08-stamp span {
+      display: inline-block;
+      padding: 14px 30px;
+      border: 2px solid #ff6d7e;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-weight: 600;
+      font-size: 1.6cqw;
+      line-height: 1;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #ff6d7e;
+    }
+
+    /* the pair — the blank revealed card is the focal */
+    .f08-pair {
+      position: absolute;
+      inset: 0;
+    }
+    .f08-pos {
+      position: absolute;
+      top: 238px;
+      width: 300px;
+      height: 432px;
+      will-change: transform, opacity;
+    }
+    #f08-cardA-pos {
+      left: 600px;
+    }
+    #f08-cardB-pos {
+      left: 1020px;
+      perspective: 1600px;
+    }
+    .f08-card {
+      position: absolute;
+      inset: 0;
+      transform-style: preserve-3d;
+      will-change: transform, opacity;
+    }
+    .f08-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    .f08-frame {
+      position: absolute;
+      inset: 16px;
+      border: 1px solid rgba(65, 75, 80, 0.6);
+    }
+
+    /* the revealed card: a blank face under a fire-orange redaction bar */
+    .f08-face-up {
+      background: #273136;
+      border: 1px solid #414b50;
+    }
+    .f08-redact {
+      position: absolute;
+      left: 24px;
+      right: 24px;
+      top: 196px;
+      height: 20px;
+      background: #ffed72;
+      transform-origin: left center;
+      will-change: transform;
+    }
+    .f08-tag {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 22px;
+      text-align: center;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-weight: 500;
+      font-size: 0.72cqw;
+      line-height: 1;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #BDCAC9;
+    }
+
+    /* the claimant's own card: face-down back, then face-up in mk-red */
+    .f08-face-back {
+      background: #212b30;
+      border: 1px solid #414b50;
+    }
+    .f08-lattice {
+      position: absolute;
+      inset: 16px;
+      opacity: 0.5;
+      background-image: repeating-linear-gradient(
+          45deg,
+          rgba(65, 75, 80, 0.55) 0 1px,
+          transparent 1px 26px
+        ),
+        repeating-linear-gradient(
+          -45deg,
+          rgba(65, 75, 80, 0.55) 0 1px,
+          transparent 1px 26px
+        );
+    }
+    .f08-emblem {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 74px;
+      height: 74px;
+      margin: -37px 0 0 -37px;
+      border: 1px solid #8b9798;
+      transform: rotate(45deg);
+    }
+    .f08-emblem::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 12px;
+      height: 12px;
+      margin: -6px 0 0 -6px;
+      background: #8b9798;
+    }
+    .f08-face-front {
+      background: #ff6d7e;
+      border: 1px solid rgba(39, 49, 54, 0.35);
+      transform: rotateY(180deg);
+    }
+    .f08-front-label {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 184px;
+      text-align: center;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-weight: 600;
+      font-size: 1.5cqw;
+      line-height: 1;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #273136;
+    }
+
+    /* mono marker under the losing card */
+    .f08-influence {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 452px;
+      text-align: center;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-weight: 600;
+      font-size: 0.72cqw;
+      line-height: 1;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #273136;
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+
+    /* the verdict — display hero, ink on the accent register */
+    .f08-hero {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 322px;
+      text-align: center;
+      font-family: "Barlow", system-ui, sans-serif;
+      font-weight: 900;
+      font-size: 7.5cqw;
+      line-height: 0.9;
+      letter-spacing: -0.04em;
+      text-transform: lowercase;
+      color: #273136;
+      filter: url(#f08-streak);
+      will-change: transform, opacity;
+    }
+    .f08-hero span {
+      display: block;
+    }
+
+    /* the treasury: a dark inset panel so the Finance coins read on the accent */
+    .f08-tray {
+      position: absolute;
+      left: 846px;
+      top: 760px;
+      display: flex;
+      gap: 20px;
+      padding: 10px;
+      background: #273136;
+      border: 1px solid rgba(39, 49, 54, 0.2);
+      will-change: transform, opacity;
+    }
+    .f08-slot {
+      width: 56px;
+      height: 56px;
+      border: 1px solid #414b50;
+    }
+    .f08-tray-label {
+      position: absolute;
+      left: 1092px;
+      top: 790px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-weight: 500;
+      font-size: 0.72cqw;
+      line-height: 1;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(39, 49, 54, 0.72);
+    }
+    .f08-coin {
+      position: absolute;
+      top: 770px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: #ffb270;
+      border: 1px solid rgba(39, 49, 54, 0.55);
+      will-change: transform, opacity;
+    }
+    .f08-coin::after {
+      content: "";
+      position: absolute;
+      inset: 9px;
+      border-radius: 50%;
+      border: 1px solid rgba(39, 49, 54, 0.35);
+    }
+    #f08-coinA {
+      left: 856px;
+    }
+    #f08-coinB {
+      left: 932px;
+    }
+    #f08-coinC {
+      left: 1008px;
+    }
+  </style>
+
+  <div data-hf-id="hf-333a" id="root" data-composition-id="08-if-youre-lying" data-start="0" data-duration="3.849" data-width="1920" data-height="1080">
+    <!-- full-bleed ground on the lowest track: dark register, replaced by the accent -->
+    <div data-hf-id="hf-afr4" class="clip f08-bg" data-start="0" data-duration="3.849" data-track-index="0">
+      <div data-hf-id="hf-cgye" class="f08-field-dark"></div>
+      <div data-hf-id="hf-juw2" class="f08-field-accent" id="f08-field-accent"></div>
+    </div>
+
+    <div data-hf-id="hf-n6ca" class="clip f08-scene" data-start="0" data-duration="3.849" data-track-index="1">
+      <svg data-hf-id="hf-jcbh" class="f08-defs" aria-hidden="true">
+        <filter data-hf-id="hf-wf2v" id="f08-streak" x="-50%" y="-50%" width="200%" height="200%">
+          <fegaussianblur data-hf-id="hf-6tmm" id="f08-streak-blur" in="SourceGraphic" stdDeviation="0 0" />
+        </filter>
+      </svg>
+
+      <div data-hf-id="hf-0qxe" class="f08-rule" id="f08-rule"></div>
+      <div data-hf-id="hf-0sri" class="f08-kicker" id="f08-kicker">caught</div>
+      <div data-hf-id="hf-dlrt" class="f08-num" id="f08-num">no. 08</div>
+
+      <div data-hf-id="hf-9xq2" class="f08-stamp" id="f08-stamp"><span data-hf-id="hf-ohpd" id="f08-stamp-mark">challenge</span></div>
+
+      <div data-hf-id="hf-9b5y" class="f08-pair" id="f08-pair">
+        <div data-hf-id="hf-j69s" class="f08-pos" id="f08-cardA-pos">
+          <div data-hf-id="hf-15x7" class="f08-card" id="f08-cardA">
+            <div data-hf-id="hf-cx52" class="f08-face f08-face-up">
+              <div data-hf-id="hf-lufe" class="f08-frame"></div>
+              <div data-hf-id="hf-rq36" class="f08-redact" id="f08-redact"></div>
+              <div data-hf-id="hf-9vyt" class="f08-tag" id="f08-tagA">blank</div>
+            </div>
+          </div>
+        </div>
+
+        <div data-hf-id="hf-pw5z" class="f08-pos" id="f08-cardB-pos">
+          <div data-hf-id="hf-si1c" class="f08-card" id="f08-cardB">
+            <div data-hf-id="hf-tgko" class="f08-face f08-face-back">
+              <div data-hf-id="hf-esjy" class="f08-frame"></div>
+              <div data-hf-id="hf-uzkf" class="f08-lattice"></div>
+              <div data-hf-id="hf-575l" class="f08-emblem"></div>
+            </div>
+            <div data-hf-id="hf-eabm" class="f08-face f08-face-front">
+              <div data-hf-id="hf-f6uz" class="f08-frame"></div>
+              <div data-hf-id="hf-xgyu" class="f08-front-label">bluff</div>
+            </div>
+          </div>
+          <div data-hf-id="hf-tvpb" class="f08-influence" id="f08-influence">-1 influence</div>
+        </div>
+      </div>
+
+      <div data-hf-id="hf-djjy" class="f08-hero" id="f08-hero"><span data-hf-id="hf-fekz">action</span><span data-hf-id="hf-6j66">fails</span></div>
+
+      <div data-hf-id="hf-tt8u" class="f08-tray" id="f08-tray">
+        <div data-hf-id="hf-cmwr" class="f08-slot"></div>
+        <div data-hf-id="hf-dk8r" class="f08-slot"></div>
+        <div data-hf-id="hf-d5xq" class="f08-slot"></div>
+      </div>
+      <div data-hf-id="hf-ax6r" class="f08-tray-label" id="f08-tray-label">treasury</div>
+
+      <div data-hf-id="hf-7f6b" class="f08-coin" id="f08-coinA"></div>
+      <div data-hf-id="hf-yrag" class="f08-coin" id="f08-coinB"></div>
+      <div data-hf-id="hf-vgz5" class="f08-coin" id="f08-coinC"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      var DURATION = 3.349;
+      var tl = gsap.timeline({ paused: true });
+
+      /* collapsed start states pinned at t=0 — seek-safe, so a delayed entrance
+         never flashes its CSS-default (visible) state before its tween claims it */
+      tl.set(
+        [
+          "#f08-stamp",
+          "#f08-kicker",
+          "#f08-num",
+          "#f08-tagA",
+          "#f08-influence",
+          "#f08-hero",
+          "#f08-tray",
+          "#f08-tray-label",
+          "#f08-cardA-pos",
+          "#f08-cardB-pos",
+          "#f08-coinA",
+          "#f08-coinB",
+          "#f08-coinC"
+        ],
+        { opacity: 0 },
+        0
+      );
+      tl.set(["#f08-rule", "#f08-redact"], { scaleX: 0 }, 0);
+      tl.set("#f08-field-accent", { scale: 0.72, opacity: 0 }, 0);
+
+      /* ══ Scene 1 (0.0–1.05) — the same stamp lands, the field flips register ══ */
+
+      /* the challenge stamp — kinetic-beat-slam: scale + blur slam, hard attack */
+      tl.fromTo(
+        "#f08-stamp",
+        { scale: 1.62, filter: "blur(16px)", opacity: 0, y: -24 },
+        { scale: 1, filter: "blur(0px)", opacity: 1, y: 0, duration: 0.42, ease: "power4.out" },
+        0.02
+      );
+
+      /* the field hard-cuts to the accent register — scale-swap-transition: the
+         incoming accent ground pops over the dark ground. The outgoing dark ground
+         stays full-bleed (covered, never faded) so no host background leaks at the
+         edges mid-swap. */
+      tl.fromTo(
+        "#f08-field-accent",
+        { scale: 0.72, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.3, ease: "power3.out" },
+        0.14
+      );
+
+      /* the same stamp, now read on the accent register — ink-on-fire is absolute */
+      tl.to(
+        "#f08-stamp-mark",
+        { color: "#273136", borderColor: "rgba(39,49,54,0.45)", duration: 0.3, ease: "power2.inOut" },
+        0.24
+      );
+
+      /* ink-on-accent chrome rides the flip */
+      tl.fromTo(
+        "#f08-rule",
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.42, ease: "power3.out" },
+        0.4
+      );
+      tl.fromTo(
+        "#f08-kicker",
+        { opacity: 0, y: -10 },
+        { opacity: 1, y: 0, duration: 0.46, ease: "power3.out" },
+        0.46
+      );
+      tl.fromTo(
+        "#f08-num",
+        { opacity: 0, y: -10 },
+        { opacity: 1, y: 0, duration: 0.46, ease: "power3.out" },
+        0.52
+      );
+
+      /* the revealed card is blank — spring-pop-entrance (smooth settle, no overshoot) */
+      tl.fromTo(
+        "#f08-cardA-pos",
+        { scale: 0.62, opacity: 0, y: 54 },
+        { scale: 1, opacity: 1, y: 0, duration: 0.6, ease: "power3.out" },
+        0.34
+      );
+      tl.fromTo(
+        "#f08-cardB-pos",
+        { scale: 0.62, opacity: 0, y: 54 },
+        { scale: 1, opacity: 1, y: 0, duration: 0.6, ease: "power3.out" },
+        0.56
+      );
+
+      /* the redaction bar sweeps across the blank face */
+      tl.fromTo(
+        "#f08-redact",
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.48, ease: "power2.inOut" },
+        0.72
+      );
+      tl.fromTo(
+        "#f08-tagA",
+        { opacity: 0, y: 8 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" },
+        0.86
+      );
+
+      /* ══ Scene 2 (1.05–2.02) — the claimant's own card turns face-up ══ */
+
+      /* split-tilt-cards: the rotateY flip, under the pos wrapper's perspective */
+      tl.fromTo(
+        "#f08-cardB",
+        { rotateY: 0 },
+        { rotateY: 180, duration: 0.66, ease: "power3.inOut" },
+        1.06
+      );
+
+      /* -1 influence — spring-pop-entrance marker */
+      tl.fromTo(
+        "#f08-influence",
+        { scale: 0, opacity: 0 },
+        { scale: 1, opacity: 1, duration: 0.45, ease: "power3.out" },
+        1.42
+      );
+
+      /* the lost life dims the card */
+      tl.to("#f08-cardB", { opacity: 0.42, duration: 0.5, ease: "power2.out" }, 1.62);
+
+      /* ══ Scene 3 (2.02–2.98) — the verdict lands, the coins go home ══ */
+
+      var CRASH_AT = 2.02;
+      var CRASH_DUR = 0.85;
+      var VICTIM_FRACTION = 0.45; /* victims finish at 45% of the driver window */
+      var VICTIM_DUR = CRASH_DUR * VICTIM_FRACTION;
+      var SPLIT = 282;
+
+      /* the verdict crashes in from off-screen with a heavy long-tail settle
+         (ticker-takeover: mass, not zip) */
+      tl.fromTo(
+        "#f08-hero",
+        { y: -900, scale: 0.94 },
+        { y: 0, scale: 1, duration: CRASH_DUR, ease: "power2.out" },
+        CRASH_AT
+      );
+      tl.fromTo(
+        "#f08-hero",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.2, ease: "none" },
+        CRASH_AT
+      );
+
+      /* directional streak blur — the SAME window + ease, resolving sharp at the land */
+      var blurNode = document.getElementById("f08-streak-blur");
+      /* motion-blur-streak, seek-safe form: tween the SVG attribute directly (an
+         onUpdate writer would freeze under the renderer's suppressed-event seek). */
+      tl.fromTo(
+        blurNode,
+        { attr: { stdDeviation: "0 26" } },
+        { attr: { stdDeviation: "0 0" }, duration: CRASH_DUR, ease: "power2.out" },
+        CRASH_AT
+      );
+
+      /* reactive-displacement: the struck pair reacts inside the same driver window,
+         completing at VICTIM_FRACTION so the hit reads causal, not parallel */
+      tl.fromTo(
+        "#f08-cardA-pos",
+        { x: 0, rotation: 0 },
+        { x: -SPLIT, rotation: -2.4, duration: VICTIM_DUR, ease: "power2.out" },
+        CRASH_AT
+      );
+      tl.fromTo(
+        "#f08-cardB-pos",
+        { x: 0, rotation: 0 },
+        { x: SPLIT, rotation: 2.4, duration: VICTIM_DUR, ease: "power2.out" },
+        CRASH_AT
+      );
+
+      /* the three coins slide back to the mk-orange treasury */
+      tl.fromTo(
+        "#f08-tray",
+        { opacity: 0 },
+        { opacity: 1, duration: 0.36, ease: "power2.out" },
+        2.34
+      );
+      tl.fromTo(
+        "#f08-tray-label",
+        { opacity: 0, y: 8 },
+        { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" },
+        2.36
+      );
+      ["#f08-coinA", "#f08-coinB", "#f08-coinC"].forEach(function (id, i) {
+        tl.fromTo(
+          id,
+          { x: -210, opacity: 0 },
+          { x: 0, opacity: 1, duration: 0.5, ease: "power3.out" },
+          2.4 + i * 0.09
+        );
+      });
+
+      /* ══ Scene 4 (2.98–3.349) — the accent field holds, deliberate held read ══ */
+
+      /* sine-wave-loop, onUpdate form: subtle jitter at the LOW end of amplitude.
+         sin(0) = 0 at IDLE_START, so there is no jump off the crash's settle tail. */
+      var IDLE_START = 2.98;
+      var IDLE_DUR = DURATION - IDLE_START;
+      var CYCLES = 0.22;
+      var heroEl = document.getElementById("f08-hero");
+      /* sine-wave-loop, seek-safe form: pre-sampled keyframes. */
+      var IDLE_STEPS = 16;
+      var idleFrames = [];
+      for (var si = 0; si <= IDLE_STEPS; si++) {
+        var s = Math.sin((si / IDLE_STEPS) * Math.PI * 2 * CYCLES);
+        idleFrames.push({ y: s * 1.6, scale: 1 + s * 0.008 });
+      }
+      tl.to(heroEl, { keyframes: idleFrames, duration: IDLE_DUR, ease: "none" }, IDLE_START);
+
+      window.__timelines["08-if-youre-lying"] = tl;
+    })();
+  </script>
+</template>

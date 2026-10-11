@@ -1,0 +1,369 @@
+<template>
+  <div data-hf-id="hf-4jo0" id="root" data-root="true" data-composition-id="07-or-are-you-bluffing" data-width="1920" data-height="1080" data-duration="9.899">
+    <!-- full-bleed ground: flat ink field + the two faint side blooms (accent A / accent B) -->
+    <div data-hf-id="hf-5gv9" id="f07-ground" class="clip f07-ground" data-start="0" data-duration="9.899" data-track-index="0">
+      <div data-hf-id="hf-td89" class="f07-bloom f07-bloom-a" id="f07-bloom-a"></div>
+      <div data-hf-id="hf-zr2z" class="f07-bloom f07-bloom-b" id="f07-bloom-b"></div>
+      <div data-hf-id="hf-5suw" class="f07-vignette"></div>
+    </div>
+
+    <!-- content: split question -> challenge slam -> centred reveal -> the cost -> shuffle back -->
+    <div data-hf-id="hf-tf7k" id="f07-stage" class="clip f07-stage" data-start="0" data-duration="9.899" data-track-index="1">
+      <div data-hf-id="hf-142u" class="f07-hairline" id="f07-hairline"></div>
+      <div data-hf-id="hf-w0rv" class="f07-kicker" id="f07-kicker">challenge</div>
+      <div data-hf-id="hf-y7bi" class="f07-num" id="f07-num">no. 07</div>
+
+      <!-- the 50% symmetry axis -->
+      <div data-hf-id="hf-r7mi" class="f07-split-rule" id="f07-split-rule"></div>
+
+      <!-- the question -->
+      <div data-hf-id="hf-8yr8" class="f07-q" id="f07-q"><span data-hf-id="hf-e34g" class="f07-q-glyph" id="f07-q-glyph">?</span></div>
+
+      <!-- court deck (behind the cards — the shown card lands on it in scene 5) -->
+      <div data-hf-id="hf-p5ji" class="f07-deck" id="f07-deck">
+        <span data-hf-id="hf-n5zw" class="f07-deck-sheet f07-deck-sheet-2"></span>
+        <span data-hf-id="hf-vtvr" class="f07-deck-sheet f07-deck-sheet-1"></span>
+      </div>
+      <div data-hf-id="hf-qowa" class="f07-deck-label" id="f07-deck-label">court deck</div>
+
+      <!-- claimant card: the claim, then the proof -->
+      <div data-hf-id="hf-9fjv" class="f07-card" id="f07-claim-card">
+        <div data-hf-id="hf-ei8g" class="f07-card-flip" id="f07-claim-flip">
+          <div data-hf-id="hf-vmky" class="f07-face f07-face-back">
+            <span data-hf-id="hf-rifw" class="f07-face-inner" aria-hidden="true"></span>
+            <span data-hf-id="hf-3fi4" class="f07-face-word" data-layout-allow-overlap="">banker</span>
+            <span data-hf-id="hf-xvek" class="f07-face-note">face down</span>
+          </div>
+          <div data-hf-id="hf-nxsw" class="f07-face f07-face-front f07-face-true" id="f07-claim-front">
+            <div data-hf-id="hf-gmah" class="f07-front-inner" id="f07-claim-front-inner">
+              <span data-hf-id="hf-o0sv" class="f07-face-kicker">shown</span>
+              <span data-hf-id="hf-2kbp" class="f07-face-word f07-face-word-accent" data-layout-allow-overlap="">banker</span>
+              <span data-hf-id="hf-buzp" class="f07-face-note">claim proven</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- challenger card: the other side of the question, then the cost -->
+      <div data-hf-id="hf-9ipp" class="f07-card" id="f07-chall-card">
+        <div data-hf-id="hf-6wk6" class="f07-card-flip" id="f07-chall-flip">
+          <div data-hf-id="hf-ot3q" class="f07-face f07-face-back">
+            <span data-hf-id="hf-k650" class="f07-face-inner" aria-hidden="true"></span>
+            <span data-hf-id="hf-jeiy" class="f07-face-word" data-layout-allow-overlap="">bluffing</span>
+            <span data-hf-id="hf-tbck" class="f07-face-note">face down</span>
+          </div>
+          <div data-hf-id="hf-nrql" class="f07-face f07-face-front f07-face-cost" data-layout-allow-overlap="">
+            <div data-hf-id="hf-sdsj" class="f07-front-inner" id="f07-chall-front-inner">
+              <span data-hf-id="hf-12sc" class="f07-face-kicker f07-face-kicker-red">challenger</span>
+              <svg data-hf-id="hf-zhxp" class="f07-cross" viewBox="0 0 120 120" aria-hidden="true">
+                <line data-hf-id="hf-jqti" x1="22" y1="22" x2="98" y2="98" />
+                <line data-hf-id="hf-xrba" x1="98" y1="22" x2="22" y2="98" />
+              </svg>
+              <span data-hf-id="hf-o64m" class="f07-face-note f07-face-note-red">out of play</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- the challenge stamp -->
+      <div data-hf-id="hf-fyho" class="f07-stamp" id="f07-stamp">
+        <div data-hf-id="hf-wbr6" class="f07-stamp-inner" id="f07-stamp-inner">
+          <span data-hf-id="hf-ztme" class="f07-stamp-word">challenge</span>
+          <span data-hf-id="hf-s31w" class="f07-stamp-mono" id="f07-stamp-mono">claim challenged</span>
+        </div>
+      </div>
+
+      <!-- the cost -->
+      <div data-hf-id="hf-jc8j" class="f07-cost" id="f07-cost">-1 influence</div>
+
+      <!-- the replacement draw -->
+      <div data-hf-id="hf-vjnn" class="f07-card" id="f07-fresh-card">
+        <div data-hf-id="hf-na0k" class="f07-card-flip">
+          <div data-hf-id="hf-p7er" class="f07-face f07-face-back">
+            <span data-hf-id="hf-iz7x" class="f07-face-inner" aria-hidden="true"></span>
+            <span data-hf-id="hf-77ac" class="f07-face-word">banker</span>
+            <span data-hf-id="hf-s4fh" class="f07-face-note">face down</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+
+  <style>
+    @font-face { font-family: "Barlow"; src: url("../../assets/fonts/Barlow-400.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: block; }
+    @font-face { font-family: "Barlow"; src: url("../../assets/fonts/Barlow-600.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: block; }
+    @font-face { font-family: "Barlow"; src: url("../../assets/fonts/Barlow-700.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: block; }
+    @font-face { font-family: "Barlow"; src: url("../../assets/fonts/Barlow-800.woff2") format("woff2"); font-weight: 800; font-style: normal; font-display: block; }
+    @font-face { font-family: "Barlow"; src: url("../../assets/fonts/Barlow-900.woff2") format("woff2"); font-weight: 900; font-style: normal; font-display: block; }
+    @font-face { font-family: "IBM Plex Mono"; src: url("../../assets/fonts/IBMPlexMono-400.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: block; }
+    @font-face { font-family: "IBM Plex Mono"; src: url("../../assets/fonts/IBMPlexMono-500.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: block; }
+    @font-face { font-family: "IBM Plex Mono"; src: url("../../assets/fonts/IBMPlexMono-600.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: block; }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* frame root: layout only — the full-bleed ground is a dedicated clip layer, never #root */
+    #root {
+      position: relative;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      container-type: size;
+      font-family: "Barlow";
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+    }
+    .clip { position: absolute; }
+
+    /* ── ground ── */
+    .f07-ground { inset: 0; background: #273136; overflow: hidden; }
+    .f07-bloom { position: absolute; top: 15px; width: 880px; height: 880px; opacity: 0; }
+    .f07-bloom-a { left: 136px; background: radial-gradient(circle at 50% 50%, rgba(255,237,114,0.17) 0%, rgba(255,237,114,0.06) 38%, rgba(255,237,114,0) 70%); }
+    .f07-bloom-b { left: 904px; background: radial-gradient(circle at 50% 50%, rgba(255,109,126,0.15) 0%, rgba(255,109,126,0.05) 38%, rgba(255,109,126,0) 70%); }
+    .f07-vignette { position: absolute; inset: 0; background: radial-gradient(ellipse 62% 58% at 50% 44%, rgba(1,21,27,0) 0%, rgba(1,21,27,0.4) 74%, rgba(1,21,27,0.72) 100%); }
+
+    /* ── stage ── */
+    .f07-stage { inset: 0; }
+
+    /* ── chrome ── */
+    .f07-kicker, .f07-num, .f07-deck-label, .f07-face-kicker, .f07-face-note, .f07-stamp-mono, .f07-cost {
+      font-family: "IBM Plex Mono";
+      text-transform: uppercase;
+    }
+    .f07-hairline { position: absolute; left: 106px; top: 104px; width: 1708px; height: 1px; background: #414b50; transform-origin: 0% 50%; opacity: 0; }
+    .f07-kicker { position: absolute; left: 106px; top: 54px; font-size: 20px; font-weight: 500; letter-spacing: 0.16em; color: #8b9798; opacity: 0; }
+    .f07-num { position: absolute; left: 1414px; top: 54px; width: 400px; text-align: right; font-size: 20px; font-weight: 500; letter-spacing: 0.16em; color: #616c6f; opacity: 0; }
+
+    /* ── split axis ── */
+    .f07-split-rule { position: absolute; left: 959px; top: 190px; width: 2px; height: 560px; background: #414b50; transform-origin: 50% 0%; opacity: 0; }
+
+    /* ── the question (fire-orange keyword glow) ── */
+    .f07-q { position: absolute; left: 810px; top: 320px; width: 300px; height: 300px; display: grid; place-items: center; opacity: 0; }
+    .f07-q-glyph {
+      display: inline-block;
+      font-family: "Barlow";
+      font-weight: 900;
+      font-size: 280px;
+      line-height: 1;
+      letter-spacing: -0.04em;
+      color: rgb(97, 108, 111);
+      transform-origin: 50% 50%;
+    }
+
+    /* ── cards ── */
+    .f07-card { position: absolute; top: 190px; width: 400px; height: 560px; opacity: 0; perspective: 1500px; will-change: transform; }
+    #f07-claim-card { left: 320px; }
+    #f07-chall-card { left: 1200px; }
+    #f07-fresh-card { left: 760px; }
+    .f07-card-flip { position: absolute; inset: 0; transform-style: preserve-3d; }
+    .f07-face {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding: 0 26px;
+      border: 1px solid #414b50;
+      background: #3a4449;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    .f07-face-front { transform: rotateY(180deg); background: #212b30; }
+    .f07-face-true { border-color: #ffed72; }
+    .f07-face-cost { border-color: #ff6d7e; }
+    .f07-face-inner { position: absolute; inset: 20px; border: 1px solid rgba(242, 255, 252, 0.09); }
+    .f07-face-word { font-family: "Barlow"; font-weight: 900; font-size: 78px; line-height: 1; letter-spacing: -0.03em; text-transform: lowercase; color: #f2fffc; }
+    .f07-face-word-accent { color: #ffed72; }
+    .f07-face-kicker { font-size: 18px; font-weight: 500; letter-spacing: 0.18em; color: #8b9798; }
+    .f07-face-kicker-red { color: #ff6d7e; }
+    .f07-face-note { font-size: 16px; font-weight: 400; letter-spacing: 0.14em; color: #616c6f; }
+    .f07-face-note-red { color: rgba(255, 109, 126, 0.78); }
+    .f07-front-inner { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; opacity: 0; }
+    .f07-cross { width: 140px; height: 140px; display: block; }
+    .f07-cross line { stroke: #ff6d7e; stroke-width: 9; }
+
+    /* ── the challenge stamp ── */
+    .f07-stamp { position: absolute; left: 610px; top: 375px; width: 700px; height: 190px; opacity: 0; }
+    .f07-stamp-inner {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      border: 3px solid #ff6d7e;
+      background: rgba(1, 21, 27, 0.82);
+      transform-origin: 50% 50%;
+    }
+    .f07-stamp-word { font-family: "Barlow"; font-weight: 900; font-size: 96px; line-height: 0.94; letter-spacing: -0.03em; text-transform: lowercase; color: #ff6d7e; }
+    .f07-stamp-mono { font-size: 20px; font-weight: 500; letter-spacing: 0.16em; color: #ff6d7e; opacity: 0; }
+
+    /* ── the cost ── */
+    .f07-cost {
+      position: absolute;
+      left: 1310px;
+      top: 736px;
+      width: 260px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #ff6d7e;
+      background: rgba(1, 21, 27, 0.85);
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      color: #ff6d7e;
+      transform-origin: 50% 50%;
+      opacity: 0;
+    }
+
+    /* ── the court deck ── */
+    .f07-deck { position: absolute; left: 268px; top: 386px; width: 138px; height: 168px; transform-origin: 50% 50%; opacity: 0; }
+    .f07-deck-sheet { position: absolute; width: 138px; height: 168px; border: 1px solid rgba(186, 160, 248, 0.32); background: rgba(1, 21, 27, 0.92); }
+    .f07-deck-sheet-1 { left: 7px; top: 7px; }
+    .f07-deck-sheet-2 { left: 14px; top: 14px; }
+    .f07-deck-label { position: absolute; left: 187px; top: 596px; width: 300px; text-align: center; font-size: 18px; font-weight: 400; letter-spacing: 0.16em; color: #baa0f8; opacity: 0; }
+  </style>
+
+  <script>
+    (function () {
+      var DUR = 9.899;
+      window.__timelines = window.__timelines || {};
+      var tl = gsap.timeline({ paused: true });
+
+      /* ═══ Scene 1 (0.0-1.6s) — the split question ═══ */
+      /* the two faint side blooms: accent A near 30%, accent B near 70% */
+      tl.fromTo("#f07-bloom-a", { opacity: 0, scale: 0.88 }, { opacity: 1, scale: 1, duration: 1.5, ease: "power2.out" }, 0);
+      tl.fromTo("#f07-bloom-b", { opacity: 0, scale: 0.88 }, { opacity: 1, scale: 1, duration: 1.5, ease: "power2.out" }, 0.15);
+
+      tl.fromTo("#f07-hairline", { opacity: 0, scaleX: 0.86 }, { opacity: 1, scaleX: 1, duration: 0.7, ease: "power3.out" }, 0);
+      tl.fromTo("#f07-kicker", { opacity: 0, x: -14 }, { opacity: 1, x: 0, duration: 0.55, ease: "power3.out" }, 0.05);
+      tl.fromTo("#f07-num", { opacity: 0, x: 14 }, { opacity: 1, x: 0, duration: 0.55, ease: "power3.out" }, 0.12);
+      tl.fromTo("#f07-split-rule", { opacity: 0, scaleY: 0 }, { opacity: 1, scaleY: 1, duration: 0.62, ease: "power3.out" }, 0.15);
+
+      /* split-tilt cards: mirrored opposite-wing entry with a book-open rotateY.
+         Two layers per card so the entry x and the flip rotationY never collide. */
+      tl.fromTo("#f07-claim-card", { x: -620, opacity: 0 }, { x: 0, opacity: 1, duration: 0.42, ease: "power3.out" }, 0);
+      tl.fromTo("#f07-claim-flip", { rotationY: 24 }, { rotationY: 14, duration: 0.9, ease: "power3.out" }, 0);
+      tl.fromTo("#f07-chall-card", { x: 620, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: "power3.out" }, 0.18);
+      tl.fromTo("#f07-chall-flip", { rotationY: -24 }, { rotationY: -14, duration: 0.95, ease: "power3.out" }, 0.18);
+
+      tl.fromTo("#f07-q", { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: "power3.out" }, 0.22);
+
+      /* asr-keyword-glow — ONE linear driver for the whole phrase (here: the one glyph).
+         Karaoke register: dim -> bright + blur + scale, decaying to a rest level (never 0). */
+      var GLOW_AT = 0.4;
+      var GLOW_DUR = 2;
+      var ATTACK_DUR = 0.18;
+      var RELEASE = 0.45;
+      var REST_LEVEL = 0.12;
+      var MAX_BLUR = 34;
+      var MAX_SCALE_BOOST = 0.16;
+      var Q_WIN = { start: 0.2, end: 1.55 };
+      var REST_RGB = { r: 97, g: 108, b: 111 };
+      var ACTIVE_RGB = { r: 255, g: 237, b: 114 };
+      var qGlyph = document.getElementById("f07-q-glyph");
+
+      function envelope(time, start, end) {
+        if (time < start) return 0;
+        if (time < end) return Math.min((time - start) / ATTACK_DUR, 1);
+        var releaseEnd = end + RELEASE;
+        if (time < releaseEnd) return 1 - ((time - end) / RELEASE) * (1 - REST_LEVEL);
+        return REST_LEVEL;
+      }
+      function mix(a, b, t) { return Math.round(a + (b - a) * t); }
+
+      /* asr-keyword-glow, seek-safe form: pre-sampled keyframes (envelope sampled
+         at build time across the real absolute window, no callback under seek). */
+      var GLOW_STEPS = 24;
+      var glowFrames = [];
+      for (var gi = 0; gi <= GLOW_STEPS; gi++) {
+        var env = envelope(GLOW_AT + (gi / GLOW_STEPS) * GLOW_DUR, Q_WIN.start, Q_WIN.end);
+        glowFrames.push({
+          color: "rgb(" + mix(REST_RGB.r, ACTIVE_RGB.r, env) + "," +
+            mix(REST_RGB.g, ACTIVE_RGB.g, env) + "," +
+            mix(REST_RGB.b, ACTIVE_RGB.b, env) + ")",
+          textShadow: "0 0 " + MAX_BLUR * env + "px rgba(255,237,114," + 0.72 * env + ")",
+          scale: 1 + MAX_SCALE_BOOST * env
+        });
+      }
+      tl.set(qGlyph, {
+        color: "rgb(" + REST_RGB.r + "," + REST_RGB.g + "," + REST_RGB.b + ")",
+        textShadow: "0 0 0px rgba(255,237,114,0)",
+        scale: 1
+      }, 0);
+      tl.to(qGlyph, { keyframes: glowFrames, duration: GLOW_DUR, ease: "none" }, GLOW_AT);
+
+      /* ═══ Scene 2 (1.6-3.2s) — the challenge slams ═══ */
+      /* kinetic beat-slam: ONE tempo grid drives every element */
+      var PULSE = 0.4;
+      var BEATS = [PULSE * 4, PULSE * 5];
+      /* phrase A — the hard slam (this shot's one deliberate overshoot) */
+      tl.fromTo(
+        "#f07-stamp",
+        { y: -430, scale: 1.46, opacity: 0, filter: "blur(18px)" },
+        { y: 0, scale: 1, opacity: 1, filter: "blur(0px)", duration: 0.55, ease: "back.out(1.7)" },
+        BEATS[0],
+      );
+      /* phrase B — a different entrance on the SAME grid */
+      tl.fromTo("#f07-stamp-mono", { x: -330, opacity: 0 }, { x: 0, opacity: 0.88, duration: 0.45, ease: "expo.out" }, BEATS[1]);
+
+      /* the question is answered: the two sides close to the centre seam */
+      tl.to("#f07-q", { scale: 0.34, opacity: 0, duration: 0.42, ease: "power2.in" }, 1.72);
+      tl.to("#f07-split-rule", { scaleY: 0, opacity: 0, duration: 0.5, ease: "power2.in" }, 1.75);
+      tl.to("#f07-claim-card", { x: 220, scale: 0.7, duration: 0.9, ease: "power3.out" }, 1.72);
+      tl.to("#f07-claim-flip", { rotationY: 0, duration: 0.7, ease: "power3.out" }, 1.72);
+      tl.to("#f07-chall-card", { x: -220, scale: 0.7, duration: 0.9, ease: "power3.out" }, 1.82);
+      tl.to("#f07-chall-flip", { rotationY: 0, duration: 0.7, ease: "power3.out" }, 1.82);
+
+      /* finale hold — finite, floor-clamped repeat so it never overshoots the frame */
+      var HOLD_AT = 2.45, HOLD_CYCLE = 1.6, holdDur = DUR - HOLD_AT;
+      tl.to(
+        "#f07-stamp-inner",
+        { scale: 1.012, duration: HOLD_CYCLE / 2, ease: "sine.inOut", yoyo: true, repeat: Math.max(0, Math.floor(holdDur / HOLD_CYCLE) - 1) },
+        HOLD_AT,
+      );
+
+      /* ═══ Scene 3 (3.2-5.4s) — you show the card ═══ */
+      /* the frame collapses back to centre; the stamp recedes to a quiet tag */
+      tl.to("#f07-claim-card", { x: 440, scale: 0.82, duration: 0.75, ease: "power3.out" }, 3.2);
+      tl.to("#f07-chall-card", { x: 40, scale: 0.62, opacity: 0.5, duration: 0.8, ease: "power3.out" }, 3.3);
+      tl.to("#f07-stamp", { y: -290, scale: 0.42, opacity: 0.8, duration: 0.8, ease: "power2.inOut" }, 3.2);
+      tl.to("#f07-stamp-mono", { opacity: 0, duration: 0.4, ease: "power1.in" }, 3.2);
+
+      /* the claimant's card flips face-up — the claim proven */
+      tl.to("#f07-claim-flip", { rotationY: 180, duration: 1, ease: "power2.inOut" }, 3.35);
+      tl.fromTo("#f07-claim-front-inner", { scale: 0.88, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: "power3.out" }, 3.9);
+
+      /* ═══ Scene 4 (5.4-7.4s) — they lose a life ═══ */
+      tl.to("#f07-chall-flip", { rotationY: 180, duration: 0.95, ease: "power2.inOut" }, 5.45);
+      tl.fromTo("#f07-chall-front-inner", { scale: 0.86, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.5, ease: "power3.out" }, 5.85);
+      tl.to("#f07-chall-card", { opacity: 0.34, duration: 0.8, ease: "power2.out" }, 6.05);
+      /* stamp pop — the cost marked */
+      tl.fromTo("#f07-cost", { scale: 0, opacity: 0, y: 16 }, { scale: 1, opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 5.6);
+
+      /* ═══ Scene 5 (7.4-9.899s) — shuffle it back, draw a replacement ═══ */
+      tl.fromTo("#f07-deck", { scale: 0.9, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4, ease: "power3.out" }, 7.45);
+      tl.fromTo("#f07-deck-label", { opacity: 0, y: 10 }, { opacity: 0.8, y: 0, duration: 0.45, ease: "power3.out" }, 7.7);
+
+      /* card morph-anchor: the shown card leaves its content behind and becomes the top of
+         the court deck. Uniform scale + paint-only channels only (no width/height — those
+         reflow and stutter under the seek-by-frame capture engine). */
+      tl.to("#f07-claim-front-inner", { opacity: 0, y: -12, duration: 0.5, ease: "power1.in" }, 7.55);
+      tl.to("#f07-claim-card", { x: -169, scale: 0.345, duration: 1, ease: "power2.inOut" }, 7.55);
+      tl.to("#f07-claim-front", { backgroundColor: "#01151b", borderColor: "#baa0f8", duration: 1, ease: "power2.inOut" }, 7.55);
+
+      /* the replacement comes off the deck */
+      tl.fromTo("#f07-fresh-card", { x: -609, scale: 0.345, opacity: 0 }, { x: 0, scale: 0.82, opacity: 1, duration: 0.95, ease: "power3.out" }, 8.45);
+
+      /* full-span anchor so the timeline spans the frame's window */
+      tl.to({}, { duration: DUR }, 0);
+
+      window.__timelines["07-or-are-you-bluffing"] = tl;
+    })();
+  </script>
+</template>

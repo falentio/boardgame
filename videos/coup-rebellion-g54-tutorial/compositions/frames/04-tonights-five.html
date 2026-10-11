@@ -1,0 +1,360 @@
+<template>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+  @font-face { font-family: "Barlow"; src: url("../../assets/fonts/Barlow-400.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: block; }
+  @font-face { font-family: "Barlow"; src: url("../../assets/fonts/Barlow-700.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: block; }
+  @font-face { font-family: "Barlow"; src: url("../../assets/fonts/Barlow-900.woff2") format("woff2"); font-weight: 900; font-style: normal; font-display: block; }
+  @font-face { font-family: "IBM Plex Mono"; src: url("../../assets/fonts/IBMPlexMono-400.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: block; }
+  @font-face { font-family: "IBM Plex Mono"; src: url("../../assets/fonts/IBMPlexMono-500.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: block; }
+
+  /* The frame root is styled through #root only - never through a class on the
+     data-composition-id element (after assembly that selector cannot match it,
+     and the whole scene renders unstyled). */
+  #root {
+    position: absolute;
+    inset: 0;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background: transparent;
+    font-family: "Barlow", system-ui, sans-serif;
+    color: #F2FFFC;
+  }
+
+  .clip { position: absolute; inset: 0; }
+
+  /* ---------------- ground - a full-bleed clip layer, never #root ---------------- */
+  #f04-bg { background: #273136; }
+  /* the deep underprint - a faint dot grid, texture only, held inside the content area */
+  #f04-underprint {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    bottom: 180px;
+    background-image: radial-gradient(rgba(242, 255, 252, 0.5) 1px, transparent 1.2px);
+    background-size: 30px 30px;
+    background-position: 0 0;
+  }
+  #f04-vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(124% 108% at 50% 42%, rgba(1, 21, 27, 0) 34%, rgba(1, 21, 27, 0.74) 100%);
+  }
+
+  /* ---------------- stage ---------------- */
+  #f04-stage { overflow: hidden; }
+
+  /* ---------------- chrome ---------------- */
+  #f04-chrome { position: absolute; left: 106px; top: 52px; width: 1708px; height: 120px; }
+  #f04-rule {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 36px;
+    height: 2px;
+    background: #FFED72;
+    transform-origin: 0% 50%;
+  }
+  #f04-kicker {
+    position: absolute;
+    left: 0;
+    top: 16px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-weight: 500;
+    font-size: 17px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #FFED72;
+  }
+  #f04-meta {
+    position: absolute;
+    right: 0;
+    top: 16px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-weight: 400;
+    font-size: 17px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #616C6F;
+  }
+  #f04-hairline {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 76px;
+    height: 1px;
+    background: #414B50;
+    transform-origin: 0% 50%;
+  }
+
+  /* ---------------- the five-slot rail + strip ---------------- */
+  #f04-strip {
+    position: absolute;
+    left: 106px;
+    top: 236px;
+    width: 1708px;
+    height: 580px;
+    transform-origin: 50% 50%;
+    will-change: transform;
+  }
+  #f04-rail { position: absolute; left: 0; top: 0; width: 1708px; height: 580px; }
+  #f04-rail path { fill: none; stroke: #414B50; stroke-width: 1; }
+
+  .f04-slot { position: absolute; top: 0; width: 341.6px; height: 580px; }
+  .f04-slot-1 { left: 0; }
+  .f04-slot-2 { left: 341.6px; }
+  .f04-slot-3 { left: 683.2px; }
+  .f04-slot-4 { left: 1024.8px; }
+  .f04-slot-5 { left: 1366.4px; }
+
+  /* the card - a flat raised plane: 0 radius, no shadow, one 1px hairline edge */
+  .f04-card {
+    position: absolute;
+    left: 16px;
+    top: 16px;
+    width: 309.6px;
+    height: 456px;
+    background: #3A4449;
+    border-top: 1px solid #414B50;
+    transform-origin: 50% 50%;
+    will-change: transform, opacity;
+  }
+  .f04-idx {
+    position: absolute;
+    left: 22px;
+    top: 26px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-weight: 500;
+    font-size: 16px;
+    letter-spacing: 0.14em;
+    color: #8B9798;
+  }
+  .f04-glyph { position: absolute; left: 0; right: 0; top: 128px; display: flex; justify-content: center; }
+  .f04-glyph-svg { width: 92px; height: 92px; }
+  .f04-gp { fill: none; stroke: #8B9798; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .f04-name {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 344px;
+    padding: 0 6px;
+    text-align: center;
+    font-family: "Barlow", system-ui, sans-serif;
+    font-weight: 900;
+    font-size: 44px;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    text-transform: lowercase;
+    color: #F2FFFC;
+  }
+
+  /* the category tag - the flat hue block, ink reading on top (never cream on a hue) */
+  .f04-tag {
+    position: absolute;
+    left: 16px;
+    top: 492px;
+    height: 46px;
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-weight: 500;
+    font-size: 17px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #273136;
+    transform-origin: 0% 50%;
+    will-change: transform, opacity;
+  }
+  .f04-tag--finance { background: #FFB270; }
+  .f04-tag--communications { background: #7CD5F1; }
+  .f04-tag--force { background: #FF6D7E; }
+  .f04-tag--interest { background: #A2E57B; }
+</style>
+
+<div data-hf-id="hf-ljni" id="root" data-composition-id="04-tonights-five" data-width="1920" data-height="1080" data-duration="6.751">
+  <div data-hf-id="hf-k11v" id="f04-bg" class="clip" data-start="0" data-duration="6.751" data-track-index="0">
+    <div data-hf-id="hf-8fod" id="f04-underprint"></div>
+    <div data-hf-id="hf-ln5g" id="f04-vignette"></div>
+  </div>
+
+  <div data-hf-id="hf-pbeb" id="f04-stage" class="clip" data-start="0" data-duration="6.751" data-track-index="1">
+      <div data-hf-id="hf-15gc" id="f04-chrome">
+        <div data-hf-id="hf-ywns" id="f04-rule"></div>
+        <div data-hf-id="hf-4i0o" id="f04-kicker">role roster</div>
+        <div data-hf-id="hf-104e" id="f04-meta">coup: rebellion g54</div>
+        <div data-hf-id="hf-4cjg" id="f04-hairline"></div>
+      </div>
+
+      <div data-hf-id="hf-1akw" id="f04-strip">
+        <svg data-hf-id="hf-m90e" id="f04-rail" viewBox="0 0 1708 580" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path data-hf-id="hf-6mvl" id="f04-rail-top" d="M0 0.5 H1708" />
+          <path data-hf-id="hf-6g0f" id="f04-rail-d1" d="M341.6 0.5 V579.5" />
+          <path data-hf-id="hf-x0fv" id="f04-rail-d2" d="M683.2 0.5 V579.5" />
+          <path data-hf-id="hf-w67a" id="f04-rail-d3" d="M1024.8 0.5 V579.5" />
+          <path data-hf-id="hf-6imc" id="f04-rail-d4" d="M1366.4 0.5 V579.5" />
+          <path data-hf-id="hf-5j9a" id="f04-rail-bottom" d="M0 579.5 H1708" />
+        </svg>
+
+        <div data-hf-id="hf-4bg4" class="f04-slot f04-slot-1">
+          <div data-hf-id="hf-bxsk" class="f04-card" id="f04-card-banker">
+            <div data-hf-id="hf-tihr" class="f04-idx">01</div>
+            <div data-hf-id="hf-ilwr" class="f04-glyph">
+              <svg data-hf-id="hf-6wmo" class="f04-glyph-svg" id="f04-glyph-banker" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <circle data-hf-id="hf-ki6g" class="f04-gp" cx="20" cy="20" r="14" />
+                <circle data-hf-id="hf-uftf" class="f04-gp" cx="20" cy="20" r="6" />
+              </svg>
+            </div>
+            <div data-hf-id="hf-8bun" class="f04-name">banker</div>
+          </div>
+          <div data-hf-id="hf-ztzr" class="f04-tag f04-tag--finance" id="f04-tag-banker">finance</div>
+        </div>
+
+        <div data-hf-id="hf-czbz" class="f04-slot f04-slot-2">
+          <div data-hf-id="hf-7w0b" class="f04-card" id="f04-card-director">
+            <div data-hf-id="hf-t46q" class="f04-idx">02</div>
+            <div data-hf-id="hf-rhhn" class="f04-glyph">
+              <svg data-hf-id="hf-3lel" class="f04-glyph-svg" id="f04-glyph-director" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <circle data-hf-id="hf-bgr2" class="f04-gp" cx="20" cy="20" r="3.2" />
+                <path data-hf-id="hf-2n6n" class="f04-gp" d="M13.5 12.5 A 10.5 10.5 0 0 0 13.5 27.5" />
+                <path data-hf-id="hf-gf0q" class="f04-gp" d="M26.5 12.5 A 10.5 10.5 0 0 1 26.5 27.5" />
+              </svg>
+            </div>
+            <div data-hf-id="hf-qx3y" class="f04-name">director</div>
+          </div>
+          <div data-hf-id="hf-ijx8" class="f04-tag f04-tag--communications" id="f04-tag-director">communications</div>
+        </div>
+
+        <div data-hf-id="hf-917y" class="f04-slot f04-slot-3">
+          <div data-hf-id="hf-xioq" class="f04-card" id="f04-card-guerrilla">
+            <div data-hf-id="hf-spvp" class="f04-idx">03</div>
+            <div data-hf-id="hf-r36m" class="f04-glyph">
+              <svg data-hf-id="hf-v5ts" class="f04-glyph-svg" id="f04-glyph-guerrilla" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path data-hf-id="hf-q0ro" class="f04-gp" d="M9 25.5 L20 12 L31 25.5" />
+                <path data-hf-id="hf-l5cp" class="f04-gp" d="M9 32.5 L20 19 L31 32.5" />
+              </svg>
+            </div>
+            <div data-hf-id="hf-appr" class="f04-name">guerrilla</div>
+          </div>
+          <div data-hf-id="hf-r8xl" class="f04-tag f04-tag--force" id="f04-tag-guerrilla">force</div>
+        </div>
+
+        <div data-hf-id="hf-jwpl" class="f04-slot f04-slot-4">
+          <div data-hf-id="hf-ntet" class="f04-card" id="f04-card-politician">
+            <div data-hf-id="hf-vi0w" class="f04-idx">04</div>
+            <div data-hf-id="hf-qovl" class="f04-glyph">
+              <svg data-hf-id="hf-ougf" class="f04-glyph-svg" id="f04-glyph-politician" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path data-hf-id="hf-3yqi" class="f04-gp" d="M20 6 L23.53 15.15 L33.31 15.67 L25.71 21.85 L28.23 31.33 L20 26 L11.77 31.33 L14.29 21.85 L6.69 15.67 L16.47 15.15 Z" />
+              </svg>
+            </div>
+            <div data-hf-id="hf-yslg" class="f04-name">politician</div>
+          </div>
+          <div data-hf-id="hf-sb1x" class="f04-tag f04-tag--interest" id="f04-tag-politician">special interest</div>
+        </div>
+
+        <div data-hf-id="hf-j51s" class="f04-slot f04-slot-5">
+          <div data-hf-id="hf-p1ed" class="f04-card" id="f04-card-peacekeeper">
+            <div data-hf-id="hf-v3pv" class="f04-idx">05</div>
+            <div data-hf-id="hf-qakk" class="f04-glyph">
+              <svg data-hf-id="hf-0i09" class="f04-glyph-svg" id="f04-glyph-peacekeeper" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path data-hf-id="hf-5fmy" class="f04-gp" d="M20 5 L32 10 V20 C32 28 26 33 20 35 C14 33 8 28 8 20 V10 Z" />
+              </svg>
+            </div>
+            <div data-hf-id="hf-zwhm" class="f04-name">peacekeeper</div>
+          </div>
+          <div data-hf-id="hf-qqwv" class="f04-tag f04-tag--interest" id="f04-tag-peacekeeper">special interest</div>
+        </div>
+      </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  window.__timelines = window.__timelines || {};
+  var tl = gsap.timeline({ paused: true });
+
+  /* ---- Scene 1 - an empty five-slot rail across the centre, hairline-divided.
+     On "Tonight's five" the rail draws itself in (svg-path-draw): every path is
+     measured with getTotalLength() - real geometry, never a magic number - and
+     each segment starts at ~75% of the previous one, so the eye reads one
+     continuous stroke rather than six isolated animations. ---- */
+  var rail = [
+    ["f04-rail-top", 0.02, 0.24],
+    ["f04-rail-d1", 0.18, 0.15],
+    ["f04-rail-d2", 0.24, 0.15],
+    ["f04-rail-d3", 0.30, 0.15],
+    ["f04-rail-d4", 0.36, 0.15],
+    ["f04-rail-bottom", 0.42, 0.22]
+  ];
+  rail.forEach(function (spec) {
+    var el = document.getElementById(spec[0]);
+    if (!el) return;
+    var len = el.getTotalLength();
+    el.style.strokeDasharray = String(len);
+    tl.fromTo(el,
+      { strokeDashoffset: len },
+      { strokeDashoffset: 0, duration: spec[2], ease: "power2.out" },
+      spec[1]);
+  });
+
+  /* the chrome and the deep underprint settle in around the rail */
+  tl.fromTo("#f04-vignette", { opacity: 0 }, { opacity: 1, duration: 0.9, ease: "power1.out" }, 0);
+  tl.fromTo("#f04-underprint", { opacity: 0 }, { opacity: 0.14, duration: 1.5, ease: "power1.out" }, 0.06);
+  tl.fromTo("#f04-rule", { scaleX: 0, opacity: 0 }, { scaleX: 1, opacity: 1, duration: 0.5, ease: "power3.out" }, 0.02);
+  tl.fromTo("#f04-kicker", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 0.10);
+  tl.fromTo("#f04-meta", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 0.18);
+  tl.fromTo("#f04-hairline", { scaleX: 0, opacity: 0 }, { scaleX: 1, opacity: 1, duration: 0.7, ease: "power2.out" }, 0.20);
+
+  /* ---- Scene 2 - one card lands per spoken name, sliding up into its slot
+     (spring-pop-entrance, paced to the roll call: Banker, Director, Guerrilla,
+     Politician, Peacekeeper). Each card's mark draws in just behind it. ----
+     ---- Scene 3 - on "one from each category" a mono category tag snaps under
+     each card in its own category hue (staggered pop), and the card's own top
+     edge takes that hue at the same instant - the colour key for the whole
+     video. Then it holds. No exit: the root transition is the exit. ---- */
+  var cards = [
+    { card: "f04-card-banker",      glyph: "f04-glyph-banker",      tag: "f04-tag-banker",      at: 0.48, tagAt: 4.72, hue: "#FFB270" },
+    { card: "f04-card-director",    glyph: "f04-glyph-director",    tag: "f04-tag-director",    at: 1.32, tagAt: 4.84, hue: "#7CD5F1" },
+    { card: "f04-card-guerrilla",   glyph: "f04-glyph-guerrilla",   tag: "f04-tag-guerrilla",   at: 2.02, tagAt: 4.96, hue: "#FF6D7E" },
+    { card: "f04-card-politician",  glyph: "f04-glyph-politician",  tag: "f04-tag-politician",  at: 2.78, tagAt: 5.08, hue: "#A2E57B" },
+    { card: "f04-card-peacekeeper", glyph: "f04-glyph-peacekeeper", tag: "f04-tag-peacekeeper", at: 3.66, tagAt: 5.20, hue: "#A2E57B" }
+  ];
+
+  cards.forEach(function (c) {
+    tl.fromTo("#" + c.card,
+      { scale: 0, opacity: 0, y: 30 },
+      { scale: 1, opacity: 1, y: 0, duration: 0.55, ease: "power3.out" },
+      c.at);
+
+    var glyphPaths = Array.prototype.slice.call(
+      document.querySelectorAll("#" + c.glyph + " .f04-gp")
+    );
+    glyphPaths.forEach(function (p) {
+      var len = p.getTotalLength();
+      p.style.strokeDasharray = String(len);
+      tl.fromTo(p,
+        { strokeDashoffset: len },
+        { strokeDashoffset: 0, duration: 0.42, ease: "power2.out" },
+        c.at + 0.34);
+    });
+
+    tl.fromTo("#" + c.tag,
+      { scale: 0, opacity: 0, y: 12 },
+      { scale: 1, opacity: 1, y: 0, duration: 0.45, ease: "power3.out" },
+      c.tagAt);
+
+    tl.fromTo("#" + c.card,
+      { borderTopColor: "#414B50" },
+      { borderTopColor: c.hue, duration: 0.25, ease: "power1.out" },
+      c.tagAt);
+  });
+
+  /* the macro move underneath the whole shot: one slow push-in */
+  tl.fromTo("#f04-strip", { scale: 1 }, { scale: 1.03, duration: 6.1, ease: "none" }, 0.04);
+
+  window.__timelines["04-tonights-five"] = tl;
+  tl.seek(0);
+})();
+</script>
+</template>
