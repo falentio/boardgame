@@ -163,11 +163,19 @@ test("D4-1 the Witch builds once, at the resume, and never on her held turn", ()
 });
 
 // ---------------------------------------------------------------------------
-// D4-1b: the Witch gathers twice on her held turn.
+// D4-1b: the Witch gathers once, not twice, on her held turn.
 //
-// The Witch effect pays a fixed +2 as it arms the naming window, and the round's
-// own turn window (which the held turn keeps) pays the gather again, so a Witch
-// who answers the turn window takes 4 gold where the rules give 2.
+// rules.json (witch): "Gather resources, then call the name of another character
+// to bewitch; your turn is put on hold and you cannot build. ... You then resume
+// your turn as if you were playing the bewitched character: you use that
+// character's abilities and build limit, with YOUR hand, YOUR gold, and YOUR
+// city." The Witch gathers once as her turn is put on hold (+2), and the held
+// turn window pays no gather a second time. rules.json (merchant): "Gain 1 gold
+// per trade district in your city, plus 1 extra gold." The resume runs the
+// bewitched Merchant's income on ANN's empty city (+1), and pays no gather of
+// its own. Rule-true total: +3. Teeth: if the held turn regains its second
+// gather the total rises to +5, and if the resume gathers again (or drops the
+// Merchant income) the total moves off +3.
 // ---------------------------------------------------------------------------
 
 test("D4-1b the Witch gathers once, not twice, on her held turn", () => {
@@ -197,10 +205,12 @@ test("D4-1b the Witch gathers once, not twice, on her held turn", () => {
     intoDraft,
   );
   const end = steps[steps.length - 1] as CitadelsState;
-  // The Witch's held turn gathers once (2 gold): her fixed gather plus the
-  // turn's own gather, and no third gather for the resume. Measured on head:
-  // +6 (her fixed 2, the held turn window's 2, and the resume window's 2).
-  expect(rawGold(end, ANN) - 10, "the Witch's held-turn gather").toBe(2);
+  // Measured over the fold: +2 at the naming window (the Witch's one gather, as
+  // her turn is put on hold), +0 at the held turn window (no second gather), and
+  // +1 at the resume (the bewitched Merchant's "plus 1 extra gold" on ANN's empty
+  // city; 0 trade districts, so no per-district gold). The "no third gather"
+  // clause holds: the resume pays income, not a gather. Total +3.
+  expect(rawGold(end, ANN) - 10, "the Witch's gold across held turn and resume").toBe(3);
 });
 
 // ---------------------------------------------------------------------------
