@@ -47,7 +47,7 @@ pnpm verify:ui       # local UI flows, in headless Chrome
 | --- | --- |
 | `app/` | Nuxt pages, components, and composables |
 | `server/` | API routes and the room, game, realtime, and user modules |
-| `shared/` | the lockstep engine, the G54 game, and room rules |
+| `shared/` | the lockstep engine, the G54 and Scape Goat games, and room rules |
 | `drizzle/` | D1 migrations |
 | `scripts/` | proofs and the binding sync tool |
 
@@ -59,3 +59,5 @@ pnpm verify:ui       # local UI flows, in headless Chrome
 - [P2P lockstep](./docs/design/p2p-lockstep.md)
 - [G54 full game](./docs/design/g54-full-game.md)
 - [G54 rules research](./docs/research/coup-rebellion-g54/README.md)
+- [Scape Goat rules research](./docs/research/scape-goat/README.md)
+- [Scape Goat design](./docs/design/scape-goat.md)
