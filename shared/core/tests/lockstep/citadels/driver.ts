@@ -62,6 +62,23 @@ export const BASE_CAST_IDS: readonly CharacterId[] = [
 /** A legal 9-character cast, adding the rank-9 Artist. */
 export const CAST9: readonly CharacterId[] = [...BASE_CAST_IDS, "artist"];
 
+/**
+ * A legal nine-character cast built from the catalog's rank table: one distinct
+ * character at every rank 1-9. citadels-catalog.md fixes the ranks but does not
+ * enumerate the rulebook's six preset lists, so this stands in for a preset set.
+ */
+export const PRESET_CAST_IDS: readonly CharacterId[] = [
+  "witch",
+  "blackmailer",
+  "wizard",
+  "patrician",
+  "cardinal",
+  "alchemist",
+  "navigator",
+  "marshal",
+  "tax-collector",
+];
+
 export const RAW_SEED = genesisSeed("citadels-raw-tests");
 
 export const setup = (
@@ -151,6 +168,41 @@ export const playToEnd = (
     driveFrame(table, decide);
   }
 };
+
+/** Fold a table to terminal, returning the number of frames it took. */
+export const framesToEnd = (
+  table: Table<CitadelsAction, CitadelsView>,
+  decide: (seat: SeatId, view: CitadelsView) => CitadelsAction | null,
+  guard = 50_000,
+): number => {
+  let frames = 0;
+  for (; frames < guard && !at(table, ANN).terminal; frames += 1) {
+    driveFrame(table, decide);
+  }
+  return frames;
+};
+
+/** Every frame the table sealed, in index order. */
+export const sealedFrames = (
+  table: Table<CitadelsAction, CitadelsView>,
+): readonly Frame<CitadelsAction>[] =>
+  [...table.sealed.entries()].sort((a, b) => a[0] - b[0]).map(([, frame]) => frame);
+
+/** Feed recorded frames to every seat of an independent table, in order. */
+export const replayFrames = (
+  table: Table<CitadelsAction, CitadelsView>,
+  frames: readonly Frame<CitadelsAction>[],
+): void => {
+  for (const frame of frames) {
+    for (const seat of table.sessions.keys()) {
+      at(table, seat).receive({ kind: "frame", frame });
+    }
+  }
+};
+
+/** Advance one raw frame under the always-legal policy. */
+export const autoStep = (state: CitadelsState): CitadelsState =>
+  advance(state, (seat) => autoAction(seat, citadels.project(state, seat)));
 
 export const owedOf = (state: CitadelsState): readonly SeatId[] =>
   citadels.seatsOwed(state, frameIndex(0));
