@@ -1,6 +1,8 @@
 import type { SeatId } from "../../../index.ts";
 import type { CharacterCtx, CharacterEffect } from "../characters/index.ts";
-import { specOfDistrict } from "../districts.ts";
+import { specOfDistrict, typeOfPlaced } from "../districts.ts";
+import { greatWallToll } from "../districts/great-wall.ts";
+import { keepProtects } from "../districts/keep.ts";
 import {
   actionOf,
   addGold,
@@ -21,6 +23,7 @@ import {
   type WindowResolver,
 } from "../helpers.ts";
 import type { CitadelsState } from "../state.ts";
+import { bishopShield } from "./bishop.ts";
 
 /** The warlord's two in-flight sub-states, carried in `pending.note`. */
 const PICK_NOTE = "warlord-pick";
@@ -29,10 +32,9 @@ const DESTROY_NOTE = "warlord-destroy";
 /** The seat holding the Warlord this round, falling back to the acting seat. */
 const ownerOf = (ctx: CharacterCtx): SeatId => seatHolding(ctx.state, "warlord") ?? ctx.seat;
 
-/** The Warlord's income unit: military districts in a city. */
+/** The Warlord's income unit: military districts in a city, a declared type included. */
 const militaryIn = (state: CitadelsState, seat: SeatId): number =>
-  playerOf(state, seat).city.filter((district) => specOfDistrict(district.id).type === "military")
-    .length;
+  playerOf(state, seat).city.filter((district) => typeOfPlaced(district) === "military").length;
 
 /** One fewer gold than the district's cost; the Artist's beautify gold raises the cost by one. */
 export const destroyPrice = (id: string, beautifyGold = 0): number =>
@@ -63,9 +65,10 @@ const toDeckBottom = (state: CitadelsState, id: string): CitadelsState => ({
 
 /**
  * Resolve the warlord-destroy window. Stage one reads the target seat; stage two
- * reads the city index, charges one less than the district's cost, and sinks the
- * district to the bottom of the deck. Any illegal pick closes the window and
- * leaves the board untouched.
+ * reads the city index, charges one less than the district's cost plus the
+ * Great Wall's toll, and sinks the district to the bottom of the deck. Any
+ * illegal pick closes the window and leaves the board untouched: the Keep is
+ * immune, and the Bishop's seat is shielded from rank 8.
  */
 export const warlordResolve: WindowResolver = (ctx) => {
   if (ctx.window.purpose !== "warlord-destroy") return popWindow(ctx.state);
@@ -92,9 +95,12 @@ export const warlordResolve: WindowResolver = (ctx) => {
   const target = pending.target;
   const index = action?.t === "keep" ? action.index : -1;
   if (target === null) return withSteps(closed, rest);
-  const placed = playerOf(ctx.state, target).city[index];
+  const city = playerOf(ctx.state, target).city;
+  const placed = city[index];
   if (placed === undefined) return withSteps(closed, rest);
-  const price = destroyPrice(placed.id, placed.gold);
+  if (keepProtects(placed.id)) return withSteps(closed, rest);
+  if (bishopShield(ctx.state) === target) return withSteps(closed, rest);
+  const price = destroyPrice(placed.id, placed.gold) + greatWallToll(city);
   if (playerOf(ctx.state, owner).gold < price) return withSteps(closed, rest);
   const paid = spendGold(ctx.state, owner, price);
   const remaining = playerOf(paid, target).city.filter((_, i) => i !== index);
