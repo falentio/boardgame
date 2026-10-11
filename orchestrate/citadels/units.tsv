@@ -37,10 +37,10 @@ fix-warlord	verify	done			04db150	D4 great wall toll; D5 keep protection; D6 bis
 fix-income	verify	done			e887390	D9 income counters honour declared type (8 characters)
 fix-den	verify	done			7b1a1c9	D11 thieves den mixed payment
 independent-verification-2	verify	done			12f3aaf	orchestrate/citadels/briefs/independent-verification-2.md
-fix2-drain	verify	pending				V2-1 blocking: drain must use windowOwed not owedFor; V2-2 blackmailer first-pass; V2-3 double end-turn
-fix2-districts	verify	pending				V2-8 armory onDestroy; V2-9 museum decline; V2-4 thieves-den gold share
-fix2-income	verify	pending				V2-5 trader+emperor declared type; V2-6 diplomat great wall toll; V2-7 alchemist refund
-fix2-engine-tests	verify	pending				folded-game per-character tests so no window can silently die again
-fix2-engine	verify	failed				orchestrate/citadels/briefs/fix2-engine.md
+fix2-drain	verify	abandoned				V2-1 blocking: drain must use windowOwed not owedFor; V2-2 blackmailer first-pass; V2-3 double end-turn
+fix2-districts	verify	abandoned				V2-8 armory onDestroy; V2-9 museum decline; V2-4 thieves-den gold share
+fix2-income	verify	abandoned				V2-5 trader+emperor declared type; V2-6 diplomat great wall toll; V2-7 alchemist refund
+fix2-engine-tests	verify	abandoned				folded-game per-character tests so no window can silently die again
+fix2-engine	verify	abandoned				orchestrate/citadels/briefs/fix2-engine.md
 fix2-characters	verify	pending				orchestrate/citadels/briefs/fix2-characters.md
 fix2-regression	verify	pending				orchestrate/citadels/briefs/fix2-regression.md
