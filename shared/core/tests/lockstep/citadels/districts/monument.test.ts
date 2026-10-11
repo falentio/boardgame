@@ -108,10 +108,12 @@ test("the build gate is the Monument's own card: a Monument in the city never ga
 
 test("the build gate refuses through the turn window, leaving the hand and gold untouched", () => {
   const state = withHand(withGold(turnState(cityOfSize(5)), ANN, 10), ANN, ["monument"]);
+  // The build answer performs the turn's mandatory gather first (commit 64420ca):
+  // +2 gold, then the refused build ends the turn.
   const next = advance(state, () => ({ t: "build", card: 0 }));
   expect(cityOf(next, ANN)).toHaveLength(5);
   expect(rawHand(next, ANN)).toEqual(["monument"]);
-  expect(rawGold(next, ANN)).toBe(10);
+  expect(rawGold(next, ANN)).toBe(10 + 2);
   // A refused build ends the turn rather than reopening the build window.
   expect(openPurpose(next)).not.toBe("turn");
 });

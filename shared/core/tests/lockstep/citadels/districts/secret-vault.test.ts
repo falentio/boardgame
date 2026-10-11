@@ -63,10 +63,12 @@ test("the Secret Vault cannot be built: the build is refused with the card still
 
 test("the refusal holds through the turn window, even with the gold to pay", () => {
   const state = withHand(withGold(turnState(), ANN, 10), ANN, ["secret-vault"]);
+  // The build answer performs the turn's mandatory gather first (commit 64420ca):
+  // +2 gold, then the refused build ends the turn.
   const next = advance(state, () => ({ t: "build", card: 0 }));
   expect(cityOf(next, ANN)).toEqual([]);
   expect(rawHand(next, ANN)).toEqual(["secret-vault"]);
-  expect(rawGold(next, ANN)).toBe(10);
+  expect(rawGold(next, ANN)).toBe(10 + 2);
   expect(openPurpose(next)).not.toBe("turn");
 });
 
