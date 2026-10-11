@@ -15,11 +15,8 @@ export interface HowToPlayPresence {
   readonly playback: HowToPlayPlayback
   /** A whole Tailwind utility literal: v4 only emits classes it can see in source. */
   readonly aspect: string
-  /** Classes for the lobby column that contains the player. */
   readonly columnClass: string
-  /** Classes for the player's own box inside that column. */
   readonly playerClass: string
-  /** The viewport edge the player sits against. The picker takes the opposite one. */
   readonly edge: "top" | "bottom"
 }
 
