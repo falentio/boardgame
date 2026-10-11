@@ -57,10 +57,13 @@ export const warlord: CharacterEffect = (ctx) => {
   return withSteps(opened, [winStep("warlord-destroy", [owner]), ...ctx.rest]);
 };
 
-/** A destroyed district is placed on the bottom of the hidden deck. */
-const toDeckBottom = (state: CitadelsState, id: string): CitadelsState => ({
+/**
+ * A destroyed district and any cards tucked under it (a Museum's attachments)
+ * are placed on the bottom of the hidden deck.
+ */
+const toDeckBottom = (state: CitadelsState, id: string, cards: readonly string[]): CitadelsState => ({
   ...state,
-  deck: [...state.deck, id],
+  deck: [...state.deck, id, ...cards],
 });
 
 /**
@@ -105,5 +108,5 @@ export const warlordResolve: WindowResolver = (ctx) => {
   const paid = spendGold(ctx.state, owner, price);
   const remaining = playerOf(paid, target).city.filter((_, i) => i !== index);
   const stripped = withPlayer(paid, { ...playerOf(paid, target), city: remaining });
-  return withSteps(toDeckBottom(stripped, placed.id), rest);
+  return withSteps(toDeckBottom(stripped, placed.id, placed.cards ?? []), rest);
 };

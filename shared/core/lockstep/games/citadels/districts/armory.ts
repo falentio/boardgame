@@ -134,7 +134,7 @@ export const armoryResolve: WindowResolver = (ctx) => {
   });
   return {
     ...strippedTarget,
-    deck: [...strippedTarget.deck, ARMORY_ID, placed.id],
+    deck: [...strippedTarget.deck, ARMORY_ID, placed.id, ...(placed.cards ?? [])],
     steps: rest,
   };
 };

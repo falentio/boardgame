@@ -181,6 +181,14 @@ export const winStep = (purpose: WindowPurpose, seats: readonly SeatId[]): Step 
  */
 export const NAVIGATOR_CARDS_NOTE = "navigator-cards";
 
+/**
+ * The `pending.note` marker a build sets when it opens the Magistrate's
+ * confiscation window, carrying the gold the build spent in `pending.gold` so
+ * the refund can be limited to gold (a Thieves' Den paid with cards refunds only
+ * its gold share, per rules.json).
+ */
+export const CONFISCATE_REFUND_NOTE = "confiscate-refund";
+
 export const CALL: Step = { kind: "call" };
 export const RESOLVE: Step = { kind: "resolve" };
 export const END_TURN: Step = { kind: "end-turn" };
@@ -325,10 +333,32 @@ export const resolveDraftPick: WindowResolver = (ctx) => {
   };
 };
 
-/** Charge the Tax Collector's token: one gold from a builder who can spare it. */
+/**
+ * The character taking the current turn for `seat`. `applyCall` advances
+ * `callRank` past the rank it calls, so the character being played is
+ * `callRank - 1`; a hand-built state that never ran the cursor falls back to
+ * the seat's own claim. Used to key the Tax Collector's exemption on the
+ * character in play, not the seat, in the 2-3 player games where a seat drafts
+ * two characters.
+ */
+const activeCharacterOf = (state: CitadelsState, seat: SeatId): CharacterId | null => {
+  const played = state.callRank - 1;
+  if (played >= 1 && played <= 9) {
+    const at = characterAtRank(state, played as Rank);
+    if (at !== null && seatHolding(state, at) === seat) return at;
+  }
+  return claimOf(state, seat)?.character ?? null;
+};
+
+/**
+ * Charge the Tax Collector's token: one gold from a builder who can spare it.
+ * The Tax Collector character itself pays no tax, but in a 2-3 player game a
+ * seat holds two characters, so building with the seat's other character still
+ * pays.
+ */
 const chargeBuildTax = (state: CitadelsState, seat: SeatId): CitadelsState => {
   if (!state.cast.includes("tax-collector")) return state;
-  if (seatHolding(state, "tax-collector") === seat) return state;
+  if (activeCharacterOf(state, seat) === "tax-collector") return state;
   if (playerOf(state, seat).gold <= 0) return state;
   return { ...spendGold(state, seat, 1), taxPot: (state.taxPot ?? 0) + 1 };
 };
@@ -451,8 +481,10 @@ export const tryBuild = (
     const at = destroySource === null ? -1 : city.findIndex((placed) => placed.id === destroySource);
     const gone = city[at < 0 ? 0 : at];
     city = city.filter((_, i) => i !== (at < 0 ? 0 : at));
-    // A destroyed district sinks to the bottom of the deck, as the Warlord and Armory do.
-    if (gone !== undefined) deck = [...deck, gone.id];
+    // A destroyed district and any cards tucked under it sink to the bottom of
+    // the deck, as the Warlord and Armory do (Museum: "if destroyed the cards are
+    // discarded to the bottom of the deck").
+    if (gone !== undefined) deck = [...deck, gone.id, ...(gone.cards ?? [])];
     paid = false;
     goldPaid = 0;
   } else if (payCards > 0) {
@@ -464,7 +496,6 @@ export const tryBuild = (
     discard = [...discard, ...hand.slice(0, payCards)];
     hand = hand.slice(payCards);
     gold -= goldShare;
-    paid = false;
     goldPaid = goldShare;
   } else {
     if (gold < cost) return withSteps(state, []);
@@ -486,8 +517,16 @@ export const tryBuild = (
   const taxed = chargeBuildTax(runDistrictHooks(builtState, "onBuild", seat, [], rng), seat);
   const magistrate = seatHolding(state, "magistrate");
   const warrant = state.warrants?.[0];
+  // A build that paid in gold or cards is confiscatable; a build that destroyed a
+  // district (Framework, Necropolis) is not. The gold spent rides on pending so
+  // the Magistrate refunds only gold, never the cards a Den consumed.
   if (paid && warrant !== undefined && magistrate !== null && seatHolding(state, warrant) === seat) {
-    return withSteps(taxed, [winStep("magistrate-confiscate", [magistrate])]);
+    const carrying = withPending(taxed, {
+      ...emptyPending(magistrate, null),
+      note: CONFISCATE_REFUND_NOTE,
+      gold: goldPaid,
+    });
+    return withSteps(carrying, [winStep("magistrate-confiscate", [magistrate])]);
   }
   return withSteps(taxed, []);
 };

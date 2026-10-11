@@ -3,6 +3,7 @@ import { specOfDistrict } from "../districts.ts";
 import {
   actionOf,
   addGold,
+  CONFISCATE_REFUND_NOTE,
   emptyPending,
   playerOf,
   popWindow,
@@ -43,17 +44,23 @@ export const magistrate: CharacterEffect = (ctx: CharacterCtx) => {
 
 /**
  * Reveal the signed warrant and take the target's just-built district into the
- * Magistrate's city for free, refunding the target's gold. The warrant is spent
+ * Magistrate's city for free, refunding only the gold the target spent on it (a
+ * Thieves' Den paid with cards refunds just its gold share). The warrant is spent
  * on the target's first paid build either way; a district the Magistrate already
  * owns cannot be taken.
  */
 export const magistrateResolve: WindowResolver = (ctx) => {
   if (ctx.window.purpose !== "magistrate-confiscate") return popWindow(ctx.state);
   const rest = ctx.state.steps.slice(1);
+  const pending = ctx.state.pending;
+  // The build carried the gold it spent on pending; a hand-built state without it
+  // (or a build with no pending channel) refunds the catalog cost, which equals
+  // the gold spent on a fully-gold build.
+  const carriedGold = pending?.note === CONFISCATE_REFUND_NOTE ? pending.gold : null;
   const magistrateSeat = ctx.window.seats[0] ?? seatHolding(ctx.state, "magistrate");
   const target = ctx.state.warrants?.[0] ?? null;
   const targetSeat = target === null ? null : seatHolding(ctx.state, target);
-  const spent = { ...ctx.state, warrants: [] };
+  const spent = { ...ctx.state, warrants: [], pending: null };
   if (magistrateSeat === null) return withSteps(spent, rest);
   const action = actionOf(ctx.frame, magistrateSeat);
   const reveal = action?.t === "choose" && action.value === "confiscate";
@@ -67,7 +74,7 @@ export const magistrateResolve: WindowResolver = (ctx) => {
   if (magistratePlayer.city.some((district) => district.id === built.id)) {
     return withSteps(spent, rest);
   }
-  const refund = specOfDistrict(built.id).cost;
+  const refund = carriedGold ?? specOfDistrict(built.id).cost;
   const stripped = withPlayer(spent, { ...targetPlayer, city: targetPlayer.city.slice(0, -1) });
   const paidBack = addGold(stripped, targetSeat, refund);
   const holder = playerOf(paidBack, magistrateSeat);
