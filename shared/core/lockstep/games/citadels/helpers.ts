@@ -216,6 +216,17 @@ export const WITCH_RESUME_NOTE = "witch-resume";
  */
 export const CARDINAL_BUILD_NOTE = "cardinal-build";
 
+/**
+ * The `pending.note` marker a turn window carries once the turn's gather has
+ * landed. The window below it — and any build window a successful build
+ * re-offers — reads the marker and takes no gather of its own, so a turn gathers
+ * exactly once and may still build (rules of record, docs/design/citadels-full-game.md:
+ * "A turn: gather (2 gold, or draw 2 keep 1), then optionally build one district.").
+ * `resolveTurn` clears the pending as it reads the window, so the marker never
+ * leaks past the window that owns it.
+ */
+export const TURN_GATHERED_NOTE = "turn-gathered";
+
 export const CALL: Step = { kind: "call" };
 export const RESOLVE: Step = { kind: "resolve" };
 export const END_TURN: Step = { kind: "end-turn" };
@@ -231,6 +242,12 @@ export const emptyPending = (actor: SeatId, character: CharacterId | null): Pend
   gold: 0,
   amount: 0,
   note: null,
+});
+
+/** The pending a build window carries: the turn's gather already landed above it. */
+export const turnGatheredPending = (seat: SeatId): Pending => ({
+  ...emptyPending(seat, null),
+  note: TURN_GATHERED_NOTE,
 });
 
 export const withPending = (state: CitadelsState, pending: Pending | null): CitadelsState => ({
@@ -635,19 +652,50 @@ const endTurnThen = (rest: readonly Step[]): readonly Step[] => {
   return past[0]?.kind === "end-turn" ? rest : [END_TURN, ...rest];
 };
 
+/** The gather: 2 gold, then any `onIncome` district hooks (the School of Magic). */
+const gatherGold = (
+  state: CitadelsState,
+  seat: SeatId,
+  rest: readonly Step[],
+  rng: Random,
+): CitadelsState => runDistrictHooks(addGold(state, seat, 2), "onIncome", seat, rest, rng);
+
+/**
+ * The seat's own turn windows, dropped from a continuation so the build limit
+ * counter — not the pre-seeded window count — decides how many builds remain. A
+ * character that pre-seeds several build windows (the Architect's three) keeps
+ * exactly the one the turn's gather hands it; the limit re-offers the rest.
+ */
+const withoutTurnWindows = (steps: readonly Step[], seat: SeatId): readonly Step[] =>
+  steps.filter(
+    (step) =>
+      !(
+        step.kind === "window" &&
+        step.window.purpose === "turn" &&
+        step.window.seats.includes(seat)
+      ),
+  );
+
+/**
+ * The continuation a gather hands the turn: one build-capable window, then the
+ * turn's close. Any build window a character pre-seeded is dropped so the gather
+ * is followed by exactly one build opportunity.
+ */
+const gatherThenBuild = (rest: readonly Step[], seat: SeatId): readonly Step[] => [
+  winStep("turn", [seat]),
+  ...endTurnThen(withoutTurnWindows(rest, seat)),
+];
+
 export const resolveTurn: WindowResolver = (ctx) => {
   // Record any seat that finished on an earlier turn before this turn's build, so
-  // `completed` carries finish order and not roster order. Clear any character
-  // pending the effect above the turn window left behind, so the gather's own
-  // pending is the only one the keep windows see.
-  // A turn window on the Witch's seat is her resumed turn (the bewitched
-  // character's build turn, played with her hand/gold/city); the marker rides
-  // pending so it survives the resume's build windows (a resumed Architect may
-  // build several times). She already gathered on the held turn, so the resume
-  // takes no gather of its own.
-  const resumePending =
-    ctx.state.pending?.note === WITCH_RESUME_NOTE ? ctx.state.pending : null;
-  const state = withPending(recordFinished(ctx.state), resumePending);
+  // `completed` carries finish order and not roster order. Preserve the two markers
+  // a turn carries across its own windows — the Witch's resume (her build turn) and
+  // the turn's gathered marker (a build window below the gather) — and clear any
+  // other character pending the effect above the turn window left behind.
+  const incoming = ctx.state.pending;
+  const resumePending = incoming?.note === WITCH_RESUME_NOTE ? incoming : null;
+  const gatheredPending = incoming?.note === TURN_GATHERED_NOTE ? incoming : null;
+  const state = withPending(recordFinished(ctx.state), resumePending ?? gatheredPending);
   const rest = state.steps.slice(1);
   const seat = ctx.window.seats[0] ?? state.active;
   if (!hasSeat(state, seat) || isResigned(state, seat)) {
@@ -661,107 +709,124 @@ export const resolveTurn: WindowResolver = (ctx) => {
   // pauses here, keeping the bewitch recorded. Her resumed turn (the bewitched
   // character's rank) is marked by `resumePending` and builds without gathering.
   const heldWitch =
-    !resumedWitch && ctx.state.pending === null && activeCharacterOf(state, seat) === "witch";
+    !resumedWitch && incoming === null && activeCharacterOf(state, seat) === "witch";
   if (heldWitch) return withSteps(state, endTurnThen(rest));
   const playedCharacter = activeCharacterOf(state, seat);
-  const threatened =
-    !resumedWitch &&
-    playedCharacter !== null &&
-    (state.threats ?? []).includes(playedCharacter);
-  if (threatened) {
-    // rules.json (blackmailer): "When a threatened player is called, they must
-    // gather resources, then resolve the threat... A threatened player must
-    // resolve the threat before using abilities or building." The threat window
-    // is spliced directly below this turn window, so the threatened seat either
-    // gathers here (the threat then opens on the post-gather gold and the turn's
-    // END_TURN closes it), or names a build, which is deferred to a turn window
-    // placed below the threat: the district lands only after the threat resolves,
-    // so nothing stands in the city while the threat is open.
-    const threat = rest[0];
-    const hasThreat =
-      threat?.kind === "window" && threat.window.purpose === "blackmailer-threat";
-    if (action?.t === "build" && hasThreat) {
-      return withSteps(state, [threat, winStep("turn", [seat]), ...rest.slice(1)]);
-    }
-    if (action?.t === "draw") {
-      return withSteps(drawGather(state, seat, rest, ctx.rng), [
-        winStep("keep", [seat]),
-        ...rest,
-      ]);
-    }
-    return withSteps(
-      runDistrictHooks(addGold(state, seat, 2), "onIncome", seat, rest, ctx.rng),
-      rest,
-    );
-  }
   // The Navigator's turn window is its gain choice, not a gather: a draw names the
   // four-card branch, anything else the four-gold one. The choice rides pending.note
-  // for the resolve step above the turn window to read.
+  // for the resolve step above the turn window to read. Its effect strips the build
+  // windows, so the turn carries no build either.
   if (claimOf(state, seat)?.character === "navigator") {
     const note = action?.t === "draw" ? NAVIGATOR_CARDS_NOTE : null;
     return withSteps(withPending(state, { ...emptyPending(seat, "navigator"), note }), rest);
   }
-  if (action?.t === "draw") {
-    if (resumedWitch) {
-      return withSteps(withPending(state, null), withMuseumOffer(state, seat, endTurnThen(rest)));
-    }
-    const gathered = drawGather(state, seat, rest, ctx.rng);
-    return withSteps(gathered, [
-      winStep("keep", [seat]),
-      ...withMuseumOffer(gathered, seat, endTurnThen(rest)),
-    ]);
-  }
-  if (action?.t === "build") {
-    const built = tryBuild(state, seat, action.card, ctx.rng);
-    // A build succeeds when the card left the hand; only a successful build under
-    // the limit re-offers a turn window, so a failed attempt ends the turn as before.
-    const builtId = playerOf(state, seat).hand[action.card];
+
+  // The turn's build window. The gather already landed above it (or the Witch
+  // already gathered on her held turn), so it takes no gather of its own. Its
+  // marker rides pending so it survives the windows between the gather and it —
+  // the gather's keep, the Blackmailer's threat, or the Cardinal's shortfall offer.
+  const buildWindow = winStep("turn", [seat]);
+  const markGathered = (s: CitadelsState): CitadelsState =>
+    withPending(s, resumedWitch ? (resumePending as Pending) : turnGatheredPending(seat));
+  // End the turn, clearing the turn marker so a following Museum keep (which the
+  // gather keep distinguishes by a bare pending) is not misrouted. The Alchemist's
+  // settle pending (character "alchemist", note null) is left for its resolve step.
+  const clearMarker = (s: CitadelsState): CitadelsState => {
+    const note = s.pending?.note ?? null;
+    return note === TURN_GATHERED_NOTE || note === WITCH_RESUME_NOTE ? withPending(s, null) : s;
+  };
+  const closeTurn = (s: CitadelsState, cont: readonly Step[]): CitadelsState => {
+    const cleared = clearMarker(s);
+    return withSteps(
+      cleared,
+      withMuseumOffer(cleared, seat, endTurnThen(withoutTurnWindows(cont, seat))),
+    );
+  };
+  // Apply a build: a legal, affordable build lands; a Cardinal build short of gold
+  // opens the shortfall offer and retries below it; a build under the limit re-offers
+  // the build window; anything else ends the turn. The build's own follow-up windows
+  // (the Magistrate's confiscation) lead the continuation.
+  const applyBuild = (
+    base: CitadelsState,
+    card: number,
+    cont: readonly Step[],
+  ): CitadelsState => {
+    const built = tryBuild(base, seat, card, ctx.rng);
+    const builtId = playerOf(base, seat).hand[card];
     const succeeded =
-      playerOf(built, seat).hand.length < playerOf(state, seat).hand.length;
-    // The Cardinal's shortfall clause: when it lacks the gold, the engine opens
-    // the offer (amount = the gap, cards = the district being built), the Cardinal
-    // names a donor, and the turn window below retries the build once covered.
-    if (
-      !succeeded &&
-      !resumedWitch &&
-      playedCharacter === "cardinal" &&
-      builtId !== undefined
-    ) {
-      const shortfall = Math.max(0, specOfDistrict(builtId).cost - playerOf(state, seat).gold);
+      playerOf(built, seat).hand.length < playerOf(base, seat).hand.length;
+    if (!succeeded && !resumedWitch && playedCharacter === "cardinal" && builtId !== undefined) {
+      const shortfall = Math.max(0, specOfDistrict(builtId).cost - playerOf(base, seat).gold);
       if (shortfall > 0) {
-        const armed = withPending(state, {
+        const armed = withPending(base, {
           ...emptyPending(seat, "cardinal"),
           amount: shortfall,
           cards: [builtId],
           note: CARDINAL_BUILD_NOTE,
         });
-        return withSteps(armed, [winStep("cardinal-gold", [seat]), winStep("turn", [seat]), ...rest]);
+        return withSteps(armed, [winStep("cardinal-gold", [seat]), buildWindow, ...cont]);
       }
     }
-    if (succeeded && (built.builtThisTurn ?? 0) < buildLimit(state, seat, builtId)) {
-      // Drop any duplicate turn windows a character effect pre-seeded so the
-      // limit counter, not the pre-seeded count, decides how many builds remain.
-      const below = rest.filter(
-        (step) =>
-          !(
-            step.kind === "window" &&
-            step.window.purpose === "turn" &&
-            step.window.seats.includes(seat)
-          ),
-      );
-      return withSteps(built, [
-        ...withMuseumOffer(built, seat, [...built.steps, winStep("turn", [seat]), ...below]),
+    if (succeeded && (built.builtThisTurn ?? 0) < buildLimit(base, seat, builtId)) {
+      return withSteps(markGathered(built), [
+        ...built.steps,
+        buildWindow,
+        ...withoutTurnWindows(cont, seat),
       ]);
     }
-    return withSteps(built, [
-      ...withMuseumOffer(built, seat, [...built.steps, ...endTurnThen(rest)]),
+    const cleared = clearMarker(built);
+    return withSteps(cleared, [
+      ...built.steps,
+      ...withMuseumOffer(cleared, seat, endTurnThen(withoutTurnWindows(cont, seat))),
+    ]);
+  };
+
+  const alreadyGathered = resumedWitch || gatheredPending !== null;
+  const threatened =
+    !resumedWitch &&
+    playedCharacter !== null &&
+    (state.threats ?? []).includes(playedCharacter);
+
+  // A threatened seat must gather, then resolve the threat, then build: the gather
+  // lands on this window, the threat window opens on the post-gather gold, and a
+  // build window sits below the threat, so nothing stands in the city while the
+  // threat is open (rules.json blackmailer).
+  if (threatened && !alreadyGathered) {
+    const threat = rest[0];
+    const hasThreat =
+      threat?.kind === "window" && threat.window.purpose === "blackmailer-threat";
+    const belowThreat: readonly Step[] = hasThreat
+      ? [threat, buildWindow, ...rest.slice(1)]
+      : [buildWindow, ...rest];
+    if (action?.t === "draw") {
+      const gathered = drawGather(state, seat, rest, ctx.rng);
+      return withSteps(gathered, [winStep("keep", [seat]), ...belowThreat]);
+    }
+    const gathered = gatherGold(state, seat, rest, ctx.rng);
+    return withSteps(markGathered(gathered), belowThreat);
+  }
+
+  // The build window: the gather already landed, so take the build or end the turn.
+  if (alreadyGathered) {
+    if (action?.t === "build") return applyBuild(state, action.card, rest);
+    return closeTurn(state, rest);
+  }
+
+  // The gather window: land the gather, then leave the turn's build window below.
+  if (action?.t === "draw") {
+    const gathered = drawGather(state, seat, rest, ctx.rng);
+    return withSteps(gathered, [
+      winStep("keep", [seat]),
+      buildWindow,
+      ...endTurnThen(withoutTurnWindows(rest, seat)),
     ]);
   }
-  if (resumedWitch) {
-    return withSteps(withPending(state, null), withMuseumOffer(state, seat, endTurnThen(rest)));
-  }
-  const gathered = runDistrictHooks(addGold(state, seat, 2), "onIncome", seat, rest, ctx.rng);
-  return withSteps(gathered, withMuseumOffer(gathered, seat, endTurnThen(rest)));
+  const gathered = gatherGold(state, seat, rest, ctx.rng);
+  if (action?.t === "build") return applyBuild(gathered, action.card, rest);
+  return withSteps(markGathered(gathered), [
+    buildWindow,
+    ...endTurnThen(withoutTurnWindows(rest, seat)),
+  ]);
 };
 
 export const resolveKeep: WindowResolver = (ctx) => {
@@ -798,7 +863,9 @@ export const resolveKeep: WindowResolver = (ctx) => {
     const unkept = pool.filter((_, i) => !keptIndexes.has(i));
     next = { ...next, deck: [...next.deck, ...unkept] };
   }
-  return withSteps(withPending(next, null), rest);
+  // The turn's gather already landed, so the build window below takes no second
+  // gather: hand it the gathered marker.
+  return withSteps(withPending(next, turnGatheredPending(seat)), rest);
 };
 
 const actorOf = (state: CitadelsState, window: Window): SeatId =>

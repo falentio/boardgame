@@ -3,12 +3,14 @@ import type { CharacterCtx, CharacterEffect } from "../characters/index.ts";
 import { typeOfPlaced, type DistrictId } from "../districts.ts";
 import {
   actionOf,
+  CARDINAL_BUILD_NOTE,
   drawIntoHand,
   emptyPending,
   isSkipped,
   playerOf,
   popWindow,
   seatHolding,
+  turnGatheredPending,
   winStep,
   withPending,
   withPlayer,
@@ -98,8 +100,15 @@ export const cardinalResolve: WindowResolver = (ctx) => {
   const donor = action?.t === "target" ? action.seat : null;
   const pending = ctx.state.pending;
   const shortfall = pending?.amount ?? 0;
-  if (donor === null || shortfall <= 0) return popWindow(withPending(ctx.state, null));
+  // The offer opens twice: on the income pass (amount 0, nothing to cover) and on
+  // a build that fell short (CARDINAL_BUILD_NOTE). Only the build pass sits above a
+  // build window whose gather has already landed, so only it hands that window the
+  // gathered marker; a declined or zero offer there still must not re-gather.
+  const fromBuild = pending?.note === CARDINAL_BUILD_NOTE;
+  if (donor === null || shortfall <= 0) {
+    return popWindow(withPending(ctx.state, fromBuild ? turnGatheredPending(owner) : null));
+  }
   const reserve = pending?.cards[0];
   const covered = coverShortfall(ctx.state, owner, donor, shortfall, reserve);
-  return popWindow(withPending(covered, null));
+  return popWindow(withPending(covered, turnGatheredPending(owner)));
 };
