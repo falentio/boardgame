@@ -120,24 +120,36 @@ test("the card payment is card-specific: an ordinary district still needs gold",
   expect(rawHand(next, ANN)).toHaveLength(4);
 });
 
-test("a card-paid Den is never confiscatable, so no cards are returned by the Magistrate", () => {
+test("a card-paid Den is confiscatable; the Magistrate takes it and the builder gets back only the gold share", () => {
+  // rules.json (thieves-den): "If confiscated by the Magistrate, you receive back
+  // only gold spent, not cards." The cost-4 Den is paid 2 gold + 2 cards, so the
+  // gold share is 2. The Magistrate may take the district and the builder receives
+  // back that 2 gold -- never the cost-4 total, never the two cards.
   const claimed: readonly Claim[] = [
     { seat: ANN, character: "merchant" },
     { seat: BOB, character: "magistrate" },
   ];
   const base: CitadelsState = {
-    ...withHand(withGold(turnState(MAGISTRATE_CAST, claimed), ANN, 0), ANN, [
+    ...withHand(withGold(turnState(MAGISTRATE_CAST, claimed), ANN, 2), ANN, [
       "thieves-den",
       "manor",
       "castle",
-      "docks",
-      "harbor",
     ]),
     warrants: ["merchant", "thief", "architect"],
   };
-  const next = tryBuild(base, ANN, 0, rawRandom());
-  expect(cityOf(next, ANN).map((district) => district.id)).toEqual(["thieves-den"]);
-  expect(topPurpose(next)).not.toBe("magistrate-confiscate");
+  const before = totalCards(base);
+  const built = tryBuild(base, ANN, 0, rawRandom());
+  expect(cityOf(built, ANN).map((district) => district.id)).toEqual(["thieves-den"]);
+  expect(topPurpose(built)).toBe("magistrate-confiscate");
+  expect(topWindow(built).seats).toEqual([BOB]);
+  const seized = play(built, [[BOB, { t: "choose", value: "confiscate" }]]);
+  expect(cityOf(seized, ANN)).toEqual([]);
+  expect(cityOf(seized, BOB).map((district) => district.id)).toEqual(["thieves-den"]);
+  // The gold share (2) comes back; the two cards spent are never returned.
+  expect(rawGold(seized, ANN)).toBe(2);
+  expect(rawHand(seized, ANN)).toEqual([]);
+  expect(seized.discard).toEqual(["manor", "castle"]);
+  expect(totalCards(seized)).toBe(before);
 });
 
 test("a gold-paid Den confiscated by the Magistrate returns the gold spent, nothing more", () => {
