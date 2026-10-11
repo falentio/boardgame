@@ -10,6 +10,7 @@ import {
 } from "./districts.ts";
 import { UNIQUE_BUILD, UNIQUE_EFFECTS, UNIQUE_TRIGGERS } from "./districts/effects.ts";
 import { museumIn, museumPlace } from "./districts/museum.ts";
+import { declareSchoolOfMagic } from "./districts/school-of-magic.ts";
 import {
   HAUNTED_QUARTER_TYPE_NOTE,
   offerHauntedQuarterType,
@@ -813,7 +814,10 @@ export const applyCall = (state: CitadelsState): CitadelsState => {
   // window as its `rest`, and the steps it returns become the turn. Any window
   // the effect opens (the Warlord's destroy, the Assassin's naming) sits above the
   // gather so it resolves first.
-  const armed = withPending(state, emptyPending(seat, character));
+  // The School of Magic declares its colour when the turn opens, above the
+  // resolve step that runs this character's income, so the income counts it.
+  const declared = declareSchoolOfMagic(state, seat, character);
+  const armed = withPending(declared, emptyPending(seat, character));
   const thiefOwner = seatHolding(state, "thief");
   // Every other character opens its windows above the resolve step and gathers
   // below it. The Navigator's turn window is its gain choice, so it must resolve
