@@ -322,7 +322,7 @@ test("the Alchemist takes back the gold it spent building this turn", () => {
         steps: [{ kind: "call" }, { kind: "end-round" }],
       },
       ANN,
-      ["tavern", "market", "docks", "harbor", "castle"],
+      ["castle", "tavern", "market", "docks", "harbor"],
     ),
     ANN,
     10,
@@ -336,9 +336,11 @@ test("the Alchemist takes back the gold it spent building this turn", () => {
     const canBuild = (me?.city.length ?? 0) === 0;
     s = advance(s, (seat) => (seat === ANN && isTurn && canBuild ? { t: "build", card: 0 } : null));
   }
-  // A Tavern (cost 1) is built, so one gold is spent and must come back.
-  expect(s.players.find((p) => p.seat === ANN)?.city.length).toBeGreaterThan(0);
-  expect(rawGold(s, ANN)).toBe(before);
+  // The turn gathers, then builds a Castle (cost 4): 10 + 2 (gather) - 4 (build)
+  // = 8, and the Alchemist takes the 4 gold back, so it ends at before + 2 — the
+  // gather alone. Without the refund it would end at 8 (before - 2).
+  expect(s.players.find((p) => p.seat === ANN)?.city.map((d) => d.id)).toContain("castle");
+  expect(rawGold(s, ANN)).toBe(before + 2);
 });
 
 // ---------------------------------------------------------------------------

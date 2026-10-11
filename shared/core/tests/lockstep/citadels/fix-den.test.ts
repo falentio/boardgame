@@ -67,10 +67,15 @@ test("the Thieves' Den may be paid partly in gold and partly in cards", () => {
 });
 
 test("the engine builds the split end to end through a turn window", () => {
-  const state = withHand(withGold(turnState(), ANN, 2), ANN, ["thieves-den", "tavern", "market"]);
+  // A turn gathers then builds, so the build answer lands the gather first: an
+  // empty purse gains the 2-gold gather, which leaves the cost-4 Den a 2-gold
+  // shortfall covered by two cards. The mixed payment must still hold — cards
+  // discarded, gold share spent — through the engine's own turn window.
+  const state = withHand(withGold(turnState(), ANN, 0), ANN, ["thieves-den", "tavern", "market"]);
   const next = advance(state, (seat) => (seat === ANN ? { t: "build", card: 0 } : null));
   expect(cityOf(next)).toEqual(["thieves-den"]);
   expect(next.discard).toEqual(["tavern", "market"]);
+  expect(rawGold(next, ANN), "the mixed payment spends its gold share").toBe(0);
   expect(totalCards(next)).toBe(totalCards(state));
 });
 

@@ -414,11 +414,14 @@ const CHARACTER_GUARDS: readonly CharacterGuard[] = [
   },
   {
     character: "alchemist",
-    board: { hands: { ann: ["tavern", "market"] }, gold: { ann: 1 } },
+    // A turn gathers then may build, so the fold's turn window builds the castle
+    // and the gather lands first: 3 + 2 (gather) - 4 (castle) + 4 (refund) = 5.
+    // Without the refund the Alchemist would end at 1, so the row pins the take-back.
+    board: { hands: { ann: ["castle"] }, gold: { ann: 3 } },
     answer: policy(buildOrGold),
     check: (fold) => {
       expect(cityIdsOf(foldEnd(fold), ANN), "the Alchemist builds a district").toHaveLength(1);
-      expect(rawGold(foldEnd(fold), ANN), "the Alchemist takes back its build spend").toBe(1);
+      expect(rawGold(foldEnd(fold), ANN), "the Alchemist takes back its build spend").toBe(5);
     },
   },
   {
@@ -734,11 +737,13 @@ const DISTRICT_GUARDS: readonly DistrictGuard[] = [
   },
   {
     id: "factory",
+    // The turn gathers (4 + 2), the museum (a unique) is built (-4), and the
+    // Factory refunds 1: 3. Without the refund the Factory's owner would end at 2.
     board: { cities: { ann: ["factory"] }, hands: { ann: ["museum"] }, gold: { ann: 4 } },
     uniques: DEN_UNIQUES,
     check: (fold, calls) => {
       expect(calls, "the Factory is called").toBe(1);
-      expect(rawGold(foldEnd(fold), ANN), "the Factory refunds the unique it built").toBe(1);
+      expect(rawGold(foldEnd(fold), ANN), "the Factory refunds the unique it built").toBe(3);
     },
   },
   {
@@ -965,13 +970,24 @@ describe("engine coverage: an end-of-turn district fires once per turn", () => {
   test("the Poor House pays one gold to an empty purse, once", () => {
     const { fold, calls } = districtFold<DistrictGuard>({
       id: "poor-house",
-      board: { cities: { ann: ["poor-house"] }, hands: { ann: ["market"] }, gold: { ann: 2 } },
+      // An empty purse: the gather (0 + 2) funds a 2-gold market that empties it,
+      // and the Poor House refills it to 1. Without the refill the turn ends at 0.
+      board: { cities: { ann: ["poor-house"] }, hands: { ann: ["market"] }, gold: { ann: 0 } },
       uniques: DEN_UNIQUES,
     });
     expect(calls).toBe(1);
     expect(rawGold(foldEnd(fold), ANN), "the build emptied the purse and the house refilled it").toBe(1);
   });
 });
+
+
+
+
+
+
+
+
+
 
 
 
