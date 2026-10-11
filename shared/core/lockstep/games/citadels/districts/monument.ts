@@ -23,10 +23,9 @@ export const monumentBuild: BuildQuery = (ctx) =>
 export const monument: DistrictEffect = (ctx: DistrictCtx) => ctx.state;
 
 /**
- * At end of game the Monument counts as two districts, so it is worth twice its
- * cost (the rulebook's "its value is thus 8 gold" for a cost-4 card). The scoring
- * pass already sums the card's cost once as a district; paying that cost again as
- * unique points is the second district, so the Monument scores `2 * cost`.
+ * At end of game the Monument counts as two districts. The scoring pass already
+ * sums the card's cost once as a district, so paying that cost again as unique
+ * points is the second district: a cost-4 Monument is worth 8 points in total.
  */
 export const monumentScoring: DistrictScoring = (district) =>
   specOfDistrict(district.id).cost;
