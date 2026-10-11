@@ -151,3 +151,32 @@ Format: name, id, cost. Each has one copy.
 5. Plus unique-district points.
 Tie-break: the tied player who revealed the highest-numbered rank in the last
 round wins.
+
+
+## The rulebook's six preset cast lists
+
+Transcribed from the official rulebook (rulespal.com/citadels/rulebook, fetched
+2026-07-18). Each list is one character per rank 1-9. The rank-9 entry is optional
+in 4-7 player games and required at 3 or 8 players.
+
+Ambitious Aristocrats: Magistrate, Thief, Wizard, Patrician, Bishop, Trader,
+Architect, Marshal, Queen.
+
+Cunning Agents: Witch, Blackmailer, Magician, Emperor, Abbot, Alchemist,
+Architect, Warlord, Tax Collector.
+
+Illustrious Emissaries: Witch, Spy, Seer, Emperor, Bishop, Merchant, Scholar,
+Diplomat, Artist.
+
+Devious Dignitaries: Magistrate, Blackmailer, Wizard, King, Abbot, Alchemist,
+Navigator, Marshal, Queen.
+
+Tenacious Delegates: Assassin, Spy, Seer, King, Cardinal, Trader, Scholar,
+Diplomat, Artist.
+
+Vicious Nobles: Assassin, Thief, Magician, Patrician, Cardinal, Merchant,
+Navigator, Warlord, Tax Collector.
+
+Substitution notes from the rulebook: the Emperor cannot be used in a 2-player
+game (use the King or the Patrician instead); the Queen cannot be used with 3 or 4
+players (use the Artist or the Tax Collector instead).
