@@ -15,6 +15,7 @@ import {
   CARA,
   EVE,
   SEATS3,
+  SEATS4,
   SEATS5,
   advance,
   castWith,
@@ -290,11 +291,34 @@ const CHARACTER_GUARDS: readonly CharacterGuard[] = [
   },
   {
     character: "thief",
-    check: (fold) =>
+    // A four-seat game drafts one character per seat, so the Thief (ANN) and its
+    // victim (BOB, the Merchant) are pinned and BOB holds no other character that
+    // could move his gold before rank 6. The Assassin is steered away from the
+    // Merchant so the rob actually lands. BOB starts at 7 gold; the thief-rob
+    // window fires before his gather, so the whole 7 crosses to ANN.
+    seats: SEATS4,
+    cast: castWith("thief"),
+    wanted: { ann: "thief", bob: "merchant" },
+    board: { gold: { bob: 7 } },
+    answer: (seat, state) => {
+      if (openPurpose(state) === "choose-character") {
+        return {
+          t: "name-character",
+          character: state.pending?.character === "thief" ? "merchant" : "magician",
+        };
+      }
+      return takeGold(seat, state);
+    },
+    check: (fold) => {
       expect(
-        fold.steps.some((state) => state.robbed === nameTarget(foldStart(fold))),
+        fold.steps.some((state) => state.robbed === "merchant"),
         "the Thief records its rob",
-      ).toBe(true),
+      ).toBe(true);
+      expect(
+        goldDelta(fold, ANN),
+        "the Thief takes the named character's whole purse when it is called",
+      ).toBe(9);
+    },
   },
   {
     character: "magician",
@@ -399,8 +423,22 @@ const CHARACTER_GUARDS: readonly CharacterGuard[] = [
   },
   {
     character: "navigator",
-    check: (fold) =>
-      expect(goldDelta(fold, ANN), "the Navigator takes 4 gold").toBe(4),
+    check: (fold) => {
+      expect(goldDelta(fold, ANN), "the Navigator takes 4 gold").toBe(4);
+      // The card branch: the turn window answered with a draw writes the engine's
+      // four-card marker, so the effect below the resolve step draws four cards
+      // instead of taking four gold (the D3-1 clause).
+      const cards = foldTurn({
+        character: "navigator",
+        cast: castWith("navigator"),
+        seats: SEATS3,
+        answer: takeDraw,
+      });
+      expect(
+        handDelta(cards, ANN),
+        "the Navigator's card gather draws four cards",
+      ).toBe(4);
+    },
   },
   {
     character: "diplomat",
@@ -461,6 +499,12 @@ const CHARACTER_GUARDS: readonly CharacterGuard[] = [
       expect(purposes, "the Spy picks a seat").toContain("choose-seat");
       expect(purposes, "the Spy names a type").toContain("choose-type");
       expect(handDelta(fold, ANN), "the Spy peeks and draws per matching card").toBe(2);
+      // The gold-take clause: two matching nobles in BOB's hand move two gold from
+      // BOB to ANN, on top of ANN's own two-gold gather.
+      expect(
+        goldDelta(fold, ANN),
+        "the Spy takes 1 gold per matching card from the target",
+      ).toBe(4);
     },
   },
   {
