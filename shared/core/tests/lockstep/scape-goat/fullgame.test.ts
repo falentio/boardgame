@@ -40,8 +40,6 @@ const FRAME_CAP = 400;
 const capThenCops = (cap: number): FramePolicy => (state, seat, frame) =>
   frame >= cap ? copsAction(state, seat) : grindAction(state, seat);
 
-// --- drives to terminal ----------------------------------------------------
-
 test("a policy drives every player count from 3 to 6 to terminal", () => {
   for (const count of COUNTS) {
     expect(seatsFor(count).length).toBe(count);
@@ -94,8 +92,6 @@ test("card conservation holds after every frame", () => {
   }
 });
 
-// --- frame count bound -----------------------------------------------------
-
 test("a policy that runs to the Cops as a fallback terminates within the documented cap", () => {
   for (const count of COUNTS) {
     const { checkpoint, steps } = playRaw(
@@ -117,8 +113,6 @@ test("the run-to-the-Cops fallback is necessary: a pure framing policy grinds pa
   expect(scapeGoat.isTerminal(checkpoint.state)).toBe(false);
   expect(steps).toBe(FRAME_CAP);
 });
-
-// --- outcome correctness ---------------------------------------------------
 
 const withFrameReveal = (
   checkpoint: Checkpoint<ScapeGoatState>,

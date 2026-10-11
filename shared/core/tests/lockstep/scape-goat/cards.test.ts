@@ -13,7 +13,6 @@ import type { CardFace, PlayerCount } from "../../../lockstep/games/scape-goat/i
 
 const COUNTS: readonly PlayerCount[] = [3, 4, 5, 6];
 
-/** The marker key for a card: a bare count, or `N+` for a range. */
 const markerKey = (card: CardFace): string => {
   if (card.counts.length === 4) return "3+";
   if (card.counts.length === 3) return "4+";

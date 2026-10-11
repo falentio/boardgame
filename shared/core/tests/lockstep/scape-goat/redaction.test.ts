@@ -31,7 +31,6 @@ import {
 const FRAME_CAP = 400;
 const COUNTS: readonly PlayerCount[] = [3, 4, 5, 6];
 
-/** The view's own keys, checked to prove no hidden field sneaks in. */
 const VIEW_KEYS = [
   "seat",
   "phase",
@@ -50,7 +49,6 @@ const VIEW_KEYS = [
 
 const PLAYER_KEYS = ["seat", "at", "handCount", "prepTokens", "resigned"].sort();
 
-/** Assert the redaction boundary for one seat on one state. */
 const assertRedacted = (state: ScapeGoatState, seat: typeof ANN): ScapeGoatView => {
   const view = project(state, seat);
   const mine = state.players.find((player) => player.seat === seat);
@@ -59,7 +57,6 @@ const assertRedacted = (state: ScapeGoatState, seat: typeof ANN): ScapeGoatView 
   expect(Object.keys(view).sort()).toEqual(VIEW_KEYS);
   for (const player of view.players) expect(Object.keys(player).sort()).toEqual(PLAYER_KEYS);
 
-  // No scapegoat, no decoy, no other seat's hand, no stash identities.
   expect(Object.keys(view)).not.toContain("scapegoat");
   expect(Object.keys(view)).not.toContain("scapegoatSuspect");
   expect(view.myHand).toEqual([...mine.hand]);
@@ -70,7 +67,6 @@ const assertRedacted = (state: ScapeGoatState, seat: typeof ANN): ScapeGoatView 
   const serialized = JSON.stringify(view);
   for (const card of state.stash) expect(serialized).not.toContain(card);
 
-  // The viewer's own suspect, never their own seat; no outcome before terminal.
   expect(view.mySuspect).toBe(suspectOf(state, seat));
   expect(view.mySuspect).not.toBe(seat);
   if (!view.terminal) {
@@ -152,7 +148,6 @@ test("a private Spy hand reaches only the spy", () => {
   const otherView = project(state, CARA);
   expect(spyView.spy?.hand).toEqual([...handOf(state, BOB)]);
   expect(otherView.spy?.hand).toBeNull();
-  // The spy and target are public in both modes.
   expect(otherView.spy?.spy).toBe(ANN);
   expect(otherView.spy?.target).toBe(BOB);
 });
@@ -182,7 +177,13 @@ test("frame picks are not visible before the attempt resolves", () => {
   }
 });
 
-test("the redaction boundary holds through a Stash-heavy game (hands, scapegoat, suspect)", () => {
+/**
+ * Drives a full game at every count with a policy that uses the Stash, which is
+ * the one action the framing policy never reaches. It is a long drive, so it
+ * carries its own budget rather than the 5s default, which the whole-suite run
+ * on a loaded machine exceeds.
+ */
+test("the redaction boundary holds through a Stash-heavy game (hands, scapegoat, suspect)", { timeout: 60_000 }, () => {
   // The framing policy never exercises the two-frame Stash action; this drive
   // does, so the boundary is checked on states the other sweep never reaches.
   for (const count of [3, 4, 5, 6] as const) {

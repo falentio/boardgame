@@ -21,7 +21,6 @@ import {
 export const findPlayer = (state: ScapeGoatState, seat: SeatId): PlayerState | undefined =>
   state.players.find((player) => player.seat === seat);
 
-/** Every seat still at the table, in canonical order. The frame candidate set. */
 export const activeSeats = (state: ScapeGoatState): readonly SeatId[] =>
   state.players.filter((player) => !state.resigned.includes(player.seat)).map((p) => p.seat);
 
@@ -108,7 +107,6 @@ const handTurn = (state: ScapeGoatState): ScapeGoatState => {
   return { ...state, spy: null, frame: null, phase: { kind: "move", active: next } };
 };
 
-/** The phase kinds that owe the active seat a second decision of their own. */
 /**
  * The only phase with a debt. A Stash draw puts a card in the drawer's hand, so
  * the drawer owes the row a card back and must return it even when resigning, or
@@ -133,7 +131,6 @@ const transferToken = (state: ScapeGoatState, from: SeatId, to: SeatId): ScapeGo
   );
 };
 
-/** A legal other seat to name, or null when none remains. An unknown request folds to the first candidate. */
 const pickOtherSeat = (
   state: ScapeGoatState,
   self: SeatId,
@@ -167,7 +164,6 @@ const pickIndex = (input: ScapeGoatAction | null, hand: readonly CardId[]): numb
   return input.index;
 };
 
-/** A coerced hand index for an action that always places some card; 0 when the report names none. */
 const placedIndex = (
   input: ScapeGoatAction | null,
   hand: readonly CardId[],
@@ -210,7 +206,6 @@ const swapIndex = (
   return forced[0] ?? 0;
 };
 
-/** The destination a move earns: the requested new location, or the first line location not where the seat stands. */
 const legalMove = (player: PlayerState, input: ScapeGoatAction | null): Destination | "cops" => {
   if (input !== null && input.t === "move") {
     if (input.to === "cops") return "cops";
@@ -219,13 +214,11 @@ const legalMove = (player: PlayerState, input: ScapeGoatAction | null): Destinat
   return LOCATION_LINE.find((destination) => destination !== player.at) ?? "prepare";
 };
 
-/** The seats the move phase owes: the active seat, plus the six-player antipode. */
 export const moveOwed = (state: ScapeGoatState, active: SeatId): readonly SeatId[] => {
   const antipode = antipodeOf(state, active);
   return antipode === null ? [active] : [active, antipode];
 };
 
-/** The seat that ran to the Cops in this frame, if any owed seat did. */
 const copsRunInFrame = (
   state: ScapeGoatState,
   owed: readonly SeatId[],

@@ -59,7 +59,6 @@ import { stateCodec } from "../../../lockstep/games/scape-goat/state.ts";
 
 const card = cardId;
 
-/** Advance one frame, resolving each owed seat through `decide`. */
 const advance = (
   checkpoint: Checkpoint<ScapeGoatState>,
   decide: (state: ScapeGoatState, seat: SeatId) => ScapeGoatAction | null,
@@ -70,7 +69,6 @@ const advance = (
   return { ...checkpoint, state: stepState(checkpoint.state, inputs) };
 };
 
-/** Move the active seat to `to`, then run the action, then a swap, in three frames. */
 const walkTurn = (
   checkpoint: Checkpoint<ScapeGoatState>,
   to: "prepare" | "spy" | "trade" | "stash",
@@ -90,7 +88,6 @@ const walkTurn = (
   return next;
 };
 
-/** Fold one frame with explicit seat inputs, so a test can report a resign or an off-turn action. */
 const stepWith = (
   state: ScapeGoatState,
   count: PlayerCount,
@@ -112,14 +109,11 @@ const stepWith = (
   return scapeGoat.step(state, frame, makeRandom(seed));
 };
 
-/** How many player tokens sit on each occupied location, most tokens first. */
 const tokensPerLocation = (state: ScapeGoatState): readonly number[] => {
   const counts = new Map<string, number>();
   for (const player of state.players) counts.set(player.at, (counts.get(player.at) ?? 0) + 1);
   return [...counts.values()].sort((a, b) => b - a);
 };
-
-// --- the three-step turn ---------------------------------------------------
 
 test("a turn is exactly move, action, swap, in that order, with three frames", () => {
   const start = rawGenesis(4, "turn-three-steps");
@@ -147,20 +141,13 @@ test("a seat cannot stay put: a move onto the current location still moves", () 
   expect(next.state.players.find((player) => player.seat === active)?.at).not.toBe(here);
 });
 
-// --- Prepare ---------------------------------------------------------------
-
 test("Prepare takes one token per visit and flips to Frame/Steal when the second goes", () => {
-  // Two separate seats each visit Prepare once. The card holds two tokens, so the
-  // second visit flips it. The first active seat is moved off Prepare first, since
-  // a seat may not stay put.
   const first = withHand(rawGenesis(4, "turn-prepare"), ANN, [card("goat-horns")]);
-  // The active seat starts on Prepare; move it off first, since it may not stay put.
   let checkpoint = withAt(first, activeSeat(first.state), "spy");
   let next = walkTurn(checkpoint, "prepare", { t: "take-prep-token" }, { t: "swap", index: 0 });
   expect(next.state.prepareTokens).toBe(1);
   const second = activeSeat(next.state);
   expect(second).not.toBe(activeSeat(first.state));
-  // The next active seat takes the second token; the card flips.
   next = withAt(withHand(next, second, [card("goat-horns")]), second, "spy");
   next = walkTurn(next, "prepare", { t: "take-prep-token" }, { t: "swap", index: 0 });
   expect(next.state.prepareTokens).toBe(0);
@@ -169,12 +156,10 @@ test("Prepare takes one token per visit and flips to Frame/Steal when the second
 test("the flipped Prepare offers Frame when the actor holds a token, Steal otherwise", () => {
   let checkpoint = withPrepareTokens(rawGenesis(4, "turn-flip-menu"), 0);
   checkpoint = withHand(checkpoint, ANN, [card("goat-horns")]);
-  // Actor holds a token -> the menu is Frame only.
   let holder = withPrep(checkpoint, ANN, 1);
   holder = withPhase(holder, { kind: "action", active: ANN, location: "prepare" });
   const frame = stepState(holder.state, [[ANN, { t: "frame" }]]);
   expect(frame.phase).toEqual({ kind: "frame-reveal", active: ANN });
-  // Actor holds none and another does -> Steal.
   let stealer = withPrep(checkpoint, ANN, 0);
   stealer = withPrep(stealer, BOB, 1);
   stealer = withPhase(stealer, { kind: "action", active: ANN, location: "prepare" });
@@ -196,8 +181,6 @@ test("a Steal moves a token and never spends it", () => {
   expect(next.players.find((player) => player.seat === ANN)?.prepTokens).toBe(1);
 });
 
-// --- Stash -----------------------------------------------------------------
-
 test("Stash is two frames: the taken card enters the hand, then one hand card replaces it in the row", () => {
   const start = rawGenesis(4, "turn-stash");
   const active = activeSeat(start.state);
@@ -206,14 +189,12 @@ test("Stash is two frames: the taken card enters the hand, then one hand card re
   );
   const stashBefore = [...next.state.stash];
   const handBefore = next.state.players.find((player) => player.seat === active)?.hand ?? [];
-  // Pick slot 1.
   next = advance(next, (state, seat) => (seat === active ? { t: "stash", slot: 1 } : null));
   expect(next.state.phase).toEqual({ kind: "stash-put", active });
   const drawn = stashBefore[1]!;
   const handAfterPick = next.state.players.find((player) => player.seat === active)?.hand ?? [];
   expect(handAfterPick).toContain(drawn);
   expect(handAfterPick.length).toBe(handBefore.length + 1);
-  // Put back the very card just drawn (the last hand index).
   const drawnIndex = handAfterPick.indexOf(drawn);
   next = advance(next, (state, seat) =>
     seat === active ? { t: "put", index: drawnIndex } : null,
@@ -223,8 +204,6 @@ test("Stash is two frames: the taken card enters the hand, then one hand card re
   const handAfterPut = next.state.players.find((player) => player.seat === active)?.hand ?? [];
   expect(handAfterPut).not.toContain(drawn);
 });
-
-// --- Trade -----------------------------------------------------------------
 
 test("Trade is one frame owed by both seats and exchanges one card each simultaneously", () => {
   const start = rawGenesis(4, "turn-trade");
@@ -252,10 +231,7 @@ test("Trade is one frame owed by both seats and exchanges one card each simultan
   expect(partnerAfter.length).toBe(partnerBefore.length);
 });
 
-// --- Frame Attempt ---------------------------------------------------------
-
 test("a failed Frame Attempt resumes the framer's Evidence Swap, then passes the turn", () => {
-  // All three reveal a card carrying red, so there is no odd card out.
   let checkpoint = withScapegoat(rawGenesis(3, "turn-frame-fail"), ANN, BOB);
   checkpoint = withHands(checkpoint, [
     [ANN, ["goat-horns"]],
@@ -266,7 +242,6 @@ test("a failed Frame Attempt resumes the framer's Evidence Swap, then passes the
   let next = advance(checkpoint, () => ({ t: "reveal", index: 0 }));
   expect(next.state.phase).toEqual({ kind: "swap", active: ANN });
   expect(next.state.frame?.framed).toBeNull();
-  // The framer then swaps and the turn passes.
   next = advance(next, (state, seat) => (seat === ANN ? { t: "swap", index: 0 } : null));
   expect(next.state.phase.kind).toBe("move");
   expect(activeSeat(next.state)).not.toBe(ANN);
@@ -289,8 +264,6 @@ test("a successful Frame Attempt ends immediately with no swap", () => {
   expect(scapeGoat.isTerminal(next)).toBe(true);
 });
 
-// --- Cops ------------------------------------------------------------------
-
 test("going to the Cops ends immediately with the scapegoat winning", () => {
   const start = withScapegoat(rawGenesis(4, "turn-cops"), BOB, CARA);
   const actor = activeSeat(start.state);
@@ -298,8 +271,6 @@ test("going to the Cops ends immediately with the scapegoat winning", () => {
   expect(outcomeOf(next)).toEqual({ kind: "cops", actor });
   expect(scapeGoat.isTerminal(next)).toBe(true);
 });
-
-// --- six-player pre-empt ---------------------------------------------------
 
 test("at six players the move phase owes the active seat and its antipode", () => {
   expect(SEATS6.length).toBe(6);
@@ -337,8 +308,6 @@ test("at three to five players the move phase owes exactly one seat", () => {
     expect(antipodeOf(start.state, active)).toBeNull();
   }
 });
-
-// --- documented rule gaps --------------------------------------------------
 
 test("a seat that resigns out of the Stash-put window still returns the drawn card", () => {
   // The Stash action already drew a card into the drawer's hand, so the drawer
@@ -388,8 +357,6 @@ test("a card revealed in a failed attempt and later stashed survives only in the
   expect(occurrences, "the card appears exactly once, in the public faceUp").toBe(1);
 });
 
-// --- first player ----------------------------------------------------------
-
 test("the first player is the first-pass occupant of Prepare", () => {
   const entropy = "turn-first-player";
   const count = 5;
@@ -411,8 +378,6 @@ test("the first player starts on Prepare at every count", () => {
     expect(start.state.players.find((player) => player.seat === active)?.at).toBe("prepare");
   }
 });
-
-// --- setup: token placement -------------------------------------------------
 
 test("no player token begins on Go to the Cops, at every count", () => {
   for (const count of [3, 4, 5, 6] as const) {
@@ -460,11 +425,8 @@ test("no location carries more than two tokens, at every count", () => {
   }
 });
 
-// --- a resign in every phase -----------------------------------------------
-
 const FRAME_CAP = 400;
 
-/** Each of the six open phases, with ANN as the active seat. */
 const RESIGN_PHASES: readonly Phase[] = [
   { kind: "move", active: ANN },
   { kind: "action", active: ANN, location: "spy" },
@@ -489,8 +451,6 @@ test("a resign in every phase passes the turn to exactly the next seat, and the 
     ).toBe(true);
   }
 });
-
-// --- the six-player antipode ------------------------------------------------
 
 test("the six-player antipode may resign in the move phase and the active seat still moves", () => {
   const start = rawGenesis(6, "turn-antipode-resign");
@@ -549,8 +509,6 @@ test("a resigning active seat does not discard the six-player antipode's run to 
   expect(scapeGoat.isTerminal(next), "the run to the Cops is terminal").toBe(true);
 });
 
-// --- movement ---------------------------------------------------------------
-
 test("a move onto an occupied location is legal and both tokens share it", () => {
   const start = rawGenesis(4, "turn-occupied");
   const actor = activeSeat(start.state);
@@ -560,8 +518,6 @@ test("a move onto an occupied location is legal and both tokens share it", () =>
   const sharing = next.players.filter((player) => player.at === occupant.at).map((p) => p.seat);
   expect(sharing, "the mover joins the token already there").toEqual([occupant.seat, actor]);
 });
-
-// --- frame reveal edge cases ------------------------------------------------
 
 test("a seat holding only grey is the odd card out, so the attempt frames it", () => {
   const checkpoint = withScapegoat(
@@ -604,9 +560,6 @@ test("a seat with no legal pick fails the attempt rather than framing the silent
   });
 });
 
-// --- codec rejection --------------------------------------------------------
-
-/** The encoded state as a mutable wire object, so a test can tamper one field before decode. */
 interface WireState {
   readonly players: { hand: string[] }[];
   scapegoat: string;
@@ -634,8 +587,6 @@ test("stateCodec.decode rejects every state that shape checking cannot", () => {
     expect(() => stateCodec.decode(json), what).toThrow(ScapeGoatError);
   }
 });
-
-// --- abandoned outcome ------------------------------------------------------
 
 test("a table reduced below three seats ends abandoned with no winners", () => {
   let state = rawGenesis(4, "turn-abandoned").state;

@@ -12,7 +12,6 @@ import {
 import { ScapeGoatError } from "./error.ts";
 import { cardFaceOf, cardId, type CardId } from "./cards.ts";
 
-/** A supported table size; the roster length must be one of these. */
 export type PlayerCount = 3 | 4 | 5 | 6;
 export const MIN_SEATS = 3;
 export const MAX_SEATS = 6;
@@ -37,10 +36,8 @@ export const COLOURS: readonly Colour[] = ["red", "blue", "green", "yellow", "pu
 export type StashSlot = 0 | 1 | 2;
 export const STASH_SLOTS: readonly StashSlot[] = [0, 1, 2];
 
-/** Preparation tokens held in one supply, or still sitting on the Prepare card. */
 export type PrepTokensRemaining = 0 | 1 | 2;
 
-/** A card identity. The 30 card faces live in `cards.ts`. */
 export interface PlayerState {
   readonly seat: SeatId;
   readonly at: Location;
@@ -60,7 +57,6 @@ export interface SpyRecord {
   readonly hand: readonly CardId[];
 }
 
-/** One card revealed in a Frame Attempt. */
 export interface FrameReveal {
   readonly seat: SeatId;
   readonly card: CardId;

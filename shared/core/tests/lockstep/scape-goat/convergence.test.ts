@@ -42,7 +42,6 @@ const deps = (seat: typeof ANN) => ({
   config: { seat, inputTimeoutMs: 1000 },
 });
 
-/** Build the frame the policy would seal from `checkpoint`, without advancing. */
 const buildFromPolicy = (
   checkpoint: Checkpoint<ScapeGoatState>,
   frame: number,
@@ -106,7 +105,6 @@ test("a state that diverges is caught: the next frame is rejected", () => {
   // The visible views agree; only the hidden state digest differs.
   expect(divergent.view()).toEqual(converged.view());
 
-  // Frame 1 was built over the converged state, so the divergent peer rejects it.
   converged.receive({ kind: "frame", frame: frame1 });
   divergent.receive({ kind: "frame", frame: frame1 });
   expect(converged.frame).toBe(frameIndex(2));
@@ -151,7 +149,6 @@ test("a self-consistent snapshot over a divergent state is rejected by the seed 
     deps(ANN),
     { seed: genesisSeed("converge-tamper"), roster, setup: SETUP, startedAt: deadline(0) },
   );
-  // Fold three frames so the snapshot carries a head and its seed is chained.
   for (let i = 0; i < 3; i += 1) {
     const frame = buildFromPolicy(checkpoint, i);
     session.receive({ kind: "frame", frame });
@@ -160,7 +157,6 @@ test("a self-consistent snapshot over a divergent state is rejected by the seed 
   const snapshot = session.snapshot();
   expect(snapshot.head).not.toBeNull();
   const json = expectObject(encodeSnapshot(scapeGoat, snapshot), "snapshot");
-  // A tampered seed on a head-carrying snapshot fails the chain check.
   expect(() => decodeSnapshot(scapeGoat, { ...json, seed: genesisSeed("elsewhere") })).toThrow();
 
   // A self-consistent snapshot at the same frame over a divergent state: its own

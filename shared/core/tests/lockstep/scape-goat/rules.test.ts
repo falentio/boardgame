@@ -37,11 +37,9 @@ import {
 
 const THREE: readonly SeatId[] = [ANN, BOB, CARA];
 
-/** A reveal map keyed by seat, from `[seat, cardId]` pairs. */
 const reveals = (entries: readonly (readonly [SeatId, string])[]): ReadonlyMap<SeatId, CardId> =>
   new Map(entries.map(([seat, id]): [SeatId, CardId] => [seat, cardId(id)]));
 
-/** Put the actor on a location with the given phase, leaving every other field. */
 const placed = (
   checkpoint: Checkpoint<ScapeGoatState>,
   seat: SeatId,
@@ -59,8 +57,6 @@ const placed = (
     },
     { kind: "swap", active: seat },
   );
-
-// --- resolveFrame ----------------------------------------------------------
 
 test("a frame succeeds when exactly one seat's card lacks a colour the others share", () => {
   const result = resolveFrame(
@@ -181,8 +177,6 @@ test("a table shrunk below three seats abandons rather than empties the owed set
   expect(outcomeOf(checkpoint.state)).toEqual({ kind: "abandoned" });
 });
 
-// --- grey ------------------------------------------------------------------
-
 test("grey is the empty colour set: it never contributes to a frame match", () => {
   const result = resolveFrame(
     THREE,
@@ -204,8 +198,6 @@ test("grey never satisfies the own-colour swap obligation", () => {
   const next = stepState(checkpoint.state, [[ANN, { t: "swap", index: 0 }]]);
   expect(next.faceUp.spy).toBe("goat-horns");
 });
-
-// --- coercion table (gap 3) ------------------------------------------------
 
 test("an illegal swap report coerces to an own-colour card when one is held", () => {
   let checkpoint = knownHand(3, ANN, ["goat-bystander", "goat-horns"], "rules-swap-forced");
@@ -243,7 +235,6 @@ test("a steal naming a non-holder coerces to the first holder", () => {
     active: ANN,
     location: "prepare",
   });
-  // Name Dee, who holds no token; the first holder in canonical order is Bob.
   const next = stepState(checkpoint.state, [[ANN, { t: "steal", target: DEE }]]);
   expect(next.players.find((player) => player.seat === ANN)?.prepTokens).toBe(1);
   expect(next.players.find((player) => player.seat === BOB)?.prepTokens).toBe(0);
@@ -306,8 +297,6 @@ test("a spy naming itself coerces to another seat", () => {
   expect(next.spy?.target).not.toBe(actor);
   expect(next.spy?.target).toBeDefined();
 });
-
-// --- totality --------------------------------------------------------------
 
 const HOSTILE: readonly (ScapeGoatAction | null)[] = [
   null,

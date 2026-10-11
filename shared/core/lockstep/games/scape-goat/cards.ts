@@ -21,11 +21,9 @@ export interface CardFace {
   readonly id: CardId;
   /** The player colours printed on the card. Grey — matching nothing — is the empty set. */
   readonly colours: readonly Colour[];
-  /** The player counts this face is legal in, ascending. */
   readonly counts: readonly PlayerCount[];
 }
 
-/** Marker groups: the counts a face is legal in. */
 const THREE_PLUS: readonly PlayerCount[] = [3, 4, 5, 6];
 const FOUR_PLUS: readonly PlayerCount[] = [4, 5, 6];
 const FIVE_PLUS: readonly PlayerCount[] = [5, 6];
@@ -63,29 +61,23 @@ export const EVIDENCE_CARDS: readonly CardFace[] = [
   face("goat-bystander", [], THREE_PLUS),
   face("goat-panorama", ["red", "blue", "green", "yellow", "purple", "orange"], THREE_PLUS),
 
-  // 4+
   face("goat-fence", ["red", "yellow"], FOUR_PLUS),
   face("goat-bridge", ["blue", "purple"], FOUR_PLUS),
   face("goat-orchard", ["green", "orange"], FOUR_PLUS),
 
-  // 5+
   face("goat-tollbooth", ["red", "blue", "green"], FIVE_PLUS),
 
-  // 6
   face("goat-tower", ["yellow", "purple", "orange"], SIX_ONLY),
   face("goat-parade", ["red", "blue", "green", "yellow", "purple", "orange"], SIX_ONLY),
 
-  // 3
   face("goat-kid", ["red", "blue"], THREE_ONLY),
   face("goat-nanny", ["blue", "green"], THREE_ONLY),
   face("goat-billy", ["red", "green"], THREE_ONLY),
 
-  // 4
   face("goat-cart", ["yellow"], FOUR_ONLY),
   face("goat-wheel", ["red", "yellow"], FOUR_ONLY),
   face("goat-saddle", ["green", "yellow"], FOUR_ONLY),
 
-  // 5
   face("goat-lantern", [], FIVE_ONLY),
   face("goat-rope", ["purple"], FIVE_ONLY),
   face("goat-bucket", ["red", "purple"], FIVE_ONLY),
