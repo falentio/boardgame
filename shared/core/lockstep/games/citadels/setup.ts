@@ -57,7 +57,12 @@ export const buildDraft = (
   const perSeat = seats.length <= 3 ? 2 : 1;
   const pool = rng.shuffle(cast);
   const pickedCount = seats.length * perSeat;
-  const remaining = Math.max(0, pool.length - pickedCount);
+  // One-pick games keep a spare in the passing pool so the last picker still
+  // has a choice: the catalog's "4 players: 2 faceup, 1 facedown" removes
+  // three of the eight. Two-pick games (2-3 players) discard their remainder,
+  // and a pool with only one character left has no spare to keep.
+  const extras = pool.length - pickedCount;
+  const remaining = perSeat === 2 || extras <= 1 ? extras : extras - 1;
   const facedownCount = remaining >= 1 ? 1 : 0;
   const faceupCount = remaining - facedownCount;
   const discards = pool.slice(0, remaining);

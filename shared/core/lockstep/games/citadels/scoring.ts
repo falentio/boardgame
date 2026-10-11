@@ -2,7 +2,7 @@ import type { SeatId } from "../../index.ts";
 import { specOfDistrict, typeOfPlaced, type DistrictType } from "./districts.ts";
 import { UNIQUE_SCORING } from "./districts/effects.ts";
 import { HAND_SCORED_UNIQUES } from "./districts/secret-vault.ts";
-import { playerOf } from "./helpers.ts";
+import { characterRank, playerOf } from "./helpers.ts";
 import type { CitadelsState, PlacedDistrict } from "./state.ts";
 
 export interface Score {
@@ -73,15 +73,30 @@ export const scoreGame = (state: CitadelsState): readonly Score[] =>
   });
 
 /**
- * The winner: highest total, tie-broken by district points, then gold. A tie
- * that survives both tie-breaks has no winner.
+ * The highest rank a seat revealed this round, or 0 when the seat is unclaimed.
+ * The catalog's tie-break reads "the tied player who revealed the
+ * highest-numbered rank in the last round", and `claimed` carries each seat's
+ * revealed character (two in the 2- and 3-player games).
+ */
+const revealedRank = (state: CitadelsState, seat: SeatId): number =>
+  state.claimed.reduce(
+    (best, claim) => (claim.seat === seat ? Math.max(best, characterRank(claim.character)) : best),
+    0,
+  );
+
+/**
+ * The winner: highest total, tie-broken by the highest revealed rank (the
+ * catalog rule). Two seats that tie on total, revealed rank, district points,
+ * and gold have no winner.
  */
 export const winnerOf = (state: CitadelsState): SeatId | null => {
   const scores = [...scoreGame(state)];
   if (scores.length === 0) return null;
   const goldOf = (seat: SeatId): number => playerOf(state, seat).gold;
+  const rankOf = (seat: SeatId): number => revealedRank(state, seat);
   scores.sort((a, b) => {
     if (b.total !== a.total) return b.total - a.total;
+    if (rankOf(b.seat) !== rankOf(a.seat)) return rankOf(b.seat) - rankOf(a.seat);
     if (b.districts !== a.districts) return b.districts - a.districts;
     return goldOf(b.seat) - goldOf(a.seat);
   });
@@ -90,6 +105,7 @@ export const winnerOf = (state: CitadelsState): SeatId | null => {
   const tied = scores.filter(
     (score) =>
       score.total === top.total &&
+      rankOf(score.seat) === rankOf(top.seat) &&
       score.districts === top.districts &&
       goldOf(score.seat) === goldOf(top.seat),
   );
