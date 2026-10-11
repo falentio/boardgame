@@ -15,6 +15,7 @@ import {
 import RoleStrip from "@/components/room/RoleStrip.vue"
 import SeatList from "@/components/room/SeatList.vue"
 import ShareLink from "@/components/room/ShareLink.vue"
+import HowToPlayDialog from "@/components/room/HowToPlayDialog.vue"
 import { parseRoomCode } from "#shared/rooms/code.ts"
 import { userId, type UserId } from "#shared/rooms/ids.ts"
 import { useAuthSession } from "@/composables/useAuthSession"
@@ -409,6 +410,8 @@ const onJoin = async () => {
         </div>
       </CardContent>
     </Card>
+
+    <HowToPlayDialog v-if="code !== null" />
 
     <AlertDialog :open="leaveOpen" @update:open="(open) => { if (!open && !leaving) leaveOpen = false }">
       <AlertDialogContent>
