@@ -63,4 +63,8 @@ verify-5	verify	done				fifth independent adversarial pass at a59355b: predicate
 fix5-engine	verify	done				D5-1..4 witch resume runs the bewitched character ability + build limit; D5-5 threat after gather before build; D5-6 cardinal shortfall reachable; D5-7 school-of-magic declaration before income; owns helpers.ts + witch + cardinal + school-of-magic + king/emperor/trader
 fix5-data	verify	done				D5-8 four stale character summaries (bishop, tax-collector, blackmailer, magician) reconciled to the implemented effects; owns characters.ts
 fix5-last-fixture	verify	done				correct the coordinator-ruled stale D4-1b fixture in verification4.test.ts (the resume now pays the bewitched ability, so the fold totals +3)
-verify-6	verify	running				sixth independent adversarial pass at 32b9c1d (fully green head): predicate audit, teeth audit, verification6.test.ts counterexamples
+verify-6	verify	done				sixth independent adversarial pass at 32b9c1d (fully green head): predicate audit, teeth audit, verification6.test.ts counterexamples
+fix6-turn-model	verify	done				D6-1 cardinal shortfall gift card conservation with duplicates; D6-2 turn model gather-then-build per spec citadels-full-game.md:107; owns helpers.ts + cardinal.ts
+fix6-fixtures-districts	verify	done				re-frame the 22 red district fixtures (necropolis x4, framework x4, factory x4, park x3, poor-house x2, smithy, secret-vault, quarry, monument, laboratory) to the gather-then-build turn model
+fix6-fixtures-guards	verify	done				re-frame engine-coverage x3 (alchemist, factory, poor-house), verification2 alchemist V2-7, fix-den-test split build; strengthen the T1-T4 guard gaps (school-of-magic turn-open, cardinal shortfall, blackmailer deferral, witch resume RESOLVE)
+verify-7	verify	running				seventh independent adversarial pass at fbf19a6 (post turn-model): predicate audit, teeth audit incl T1-T4 strengthened rows, verification7.test.ts counterexamples
