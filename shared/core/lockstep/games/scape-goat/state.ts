@@ -339,15 +339,43 @@ const decodeFaceUp = (json: Json): Readonly<Record<Destination, CardId>> => {
  */
 const checkInvariants = (state: ScapeGoatState): void => {
   const seats = new Set(state.players.map((player) => player.seat));
-  if (!seats.has(state.scapegoat)) {
-    throw new ScapeGoatError("the scapegoat is not a player");
-  }
-  if (!seats.has(state.scapegoatSuspect)) {
-    throw new ScapeGoatError("the scapegoat suspect is not a player");
-  }
+  const requireSeat = (seat: SeatId, what: string): void => {
+    if (!seats.has(seat)) throw new ScapeGoatError(`${what} is not a player`);
+  };
+  requireSeat(state.scapegoat, "the scapegoat");
+  requireSeat(state.scapegoatSuspect, "the scapegoat suspect");
   if (state.scapegoatSuspect === state.scapegoat) {
     throw new ScapeGoatError("the scapegoat must suspect a seat other than itself");
   }
+  // Every seat the phase names crosses the codec, so a snapshot that names a
+  // non-roster seat must be rejected here or the adopted state wedges: a ghost
+  // `active` leaves `seatsOwed` empty on a non-terminal state, and every later
+  // `owed`/`tick` throws. The over phase carries the outcome's seats instead.
+  if (state.phase.kind === "over") {
+    if (state.phase.outcome.kind === "cops") {
+      requireSeat(state.phase.outcome.actor, "the outcome actor");
+    } else if (state.phase.outcome.kind === "frame") {
+      requireSeat(state.phase.outcome.actor, "the outcome actor");
+      if (state.phase.outcome.framed !== null) {
+        requireSeat(state.phase.outcome.framed, "the framed seat");
+      }
+    }
+  } else {
+    requireSeat(state.phase.active, "the active seat");
+    if (state.phase.kind === "trade-give") {
+      requireSeat(state.phase.target, "the trade target");
+    }
+  }
+  if (state.spy !== null) {
+    requireSeat(state.spy.spy, "the spy");
+    requireSeat(state.spy.target, "the spy target");
+  }
+  if (state.frame !== null) {
+    requireSeat(state.frame.framer, "the framer");
+    for (const reveal of state.frame.reveals) requireSeat(reveal.seat, "a frame reveal seat");
+    if (state.frame.framed !== null) requireSeat(state.frame.framed, "the framed seat");
+  }
+  for (const seat of state.resigned) requireSeat(seat, "a resigned seat");
   const held = new Set<CardId>();
   for (const card of Object.values(state.faceUp)) {
     if (held.has(card)) throw new ScapeGoatError("a card is in two places");

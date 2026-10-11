@@ -9,8 +9,11 @@ import {
   activeSeat,
   capThenCops,
   cardId,
+  copsAction,
   driveRaw,
+  grindAction,
   handOf,
+  legalActions,
   project,
   rawGenesis,
   scapeGoat,
@@ -23,6 +26,7 @@ import {
   withPhase,
   withScapegoat,
   type Checkpoint,
+  type FramePolicy,
   type PlayerCount,
   type ScapeGoatState,
   type ScapeGoatView,
@@ -75,6 +79,45 @@ const assertRedacted = (state: ScapeGoatState, seat: typeof ANN): ScapeGoatView 
   }
   return view;
 };
+
+/**
+ * Trades for the first `tradeFrames` frames, then grinds to the Cops. The pure
+ * trade policy is a dead end at five and six players, where no frame ever
+ * resolves, so the Cops fallback is what terminates the drive.
+ */
+const tradeThenCops =
+  (tradeFrames: number, cap: number): FramePolicy =>
+  (state, seat, frame) => {
+    const view = project(state, seat);
+    if (frame >= cap) return copsAction(state, seat);
+    if (frame < tradeFrames && view.phase.kind === "move" && view.phase.active === seat) {
+      const toTrade = legalActions(view).find(
+        (action) => action.t === "move" && action.to === "trade",
+      );
+      if (toTrade !== undefined) return toTrade;
+    }
+    return grindAction(state, seat);
+  };
+
+test("every seat's view is redacted on the two-seat trade-give phase", () => {
+  // trade-give is the one phase that owes two seats, and each seat's committed
+  // card is hidden until both have given, so the boundary must hide the partner's
+  // hand while showing the viewer's own. No other drive reaches this phase.
+  for (const count of COUNTS) {
+    let checkpoint = rawGenesis(count, `redact-trade-drive-${count}`);
+    let steps = 0;
+    let sawTrade = false;
+    while (!scapeGoat.isTerminal(checkpoint.state) && steps < 140) {
+      if (checkpoint.state.phase.kind === "trade-give") sawTrade = true;
+      for (const seat of checkpoint.state.players.map((player) => player.seat)) {
+        assertRedacted(checkpoint.state, seat);
+      }
+      checkpoint = driveRaw(checkpoint, tradeThenCops(60, 120), steps);
+      steps += 1;
+    }
+    expect(sawTrade, `the drive reaches trade-give at ${count} players`).toBe(true);
+  }
+});
 
 test("every seat's view is redacted on every phase of a played game", () => {
   const count = 4;

@@ -59,7 +59,9 @@ game depends on is that no player ever sees their own colour as their suspect.
 That holds structurally for every non-scapegoat, because their suspect is the
 scapegoat and the scapegoat is not them. It holds for the scapegoat by
 construction, because `genesisState` picks a decoy that is not the scapegoat.
-`redaction.test.ts` pins it on every phase of a played game.
+`redaction.test.ts` pins it on every phase of a played game, including the
+two-seat `trade-give` phase, where one seat's committed card must stay hidden
+from the other.
 
 **There is no deck in state.** `deckFor(count)` is exactly dealt at genesis:
 four cards face up, three into the Stash supply, the rest into hands. Nothing
@@ -105,12 +107,18 @@ unwinnable. A 16-card deck at three players also keeps hands readable.
 colour floor: at `count` seats, every legal colour appears on at least
 `count - 1` cards in that count's deck. That is a deck-wide supply floor and
 nothing more. A frame needs a colour held by `count - 1` distinct other seats,
-and cards in the deck do not imply that spread across hands. Measured over
-genesis deals, the fraction where no colour is held by `count - 1` distinct
-seats is 24% at three players, 8% at four, 4% at five, and 16% at six. A pure
-framing policy can therefore fail to assemble a frame at every count, which is
-why `fullgame.test.ts` runs its policy to the Cops as a fallback rather than
-rest on the floor.
+and cards in the deck do not imply that spread across hands. Over 20,000
+genesis deals per count, the fraction where no colour is held by exactly
+`count - 1` distinct seats is 1.7% at three players, 1.4% at four, 2.4% at
+five, and 17.3% at six. The test `the deal cannot assemble a frame in the doc's
+measured fraction of genesis deals` in `cards.test.ts` reruns the measurement:
+it deals `rawGenesis(count, \`cards-frame-rate-${count}-${seed}\`)` for seed from
+0 to 19,999 and counts the deals where no colour in `COLOURS` has exactly
+`count - 1` holders. All six colours count, because `resolveFrame` matches any
+colour a card carries, not only the seats' own mat colours. A pure framing
+policy can therefore fail to assemble a frame at
+every count, which is why `fullgame.test.ts` runs its policy to the Cops as a
+fallback rather than rest on the floor.
 
 Grey is the empty colour set, not a `Grey` variant. Every rule that mentions
 it treats grey as matching nothing: it never satisfies the own-colour swap

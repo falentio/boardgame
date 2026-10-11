@@ -324,7 +324,7 @@ import type { ScapeGoatAction, ScapeGoatSetup, ScapeGoatView } from "./lockstep/
 
 `tests/` mirrors the engine tree. The suite runs on Vitest through `vitest`.
 
-For a new game, drive it to terminal with a small policy and assert the outcome, the conservation of anything the rules conserve (cards, coins), and the redaction of hidden information. The primitive tests in `tests/lockstep/` show the shape: `session.test.ts` drives two independent sessions and checks they converge, and `convergence.test.ts` proves a game that reaches different state is caught at the next frame. `tests/lockstep/scape-goat/` has the fuller case: `redaction.test.ts` checks the project boundary on every phase of a played game, and `fullgame.test.ts` drives every player count from three to six to terminal.
+For a new game, drive it to terminal with a small policy and assert the outcome, the conservation of anything the rules conserve (cards, coins), and the redaction of hidden information. The primitive tests in `tests/lockstep/` show the shape: `session.test.ts` drives two independent sessions and checks they converge, and `convergence.test.ts` proves a game that reaches different state is caught at the next frame. `tests/lockstep/scape-goat/` has the fuller case: `redaction.test.ts` checks the project boundary on every phase of a played game, including the two-seat `trade-give` phase, and `fullgame.test.ts` drives every player count from three to six to terminal.
 
 ## Limits
 

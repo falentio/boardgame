@@ -25,15 +25,19 @@ export const activeSeats = (state: ScapeGoatState): readonly SeatId[] =>
   state.players.filter((player) => !state.resigned.includes(player.seat)).map((p) => p.seat);
 
 /**
- * The colour printed on a seat's mat. The seat's index in `players` is its index in
- * `Roster.order`, because `genesisState` builds `players` in roster order and nothing
- * ever reorders it. Only the mat's reverse is secret.
+ * The colour at a seat's index in the canonical seat order. Both the state's
+ * `players` and a redacted view's `players` are that order, because `genesisState`
+ * builds them in roster order and nothing reorders them, so one derivation serves
+ * the reducer and the view. Only the mat's reverse is secret.
  */
-export const colourOfSeat = (state: ScapeGoatState, seat: SeatId): Colour => {
-  const position = state.players.findIndex((player) => player.seat === seat);
+export const colourAt = (order: readonly SeatId[], seat: SeatId): Colour => {
+  const position = order.indexOf(seat);
   if (position < 0) throw new ScapeGoatError(`seat ${seat} is not a player`);
   return COLOURS[position] ?? COLOURS[0]!;
 };
+
+export const colourOfSeat = (state: ScapeGoatState, seat: SeatId): Colour =>
+  colourAt(state.players.map((player) => player.seat), seat);
 
 /**
  * The seat that may pre-empt the active seat's turn at six players: three seats
@@ -261,7 +265,8 @@ const stepAction = (
   const player = findPlayer(state, phase.active);
   if (player === undefined) return handTurn(state);
   const input = actOf(frame, player.seat);
-  switch (faceOf(phase.location, state.prepareTokens)) {
+  const face = faceOf(phase.location, state.prepareTokens);
+  switch (face) {
     case "prepare": {
       const taken = withPlayer(
         { ...state, prepareTokens: (state.prepareTokens - 1) as PrepTokensRemaining },
@@ -299,8 +304,13 @@ const stepAction = (
       if (holder === null) return beginSwap(state, phase.active);
       return beginSwap(transferToken(state, holder, player.seat), phase.active);
     }
-    case "cops":
-      return beginSwap(state, phase.active);
+    default: {
+      // `phase.location` is a Destination, so `faceOf` returns only the five
+      // faces above; a move to the Cops ends the game in stepMove before this
+      // phase opens. The never binding is the exhaustiveness proof.
+      const exhausted: never = face;
+      return exhausted;
+    }
   }
 };
 

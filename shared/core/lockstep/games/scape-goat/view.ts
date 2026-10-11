@@ -3,9 +3,8 @@ import type { ScapeGoatAction } from "./actions.ts";
 import { coloursOf, type CardId } from "./cards.ts";
 import { LOCATION_LINE } from "./locations.ts";
 import { ScapeGoatError } from "./error.ts";
-import { activeSeats, outcomeOf, seatsOwedNow } from "./reducer.ts";
+import { activeSeats, colourAt, outcomeOf, seatsOwedNow } from "./reducer.ts";
 import {
-  COLOURS,
   MIN_SEATS,
   STASH_SLOTS,
   suspectOf,
@@ -156,10 +155,9 @@ const myPrepTokens = (view: ScapeGoatView): PrepTokensRemaining =>
   view.players.find((player) => player.seat === view.seat)?.prepTokens ?? 0;
 
 const swapMenu = (view: ScapeGoatView): readonly ScapeGoatAction[] => {
-  // `players` is in roster order and never reordered, so the seat's index in the
-  // view is the same index reducer.colourOfSeat reads. One derivation, two inputs.
-  const position = view.players.findIndex((player) => player.seat === view.seat);
-  const own = COLOURS[position] ?? "red";
+  // A view's `players` is the same canonical order the state's is, so the one
+  // seat-to-colour derivation in reducer.ts serves both.
+  const own = colourAt(view.players.map((player) => player.seat), view.seat);
   const forced = view.myHand
     .map((card, index) => ({ card, index }))
     .filter(({ card }) => coloursOf(card).includes(own))

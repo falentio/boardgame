@@ -564,8 +564,12 @@ interface WireState {
   readonly players: { hand: string[] }[];
   scapegoat: string;
   scapegoatSuspect: string;
-  readonly [key: string]: Json;
+  [key: string]: Json;
 }
+
+/** The i-th player's encoded seat, read loosely so a tamper can name a roster seat. */
+const seatOf = (json: WireState, index: number): string =>
+  ((json.players[index] as unknown as Record<string, Json>).seat as string) ?? "ghost";
 
 const codecJson = (): WireState =>
   JSON.parse(
@@ -578,6 +582,37 @@ const CODEC_REJECTIONS: readonly (readonly [string, (json: WireState) => void])[
   ["a suspect that is not a player", (json) => { json.scapegoatSuspect = "ghost"; }],
   ["a scapegoat that suspects itself", (json) => { json.scapegoatSuspect = json.scapegoat; }],
   ["a card held in two places", (json) => { json.players[0]!.hand[0] = json.players[1]!.hand[0]!; }],
+  // Every seat that crosses the codec. A ghost here is accepted by the shape
+  // checks and adopted, then wedges the session: seatsOwed returns an empty set
+  // on a non-terminal state and every later owed()/tick() throws.
+  ["a phase active seat that is not a player", (json) => {
+    (json.phase as Record<string, Json>).active = "ghost";
+  }],
+  ["a trade target that is not a player", (json) => {
+    json.phase = { kind: "trade-give", active: seatOf(json, 0), target: "ghost" };
+  }],
+  ["a spy seat that is not a player", (json) => {
+    json.spy = { spy: "ghost", target: seatOf(json, 0), reveal: "private", hand: [] };
+  }],
+  ["a spy target that is not a player", (json) => {
+    json.spy = { spy: seatOf(json, 0), target: "ghost", reveal: "private", hand: [] };
+  }],
+  ["a frame framer that is not a player", (json) => {
+    json.frame = { framer: "ghost", reveals: [], framed: null, colour: null };
+  }],
+  ["a frame reveal seat that is not a player", (json) => {
+    json.frame = { framer: seatOf(json, 0), reveals: [{ seat: "ghost", card: "goat-horns" }], framed: null, colour: null };
+  }],
+  ["a framed seat that is not a player", (json) => {
+    json.frame = { framer: seatOf(json, 0), reveals: [], framed: "ghost", colour: null };
+  }],
+  ["an outcome actor that is not a player", (json) => {
+    json.phase = { kind: "over", outcome: { kind: "cops", actor: "ghost" } };
+  }],
+  ["an outcome framed seat that is not a player", (json) => {
+    json.phase = { kind: "over", outcome: { kind: "frame", actor: seatOf(json, 0), framed: "ghost" } };
+  }],
+  ["a resigned seat that is not a player", (json) => { json.resigned = ["ghost"]; }],
 ];
 
 test("stateCodec.decode rejects every state that shape checking cannot", () => {

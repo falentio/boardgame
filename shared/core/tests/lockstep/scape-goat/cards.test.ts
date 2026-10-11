@@ -62,6 +62,31 @@ test("every legal colour survives on at least N-1 cards in deckFor(N)", () => {
   }
 });
 
+/**
+ * The rate the design doc quotes. A frame needs one colour held by exactly
+ * `count - 1` distinct seats, so the deal cannot assemble one when no colour's
+ * holder count equals `count - 1`. This is the measured rate over the first
+ * 20,000 genesis deals per count; the counts are exact because `genesisSeed` is
+ * deterministic, so the doc's 1.7 / 1.4 / 2.4 / 17.3% reruns here.
+ */
+test("the deal cannot assemble a frame in the doc's measured fraction of genesis deals", () => {
+  const N = 20_000;
+  const expected: Readonly<Record<PlayerCount, number>> = { 3: 340, 4: 286, 5: 476, 6: 3467 };
+  for (const count of COUNTS) {
+    let impossible = 0;
+    for (let seed = 0; seed < N; seed++) {
+      const state = rawGenesis(count, `cards-frame-rate-${count}-${seed}`).state;
+      const holders = COLOURS.map(
+        (colour) =>
+          state.players.filter((player) => player.hand.some((id) => coloursOf(id).includes(colour)))
+            .length,
+      );
+      if (!holders.some((n) => n === count - 1)) impossible += 1;
+    }
+    expect(impossible, `${count} players`).toBe(expected[count]);
+  }
+});
+
 test("HAND_SIZE is a constant per count and is only ever two or three", () => {
   expect(HAND_SIZE).toEqual({ 3: 3, 4: 3, 5: 3, 6: 2 });
   for (const count of COUNTS) {
