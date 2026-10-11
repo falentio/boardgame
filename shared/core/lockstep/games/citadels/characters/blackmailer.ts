@@ -2,7 +2,7 @@ import { specOfCharacter, type CharacterId } from "../characters.ts";
 import type { CharacterCtx, CharacterEffect } from "../characters/index.ts";
 import {
   actionOf,
-  claimOf,
+  activeCharacterOf,
   emptyPending,
   isSkipped,
   patchPending,
@@ -93,7 +93,7 @@ const resolveName = (ctx: WindowCtx, rest: readonly Step[]): CitadelsState => {
 const resolveThreat = (ctx: WindowCtx, rest: readonly Step[]): CitadelsState => {
   const state = ctx.state;
   const seat = ctx.window.seats[0] ?? state.active;
-  const character = claimOf(state, seat)?.character ?? null;
+  const character = activeCharacterOf(state, seat);
   if (character === null || !(state.threats ?? []).includes(character)) {
     return withSteps(state, rest);
   }
@@ -123,7 +123,7 @@ const resolveReveal = (ctx: WindowCtx, rest: readonly Step[]): CitadelsState => 
   const state = ctx.state;
   const actor = state.pending?.actor ?? ctx.window.seats[0] ?? state.active;
   const victim = state.active;
-  const character = claimOf(state, victim)?.character ?? null;
+  const character = activeCharacterOf(state, victim);
   const cleared = withPending(state, null);
   if (character === null) return withSteps(cleared, rest);
   const threats = cleared.threats ?? [];

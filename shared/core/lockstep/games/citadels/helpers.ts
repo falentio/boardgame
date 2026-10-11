@@ -385,7 +385,7 @@ export const resolveDraftPick: WindowResolver = (ctx) => {
  * character in play, not the seat, in the 2-3 player games where a seat drafts
  * two characters.
  */
-const activeCharacterOf = (state: CitadelsState, seat: SeatId): CharacterId | null => {
+export const activeCharacterOf = (state: CitadelsState, seat: SeatId): CharacterId | null => {
   const played = state.callRank - 1;
   if (played >= 1 && played <= 9) {
     const at = characterAtRank(state, played as Rank);
@@ -427,7 +427,7 @@ export const buildLimit = (state: CitadelsState, seat: SeatId, card?: DistrictId
   // `pending.note` with the bewitched id in `pending.character`.
   const resumed =
     state.pending?.note === WITCH_RESUME_NOTE ? state.pending.character : null;
-  const character = resumed ?? claimOf(state, seat)?.character ?? null;
+  const character = resumed ?? activeCharacterOf(state, seat);
   if (character === "trader" && card !== undefined && specOfDistrict(card).type === "trade") {
     return Number.POSITIVE_INFINITY;
   }
@@ -443,7 +443,7 @@ const duplicateBlocked = (state: CitadelsState, seat: SeatId, id: DistrictId): b
   const city = playerOf(state, seat).city;
   if (!city.some((district) => district.id === id)) return false;
   if (city.some((district) => district.id === QUARRY)) return false;
-  const character = claimOf(state, seat)?.character ?? state.pending?.character ?? null;
+  const character = activeCharacterOf(state, seat) ?? state.pending?.character ?? null;
   return character !== "wizard";
 };
 
@@ -485,7 +485,7 @@ const recordAlchemistSpend = (
   seat: SeatId,
   goldPaid: number,
 ): CitadelsState =>
-  goldPaid <= 0 || claimOf(state, seat)?.character !== 'alchemist'
+  goldPaid <= 0 || activeCharacterOf(state, seat) !== 'alchemist'
     ? state
     : withPending(state, {
         ...emptyPending(seat, 'alchemist'),
@@ -716,7 +716,7 @@ export const resolveTurn: WindowResolver = (ctx) => {
   // four-card branch, anything else the four-gold one. The choice rides pending.note
   // for the resolve step above the turn window to read. Its effect strips the build
   // windows, so the turn carries no build either.
-  if (claimOf(state, seat)?.character === "navigator") {
+  if (playedCharacter === "navigator") {
     const note = action?.t === "draw" ? NAVIGATOR_CARDS_NOTE : null;
     return withSteps(withPending(state, { ...emptyPending(seat, "navigator"), note }), rest);
   }

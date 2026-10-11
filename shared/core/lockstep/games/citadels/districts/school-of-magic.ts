@@ -8,15 +8,40 @@ import type { DistrictCtx, DistrictEffect, DistrictScoring } from "./effects.ts"
 const SCHOOL_ID = "school-of-magic";
 
 /**
- * The district type the owner's character collects income for, or null when the
- * character collects none. This is the rulebook's own mapping: "as the King it
- * can count as noble, and so on" — the King counts nobles, the Bishop religious,
- * the Merchant trade, the Warlord military.
+ * The character the rank cursor is playing for `owner` this turn, or null. The
+ * engine advances `callRank` past the rank it calls, so the acting character is
+ * `callRank - 1`; a seat that drafted two characters plays the one the cursor
+ * called, not its first claim. A hand-built state that never ran the cursor falls
+ * back to the owner's first claim.
+ *
+ * Inlined rather than imported from helpers.ts: helpers imports this file (via
+ * districts/effects.ts), so a runtime edge back would close the cycle and leave
+ * `UNIQUE_EFFECTS["school-of-magic"]` undefined when a test loads this file
+ * before the registry (the same reason museum.ts and theater.ts inline theirs).
+ */
+const actingCharacterOf = (state: CitadelsState, owner: SeatId): CharacterId | null => {
+  const played = state.callRank - 1;
+  if (played >= 1 && played <= 9) {
+    const at = state.cast.find((id) => specOfCharacter(id).rank === played) ?? null;
+    if (
+      at !== null &&
+      state.claimed.some((claim) => claim.character === at && claim.seat === owner)
+    ) {
+      return at;
+    }
+  }
+  return state.claimed.find((claim) => claim.seat === owner)?.character ?? null;
+};
+
+/**
+ * The district type the acting character collects income for, or null when it
+ * collects none. This is the rulebook's own mapping: "as the King it can count as
+ * noble, and so on" — the King counts nobles, the Bishop religious, the Merchant
+ * trade, the Warlord military.
  */
 const incomeTypeOf = (state: CitadelsState, owner: SeatId): DistrictType | null => {
-  const claim = state.claimed.find((entry) => entry.seat === owner);
-  if (claim === undefined) return null;
-  return specOfCharacter(claim.character).income?.counts ?? null;
+  const character = actingCharacterOf(state, owner);
+  return character === null ? null : specOfCharacter(character).income?.counts ?? null;
 };
 
 /** The type a character collects income for, or null when it collects none. */
