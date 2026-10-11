@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "preferences": {
+    "aspect": {
+      "value": "1080x1920",
+      "confirmed_in": [
+        "coup-rebellion-g54-portrait"
+      ],
+      "updated_at": "2026-10-11T06:32:43.737Z"
+    },
+    "destination": {
+      "value": "shorts",
+      "confirmed_in": [
+        "coup-rebellion-g54-portrait"
+      ],
+      "updated_at": "2026-10-11T06:32:43.788Z"
+    }
+  },
+  "sightings": {}
+}
