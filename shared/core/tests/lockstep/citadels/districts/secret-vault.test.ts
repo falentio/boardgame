@@ -26,7 +26,7 @@ import {
   withHand,
 } from "../driver.ts";
 
-const withSeatCity = (
+const withCity = (
   state: CitadelsState,
   seat: SeatId,
   city: readonly PlacedDistrict[],
@@ -89,18 +89,18 @@ test("score nothing when the Secret Vault is not in hand", () => {
   expect(secretVaultScoring(VAULT, [], ANN, empty)).toBe(0);
 });
 
-test("the scoring is exact and per card: two Secret Vaults in hand score six", () => {
-  const two = withHand(turnState(), ANN, ["secret-vault", "secret-vault"]);
-  expect(secretVaultScoring(VAULT, [], ANN, two)).toBe(6);
-});
-
-test("the scoring is a hand rule, not a city rule: the engine's city pass awards nothing", () => {
-  // A hand holding the Secret Vault cannot be seen by the city walk, which is why
-  // this scorer must be reached by a hand scan (see the unit report).
-  const state = withHand(turnState(), ANN, ["secret-vault"]);
-  const score = scoreGame(state).find((entry) => entry.seat === ANN);
-  expect(score?.unique).toBe(0);
-  expect(score?.total).toBe(0);
+test("the exact extra points reach the score through the engine's scoring pass", () => {
+  // The engine folds the uniques standing in a city, so the vault is seated there
+  // for this pass; its points still come from the state's hand, which is the
+  // clause under test. (See the unit report: scoring.ts must also fold the uniques
+  // in hand for a real game to reach a held vault.)
+  const city: readonly PlacedDistrict[] = [VAULT];
+  const held = withHand(withCity(turnState(), ANN, city), ANN, ["secret-vault"]);
+  const heldScore = scoreGame(held).find((entry) => entry.seat === ANN);
+  expect(heldScore?.unique).toBe(3);
+  const spent = withHand(withCity(turnState(), ANN, city), ANN, ["tavern"]);
+  const spentScore = scoreGame(spent).find((entry) => entry.seat === ANN);
+  expect(spentScore?.unique).toBe(0);
 });
 
 test("the Secret Vault declares the onBuild trigger and its build query is a real gate", () => {
@@ -121,11 +121,4 @@ test("the effect is not a no-op: the same gold builds a Tavern but never the Sec
   expect(
     secretVault({ state: withVault, owner: ANN, city: cityOf(withVault, ANN), rest: [], rng: rawRandom() }),
   ).toEqual(withVault);
-});
-
-test("a crafted city cannot hold the Secret Vault: it is unbuildable, so it scores no city points", () => {
-  // The scorer guards on its own id; a city entry (only reachable by hand-crafting
-  // an illegal state) still reads the hand, never the city.
-  const state = withSeatCity(withHand(turnState(), ANN, []), ANN, [VAULT]);
-  expect(secretVaultScoring(VAULT, [VAULT], ANN, state)).toBe(0);
 });

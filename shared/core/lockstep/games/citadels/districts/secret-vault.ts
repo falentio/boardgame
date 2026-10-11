@@ -4,34 +4,34 @@ import type { DistrictCtx, DistrictEffect, DistrictScoring } from "./effects.ts"
 /** The catalog id of the district this file owns. */
 const SECRET_VAULT_ID = "secret-vault";
 
-/** The end-game bonus for a Secret Vault still held in hand. */
+/** The flat end-game bonus for a Secret Vault still held in hand. */
 const VAULT_BONUS = 3;
 
 /**
  * The Secret Vault cannot be built. The engine folds this query for the card
  * being built, so answering `legal: false` for the Secret Vault refuses the build
- * before any gold or hand card moves. The `ctx.card` guard keeps the query inert
- * for every other card the engine folds it against.
+ * before any gold or hand card moves, and the card stays in hand, which is what
+ * its scoring clause needs. The `ctx.card` guard keeps the query inert for every
+ * other card the engine folds it against.
  */
 export const secretVaultBuild: BuildQuery = (ctx) =>
   ctx.card === SECRET_VAULT_ID ? { legal: false } : {};
 
-/** The Secret Vault's rule is the query and the hand scorer below. */
+/** The Secret Vault's in-play clause is the build refusal above; nothing runs on build. */
 export const secretVault: DistrictEffect = (ctx: DistrictCtx) => ctx.state;
 
 /**
- * Score three extra points at end of game when the Secret Vault is still in the
- * owner's hand. The rule scores a hand card, not a city card, so this reads the
- * owner's hand from `state` and guards on its own id. The engine's scoring pass
- * walks only city districts, and the Secret Vault can never be built into a city,
- * so no call site reaches this scorer yet; see the unit report for the hand-scan
- * change `scoreGame` needs to award it.
+ * Three extra points at end of game if the Secret Vault is still in your hand.
+ * The rule scores a hand card, not a city card, so this reads the owner's hand
+ * from `state`; the vault can never be built, so its only legal home is a hand.
+ * The engine's scoring pass folds the uniques standing in a city, and the vault
+ * can never stand in one, so no call site reaches this scorer yet; see the unit
+ * report for the hand-scan change `scoreGame` needs to award it in a real game.
  */
-export const secretVaultScoring: DistrictScoring = (district, _city, seat, state) => {
-  if (district.id !== SECRET_VAULT_ID) return 0;
+export const secretVaultScoring: DistrictScoring = (_district, _city, seat, state) => {
   const held = state.players.find((player) => player.seat === seat)?.hand ?? [];
-  return held.filter((id) => id === SECRET_VAULT_ID).length * VAULT_BONUS;
+  return held.includes(SECRET_VAULT_ID) ? VAULT_BONUS : 0;
 };
 
-/** The build path is the query, not a hook; declared as the brief names it. */
+/** The engine hook this district answers; the refusal itself is the BuildQuery. */
 export const secretVaultTriggers: readonly DistrictHook[] = ["onBuild"];
