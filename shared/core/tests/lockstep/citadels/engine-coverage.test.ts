@@ -532,8 +532,33 @@ const CHARACTER_GUARDS: readonly CharacterGuard[] = [
   {
     character: "cardinal",
     board: { cities: { ann: ["temple", "church", "monastery"] } },
-    check: (fold) =>
-      expect(handDelta(fold, ANN), "the Cardinal draws 1 card per religious").toBe(3),
+    check: (fold) => {
+      expect(handDelta(fold, ANN), "the Cardinal draws 1 card per religious").toBe(3);
+      // The D5-6 shortfall clause: a Cardinal that cannot pay for its build takes
+      // the gap from a donor and still lands the district. The cathedral (cost 5)
+      // sits against 1 gold plus the 2-gold gather, so the donor covers 2.
+      const short = foldTurn({
+        character: "cardinal",
+        cast: castWith("cardinal"),
+        seats: SEATS3,
+        board: {
+          cities: { ann: ["temple"] },
+          hands: { ann: ["cathedral"] },
+          gold: { ann: 1, bob: 10 },
+        },
+        answer: (_seat, state) => {
+          const purpose = openPurpose(state);
+          if (purpose === "cardinal-gold") return { t: "target", seat: BOB };
+          if (purpose === "turn") return { t: "build", card: 0 };
+          return null;
+        },
+      });
+      expect(
+        cityIdsOf(foldEnd(short), ANN),
+        "the Cardinal builds the cathedral its donor paid for",
+      ).toContain("cathedral");
+      expect(rawGold(foldEnd(short), BOB), "the donor covers the shortfall").toBe(8);
+    },
   },
   {
     character: "trader",
