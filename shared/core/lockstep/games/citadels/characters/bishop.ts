@@ -1,6 +1,6 @@
 import type { SeatId } from "../../../index.ts";
 import type { CharacterCtx, CharacterEffect } from "../characters/index.ts";
-import { specOfDistrict } from "../districts.ts";
+import { typeOfPlaced } from "../districts.ts";
 import {
   addGold,
   isSkipped,
@@ -18,7 +18,7 @@ const ownerOf = (ctx: CharacterCtx): SeatId => seatHolding(ctx.state, "bishop") 
 /** The Bishop's income unit: religious districts in a city. */
 const religiousIn = (state: CitadelsState, seat: SeatId): number =>
   playerOf(state, seat).city.filter(
-    (district) => specOfDistrict(district.id).type === "religious",
+    (district) => typeOfPlaced(district) === "religious",
   ).length;
 
 /**

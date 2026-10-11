@@ -1,6 +1,6 @@
 import type { SeatId } from "../../../index.ts";
 import type { CharacterCtx, CharacterEffect } from "../characters/index.ts";
-import { specOfDistrict } from "../districts.ts";
+import { typeOfPlaced } from "../districts.ts";
 import {
   drawIntoHand,
   isSkipped,
@@ -17,7 +17,7 @@ const ownerOf = (ctx: CharacterCtx): SeatId => seatHolding(ctx.state, "patrician
 
 /** The Patrician income unit: noble districts in a city. */
 const noblesIn = (state: CitadelsState, seat: SeatId): number =>
-  playerOf(state, seat).city.filter((district) => specOfDistrict(district.id).type === "noble").length;
+  playerOf(state, seat).city.filter((district) => typeOfPlaced(district) === "noble").length;
 
 /**
  * Gain 1 card per noble district, then take the crown. A killed Patrician draws

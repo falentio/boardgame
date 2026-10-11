@@ -1,6 +1,6 @@
 import type { SeatId } from "../../../index.ts";
 import type { CharacterCtx, CharacterEffect } from "../characters/index.ts";
-import { specOfDistrict } from "../districts.ts";
+import { typeOfPlaced } from "../districts.ts";
 import {
   actionOf,
   drawIntoHand,
@@ -23,7 +23,7 @@ const ownerOf = (ctx: CharacterCtx): SeatId => seatHolding(ctx.state, "cardinal"
 /** The Cardinal's income unit: religious districts in a city. */
 const religiousIn = (state: CitadelsState, seat: SeatId): number =>
   playerOf(state, seat).city.filter(
-    (district) => specOfDistrict(district.id).type === "religious",
+    (district) => typeOfPlaced(district) === "religious",
   ).length;
 
 /** The gold the Cardinal still needs to pay for a district of the given cost. */

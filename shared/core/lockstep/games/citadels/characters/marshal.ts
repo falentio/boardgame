@@ -1,6 +1,6 @@
 import type { SeatId } from "../../../index.ts";
 import type { CharacterCtx, CharacterEffect } from "../characters/index.ts";
-import { specOfDistrict } from "../districts.ts";
+import { specOfDistrict, typeOfPlaced } from "../districts.ts";
 import {
   actionOf,
   addGold,
@@ -34,7 +34,7 @@ const ownerOf = (ctx: CharacterCtx): SeatId => seatHolding(ctx.state, "marshal")
 
 /** The Marshal's income unit: military districts in a city. */
 const militaryIn = (state: CitadelsState, seat: SeatId): number =>
-  playerOf(state, seat).city.filter((district) => specOfDistrict(district.id).type === "military")
+  playerOf(state, seat).city.filter((district) => typeOfPlaced(district) === "military")
     .length;
 
 /** The gold owed the owner: the district's catalog cost. */
