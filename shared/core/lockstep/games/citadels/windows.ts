@@ -66,7 +66,7 @@ const drain = (state: CitadelsState, rng: Random): CitadelsState => {
       continue;
     }
     if (top.kind === "window") {
-      const owed = owedFor(next, top.window);
+      const owed = windowOwed(next, top.window);
       if (top.window.kind === "turn" || owed.length > 0) return next;
       next = withSteps(next, next.steps.slice(1));
       continue;

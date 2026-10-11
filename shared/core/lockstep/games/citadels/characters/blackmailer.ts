@@ -48,7 +48,9 @@ export const blackmailer: CharacterEffect = (ctx: CharacterCtx) => {
   const pending = state.pending;
   const mine = pending !== null && pending.character === "blackmailer" ? pending : null;
 
-  if (mine === null) {
+  // applyCall arms the pending record before the effect runs, so the entry pass
+  // is the one with a null note, not a null pending.
+  if (mine === null || mine.note === null) {
     const armed = withPending(state, { ...emptyPending(seat, "blackmailer"), note: THREAT_1 });
     return withSteps(armed, [
       winStep("blackmailer-resolve", [seat]),

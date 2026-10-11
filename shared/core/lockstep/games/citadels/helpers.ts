@@ -502,6 +502,15 @@ const withMuseumOffer = (
   return hasTurn ? cont : [winStep("keep", [seat]), ...cont];
 };
 
+/**
+ * The continuation a turn hands to the round. The engine's turn stack already
+ * carries the turn's single END_TURN at the head of the turn window's rest; a
+ * hand-built stack may omit it. Reuse the continuation's own END_TURN when it is
+ * there, else supply one, so end-of-turn districts fire exactly once per turn.
+ */
+const endTurnThen = (rest: readonly Step[]): readonly Step[] =>
+  rest[0]?.kind === "end-turn" ? rest : [END_TURN, ...rest];
+
 export const resolveTurn: WindowResolver = (ctx) => {
   // Record any seat that finished on an earlier turn before this turn's build, so
   // `completed` carries finish order and not roster order. Clear any character
@@ -511,14 +520,14 @@ export const resolveTurn: WindowResolver = (ctx) => {
   const rest = state.steps.slice(1);
   const seat = ctx.window.seats[0] ?? state.active;
   if (!hasSeat(state, seat) || isResigned(state, seat)) {
-    return withSteps(state, [END_TURN, ...rest]);
+    return withSteps(state, endTurnThen(rest));
   }
   const action = actionOf(ctx.frame, seat);
   if (action?.t === "draw") {
     const gathered = drawGather(state, seat, rest, ctx.rng);
     return withSteps(gathered, [
       winStep("keep", [seat]),
-      ...withMuseumOffer(gathered, seat, [END_TURN, ...rest]),
+      ...withMuseumOffer(gathered, seat, endTurnThen(rest)),
     ]);
   }
   if (action?.t === "build") {
@@ -544,11 +553,11 @@ export const resolveTurn: WindowResolver = (ctx) => {
       ]);
     }
     return withSteps(built, [
-      ...withMuseumOffer(built, seat, [...built.steps, END_TURN, ...rest]),
+      ...withMuseumOffer(built, seat, [...built.steps, ...endTurnThen(rest)]),
     ]);
   }
   const gathered = runDistrictHooks(addGold(state, seat, 2), "onIncome", seat, rest, ctx.rng);
-  return withSteps(gathered, withMuseumOffer(gathered, seat, [END_TURN, ...rest]));
+  return withSteps(gathered, withMuseumOffer(gathered, seat, endTurnThen(rest)));
 };
 
 export const resolveKeep: WindowResolver = (ctx) => {
