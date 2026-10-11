@@ -1,5 +1,5 @@
 import type { BuildQuery, DistrictHook } from "../districts.ts";
-import { specOfDistrict } from "../districts.ts";
+import { typeOfPlaced } from "../districts.ts";
 import type { PlacedDistrict } from "../state.ts";
 import type { DistrictCtx, DistrictEffect, DistrictScoring } from "./effects.ts";
 
@@ -12,15 +12,16 @@ const HAUNTED_QUARTER = "haunted-quarter";
 const IVORY_TOWER_BONUS = 5;
 
 /**
- * A district counts as a unique for the Ivory Tower when its catalog type is
- * unique, except the Haunted Quarter: its owner chooses its type at final
- * scoring, so it counts only when declared `unique`. An undeclared or re-typed
- * Haunted Quarter therefore does not stop the Ivory Tower from scoring.
+ * A district counts as a unique for the Ivory Tower when the type it declares is
+ * unique, so a School of Magic declared a colour no longer stands beside the
+ * tower. The Haunted Quarter is the exception: its owner chooses its type at
+ * final scoring, so it counts only when declared unique; an undeclared or
+ * re-typed Haunted Quarter therefore does not stop the Ivory Tower from scoring.
  */
 const countsAsUnique = (placed: PlacedDistrict): boolean =>
   placed.id === HAUNTED_QUARTER
     ? placed.declaredType === "unique"
-    : specOfDistrict(placed.id).unique;
+    : typeOfPlaced(placed) === "unique";
 
 export const ivoryTowerScoring: DistrictScoring = (_district, city) => {
   const uniques = city.filter(countsAsUnique);
