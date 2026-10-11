@@ -7,20 +7,24 @@ const THIEVES_DEN_ID = "thieves-den";
 
 /**
  * You may pay for the Thieves' Den partly or fully with cards from your hand at
- * 1 card = 1 gold. The build seam offers an all-or-nothing card payment, so this
- * answers with the full card cost when the player cannot cover the Den in gold
- * but holds enough spare cards (the built card is removed before payment, so it
- * takes `cost` cards beyond the Den itself). Paying gold when gold is
- * available keeps the player's cards. The mixed gold-and-cards payment the rule
- * also allows needs a shared-file change to `tryBuild`; see the unit report.
+ * 1 card = 1 gold. The card share of any split is the shortfall the purse cannot
+ * cover: zero when gold alone suffices, the whole cost when the purse is empty,
+ * and the difference in between. The old query offered cards only when gold was
+ * wholly insufficient, so with 2 gold and 2 spare cards on the cost-4 Den it
+ * answered {} and the build was refused; naming the shortfall at every split lets
+ * the build proceed. The built card leaves the hand before payment, so the hand
+ * must hold \`payCards\` cards beyond the Den itself.
+ *
+ * The matching gold share (\`cost - payCards\`) is not debited yet: \`tryBuild\`'s
+ * card branch charges no gold whenever \`payCards\` is positive, so a mixed build
+ * keeps the gold it should have spent. Charging that share needs a one-line
+ * change to \`tryBuild\` (see the unit report), which this unit does not own.
  */
 export const thievesDenBuild: BuildQuery = (ctx) => {
   if (ctx.card !== THIEVES_DEN_ID) return {};
   const player = ctx.state.players.find((entry) => entry.seat === ctx.seat);
   if (player === undefined) return {};
-  const cost = specOfDistrict(THIEVES_DEN_ID).cost;
-  if (player.gold >= cost) return {};
-  return player.hand.length - 1 >= cost ? { payCards: cost } : {};
+  return { payCards: Math.max(0, specOfDistrict(THIEVES_DEN_ID).cost - player.gold) };
 };
 
 /** The Thieves' Den's payment clause is the build query above; nothing runs on build. */
