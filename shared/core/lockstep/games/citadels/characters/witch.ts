@@ -18,10 +18,19 @@ const GATHER = 2;
 const NAME_NOTE = "witch-name";
 
 /**
- * Gather resources, then call the name of another character to bewitch. The turn
- * is put on hold: the effect opens the naming window but no build-capable turn
- * window of its own, so the Witch cannot build. Her turn resumes when the
- * bewitched character is called (see `witchResolve`).
+ * Marks the Witch's resumed turn. Her gather already happened on her held turn
+ * (the fixed +2), so the resumed turn — which the engine models as an ordinary
+ * `turn` window — must not gather again; the marker tells `resolveTurn` to skip
+ * the gather and take the turn as the bewitched character's build only.
+ */
+export const WITCH_RESUME_NOTE = "witch-resume";
+
+/**
+ * Gather resources (the fixed +2), then call the name of another character to
+ * bewitch. The turn is put on hold: the round's own turn window stays in the
+ * stack so the engine pauses at it, but `resolveTurn` closes it at once without
+ * gathering or building ("your turn is put on hold and you cannot build"). Her
+ * turn resumes when the bewitched character is called (see `witchResolve`).
  */
 export const witch: CharacterEffect = (ctx: CharacterCtx) => {
   const { state, seat, rest } = ctx;
@@ -43,8 +52,10 @@ export const witch: CharacterEffect = (ctx: CharacterCtx) => {
 /**
  * `witch-takeover` (opened by `applyCall` when the bewitched character is called)
  * gives the bewitched owner its gather and ends its turn at once, then hands the
- * held turn back to the Witch. `witch-resume` opens the Witch's own turn, played
- * with the Witch's hand, gold, and city.
+ * held turn back to the Witch. `witch-resume` opens the Witch's turn as the
+ * bewitched character's turn, played with the Witch's hand, gold, and city; its
+ * window carries `WITCH_RESUME_NOTE` so the engine does not gather a second time
+ * for the Witch.
  */
 export const witchResolve: WindowResolver = (ctx) => {
   if (ctx.window.purpose !== "witch-takeover" && ctx.window.purpose !== "witch-resume") {
@@ -54,7 +65,11 @@ export const witchResolve: WindowResolver = (ctx) => {
   const witchSeat = ctx.window.seats[0] ?? seatHolding(ctx.state, "witch");
   if (witchSeat === undefined || witchSeat === null) return withSteps(ctx.state, rest);
   if (ctx.window.purpose === "witch-resume") {
-    return withSteps({ ...ctx.state, active: witchSeat }, [winStep("turn", [witchSeat]), ...rest]);
+    const resumed = withPending(
+      { ...ctx.state, active: witchSeat },
+      { ...emptyPending(witchSeat, "witch"), note: WITCH_RESUME_NOTE },
+    );
+    return withSteps(resumed, [winStep("turn", [witchSeat]), ...rest]);
   }
   const bewitched = ctx.state.bewitched ?? null;
   const bewitchedSeat = bewitched === null ? null : seatHolding(ctx.state, bewitched);

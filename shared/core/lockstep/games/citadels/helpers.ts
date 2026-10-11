@@ -189,6 +189,14 @@ export const NAVIGATOR_CARDS_NOTE = "navigator-cards";
  */
 export const CONFISCATE_REFUND_NOTE = "confiscate-refund";
 
+/**
+ * The `pending.note` marker the Witch sets when her held turn resumes. Her
+ * gather already happened on her held turn (her fixed +2), so the resumed turn —
+ * which the engine models as an ordinary `turn` window for the bewitched
+ * character — takes no gather of its own.
+ */
+export const WITCH_RESUME_NOTE = "witch-resume";
+
 export const CALL: Step = { kind: "call" };
 export const RESOLVE: Step = { kind: "resolve" };
 export const END_TURN: Step = { kind: "end-turn" };
@@ -592,9 +600,15 @@ const withMuseumOffer = (
  */
 const endTurnThen = (rest: readonly Step[]): readonly Step[] => {
   // The Alchemist's end-of-turn resolve sits directly above the turn's END_TURN
-  // (see alchemist.ts), so step past it to find the turn's own END_TURN.
+  // (see alchemist.ts), so step past it to find the turn's own END_TURN. A
+  // Blackmailer's threat window is spliced directly below the turn window (the
+  // gather must land before the threat), so step past it too.
   const head = rest[0]?.kind === "resolve" ? rest.slice(1) : rest;
-  return head[0]?.kind === "end-turn" ? rest : [END_TURN, ...rest];
+  const past =
+    head[0]?.kind === "window" && head[0].window.purpose === "blackmailer-threat"
+      ? head.slice(1)
+      : head;
+  return past[0]?.kind === "end-turn" ? rest : [END_TURN, ...rest];
 };
 
 export const resolveTurn: WindowResolver = (ctx) => {
@@ -602,13 +616,29 @@ export const resolveTurn: WindowResolver = (ctx) => {
   // `completed` carries finish order and not roster order. Clear any character
   // pending the effect above the turn window left behind, so the gather's own
   // pending is the only one the keep windows see.
-  const state = withPending(recordFinished(ctx.state), null);
+  // The Witch's held turn carries no turn window (applyCall strips it), so any
+  // turn window on her seat is her resumed turn: the bewitched character's build
+  // turn, played with her hand/gold/city. She already gathered on the held turn,
+  // so the resume takes no gather of its own — the marker rides pending across
+  // the resume's build windows (a resumed Architect may build several times).
+  const resumePending =
+    ctx.state.pending?.note === WITCH_RESUME_NOTE ? ctx.state.pending : null;
+  const state = withPending(recordFinished(ctx.state), resumePending);
   const rest = state.steps.slice(1);
   const seat = ctx.window.seats[0] ?? state.active;
   if (!hasSeat(state, seat) || isResigned(state, seat)) {
     return withSteps(state, endTurnThen(rest));
   }
   const action = actionOf(ctx.frame, seat);
+  const resumedWitch = resumePending !== null;
+  // The Witch plays two turns with one seat. Her held turn (her own rank) is put
+  // on hold: no gather (her fixed +2 was the gather) and no build ("you cannot
+  // build"), so it closes at once. The window stays in the stack so the engine
+  // pauses here, keeping the bewitch recorded. Her resumed turn (the bewitched
+  // character's rank) is marked by `resumePending` and builds without gathering.
+  const heldWitch =
+    !resumedWitch && ctx.state.pending === null && activeCharacterOf(state, seat) === "witch";
+  if (heldWitch) return withSteps(state, endTurnThen(rest));
   // The Navigator's turn window is its gain choice, not a gather: a draw names the
   // four-card branch, anything else the four-gold one. The choice rides pending.note
   // for the resolve step above the turn window to read.
@@ -617,6 +647,9 @@ export const resolveTurn: WindowResolver = (ctx) => {
     return withSteps(withPending(state, { ...emptyPending(seat, "navigator"), note }), rest);
   }
   if (action?.t === "draw") {
+    if (resumedWitch) {
+      return withSteps(withPending(state, null), withMuseumOffer(state, seat, endTurnThen(rest)));
+    }
     const gathered = drawGather(state, seat, rest, ctx.rng);
     return withSteps(gathered, [
       winStep("keep", [seat]),
@@ -648,6 +681,9 @@ export const resolveTurn: WindowResolver = (ctx) => {
     return withSteps(built, [
       ...withMuseumOffer(built, seat, [...built.steps, ...endTurnThen(rest)]),
     ]);
+  }
+  if (resumedWitch) {
+    return withSteps(withPending(state, null), withMuseumOffer(state, seat, endTurnThen(rest)));
   }
   const gathered = runDistrictHooks(addGold(state, seat, 2), "onIncome", seat, rest, ctx.rng);
   return withSteps(gathered, withMuseumOffer(gathered, seat, endTurnThen(rest)));
@@ -721,16 +757,30 @@ export const resolveChooseType: WindowResolver = (ctx) => {
   return popWindow(patchPending(ctx.state, { namedType: type }));
 };
 
-/** A threatened character's owner resolves the threat before their own turn. */
+/**
+ * A threatened character's owner gathers resources first, then resolves the
+ * threat. The turn's gather rides the `turn` window, so the threat window is
+ * spliced directly below it (above the turn's END_TURN): the seat answers the
+ * turn window (gathering), and the threat opens on the post-gather gold. A stack
+ * with no turn window (the Witch's takeover) prepends it instead.
+ */
 const withThreat = (
   state: CitadelsState,
   character: CharacterId,
   seat: SeatId,
   stack: readonly Step[],
-): readonly Step[] =>
-  (state.threats ?? []).includes(character)
-    ? [winStep("blackmailer-threat", [seat]), ...stack]
-    : stack;
+): readonly Step[] => {
+  if (!(state.threats ?? []).includes(character)) return stack;
+  const at = stack.findIndex(
+    (step) => step.kind === "window" && step.window.purpose === "turn",
+  );
+  if (at < 0) return [winStep("blackmailer-threat", [seat]), ...stack];
+  return [
+    ...stack.slice(0, at + 1),
+    winStep("blackmailer-threat", [seat]),
+    ...stack.slice(at + 1),
+  ];
+};
 
 /** Advance the rank cursor: call the next cast character, or close the round. */
 export const applyCall = (state: CitadelsState): CitadelsState => {
