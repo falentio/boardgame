@@ -55,30 +55,53 @@ export const theater: DistrictEffect = (ctx: DistrictCtx) => ({
   steps: [swapStep([ctx.owner]), ...ctx.rest],
 });
 
+/** The first live seat that is not `owner`: the rival a give-only answer faces. */
+const firstRival = (state: CitadelsState, owner: SeatId): SeatId | null =>
+  state.players.find((player) => player.seat !== owner && !isResigned(state, player.seat))
+    ?.seat ?? null;
+
 /**
  * Resolve the theatre-swap window. The owner names a rival seat, blind to that
  * rival's characters; the resolver takes one of the rival's claimed characters
- * at random and swaps it for the owner's lowest-rank claimed character. An
- * illegal or absent target (self, absent seat, resigned seat, a seat with no
- * claim) closes the window and leaves both claim sets untouched.
+ * at random and swaps it for one of the owner's. rules.json (theatre): "You
+ * choose the player blindly. In 2-3 player games you choose which of your two
+ * characters to give and randomly take one of your opponent's."
+ *
+ * The owner's give-choice rides a `keep` index into its claimed characters in
+ * rank order; absent (a single-character seat, or a target-only answer), the
+ * lowest-rank claim is given, which is the only claim a one-character seat has.
+ * The rival rides a `target` answer; a give-only answer faces the first live
+ * rival. An illegal or absent target (self, absent seat, resigned seat, a seat
+ * with no claim) closes the window and leaves both claim sets untouched.
  */
 export const theaterResolve: WindowResolver = (ctx) => {
   if (ctx.window.purpose !== "theatre-swap") return popWindow(ctx.state);
   const owner = ctx.window.seats[0] ?? ctx.state.active;
   const action = actionOf(ctx.frame, owner);
-  const target = action?.t === "target" ? action.seat : null;
+  const mine = inRankOrder(claimsOf(ctx.state, owner));
+  if (mine.length === 0) return popWindow(ctx.state);
+
+  // The give-choice: a keep index into the owner's claims in rank order. Absent,
+  // the owner gives its lowest-rank claim (the sole claim of a one-character seat).
+  const wanted = action?.t === "keep" ? action.index : 0;
+  const giveIndex = Number.isInteger(wanted) && wanted >= 0 && wanted < mine.length ? wanted : 0;
+  const given = mine[giveIndex];
+  if (given === undefined) return popWindow(ctx.state);
+
+  // The rival: named by a target answer; a give-only answer faces the first live
+  // rival, so the owner's choice of which character to give is honoured either way.
+  const named = action?.t === "target" ? action.seat : null;
+  const target = named ?? (action?.t === "keep" ? firstRival(ctx.state, owner) : null);
   const legal =
     target !== null &&
     target !== owner &&
     hasSeat(ctx.state, target) &&
     !isResigned(ctx.state, target);
-  const mine = claimsOf(ctx.state, owner);
   const theirs = target === null ? [] : claimsOf(ctx.state, target);
-  if (!legal || mine.length === 0 || theirs.length === 0) return popWindow(ctx.state);
+  if (!legal || theirs.length === 0) return popWindow(ctx.state);
 
-  const given = inRankOrder(mine)[0];
   const taken = theirs[ctx.rng.int(theirs.length)];
-  if (given === undefined || taken === undefined) return popWindow(ctx.state);
+  if (taken === undefined) return popWindow(ctx.state);
 
   const swapped = ctx.state.claimed.map((claim) => {
     if (claim.seat === owner && claim.character === given.character) {
