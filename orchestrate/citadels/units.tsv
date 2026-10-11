@@ -42,5 +42,9 @@ fix2-districts	verify	abandoned				V2-8 armory onDestroy; V2-9 museum decline; V
 fix2-income	verify	abandoned				V2-5 trader+emperor declared type; V2-6 diplomat great wall toll; V2-7 alchemist refund
 fix2-engine-tests	verify	abandoned				folded-game per-character tests so no window can silently die again
 fix2-engine	verify	abandoned				orchestrate/citadels/briefs/fix2-engine.md
-fix2-characters	verify	pending				orchestrate/citadels/briefs/fix2-characters.md
-fix2-regression	verify	pending				orchestrate/citadels/briefs/fix2-regression.md
+fix2-characters	verify	done				orchestrate/citadels/briefs/fix2-characters.md
+fix2-regression	verify	done				orchestrate/citadels/briefs/fix2-regression.md
+fix2-engine-tail	verify	done				finish V2-7 alchemist refund (verify+complete the zombie salvage in helpers.ts/alchemist.ts) and V2-8 armory onDestroy
+fix2-verification-tests	verify	done				correct the 3 flawed counterexamples (folded-game policy, trader/emperor turn-phase setup, stale D10 keep) keeping their teeth
+fix2-den-test	verify	done				correct the stale district-seams.test.ts card-payment assertion to the V2-4 rule (cards + gold share)
+verify-3	verify	running				third independent adversarial pass at e0ab5a4: predicate audit, teeth audit of engine-coverage guards via /tmp-copy revert probes, verification3.test.ts counterexamples

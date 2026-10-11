@@ -1,14 +1,14 @@
 # Orchestrate status
 
-Generated: 2026-10-11T05:58:11.057Z
+Generated: 2026-10-11T06:34:40.348Z
 
 ## Units
 
-States: abandoned=2, done=33, failed=1, partial=3, pending=6
+States: abandoned=7, done=34, partial=3, pending=1, running=2
 
 | ID | Track | State | Branch | PR | SHA | Brief |
 | --- | --- | --- | --- | --- | --- | --- |
-| core-scaffold | core | done |  |  | 6925dce | orchestrate/citadels/briefs/core-scaffold.md |
+| core-scaffold | core | done |  | 20 | 6925dce | orchestrate/citadels/briefs/core-scaffold.md |
 | data-catalog-fix | rules | done |  |  | 2e757f8 | fix the invented district catalog and mis-ranked characters 1-3 against docs/design/citadels-catalog.md |
 | engine-seams | core | done |  |  | c62f4a4 | orchestrate/citadels/briefs/engine-seams.md |
 | engine-hooks | core | done |  |  | 13155e9 | orchestrate/citadels/briefs/engine-hooks.md |
@@ -46,17 +46,19 @@ States: abandoned=2, done=33, failed=1, partial=3, pending=6
 | fix-income | verify | done |  |  | e887390 | D9 income counters honour declared type (8 characters) |
 | fix-den | verify | done |  |  | 7b1a1c9 | D11 thieves den mixed payment |
 | independent-verification-2 | verify | done |  |  | 12f3aaf | orchestrate/citadels/briefs/independent-verification-2.md |
-| fix2-drain | verify | pending |  |  |  | V2-1 blocking: drain must use windowOwed not owedFor; V2-2 blackmailer first-pass; V2-3 double end-turn |
-| fix2-districts | verify | pending |  |  |  | V2-8 armory onDestroy; V2-9 museum decline; V2-4 thieves-den gold share |
-| fix2-income | verify | pending |  |  |  | V2-5 trader+emperor declared type; V2-6 diplomat great wall toll; V2-7 alchemist refund |
-| fix2-engine-tests | verify | pending |  |  |  | folded-game per-character tests so no window can silently die again |
-| fix2-engine | verify | failed |  |  |  | orchestrate/citadels/briefs/fix2-engine.md |
-| fix2-characters | verify | pending |  |  |  | orchestrate/citadels/briefs/fix2-characters.md |
+| fix2-drain | verify | abandoned |  |  |  | V2-1 blocking: drain must use windowOwed not owedFor; V2-2 blackmailer first-pass; V2-3 double end-turn |
+| fix2-districts | verify | abandoned |  |  |  | V2-8 armory onDestroy; V2-9 museum decline; V2-4 thieves-den gold share |
+| fix2-income | verify | abandoned |  |  |  | V2-5 trader+emperor declared type; V2-6 diplomat great wall toll; V2-7 alchemist refund |
+| fix2-engine-tests | verify | abandoned |  |  |  | folded-game per-character tests so no window can silently die again |
+| fix2-engine | verify | abandoned |  |  |  | orchestrate/citadels/briefs/fix2-engine.md |
+| fix2-characters | verify | done |  |  |  | orchestrate/citadels/briefs/fix2-characters.md |
 | fix2-regression | verify | pending |  |  |  | orchestrate/citadels/briefs/fix2-regression.md |
+| fix2-engine-tail | verify | running |  |  |  | finish V2-7 alchemist refund (verify+complete the zombie salvage in helpers.ts/alchemist.ts) and V2-8 armory onDestroy |
+| fix2-verification-tests | verify | running |  |  |  | correct the 3 flawed counterexamples (folded-game policy, trader/emperor turn-phase setup, stale D10 keep) keeping their teeth |
 
 ## Verification ledger
 
-Verdicts: unit-test-verified=30, verifier-failed=2
+Verdicts: unit-test-verified=30, verifier-failed=3
 
 | PR | SHA | Verdict | Evidence | Verifier | Timestamp |
 | --- | --- | --- | --- | --- | --- |
@@ -92,6 +94,7 @@ Verdicts: unit-test-verified=30, verifier-failed=2
 | 1 | 7b1a1c9 | unit-test-verified | fix unit green; all 14 verifier counterexamples pass at 7b1a1c9 |  | 2026-10-11T02:28:50.799Z |
 | 1 | 91a57df | unit-test-verified | all 14 verifier counterexamples pass; suite 531 passed; my own probe confirms character abilities now run and the crown moves |  | 2026-10-11T03:16:19.176Z |
 | 1 | 12f3aaf | verifier-failed | orchestrate/citadels/verification-2.md + verification2.test.ts: 15 counterexamples; V2-1 blocking (any-windows dropped by drain) |  | 2026-10-11T04:05:56.435Z |
+| 1 | 9c28701 | verifier-failed | 3 real defects remain (V2-4 den gold, V2-7 alchemist, V2-8 armory) + 3 flawed counterexamples; see orchestrate/citadels/HANDOFF.md |  | 2026-10-11T06:04:03.500Z |
 
 ## Frontier
 
@@ -104,4 +107,4 @@ Lowest unmerged: none
 
 (none)
 
-<!-- orch-summary {"unitStates":{"abandoned":2,"done":33,"failed":1,"partial":3,"pending":6},"ledgerVerdicts":{"unit-test-verified":30,"verifier-failed":2},"frontierGeneration":0,"openGateIds":[]} -->
+<!-- orch-summary {"unitStates":{"abandoned":7,"done":34,"partial":3,"pending":1,"running":2},"ledgerVerdicts":{"unit-test-verified":30,"verifier-failed":3},"frontierGeneration":0,"openGateIds":[]} -->

@@ -17,3 +17,11 @@ All units merged on feat/citadels-game-definitions, each with a ledger row of
 - characters: 9 rank-group units covering all 27 characters.
 - districts: catalog, unique-effect groups.
 - verify: integration, redaction, convergence, independent verifier pass.
+
+## Resumed program (thread 2fe386ea, 2026-10-11)
+
+Spawned units (reconcile at drain; zombie of b320ea9b killed, salvage handed to fix2-engine-tail):
+- fix2-engine-tail: taskId node:delegated-task:command%3Amcp%3A69bf45e4-c67d-48cd-b9b2-235d7c50500e%3Adelegate-task%3Acitadels-fix2-engine-tail-2026-10-11 — owns helpers.ts, characters/alchemist.ts, districts/armory.ts (V2-7 refund, V2-8 armory onDestroy, land V2-4 salvage)
+- fix2-verification-tests: taskId node:delegated-task:command%3Amcp%3A69bf45e4-c67d-48cd-b9b2-235d7c50500e%3Adelegate-task%3Acitadels-fix2-verification-tests-2026-10-11 — owns verification2.test.ts, verification-report.test.ts (3 flawed counterexamples + stale D10)
+
+Queued next: fix2-regression (engine-coverage.test.ts folded-game guard) after the wave lands; then verify-3, an independent adversarial pass over the new head.
