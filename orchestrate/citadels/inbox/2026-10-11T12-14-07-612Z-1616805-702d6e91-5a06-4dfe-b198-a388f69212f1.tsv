@@ -1,0 +1,1 @@
+2026-10-11T12:14:07.612Z	fix3-guards	fix3-guards	completed	commit 69aae2e; Keep/GreatWall rows now assert behavioral outcomes (protected survives vs unprotected falls; one-gold toll difference), Trader row exercises declaredType via School of Magic trade; test-only, 59 guard tests + 616 suite green

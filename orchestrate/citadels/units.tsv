@@ -47,4 +47,10 @@ fix2-regression	verify	done				orchestrate/citadels/briefs/fix2-regression.md
 fix2-engine-tail	verify	done				finish V2-7 alchemist refund (verify+complete the zombie salvage in helpers.ts/alchemist.ts) and V2-8 armory onDestroy
 fix2-verification-tests	verify	done				correct the 3 flawed counterexamples (folded-game policy, trader/emperor turn-phase setup, stale D10 keep) keeping their teeth
 fix2-den-test	verify	done				correct the stale district-seams.test.ts card-payment assertion to the V2-4 rule (cards + gold share)
-verify-3	verify	running				third independent adversarial pass at e0ab5a4: predicate audit, teeth audit of engine-coverage guards via /tmp-copy revert probes, verification3.test.ts counterexamples
+verify-3	verify	done				third independent adversarial pass at e0ab5a4: predicate audit, teeth audit of engine-coverage guards via /tmp-copy revert probes, verification3.test.ts counterexamples
+fix3-engine	verify	done				D3-1 navigator four-card branch reachable; D3-7 haunted-quarter type choice; owns helpers.ts + navigator.ts + haunted-quarter.ts
+fix3-scoring	verify	done				D3-2 capitol declared type; D3-3 basilica beautify; D3-4 wishing-well + ivory-tower unique flag; owns the four district files
+fix3-rules	verify	done				D3-5 draft over-removal; D3-6 winnerOf tie-break; owns setup.ts + scoring.ts (serialized shared)
+fix3-guards	verify	done				harden engine-coverage guard rows the teeth audit found weak: Keep/GreatWall call-count rows, Trader declared-type row; owns engine-coverage.test.ts
+fix3-tie-tests	verify	done				correct the 3 stale integration.test.ts tie-break assertions to the catalog revealed-rank rule + reconcile the Navigator summary string
+verify-4	verify	running				fourth independent adversarial pass at 69aae2e: predicate audit, teeth audit of the strengthened guards, verification4.test.ts counterexamples
