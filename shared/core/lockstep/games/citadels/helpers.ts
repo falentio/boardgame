@@ -272,7 +272,7 @@ export const resolveDraftPick: WindowResolver = (ctx) => {
   if (next !== undefined) {
     return withSteps(
       { ...ctx.state, draft: { ...draft, pool, picks, picker: next, order } },
-      [winStep("draft-pick", [next])],
+      [winStep("draft-pick", [next]), ...ctx.state.steps.slice(1)],
     );
   }
   const claimed = claimsInRankOrder(picks);
@@ -284,7 +284,7 @@ export const resolveDraftPick: WindowResolver = (ctx) => {
     claimed,
     callRank: 1,
     active: first?.seat ?? ctx.state.crown,
-    steps: [CALL, END_ROUND],
+    steps: [...ctx.state.steps.slice(1), CALL, END_ROUND],
   };
 };
 
@@ -600,9 +600,21 @@ export const applyEndRound = (state: CitadelsState, rng: Random): CitadelsState 
   if (finished.length > 0) {
     return clearRoundMarkers({ ...state, round, phase: "over", completed: finished, steps: [] });
   }
+  // A district that acts at the start of the round (the Theater) opens its
+  // window here. The window queues below the new round's draft picks, so it
+  // resolves once every seat has claimed and the swap lands on a card the rank
+  // cursor will call.
+  let started = state;
+  const windows: Step[] = [];
+  for (const seat of liveSeats(state)) {
+    const hooked = runDistrictHooks(started, "onRoundStart", seat, [], rng);
+    if (hooked === started) continue;
+    windows.push(...hooked.steps);
+    started = { ...hooked, steps: [] };
+  }
   const draft = buildDraft(state.cast, crownOrder(state), rng);
   return clearRoundMarkers({
-    ...state,
+    ...started,
     round,
     phase: "draft",
     draft,
@@ -610,6 +622,6 @@ export const applyEndRound = (state: CitadelsState, rng: Random): CitadelsState 
     skipped: [],
     callRank: 1,
     pending: null,
-    steps: [winStep("draft-pick", [draft.picker]), ...rest],
+    steps: [winStep("draft-pick", [draft.picker]), ...windows, ...rest],
   });
 };

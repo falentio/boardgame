@@ -61,9 +61,9 @@ test("the Theater's unique points are exactly zero; dropping it changes only cos
   expect(bare?.unique).toBe(0);
 });
 
-test("the Theater registers its own scoring function and no engine triggers", () => {
+test("the Theater registers its own scoring function and the onRoundStart trigger", () => {
   expect(UNIQUE_SCORING["theater"]).toBe(theaterScoring);
-  expect(theaterTriggers).toEqual([]);
+  expect(theaterTriggers).toEqual(["onRoundStart"]);
 });
 
 test("the Theater's scoring is not a no-op on the total: a spurious bonus would move it", () => {

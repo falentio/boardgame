@@ -21,7 +21,8 @@ export type DistrictHook =
   | "onBuild"
   | "onEndTurn"
   | "onScoring"
-  | "onDestroy";
+  | "onDestroy"
+  | "onRoundStart";
 
 export const DISTRICT_HOOKS: readonly DistrictHook[] = [
   "onIncome",
@@ -30,6 +31,7 @@ export const DISTRICT_HOOKS: readonly DistrictHook[] = [
   "onEndTurn",
   "onScoring",
   "onDestroy",
+  "onRoundStart",
 ];
 
 /**
