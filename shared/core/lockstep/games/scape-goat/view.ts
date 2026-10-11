@@ -1,6 +1,6 @@
 import type { SeatId } from "../../index.ts";
 import type { ScapeGoatAction } from "./actions.ts";
-import { coloursOf } from "./cards.ts";
+import { coloursOf, type CardId } from "./cards.ts";
 import { LOCATION_LINE } from "./locations.ts";
 import { ScapeGoatError } from "./error.ts";
 import { activeSeats, outcomeOf, seatsOwedNow } from "./reducer.ts";
@@ -9,7 +9,6 @@ import {
   MIN_SEATS,
   STASH_SLOTS,
   suspectOf,
-  type CardId,
   type Destination,
   type FrameRecord,
   type Location,
@@ -157,6 +156,8 @@ const myPrepTokens = (view: ScapeGoatView): PrepTokensRemaining =>
   view.players.find((player) => player.seat === view.seat)?.prepTokens ?? 0;
 
 const swapMenu = (view: ScapeGoatView): readonly ScapeGoatAction[] => {
+  // `players` is in roster order and never reordered, so the seat's index in the
+  // view is the same index reducer.colourOfSeat reads. One derivation, two inputs.
   const position = view.players.findIndex((player) => player.seat === view.seat);
   const own = COLOURS[position] ?? "red";
   const forced = view.myHand
@@ -204,9 +205,11 @@ export const legalActions = (view: ScapeGoatView): readonly ScapeGoatAction[] =>
           );
         case "frame-steal": {
           if (myPrepTokens(view) > 0) return [{ t: "frame" }];
-          return view.players
-            .filter((player) => player.seat !== view.seat && player.prepTokens > 0)
-            .map((player): ScapeGoatAction => ({ t: "steal", target: player.seat }));
+          // One candidate set with the reducer's stealTarget, so a menu offered to a
+          // UI never names a seat the fold would silently redirect or refuse.
+          return otherActiveSeats(view)
+            .filter((seat) => (view.players.find((player) => player.seat === seat)?.prepTokens ?? 0) > 0)
+            .map((seat): ScapeGoatAction => ({ t: "steal", target: seat }));
         }
       }
     }

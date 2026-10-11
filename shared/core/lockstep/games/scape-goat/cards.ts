@@ -1,4 +1,13 @@
-import { cardId, type CardId, type Colour, type PlayerCount } from "./state.ts";
+import type { Colour, PlayerCount } from "./state.ts";
+
+/**
+ * A card id. Branded so a card cannot be handed where a seat belongs, and so a
+ * snapshot at the decode boundary must carry an id the catalog knows, which is
+ * what stops an unknown string from reading as grey.
+ */
+export type CardId = string & { readonly __brand: "CardId" };
+
+export const cardId = (raw: string): CardId => raw as CardId;
 
 /**
  * Cards dealt to each hand at each count. The rulebook allows two or three and

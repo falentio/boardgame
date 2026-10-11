@@ -22,9 +22,7 @@ export {
   MAX_SEATS,
   MIN_SEATS,
   STASH_SLOTS,
-  cardId,
   suspectOf,
-  type CardId,
   type Colour,
   type Destination,
   type FrameRecord,
@@ -39,8 +37,16 @@ export {
   type SpyRecord,
   type StashSlot,
 } from "./state.ts";
-export { EVIDENCE_CARDS, HAND_SIZE, coloursOf, deckFor, type CardFace } from "./cards.ts";
-export { LOCATION_ACTIONS, LOCATION_LINE, faceOf, type LocationFace } from "./locations.ts";
+export {
+  EVIDENCE_CARDS,
+  HAND_SIZE,
+  cardId,
+  coloursOf,
+  deckFor,
+  type CardFace,
+  type CardId,
+} from "./cards.ts";
+export { LOCATION_LINE, faceOf } from "./locations.ts";
 export {
   activeSeats,
   antipodeOf,

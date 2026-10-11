@@ -1,11 +1,10 @@
 import type { Random, Roster, SeatId } from "../../index.ts";
-import { deckFor, HAND_SIZE } from "./cards.ts";
+import { deckFor, HAND_SIZE, type CardId } from "./cards.ts";
 import { ScapeGoatError } from "./error.ts";
 import { LOCATION_LINE } from "./locations.ts";
 import {
   MAX_SEATS,
   MIN_SEATS,
-  type CardId,
   type Destination,
   type PlayerCount,
   type PlayerState,

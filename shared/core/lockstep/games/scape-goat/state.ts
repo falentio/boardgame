@@ -10,6 +10,7 @@ import {
   type SeatId,
 } from "../../index.ts";
 import { ScapeGoatError } from "./error.ts";
+import { cardFaceOf, cardId, type CardId } from "./cards.ts";
 
 /** A supported table size; the roster length must be one of these. */
 export type PlayerCount = 3 | 4 | 5 | 6;
@@ -40,10 +41,6 @@ export const STASH_SLOTS: readonly StashSlot[] = [0, 1, 2];
 export type PrepTokensRemaining = 0 | 1 | 2;
 
 /** A card identity. The 30 card faces live in `cards.ts`. */
-export type CardId = string & { readonly __brand: "CardId" };
-
-export const cardId = (raw: string): CardId => raw as CardId;
-
 export interface PlayerState {
   readonly seat: SeatId;
   readonly at: Location;
@@ -127,7 +124,16 @@ const PREP_TOKENS: readonly PrepTokensRemaining[] = [0, 1, 2];
 
 const decodeSeat = (json: Json, what: string): SeatId => seatId(expectString(json, what));
 
-const decodeCardId = (json: Json, what: string): CardId => cardId(expectString(json, what));
+/**
+ * A card id is only a card if the catalog carries it, so decode at the boundary
+ * rather than letting an unknown string through: `coloursOf` would read it as
+ * grey, which silently changes how the game folds.
+ */
+const decodeCardId = (json: Json, what: string): CardId => {
+  const value = cardId(expectString(json, what));
+  if (cardFaceOf(value) === null) throw new ScapeGoatError(`${what}: unknown card ${value}`);
+  return value;
+};
 
 const decodeNullableSeat = (json: Json, what: string): SeatId | null =>
   json === null ? null : decodeSeat(json, what);
@@ -326,6 +332,43 @@ const decodeFaceUp = (json: Json): Readonly<Record<Destination, CardId>> => {
   };
 };
 
+/**
+ * The rules the shape checks cannot express. The seed chain is a convergence
+ * check, not a validator: it proves that every peer folded the same frames to the
+ * same state, not that the state is legal. A peer that sends a snapshot with a
+ * well-typed but self-suspect state therefore chains cleanly, and without this
+ * gate `project` would tell a seat it is its own suspect, which is the one hidden
+ * fact the game depends on. Decode is the boundary every untrusted state
+ * crosses, so the invariants live here rather than in the fold.
+ */
+const checkInvariants = (state: ScapeGoatState): void => {
+  const seats = new Set(state.players.map((player) => player.seat));
+  if (!seats.has(state.scapegoat)) {
+    throw new ScapeGoatError("the scapegoat is not a player");
+  }
+  if (!seats.has(state.scapegoatSuspect)) {
+    throw new ScapeGoatError("the scapegoat suspect is not a player");
+  }
+  if (state.scapegoatSuspect === state.scapegoat) {
+    throw new ScapeGoatError("the scapegoat must suspect a seat other than itself");
+  }
+  const held = new Set<CardId>();
+  for (const card of Object.values(state.faceUp)) {
+    if (held.has(card)) throw new ScapeGoatError("a card is in two places");
+    held.add(card);
+  }
+  for (const card of state.stash) {
+    if (held.has(card)) throw new ScapeGoatError("a card is in two places");
+    held.add(card);
+  }
+  for (const player of state.players) {
+    for (const card of player.hand) {
+      if (held.has(card)) throw new ScapeGoatError("a card is in two places");
+      held.add(card);
+    }
+  }
+};
+
 export const stateCodec: Codec<ScapeGoatState> = {
   encode: (state): Json => ({
     players: state.players.map(encodePlayer),
@@ -342,7 +385,7 @@ export const stateCodec: Codec<ScapeGoatState> = {
   }),
   decode: (json): ScapeGoatState => {
     const object = expectObject(json, "scape-goat state");
-    return {
+    const state: ScapeGoatState = {
       players: expectArray(field(object, "players"), "players").map(decodePlayer),
       scapegoat: decodeSeat(field(object, "scapegoat"), "scapegoat"),
       scapegoatSuspect: decodeSeat(field(object, "scapegoatSuspect"), "scapegoat suspect"),
@@ -359,5 +402,7 @@ export const stateCodec: Codec<ScapeGoatState> = {
       ),
       spyReveal: decodeRevealMode(field(object, "spyReveal"), "spyReveal"),
     };
+    checkInvariants(state);
+    return state;
   },
 };

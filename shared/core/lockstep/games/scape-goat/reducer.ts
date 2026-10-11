@@ -1,11 +1,11 @@
 import type { Frame, FrameIndex, Random, SeatId } from "../../index.ts";
 import type { ScapeGoatAction } from "./actions.ts";
-import { coloursOf } from "./cards.ts";
+import { coloursOf, type CardId } from "./cards.ts";
+import { ScapeGoatError } from "./error.ts";
 import { faceOf, LOCATION_LINE } from "./locations.ts";
 import {
   COLOURS,
   MIN_SEATS,
-  type CardId,
   type Colour,
   type Destination,
   type FrameRecord,
@@ -25,9 +25,16 @@ export const findPlayer = (state: ScapeGoatState, seat: SeatId): PlayerState | u
 export const activeSeats = (state: ScapeGoatState): readonly SeatId[] =>
   state.players.filter((player) => !state.resigned.includes(player.seat)).map((p) => p.seat);
 
-/** The colour printed on a seat's mat, indexed by canonical seat. Public: only the mat's reverse is secret. */
-export const colourOfSeat = (state: ScapeGoatState, seat: SeatId): Colour =>
-  COLOURS[state.players.findIndex((player) => player.seat === seat)] ?? "red";
+/**
+ * The colour printed on a seat's mat. The seat's index in `players` is its index in
+ * `Roster.order`, because `genesisState` builds `players` in roster order and nothing
+ * ever reorders it. Only the mat's reverse is secret.
+ */
+export const colourOfSeat = (state: ScapeGoatState, seat: SeatId): Colour => {
+  const position = state.players.findIndex((player) => player.seat === seat);
+  if (position < 0) throw new ScapeGoatError(`seat ${seat} is not a player`);
+  return COLOURS[position] ?? COLOURS[0]!;
+};
 
 /**
  * The seat that may pre-empt the active seat's turn at six players: three seats
@@ -87,11 +94,6 @@ const nextActiveSeat = (state: ScapeGoatState, from: SeatId): SeatId | null => {
 };
 
 /**
- * End the current turn: clear the spy record — it lives only for the spy's own
- * turn — and hand the move to the next seat, or abandon a table that has shrunk
- * below three.
- */
-/**
  * End the current turn. Both per-turn records go: the Spy hand belongs to the
  * spy's own turn, and a frame attempt's reveal is public only for the rest of
  * the turn that resolved it. Clearing the record here is what keeps a card that
@@ -107,7 +109,14 @@ const handTurn = (state: ScapeGoatState): ScapeGoatState => {
 };
 
 /** The phase kinds that owe the active seat a second decision of their own. */
-const ACTOR_PHASES: ReadonlySet<Phase["kind"]> = new Set(["swap", "stash-put"]);
+/**
+ * The only phase with a debt. A Stash draw puts a card in the drawer's hand, so
+ * the drawer owes the row a card back and must return it even when resigning, or
+ * the hand size and the Stash supply both break for the rest of the game. A
+ * swap is one card out and one card in, so a resigning seat can leave it
+ * undone without losing a card.
+ */
+const DEBT_PHASES: ReadonlySet<Phase["kind"]> = new Set(["stash-put"]);
 
 const beginSwap = (state: ScapeGoatState, active: SeatId): ScapeGoatState => ({
   ...state,
@@ -216,17 +225,24 @@ export const moveOwed = (state: ScapeGoatState, active: SeatId): readonly SeatId
   return antipode === null ? [active] : [active, antipode];
 };
 
+/** The seat that ran to the Cops in this frame, if any owed seat did. */
+const copsRunInFrame = (
+  state: ScapeGoatState,
+  owed: readonly SeatId[],
+  frame: Frame<ScapeGoatAction>,
+): SeatId | null => {
+  for (const [seat, input] of frame.inputs) {
+    if (!owed.includes(seat) || state.resigned.includes(seat)) continue;
+    if (input.kind === "act" && input.action.t === "go-to-cops") return seat;
+  }
+  return null;
+};
+
 const stepMove = (
   state: ScapeGoatState,
   phase: Extract<Phase, { kind: "move" }>,
   frame: Frame<ScapeGoatAction>,
 ): ScapeGoatState => {
-  const owed = moveOwed(state, phase.active);
-  for (const [seat, input] of frame.inputs) {
-    if (owed.includes(seat) && input.kind === "act" && input.action.t === "go-to-cops") {
-      return endCops(state, seat);
-    }
-  }
   const player = findPlayer(state, phase.active);
   if (player === undefined) return handTurn(state);
   const to = legalMove(player, actOf(frame, player.seat));
@@ -430,13 +446,19 @@ export const step = (
   if (activeSeats(folded).length < MIN_SEATS) return endAbandoned(folded);
   const active = phaseActive(folded.phase);
   if (active === null) return folded;
+  // The six-player antipode shares the move frame with the active seat, and its
+  // run to the cops is not conditioned on the active seat acting. Scan the frame
+  // for it before anything else, so a resigning active seat cannot discard it.
+  if (folded.phase.kind === "move") {
+    const ran = copsRunInFrame(folded, moveOwed(folded, active), frame);
+    if (ran !== null) return endCops(folded, ran);
+  }
   const leaving = folded.resigned.includes(active);
-  // A seat that resigns out of an action it has already half finished still
-  // finishes it: the card a Stash drew must go back, or the drawer's hand size
-  // and the Stash supply both break for the rest of the game. Every other phase
-  // leaves the action undone, so the turn simply passes on. A resigning seat
-  // never goes on to a second decision, because no phase may owe it a frame.
-  if (leaving && !ACTOR_PHASES.has(folded.phase.kind)) return handTurn(folded);
+  // A seat that resigns out of the one phase that owes it a card still returns the
+  // card first. Every other phase leaves the action undone and the turn passes
+  // on, so the turn advances exactly once: stepSwap and stepStashPut do not
+  // advance it themselves, handTurn is the single place that does.
+  if (leaving && !DEBT_PHASES.has(folded.phase.kind)) return handTurn(folded);
   const foldedNext = runPhase(folded, frame);
   return leaving ? handTurn(foldedNext) : foldedNext;
 };
