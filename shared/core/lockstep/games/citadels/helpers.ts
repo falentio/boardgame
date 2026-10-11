@@ -208,6 +208,14 @@ export const CONFISCATE_REFUND_NOTE = "confiscate-refund";
  */
 export const WITCH_RESUME_NOTE = "witch-resume";
 
+/**
+ * The `pending.note` marker the engine writes when a Cardinal's build fails for
+ * lack of gold and the shortfall offer opens. `pending.amount` carries the
+ * shortfall and `pending.cards[0]` the district being built, so the resolver
+ * covers the gap from a named donor without giving away the card being built.
+ */
+export const CARDINAL_BUILD_NOTE = "cardinal-build";
+
 export const CALL: Step = { kind: "call" };
 export const RESOLVE: Step = { kind: "resolve" };
 export const END_TURN: Step = { kind: "end-turn" };
@@ -702,6 +710,26 @@ export const resolveTurn: WindowResolver = (ctx) => {
     const builtId = playerOf(state, seat).hand[action.card];
     const succeeded =
       playerOf(built, seat).hand.length < playerOf(state, seat).hand.length;
+    // The Cardinal's shortfall clause: when it lacks the gold, the engine opens
+    // the offer (amount = the gap, cards = the district being built), the Cardinal
+    // names a donor, and the turn window below retries the build once covered.
+    if (
+      !succeeded &&
+      !resumedWitch &&
+      playedCharacter === "cardinal" &&
+      builtId !== undefined
+    ) {
+      const shortfall = Math.max(0, specOfDistrict(builtId).cost - playerOf(state, seat).gold);
+      if (shortfall > 0) {
+        const armed = withPending(state, {
+          ...emptyPending(seat, "cardinal"),
+          amount: shortfall,
+          cards: [builtId],
+          note: CARDINAL_BUILD_NOTE,
+        });
+        return withSteps(armed, [winStep("cardinal-gold", [seat]), winStep("turn", [seat]), ...rest]);
+      }
+    }
     if (succeeded && (built.builtThisTurn ?? 0) < buildLimit(state, seat, builtId)) {
       // Drop any duplicate turn windows a character effect pre-seeded so the
       // limit counter, not the pre-seeded count, decides how many builds remain.

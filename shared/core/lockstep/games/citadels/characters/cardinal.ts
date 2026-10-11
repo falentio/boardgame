@@ -1,6 +1,6 @@
 import type { SeatId } from "../../../index.ts";
 import type { CharacterCtx, CharacterEffect } from "../characters/index.ts";
-import { typeOfPlaced } from "../districts.ts";
+import { typeOfPlaced, type DistrictId } from "../districts.ts";
 import {
   actionOf,
   drawIntoHand,
@@ -32,27 +32,27 @@ export const cardinalShortfall = (state: CitadelsState, seat: SeatId, cost: numb
 
 /**
  * Cover a build shortfall from one donor: take gold equal to the shortfall from
- * the donor and give them one card from the Cardinal's hand per gold taken. The
- * donor cannot refuse, and the Cardinal cannot take more gold than needed, more
- * than the donor holds, or more than the cards the Cardinal can hand over.
+ * the donor (never more than the donor holds) and give that player one card from
+ * the Cardinal's hand per gold taken, up to the cards it can spare. `reserve`
+ * names the district being built, which stays in hand for the retry. The donor
+ * cannot refuse, and the Cardinal cannot take more than needed.
  */
 export const coverShortfall = (
   state: CitadelsState,
   builder: SeatId,
   donor: SeatId,
   shortfall: number,
+  reserve?: DistrictId,
 ): CitadelsState => {
   if (builder === donor) return state;
   const payer = playerOf(state, builder);
   const source = playerOf(state, donor);
-  const taken = Math.max(0, Math.min(shortfall, source.gold, payer.hand.length));
+  const taken = Math.max(0, Math.min(shortfall, source.gold));
   if (taken <= 0) return state;
-  const given = payer.hand.slice(0, taken);
-  const paidBuilder = withPlayer(state, {
-    ...payer,
-    gold: payer.gold + taken,
-    hand: payer.hand.slice(taken),
-  });
+  const spare = payer.hand.filter((id) => id !== reserve);
+  const given = spare.slice(0, taken);
+  const kept = payer.hand.filter((id) => id === reserve || !given.includes(id));
+  const paidBuilder = withPlayer(state, { ...payer, gold: payer.gold + taken, hand: kept });
   return withPlayer(paidBuilder, {
     ...source,
     gold: source.gold - taken,
@@ -79,15 +79,20 @@ export const cardinal: CharacterEffect = (ctx) => {
 };
 
 /**
- * Resolve the cardinal-gold window: the Cardinal names a donor, and the pending
- * amount is the shortfall to cover. Naming nobody, or a shortfall of zero, is a
- * pass. The donor has no report to give; the transfer is unconditional.
+ * Resolve the cardinal-gold window. The engine opens it twice: once on the
+ * income pass (amount 0, a pass), and once when a build falls short, carrying the
+ * gap in `pending.amount` and the district in `pending.cards[0]`. The Cardinal
+ * names a donor and the gap is covered from it; the turn window below then
+ * retries the build. Naming nobody, or a zero amount, is a pass.
  */
 export const cardinalResolve: WindowResolver = (ctx) => {
   const owner = seatHolding(ctx.state, "cardinal") ?? ctx.window.seats[0] ?? ctx.state.active;
   const action = actionOf(ctx.frame, owner);
   const donor = action?.t === "target" ? action.seat : null;
-  const shortfall = ctx.state.pending?.amount ?? 0;
+  const pending = ctx.state.pending;
+  const shortfall = pending?.amount ?? 0;
   if (donor === null || shortfall <= 0) return popWindow(withPending(ctx.state, null));
-  return popWindow(withPending(coverShortfall(ctx.state, owner, donor, shortfall), null));
+  const reserve = pending?.cards[0];
+  const covered = coverShortfall(ctx.state, owner, donor, shortfall, reserve);
+  return popWindow(withPending(covered, null));
 };
