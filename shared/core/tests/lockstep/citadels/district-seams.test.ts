@@ -146,12 +146,14 @@ test("a non-counting build reopens the turn window, and a counting build consume
   expect(openPurpose(second)).not.toBe("turn");
 });
 
-test("a build paid with cards consumes that many hand cards and no gold", () => {
-  UNIQUE_BUILD["thieves-den"] = () => ({ payCards: 2 });
-  const state = withHand(withGold(turnState(), ANN, 10), ANN, ["thieves-den", "manor", "castle"]);
+test("a card-paid build takes its card share in cards and still owes the gold remainder", () => {
+  const CARD_SHARE = 2;
+  const GOLD_BEFORE = 10;
+  UNIQUE_BUILD["thieves-den"] = () => ({ payCards: CARD_SHARE });
+  const state = withHand(withGold(turnState(), ANN, GOLD_BEFORE), ANN, ["thieves-den", "manor", "castle"]);
   const next = tryBuild(state, ANN, 0, rawRandom());
   expect(cityOf(next, ANN).map((d) => d.id)).toEqual(["thieves-den"]);
-  expect(rawGold(next, ANN)).toBe(10);
+  expect(rawGold(next, ANN)).toBe(GOLD_BEFORE - Math.max(0, specOfDistrict("thieves-den").cost - CARD_SHARE));
   expect(rawHand(next, ANN)).toEqual([]);
   expect(next.discard).toEqual(["manor", "castle"]);
   expect(totalCards(next)).toBe(totalCards(state));
