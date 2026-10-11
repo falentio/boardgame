@@ -43,12 +43,19 @@ const turnState = (city: readonly string[]): CitadelsState =>
     city,
   );
 
-/** Play one turn: gather with the action, then resolve any keep window it opened. */
+/**
+ * Play one turn to its close under the corrected turn model (commit 64420ca: a
+ * turn gathers, then optionally builds). Gather with the action, resolve any keep
+ * window it opened, then answer the build-capable turn window so the turn ends and
+ * the Poor House's onEndTurn hook fires.
+ */
 const playTurn = (state: CitadelsState, action: "gold" | "draw"): CitadelsState => {
   const gathered = advance(state, () => ({ t: action }));
-  return openPurpose(gathered) === "keep"
-    ? advance(gathered, () => ({ t: "keep", index: 0 }))
-    : gathered;
+  const kept =
+    openPurpose(gathered) === "keep"
+      ? advance(gathered, () => ({ t: "keep", index: 0 }))
+      : gathered;
+  return advance(kept, () => ({ t: "gold" }));
 };
 
 const ctxFor = (state: CitadelsState) => ({ state, owner: ANN, city: [], rest: [], rng: rawRandom() });

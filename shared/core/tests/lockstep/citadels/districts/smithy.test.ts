@@ -84,8 +84,11 @@ test("with fewer than 2 gold you cannot pay and nothing is drawn", () => {
 
 test("the engine fires the ability at most once per turn", () => {
   const armed = withGold(withHand(turnState(["smithy"]), ANN, ["watchtower"]), ANN, 2);
-  const next = advance(armed, () => ({ t: "gold" }));
-  // One gather turn: 2 gold income, then the Smithy pays 2 and draws 3.
+  // The gather window lands +2 and leaves a build-capable turn window (commit
+  // 64420ca); answering that window closes the turn, where the Smithy fires once:
+  // it pays 2 and draws 3.
+  const gathered = advance(armed, () => ({ t: "gold" }));
+  const next = advance(gathered, () => ({ t: "gold" }));
   expect(rawGold(next, ANN)).toBe(2);
   expect(rawHand(next, ANN)).toHaveLength(4);
   expect(next.deck).toHaveLength(armed.deck.length - 3);

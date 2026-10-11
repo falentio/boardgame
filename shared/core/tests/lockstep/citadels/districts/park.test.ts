@@ -44,25 +44,36 @@ const turnState = (city: readonly string[]): CitadelsState =>
     city,
   );
 
+/**
+ * Drive one turn to its close under the corrected turn model (commit 64420ca: a
+ * turn gathers, then optionally builds). The gather window lands +2 and leaves a
+ * build-capable turn window below it; answering that window ends the turn, where
+ * the Park's onEndTurn hook fires.
+ */
+const playTurn = (state: CitadelsState): CitadelsState => {
+  const gathered = advance(state, () => ({ t: "gold" }));
+  return advance(gathered, () => ({ t: "gold" }));
+};
+
 const ctxFor = (state: CitadelsState) => ({ state, owner: ANN, city: [], rest: [], rng: rawRandom() });
 
 test("draw two cards at end of turn when you hold no cards", () => {
   const state = withHand(turnState(["park"]), ANN, []);
-  const next = advance(state, () => ({ t: "gold" }));
+  const next = playTurn(state);
   expect(rawHand(next, ANN)).toHaveLength(2);
 });
 
 test("draw exactly two, taken from the top of the deck", () => {
   const state = withHand(turnState(["park"]), ANN, []);
   const expected = state.deck.slice(0, 2);
-  const next = advance(state, () => ({ t: "gold" }));
+  const next = playTurn(state);
   expect(rawHand(next, ANN)).toEqual(expected);
   expect(next.deck.length).toBe(state.deck.length - 2);
 });
 
 test("do not draw when a card remains in hand at end of turn", () => {
   const state = withHand(turnState(["park"]), ANN, ["tavern"]);
-  const next = advance(state, () => ({ t: "gold" }));
+  const next = playTurn(state);
   expect(rawHand(next, ANN)).toEqual(["tavern"]);
 });
 
@@ -89,7 +100,7 @@ test("the Park scores no extra points on a crafted city", () => {
 
 test("the effect is not a no-op: an empty hand gains two cards and conserves the deck", () => {
   const state = withGold(withHand(turnState(["park"]), ANN, []), ANN, 4);
-  const next = advance(state, () => ({ t: "gold" }));
+  const next = playTurn(state);
   expect(rawHand(next, ANN).length).toBeGreaterThan(0);
   expect(totalCards(next)).toBe(totalCards(state));
 });

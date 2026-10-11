@@ -85,8 +85,11 @@ test("the engine fires the ability at most once per turn", () => {
     ANN,
     0,
   );
-  const next = advance(armed, () => ({ t: "gold" }));
-  // One gather turn: 2 gold income plus one Laboratory payout, one card discarded.
+  // The gather window lands +2 and leaves a build-capable turn window (commit
+  // 64420ca); answering that window closes the turn, where the Laboratory fires
+  // once: +2 gold and one card discarded.
+  const gathered = advance(armed, () => ({ t: "gold" }));
+  const next = advance(gathered, () => ({ t: "gold" }));
   expect(rawGold(next, ANN)).toBe(4);
   expect(rawHand(next, ANN)).toHaveLength(3);
   expect(next.discard).toEqual(["watchtower"]);
