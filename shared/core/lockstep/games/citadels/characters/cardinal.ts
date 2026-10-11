@@ -49,9 +49,16 @@ export const coverShortfall = (
   const source = playerOf(state, donor);
   const taken = Math.max(0, Math.min(shortfall, source.gold));
   if (taken <= 0) return state;
-  const spare = payer.hand.filter((id) => id !== reserve);
-  const given = spare.slice(0, taken);
-  const kept = payer.hand.filter((id) => id === reserve || !given.includes(id));
+  // Hand cards out one per gold taken, skipping the reserve: each unit of the
+  // gift removes exactly one card of that id, so a hand holding two copies of an
+  // id loses one card per unit given, not every copy (id-based filtering would
+  // collapse them and destroy the rest).
+  const given: DistrictId[] = [];
+  const kept: DistrictId[] = [];
+  for (const id of payer.hand) {
+    if (id === reserve || given.length >= taken) kept.push(id);
+    else given.push(id);
+  }
   const paidBuilder = withPlayer(state, { ...payer, gold: payer.gold + taken, hand: kept });
   return withPlayer(paidBuilder, {
     ...source,
