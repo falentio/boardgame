@@ -1226,3 +1226,73 @@ describe("engine coverage: a two-character seat", () => {
     expect(annAfter, "the owner kept its lowest-rank claim").toContain("assassin");
   });
 });
+
+
+// ---------------------------------------------------------------------------
+// The Museum's once-per-turn placement offer. No row above folds a character
+// turn that OWNS a Museum, so the ninth-pass defects (D9-1, D9-2) were
+// unreachable by this guard suite. These two rows fold a Museum-owning turn:
+// the offer rides the `keep` window, so a character turn that reaches it must
+// open that window and route its report to `museumPlace`.
+// ---------------------------------------------------------------------------
+
+describe("engine coverage: a character turn that owns a Museum", () => {
+  const museumOf = (state: CitadelsState, seat: SeatId) =>
+    rawPlayer(state, seat).city.find((district) => district.id === "museum");
+
+  /**
+   * D9-1 teeth. ANN holds the Alchemist and her city holds a Museum; her hand is
+   * [market, tavern] and she starts at 0 gold. The turn gathers 2, builds the
+   * cost-1 Market (2 -> 1), and the V2-7 settle refunds the 1: gold ends at 2,
+   * and the Museum's offer must then tuck one card. The Alchemist's build leaves a
+   * NON-null spend pending standing when the turn closes; an offer that appends a
+   * bare `keep` window (routing by pending-is-null) overwrites it, so the refund
+   * never lands and the card is never tucked. Revert the MUSEUM_OFFER_NOTE tag or
+   * the resolveKeep tag check and both assertions below go RED (gold 0, cards
+   * undefined). The control — the same turn with no Museum — ends at the same gold.
+   */
+  test("the Alchemist's build with a Museum keeps its refund and still tucks", () => {
+    const withMuseum = foldTurn({
+      character: "alchemist",
+      cast: castWith("alchemist"),
+      seats: SEATS3,
+      board: { cities: { ann: ["museum"] }, hands: { ann: ["market", "tavern"] }, gold: { ann: 0 } },
+      answer: policy(buildOrGold),
+    });
+    expect(
+      rawGold(foldEnd(withMuseum), ANN),
+      "the Museum's offer did not steal the Alchemist's spend pending: gather 2, build 1, refund 1",
+    ).toBe(2);
+    expect(
+      museumOf(foldEnd(withMuseum), ANN)?.cards?.length ?? 0,
+      "the Museum's placement offer tucked one card under the Alchemist's Museum",
+    ).toBe(1);
+  });
+
+  /**
+   * D9-2 teeth. ANN holds the Navigator and owns a Museum; her hand is [market,
+   * tavern]. The Navigator's turn window is its gain choice (answered with gold),
+   * and the turn takes no build (rules.json navigator: "You cannot build any
+   * districts this turn"). The Museum's offer must still open on that turn: the
+   * Navigator branch once returned early and never reached withMuseumOffer. Remove
+   * the offer splice from the Navigator branch (helpers.ts resolveTurn) and no
+   * `keep` window ever opens: both assertions below go RED.
+   */
+  test("the Navigator's turn still opens the Museum's placement offer", () => {
+    const folded = foldTurn({
+      character: "navigator",
+      cast: castWith("navigator"),
+      seats: SEATS3,
+      board: { cities: { ann: ["museum"] }, hands: { ann: ["market", "tavern"] }, gold: { ann: 0 } },
+      answer: policy(buildOrGold),
+    });
+    expect(
+      foldPurposes(folded),
+      "the Navigator's turn reached the Museum's placement offer (a keep window opened)",
+    ).toContain("keep");
+    expect(
+      museumOf(foldEnd(folded), ANN)?.cards?.length ?? 0,
+      "the Navigator tucked a card under its Museum",
+    ).toBe(1);
+  });
+});
