@@ -97,9 +97,19 @@ export const characterAtRank = (state: CitadelsState, rank: Rank): CharacterId |
 export const claimOf = (state: CitadelsState, seat: SeatId): Claim | null =>
   state.claimed.find((claim) => claim.seat === seat) ?? null;
 
-/** The seat holding a character this round, or null. */
-export const seatHolding = (state: CitadelsState, character: CharacterId): SeatId | null =>
-  state.claimed.find((claim) => claim.character === character)?.seat ?? null;
+/**
+ * The seat holding a character this round, or null. During the Witch's resume the
+ * bewitched character is played by the Witch, so its own effect must act on her
+ * hand, gold, and city: the resume pending names her seat and carries the
+ * bewitched id, so this reports her seat for that one character.
+ */
+export const seatHolding = (state: CitadelsState, character: CharacterId): SeatId | null => {
+  const resume = state.pending;
+  if (resume?.note === WITCH_RESUME_NOTE && resume.character === character) {
+    return resume.actor;
+  }
+  return state.claimed.find((claim) => claim.character === character)?.seat ?? null;
+};
 
 export const isSkipped = (state: CitadelsState, character: CharacterId): boolean =>
   state.skipped.includes(character);
@@ -387,7 +397,12 @@ export const BUILD_LIMITS: Partial<Record<CharacterId, number>> = {
  * district being built.
  */
 export const buildLimit = (state: CitadelsState, seat: SeatId, card?: DistrictId): number => {
-  const character = claimOf(state, seat)?.character ?? null;
+  // The Witch's resume plays the bewitched character's turn with the Witch's
+  // resources, so its limit is the bewitched character's: the resume rides
+  // `pending.note` with the bewitched id in `pending.character`.
+  const resumed =
+    state.pending?.note === WITCH_RESUME_NOTE ? state.pending.character : null;
+  const character = resumed ?? claimOf(state, seat)?.character ?? null;
   if (character === "trader" && card !== undefined && specOfDistrict(card).type === "trade") {
     return Number.POSITIVE_INFINITY;
   }
@@ -640,6 +655,29 @@ export const resolveTurn: WindowResolver = (ctx) => {
   const heldWitch =
     !resumedWitch && ctx.state.pending === null && activeCharacterOf(state, seat) === "witch";
   if (heldWitch) return withSteps(state, endTurnThen(rest));
+  // A threatened seat must gather resources, then resolve the threat, then use
+  // abilities or build. The engine's turn window does gather and build in one, so
+  // a threatened turn splits: this window only gathers, the threat window opens
+  // next (the post-gather gold sets the bribe), and the second turn window below
+  // the threat takes the build. A build answered here gathers instead, so no
+  // district can land ahead of the threat.
+  const playedCharacter = activeCharacterOf(state, seat);
+  if (
+    !resumedWitch &&
+    playedCharacter !== null &&
+    (state.threats ?? []).includes(playedCharacter)
+  ) {
+    if (action?.t === "draw") {
+      return withSteps(drawGather(state, seat, rest, ctx.rng), [
+        winStep("keep", [seat]),
+        ...rest,
+      ]);
+    }
+    return withSteps(
+      runDistrictHooks(addGold(state, seat, 2), "onIncome", seat, rest, ctx.rng),
+      rest,
+    );
+  }
   // The Navigator's turn window is its gain choice, not a gather: a draw names the
   // four-card branch, anything else the four-gold one. The choice rides pending.note
   // for the resolve step above the turn window to read.
@@ -779,6 +817,7 @@ const withThreat = (
   return [
     ...stack.slice(0, at + 1),
     winStep("blackmailer-threat", [seat]),
+    winStep("turn", [seat]),
     ...stack.slice(at + 1),
   ];
 };
