@@ -1,5 +1,5 @@
 id	track	state	branch	pr	sha	brief
-core-scaffold	core	done			6925dce	orchestrate/citadels/briefs/core-scaffold.md
+core-scaffold	core	done		20	6925dce	orchestrate/citadels/briefs/core-scaffold.md
 data-catalog-fix	rules	done			2e757f8	fix the invented district catalog and mis-ranked characters 1-3 against docs/design/citadels-catalog.md
 engine-seams	core	done			c62f4a4	orchestrate/citadels/briefs/engine-seams.md
 engine-hooks	core	done			13155e9	orchestrate/citadels/briefs/engine-hooks.md
