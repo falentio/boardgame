@@ -225,18 +225,26 @@ test("a School of Magic declared noble counts as a noble for the King's income",
 // D10: the Museum's "place a card under it" clause has no engine seam.
 test("a card can be placed under the Museum during its owner's turn", () => {
   const base = rawGenesis(SEATS3, BASE_CAST_IDS, "verifier-d10");
-  const state = withHand(withCity(turnState(base), ANN, [placed("museum")]), ANN, [
-    "tavern",
-    "market",
-  ]);
-  let next = state;
-  for (let i = 0; i < 6; i += 1) {
-    const top = next.steps[0];
-    const isTurn = top !== undefined && top.kind === "window" && top.window.purpose === "turn";
-    next = stepAnn(next, isTurn ? { t: "gold" } : { t: "pass" });
-  }
-  const museum = rawPlayer(next, ANN).city.find((d) => d.id === "museum");
-  expect((museum?.cards ?? []).length).toBeGreaterThan(0);
+  const museumIn = (state: CitadelsState): readonly string[] | undefined =>
+    rawPlayer(state, ANN).city.find((district) => district.id === "museum")?.cards;
+  const drive = (offer: CitadelsAction): CitadelsState => {
+    const state = withHand(withCity(turnState(base), ANN, [placed("museum")]), ANN, [
+      "tavern",
+      "market",
+    ]);
+    let next = state;
+    for (let i = 0; i < 6; i += 1) {
+      const top = next.steps[0];
+      const isTurn = top !== undefined && top.kind === "window" && top.window.purpose === "turn";
+      // The offer rides the gather's keep window; only a keep names a card to tuck.
+      next = stepAnn(next, isTurn ? { t: "gold" } : offer);
+    }
+    return next;
+  };
+  expect((museumIn(drive({ t: "keep", index: 0 })) ?? []).length).toBeGreaterThan(0);
+  // The rule is "you may place", so the offer is a decline: the hand stays whole.
+  expect((museumIn(drive({ t: "pass" })) ?? []).length).toBe(0);
+  expect(rawPlayer(drive({ t: "pass" }), ANN).hand).toEqual(["tavern", "market"]);
 });
 
 // D11: the Thieves' Den's mixed gold-and-cards payment is refused.

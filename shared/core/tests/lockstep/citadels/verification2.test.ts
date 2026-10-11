@@ -8,6 +8,7 @@ import {
   BOB,
   SEATS3,
   advance,
+  autoAction,
   rawGenesis,
   rawGold,
   rawHand,
@@ -100,13 +101,9 @@ test("a folded game that names characters records at least one kill, rob, or bew
       const target = view.cast.find((id) => id !== "assassin");
       return target === undefined ? null : { t: "name-character", character: target };
     }
-    if (w.purpose === "turn") return { t: "gold" };
-    if (w.purpose === "keep") return { t: "keep", index: 0 };
-    if (w.purpose === "draft-pick") {
-      const pick = view.cast[0];
-      return pick === undefined ? null : { t: "pick", character: pick };
-    }
-    return null;
+    // A policy that only takes gold never completes a city, so the fold never
+    // reaches terminal: it must build.
+    return autoAction(seat, view);
   };
   let frames = 0;
   let everNamed = false;
@@ -247,26 +244,19 @@ test("a mixed Thieves' Den payment spends its gold share", () => {
 // ---------------------------------------------------------------------------
 
 test("the Trader counts a School of Magic declared trade", () => {
-  const state = withCity(
-    { ...rawGenesis(SEATS3, BASE_CAST_IDS, "v2-trader"), claimed: [{ seat: ANN, character: "trader" }] },
-    ANN,
-    [{ id: "school-of-magic", gold: 0, declaredType: "trade" }],
-  );
+  const cast: readonly CharacterId[] = ["assassin", "thief", "magician", "king", "bishop", "trader", "architect", "warlord"];
+  const state = withCity(turnPhase(cast, "trader", 6), ANN, [
+    { id: "school-of-magic", gold: 0, declaredType: "trade" },
+  ]);
   const after = advance(state, () => null);
   expect(rawGold(after, ANN)).toBe(rawGold(state, ANN) + 1);
 });
 
 test("the Emperor counts a School of Magic declared noble", () => {
   const cast: readonly CharacterId[] = ["assassin", "thief", "magician", "emperor", "bishop", "merchant", "architect", "warlord"];
-  const state = withCity(
-    {
-      ...rawGenesis(SEATS3, cast, "v2-emperor"),
-      claimed: [{ seat: ANN, character: "emperor" }],
-      crown: BOB,
-    },
-    ANN,
-    [{ id: "school-of-magic", gold: 0, declaredType: "noble" }],
-  );
+  const state = withCity({ ...turnPhase(cast, "emperor", 4), crown: BOB }, ANN, [
+    { id: "school-of-magic", gold: 0, declaredType: "noble" },
+  ]);
   const after = advance(state, () => null);
   expect(rawGold(after, ANN)).toBe(rawGold(state, ANN) + 1);
 });
