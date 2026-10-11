@@ -1,9 +1,12 @@
 export const HOW_TO_PLAY_SRC = "/g54/how-to-play.mp4"
 export const HOW_TO_PLAY_TITLE = "How to play Coup: Rebellion G54"
+export const HOW_TO_PLAY_TRIGGER = "How to play"
 
 export type HowToPlayPlacement = "stack" | "rail" | "overlay"
 
 export type HowToPlayPlayback = "manual" | "muted-autoplay"
+
+export type HowToPlayReveal = "inline" | "dialog" | "popover" | "drawer"
 
 export interface HowToPlayPresence {
   /** A string, not HowToPlayVariantId: the union derives from this table's keys, so
@@ -11,6 +14,7 @@ export interface HowToPlayPresence {
   readonly id: string
   readonly label: string
   readonly note: string
+  readonly reveal: HowToPlayReveal
   readonly placement: HowToPlayPlacement
   readonly playback: HowToPlayPlayback
   /** A whole Tailwind utility literal: v4 only emits classes it can see in source. */
@@ -21,10 +25,47 @@ export interface HowToPlayPresence {
 }
 
 export const HOW_TO_PLAY_VARIANTS = {
+  popover: {
+    id: "popover",
+    label: "Popover",
+    note: "Help button opens a non-modal player",
+    reveal: "popover",
+    placement: "stack",
+    playback: "manual",
+    aspect: "aspect-video",
+    columnClass: "",
+    playerClass: "",
+    edge: "top",
+  },
+  drawer: {
+    id: "drawer",
+    label: "Drawer",
+    note: "Help button opens a bottom sheet",
+    reveal: "drawer",
+    placement: "stack",
+    playback: "manual",
+    aspect: "aspect-video",
+    columnClass: "",
+    playerClass: "justify-end",
+    edge: "top",
+  },
+  dialog: {
+    id: "dialog",
+    label: "Dialog",
+    note: "Help button opens a modal player",
+    reveal: "dialog",
+    placement: "stack",
+    playback: "manual",
+    aspect: "aspect-video",
+    columnClass: "",
+    playerClass: "w-full [&_button]:w-full",
+    edge: "top",
+  },
   dock: {
     id: "dock",
     label: "Dock",
     note: "Floating corner player, muted autoplay",
+    reveal: "inline",
     placement: "overlay",
     playback: "muted-autoplay",
     aspect: "aspect-video",
@@ -36,6 +77,7 @@ export const HOW_TO_PLAY_VARIANTS = {
     id: "rail",
     label: "Rail",
     note: "Narrow column beside the card",
+    reveal: "inline",
     placement: "rail",
     playback: "manual",
     aspect: "aspect-video",
@@ -47,6 +89,7 @@ export const HOW_TO_PLAY_VARIANTS = {
     id: "trail",
     label: "Trail",
     note: "Card width, below the card",
+    reveal: "inline",
     placement: "stack",
     playback: "manual",
     aspect: "aspect-video",
@@ -58,6 +101,7 @@ export const HOW_TO_PLAY_VARIANTS = {
     id: "lead",
     label: "Lead",
     note: "Card width, above the card",
+    reveal: "inline",
     placement: "stack",
     playback: "manual",
     aspect: "aspect-video",
@@ -69,6 +113,7 @@ export const HOW_TO_PLAY_VARIANTS = {
     id: "band",
     label: "Band",
     note: "Wide and short banner, above the card",
+    reveal: "inline",
     placement: "stack",
     playback: "manual",
     aspect: "aspect-[21/9]",
@@ -80,6 +125,7 @@ export const HOW_TO_PLAY_VARIANTS = {
     id: "hero",
     label: "Hero",
     note: "Wider than the card, above the card",
+    reveal: "inline",
     placement: "stack",
     playback: "manual",
     aspect: "aspect-video",
@@ -107,6 +153,9 @@ export const parseHowToPlayVariant = (raw: unknown): HowToPlayVariantId => {
 
 export const presenceOf = (id: HowToPlayVariantId): HowToPlayPresence =>
   HOW_TO_PLAY_VARIANTS[id]
+
+export const isRevealed = (presence: HowToPlayPresence): boolean =>
+  presence.reveal !== "inline"
 
 export const isMuted = (presence: HowToPlayPresence): boolean =>
   presence.playback === "muted-autoplay"

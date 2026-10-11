@@ -6,21 +6,32 @@ import {
   HOW_TO_PLAY_VARIANT_IDS,
   isHowToPlayVariantId,
   isMuted,
+  isRevealed,
   parseHowToPlayVariant,
   presenceOf,
   preloadOf,
 } from "../how-to-play.ts";
 
-test("the six ids round-trip through the parser", () => {
-  expect(HOW_TO_PLAY_VARIANT_IDS).toHaveLength(6);
+test("the nine ids round-trip through the parser", () => {
+  expect(HOW_TO_PLAY_VARIANT_IDS).toHaveLength(9);
   for (const id of HOW_TO_PLAY_VARIANT_IDS) {
     expect(parseHowToPlayVariant(id)).toBe(id);
     expect(presenceOf(id).id).toBe(id);
   }
 });
 
-test("the picker order ramps from smallest to largest", () => {
-  expect(HOW_TO_PLAY_VARIANT_IDS).toEqual(["dock", "rail", "trail", "lead", "band", "hero"]);
+test("the picker order ramps from the least to the most present video", () => {
+  expect(HOW_TO_PLAY_VARIANT_IDS).toEqual([
+    "popover",
+    "drawer",
+    "dialog",
+    "dock",
+    "rail",
+    "trail",
+    "lead",
+    "band",
+    "hero",
+  ]);
   expect(HOW_TO_PLAY_VARIANT_IDS).toContain(DEFAULT_HOW_TO_PLAY_VARIANT);
 });
 
@@ -53,6 +64,24 @@ test("only the muted-autoplay presence may autoplay, and never under reduced mot
   expect(autoplays(presenceOf("hero"), false)).toBe(false);
 });
 
+test("a revealed player never autoplays", () => {
+  for (const id of HOW_TO_PLAY_VARIANT_IDS) {
+    const presence = HOW_TO_PLAY_VARIANTS[id];
+    if (!isRevealed(presence)) continue;
+    expect(presence.playback, id).toBe("manual");
+    expect(isMuted(presence), id).toBe(false);
+    expect(autoplays(presence, false), id).toBe(false);
+  }
+});
+
+test("isRevealed separates the disclosed presences from the always-on six", () => {
+  expect(HOW_TO_PLAY_VARIANT_IDS.filter((id) => isRevealed(HOW_TO_PLAY_VARIANTS[id]))).toEqual([
+    "popover",
+    "drawer",
+    "dialog",
+  ]);
+});
+
 test("preload maps the autoplaying presence to metadata and the rest to none", () => {
   expect(preloadOf(presenceOf("dock"))).toBe("metadata");
   expect(preloadOf(presenceOf("lead"))).toBe("none");
@@ -62,7 +91,7 @@ test("no two presences share a footprint", () => {
   const seen = new Set<string>();
   for (const id of HOW_TO_PLAY_VARIANT_IDS) {
     const p = HOW_TO_PLAY_VARIANTS[id];
-    const footprint = [p.placement, p.aspect, p.columnClass, p.playerClass].join("|");
+    const footprint = [p.reveal, p.placement, p.aspect, p.columnClass, p.playerClass].join("|");
     expect(seen.has(footprint), `${id} duplicates another presence`).toBe(false);
     seen.add(footprint);
   }

@@ -16,7 +16,8 @@ import RoleStrip from "@/components/room/RoleStrip.vue"
 import SeatList from "@/components/room/SeatList.vue"
 import ShareLink from "@/components/room/ShareLink.vue"
 import HowToPlayVideo from "@/components/room/HowToPlayVideo.vue"
-import { presenceOf } from "@/composables/how-to-play.ts"
+import HowToPlayReveal from "@/components/room/HowToPlayReveal.vue"
+import { isRevealed, presenceOf } from "@/composables/how-to-play.ts"
 import { useHowToPlayVariant } from "@/composables/use-how-to-play-variant"
 import { cn } from "@/lib/utils"
 import { parseRoomCode } from "#shared/rooms/code.ts"
@@ -423,7 +424,8 @@ const onJoin = async () => {
       </CardContent>
     </Card>
 
-    <HowToPlayVideo v-if="code !== null" :presence="presence" />
+    <HowToPlayVideo v-if="code !== null && !isRevealed(presence)" :presence="presence" />
+    <HowToPlayReveal v-else-if="code !== null" :presence="presence" />
 
     <AlertDialog :open="leaveOpen" @update:open="(open) => { if (!open && !leaving) leaveOpen = false }">
       <AlertDialogContent>
