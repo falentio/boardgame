@@ -1,6 +1,7 @@
 import type { SeatId } from "../../index.ts";
 import { specOfDistrict, typeOfPlaced, type DistrictType } from "./districts.ts";
 import { UNIQUE_SCORING } from "./districts/effects.ts";
+import { HAND_SCORED_UNIQUES } from "./districts/secret-vault.ts";
 import { playerOf } from "./helpers.ts";
 import type { CitadelsState, PlacedDistrict } from "./state.ts";
 
@@ -15,8 +16,9 @@ export interface Score {
 
 const ALL_TYPES: readonly DistrictType[] = ["noble", "religious", "trade", "military", "unique"];
 
+/** The catalog cost plus the Artist's beautify marker, which permanently raises the cost by one. */
 const costSum = (city: readonly PlacedDistrict[]): number =>
-  city.reduce((sum, district) => sum + specOfDistrict(district.id).cost, 0);
+  city.reduce((sum, district) => sum + specOfDistrict(district.id).cost + district.gold, 0);
 
 /** Three points for a city that shows all five district types. */
 const colourBonus = (city: readonly PlacedDistrict[]): number => {
@@ -31,16 +33,28 @@ const completionBonus = (state: CitadelsState, seat: SeatId): number => {
   return index === 0 ? 4 : 2;
 };
 
-/** End-game points from unique districts, summed from each district's own file. */
+/**
+ * End-game points from unique districts. A unique standing in the city folds its
+ * own file's scorer; a unique whose clause reads a hand card (the Secret Vault,
+ * which can never be built) is folded over the owner's hand instead, so the two
+ * passes never count the same card.
+ */
 const uniquePoints = (
   state: CitadelsState,
   city: readonly PlacedDistrict[],
   seat: SeatId,
-): number =>
-  city.reduce((sum, district) => {
-    if (!specOfDistrict(district.id).unique) return sum;
-    return sum + (UNIQUE_SCORING[district.id]?.(district, city, seat, state) ?? 0);
+): number => {
+  const placed = city.reduce((sum, district) => {
+    const id = district.id;
+    if (!specOfDistrict(id).unique || HAND_SCORED_UNIQUES.includes(id)) return sum;
+    return sum + (UNIQUE_SCORING[id]?.(district, city, seat, state) ?? 0);
   }, 0);
+  const held = playerOf(state, seat).hand.reduce((sum, id) => {
+    if (!HAND_SCORED_UNIQUES.includes(id)) return sum;
+    return sum + (UNIQUE_SCORING[id]?.({ id, gold: 0 }, city, seat, state) ?? 0);
+  }, 0);
+  return placed + held;
+};
 
 export const scoreGame = (state: CitadelsState): readonly Score[] =>
   state.players.map((player): Score => {

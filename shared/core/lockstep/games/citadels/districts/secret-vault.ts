@@ -1,4 +1,4 @@
-import type { BuildQuery, DistrictHook } from "../districts.ts";
+import type { BuildQuery, DistrictHook, DistrictId } from "../districts.ts";
 import type { DistrictCtx, DistrictEffect, DistrictScoring } from "./effects.ts";
 
 /** The catalog id of the district this file owns. */
@@ -6,6 +6,13 @@ const SECRET_VAULT_ID = "secret-vault";
 
 /** The flat end-game bonus for a Secret Vault still held in hand. */
 const VAULT_BONUS = 3;
+
+/**
+ * Uniques whose end-game points come from a card in hand rather than one placed
+ * in a city. `scoring.ts` folds this list over the owner's hand, which is the
+ * only place the Secret Vault can ever be, since it cannot be built.
+ */
+export const HAND_SCORED_UNIQUES: readonly DistrictId[] = [SECRET_VAULT_ID];
 
 /**
  * The Secret Vault cannot be built. The engine folds this query for the card
@@ -23,10 +30,8 @@ export const secretVault: DistrictEffect = (ctx: DistrictCtx) => ctx.state;
 /**
  * Three extra points at end of game if the Secret Vault is still in your hand.
  * The rule scores a hand card, not a city card, so this reads the owner's hand
- * from `state`; the vault can never be built, so its only legal home is a hand.
- * The engine's scoring pass folds the uniques standing in a city, and the vault
- * can never stand in one, so no call site reaches this scorer yet; see the unit
- * report for the hand-scan change `scoreGame` needs to award it in a real game.
+ * from `state`; `scoring.ts` reaches it by folding `HAND_SCORED_UNIQUES` over
+ * the hand, since the vault can never stand in a city.
  */
 export const secretVaultScoring: DistrictScoring = (_district, _city, seat, state) => {
   const held = state.players.find((player) => player.seat === seat)?.hand ?? [];
