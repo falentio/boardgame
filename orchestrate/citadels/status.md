@@ -1,10 +1,10 @@
 # Orchestrate status
 
-Generated: 2026-10-10T17:53:53.992Z
+Generated: 2026-10-11T05:58:11.057Z
 
 ## Units
 
-States: done=10
+States: abandoned=2, done=33, failed=1, partial=3, pending=6
 
 | ID | Track | State | Branch | PR | SHA | Brief |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -18,10 +18,45 @@ States: done=10
 | chars-rank3 | characters | done |  |  | 1daa707 | orchestrate/citadels/briefs/unit-chars-rank3.md |
 | chars-rank4 | characters | done |  |  | 6cf31d1 | orchestrate/citadels/briefs/unit-chars-rank4.md |
 | chars-rank5 | characters | done |  |  | 4ffda58 | orchestrate/citadels/briefs/unit-chars-rank5.md |
+| district-triggers-per-file | districts | done |  |  | cd9cfbf | orchestrate/citadels/briefs/district-triggers-per-file.md |
+| chars-rank6 | characters | done |  |  | 945863d | orchestrate/citadels/briefs/unit-chars-rank6.md |
+| chars-rank7 | characters | done |  |  | d56296e | orchestrate/citadels/briefs/unit-chars-rank7.md |
+| chars-rank8 | characters | done |  |  | d8e84df | orchestrate/citadels/briefs/unit-chars-rank8.md |
+| chars-rank9 | characters | done |  |  | 8c3db12 | orchestrate/citadels/briefs/unit-chars-rank9.md |
+| dist-income | districts | partial |  |  | adde28f | orchestrate/citadels/briefs/unit-dist-income.md |
+| dist-build | districts | partial |  |  | ae23e55 | orchestrate/citadels/briefs/unit-dist-build.md |
+| dist-guard | districts | done |  |  | 01ed8ad | orchestrate/citadels/briefs/unit-dist-guard.md |
+| dist-scoring | districts | partial |  |  | 2acbdaf | orchestrate/citadels/briefs/unit-dist-scoring.md |
+| dist-actions | districts | done |  |  | 659236c | orchestrate/citadels/briefs/unit-dist-actions.md |
+| dist-build-remainder | districts | abandoned |  |  |  | 1/8 done (factory); 7 blocked on the build seam |
+| dist-scoring-remainder | districts | abandoned |  |  |  | 5/10 done; 5 blocked on the scoring seam |
+| district-seams | core | done |  |  | e1827a3 | orchestrate/citadels/briefs/district-seams.md |
+| dist-income-remainder | districts | done |  |  | ce923f9 | 3/6 done (gold-mine, park, poor-house); library/observatory/school-of-magic blocked on the draw hook |
+| integration-full-game | verify | done |  |  | 42ec6a1 | orchestrate/citadels/briefs/integration-full-game.md |
+| dist-build-a | districts | done |  |  | 11f4650 | orchestrate/citadels/briefs/unit-dist-build-a.md |
+| dist-build-b | districts | done |  |  | 37c4cf0 | orchestrate/citadels/briefs/unit-dist-build-b.md |
+| dist-score-a | districts | done |  |  | 5c37fc8 | orchestrate/citadels/briefs/unit-dist-score-a.md |
+| dist-score-b | districts | done |  |  | 088f423 | orchestrate/citadels/briefs/unit-dist-score-b.md |
+| dist-theater | districts | done |  |  | 2dfd6a5 | theater needs a round-start district hook (shared-file change) |
+| codec-redaction | verify | done |  |  | 76474ee | orchestrate/citadels/briefs/codec-redaction.md |
+| independent-verification | verify | done |  |  | 7547f8d | orchestrate/citadels/briefs/independent-verification.md |
+| fix-engine | verify | done |  |  | 91a57df | D1 applyCall wires character effects; D7 duplicate rule; D8 completion order; D10 museum placement; D13 step totality; D14 discard leak |
+| fix-scoring | verify | done |  |  | fdf9d20 | D2 beautify in cost sum; D3 secret vault in hand; D12 ivory tower vs declared unique |
+| fix-warlord | verify | done |  |  | 04db150 | D4 great wall toll; D5 keep protection; D6 bishop shield; D9 warlord income declared type |
+| fix-income | verify | done |  |  | e887390 | D9 income counters honour declared type (8 characters) |
+| fix-den | verify | done |  |  | 7b1a1c9 | D11 thieves den mixed payment |
+| independent-verification-2 | verify | done |  |  | 12f3aaf | orchestrate/citadels/briefs/independent-verification-2.md |
+| fix2-drain | verify | pending |  |  |  | V2-1 blocking: drain must use windowOwed not owedFor; V2-2 blackmailer first-pass; V2-3 double end-turn |
+| fix2-districts | verify | pending |  |  |  | V2-8 armory onDestroy; V2-9 museum decline; V2-4 thieves-den gold share |
+| fix2-income | verify | pending |  |  |  | V2-5 trader+emperor declared type; V2-6 diplomat great wall toll; V2-7 alchemist refund |
+| fix2-engine-tests | verify | pending |  |  |  | folded-game per-character tests so no window can silently die again |
+| fix2-engine | verify | failed |  |  |  | orchestrate/citadels/briefs/fix2-engine.md |
+| fix2-characters | verify | pending |  |  |  | orchestrate/citadels/briefs/fix2-characters.md |
+| fix2-regression | verify | pending |  |  |  | orchestrate/citadels/briefs/fix2-regression.md |
 
 ## Verification ledger
 
-Verdicts: unit-test-verified=9
+Verdicts: unit-test-verified=30, verifier-failed=2
 
 | PR | SHA | Verdict | Evidence | Verifier | Timestamp |
 | --- | --- | --- | --- | --- | --- |
@@ -34,6 +69,29 @@ Verdicts: unit-test-verified=9
 | 1 | 1daa707 | unit-test-verified | citadels suite 154 passed at 1daa707; per-unit verify green |  | 2026-10-10T17:53:53.969Z |
 | 1 | 6cf31d1 | unit-test-verified | citadels suite 154 passed at 6cf31d1; per-unit verify green |  | 2026-10-10T17:53:53.977Z |
 | 1 | 4ffda58 | unit-test-verified | citadels suite 154 passed at 4ffda58; per-unit verify green |  | 2026-10-10T17:53:53.983Z |
+| 1 | cd9cfbf | unit-test-verified | citadels suite 202 passed at cd9cfbf |  | 2026-10-10T18:20:48.769Z |
+| 1 | d8e84df | unit-test-verified | citadels suite 202 passed at d8e84df |  | 2026-10-10T18:20:48.775Z |
+| 1 | 8c3db12 | unit-test-verified | citadels suite 202 passed at 8c3db12 |  | 2026-10-10T18:20:48.781Z |
+| 1 | d56296e | unit-test-verified | all 27 characters implemented; citadels suite 330 passed |  | 2026-10-10T19:08:40.719Z |
+| 1 | ae23e55 | unit-test-verified | factory green; 7 members proven blocked on a missing build seam |  | 2026-10-10T19:08:40.723Z |
+| 1 | 2acbdaf | unit-test-verified | 5 scoring districts green; 5 proven blocked on a missing state-aware scoring seam |  | 2026-10-10T19:08:40.726Z |
+| 1 | e1827a3 | unit-test-verified | citadels suite 348 passed; BuildTerms/BuildQuery/onDraw/state-aware scoring added |  | 2026-10-10T19:49:10.704Z |
+| 1 | ce923f9 | unit-test-verified | library+observatory+school-of-magic green; suite 371 passed |  | 2026-10-10T20:11:58.104Z |
+| 1 | 5c37fc8 | unit-test-verified | citadels suite 466 passed at 5c37fc8 |  | 2026-10-10T23:57:47.231Z |
+| 1 | 226a0b6 | unit-test-verified | citadels suite 466 passed at 226a0b6 |  | 2026-10-10T23:57:47.238Z |
+| 1 | 11f4650 | unit-test-verified | quarry+framework+necropolis+stables all implemented; suite 466 passed; provider error hit after the last commit |  | 2026-10-10T23:58:20.941Z |
+| 1 | 088f423 | unit-test-verified | citadels suite 466 passed; haunted-quarter + museum |  | 2026-10-10T23:57:51.477Z |
+| 1 | 37c4cf0 | unit-test-verified | monument+secret-vault+thieves-den green; suite 466 passed |  | 2026-10-11T00:05:37.061Z |
+| 1 | 42ec6a1 | unit-test-verified | integration.test.ts 13 tests; full games terminal for 3-6 seats across 3 casts; redaction by keys; two peers converge byte-identical; suite 477 passed |  | 2026-10-11T00:28:50.686Z |
+| 1 | 76474ee | unit-test-verified | codec-redaction 5 tests; mid-game round-trip, snapshot, redaction walk, digest sensitivity; no leaks; suite 496 passed |  | 2026-10-11T00:51:38.824Z |
+| 1 | 2dfd6a5 | unit-test-verified | theater 14 tests; onRoundStart hook; all 30 districts implemented; suite 496 passed, tsc clean |  | 2026-10-11T00:54:06.420Z |
+| 1 | 7547f8d | verifier-failed | orchestrate/citadels/verification.md + verification-report.test.ts: 14 counterexamples, all fail; D1 blocking (no character ability is ever invoked) |  | 2026-10-11T01:17:06.078Z |
+| 1 | fdf9d20 | unit-test-verified | fix unit green; all 14 verifier counterexamples pass at 7b1a1c9 |  | 2026-10-11T02:28:50.778Z |
+| 1 | 04db150 | unit-test-verified | fix unit green; all 14 verifier counterexamples pass at 7b1a1c9 |  | 2026-10-11T02:28:50.785Z |
+| 1 | e887390 | unit-test-verified | fix unit green; all 14 verifier counterexamples pass at 7b1a1c9 |  | 2026-10-11T02:28:50.792Z |
+| 1 | 7b1a1c9 | unit-test-verified | fix unit green; all 14 verifier counterexamples pass at 7b1a1c9 |  | 2026-10-11T02:28:50.799Z |
+| 1 | 91a57df | unit-test-verified | all 14 verifier counterexamples pass; suite 531 passed; my own probe confirms character abilities now run and the crown moves |  | 2026-10-11T03:16:19.176Z |
+| 1 | 12f3aaf | verifier-failed | orchestrate/citadels/verification-2.md + verification2.test.ts: 15 counterexamples; V2-1 blocking (any-windows dropped by drain) |  | 2026-10-11T04:05:56.435Z |
 
 ## Frontier
 
@@ -46,4 +104,4 @@ Lowest unmerged: none
 
 (none)
 
-<!-- orch-summary {"unitStates":{"done":10},"ledgerVerdicts":{"unit-test-verified":9},"frontierGeneration":0,"openGateIds":[]} -->
+<!-- orch-summary {"unitStates":{"abandoned":2,"done":33,"failed":1,"partial":3,"pending":6},"ledgerVerdicts":{"unit-test-verified":30,"verifier-failed":2},"frontierGeneration":0,"openGateIds":[]} -->
