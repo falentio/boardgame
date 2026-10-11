@@ -1,0 +1,581 @@
+<template>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+  @font-face { font-family: "Barlow"; src: url("../../assets/fonts/Barlow-400.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: block; }
+  @font-face { font-family: "Barlow"; src: url("../../assets/fonts/Barlow-600.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: block; }
+  @font-face { font-family: "Barlow"; src: url("../../assets/fonts/Barlow-700.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: block; }
+  @font-face { font-family: "Barlow"; src: url("../../assets/fonts/Barlow-800.woff2") format("woff2"); font-weight: 800; font-style: normal; font-display: block; }
+  @font-face { font-family: "Barlow"; src: url("../../assets/fonts/Barlow-900.woff2") format("woff2"); font-weight: 900; font-style: normal; font-display: block; }
+  @font-face { font-family: "IBM Plex Mono"; src: url("../../assets/fonts/IBMPlexMono-400.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: block; }
+  @font-face { font-family: "IBM Plex Mono"; src: url("../../assets/fonts/IBMPlexMono-500.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: block; }
+  @font-face { font-family: "IBM Plex Mono"; src: url("../../assets/fonts/IBMPlexMono-600.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: block; }
+
+  #root {
+    position: relative;
+    width: 1080px;
+    height: 1920px;
+    overflow: hidden;
+    font-family: "Barlow", sans-serif;
+    color: #F2FFFC;
+    --ink: #273136;
+    --ink-alt: #212B30;
+    --fire: #FFED72;
+    --cream: #F2FFFC;
+    --cream-muted: #BDCAC9;
+    --cream-hint: #B4BABB;
+    --border: #414B50;
+    --mk-red: #FF6D7E;
+    --mk-red-soft: #FC9EA4;
+    --mk-orange: #FFB270;
+    --mk-cyan: #7CD5F1;
+    --mk-raised: #3A4449;
+    --mk-deep: #01151B;
+  }
+  #root * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  /* full-bleed ground — the frame's only clip layer */
+  .f10-bg {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(120% 62% at 50% 26%, #273136 0%, #212B30 58%, #01151B 100%);
+  }
+
+  /* fixed chrome — outside the camera so a zoom never drags it */
+  .f10-chrome {
+    position: absolute;
+    left: 72px;
+    right: 72px;
+    top: 60px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--cream-hint);
+  }
+
+  /* camera: outer scales, inner counter-translates (coordinate-target-zoom) */
+  .f10-cam-outer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1080px;
+    height: 1920px;
+    transform-origin: 50% 50%;
+    will-change: transform;
+  }
+  .f10-cam-inner {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1080px;
+    height: 1920px;
+    will-change: transform;
+  }
+  .f10-world {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1080px;
+    height: 1920px;
+  }
+
+  .f10-kicker {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 24px;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+  .f10-kicker-fin { color: var(--mk-orange); }
+  .f10-kicker-red { color: var(--mk-red); }
+  .f10-kicker-tre { color: var(--fire); }
+
+  /* ---- instrument 1 : the coin stack, ticks 0 -> 7, grows upward ---- */
+  #f10-stack {
+    position: absolute;
+    left: 0;
+    top: 540px;
+    width: 1080px;
+    height: 540px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 36px;
+    filter: blur(0px);
+  }
+  .f10-stack-row { display: flex; align-items: flex-end; justify-content: center; gap: 84px; }
+  .f10-counter-wrap { width: 300px; display: flex; justify-content: center; }
+  #f10-counter1 {
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 600;
+    font-size: 260px;
+    line-height: 0.84;
+    letter-spacing: -0.02em;
+    color: var(--mk-orange);
+    font-variant-numeric: tabular-nums;
+    display: inline-block;
+    transform-origin: 50% 50%;
+  }
+  .f10-coins-col { width: 320px; display: flex; flex-direction: column; }
+  .f10-coins { display: flex; flex-direction: column-reverse; justify-content: flex-start; gap: 16px; height: 292px; }
+  .f10-coin { height: 28px; background: var(--mk-orange); border-bottom: 1px solid rgba(39, 49, 54, 0.55); }
+  .f10-coins-baseline { height: 1px; background: var(--border); margin-top: 16px; }
+  .f10-stack-label { color: var(--cream-muted); }
+
+  /* ---- instrument 2 : the target card, swept face-up by the coup marker ---- */
+  #f10-card {
+    position: absolute;
+    left: 0;
+    top: 800px;
+    width: 1080px;
+    height: 700px;
+    opacity: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 26px;
+  }
+  .f10-cardobj { position: relative; width: 360px; height: 400px; }
+  .f10-cardback {
+    position: absolute;
+    inset: 0;
+    background: var(--mk-raised);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 100px;
+    font-weight: 500;
+    color: var(--cream-hint);
+  }
+  .f10-cardface {
+    position: absolute;
+    inset: 0;
+    background: var(--ink-alt);
+    border: 1px solid var(--mk-cyan);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    opacity: 0;
+  }
+  .f10-cardface-tag {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--mk-cyan);
+  }
+  .f10-cardface-role {
+    font-size: 76px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    text-transform: lowercase;
+    color: var(--cream);
+  }
+  .f10-sweep {
+    position: absolute;
+    left: -44px;
+    right: -44px;
+    top: -8px;
+    height: 8px;
+    background: var(--mk-red);
+    opacity: 0;
+  }
+  .f10-coupstamp {
+    position: absolute;
+    right: -26px;
+    bottom: -24px;
+    padding: 10px 22px 12px;
+    background: var(--mk-red);
+    color: var(--ink);
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    opacity: 0;
+  }
+  .f10-stamps { width: 100%; padding: 0 60px; display: flex; flex-direction: column; gap: 16px; }
+  .f10-stamp {
+    font-size: 54px;
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    text-transform: lowercase;
+    color: var(--fire);
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .f10-cardmeta { display: flex; align-items: baseline; gap: 30px; }
+  .f10-target {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--cream-hint);
+  }
+  .f10-lifelost {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 24px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--mk-red);
+  }
+
+  /* ---- instrument 3 : the vertical treasury strip ---- */
+  #f10-strip {
+    position: absolute;
+    left: 72px;
+    top: 350px;
+    width: 936px;
+    opacity: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .f10-bloom {
+    position: absolute;
+    left: 50%;
+    top: 80px;
+    width: 660px;
+    height: 380px;
+    margin-left: -330px;
+    background: radial-gradient(closest-side, rgba(255, 237, 114, 0.22), rgba(255, 237, 114, 0) 74%);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .f10-strip-head {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+  }
+  .f10-counter2-wrap { width: 420px; display: flex; justify-content: center; }
+  #f10-counter2 {
+    font-family: "IBM Plex Mono", monospace;
+    font-weight: 600;
+    font-size: 240px;
+    line-height: 0.84;
+    letter-spacing: -0.02em;
+    color: var(--fire);
+    font-variant-numeric: tabular-nums;
+    display: inline-block;
+    transform-origin: 50% 50%;
+  }
+  .f10-onlymove-wrap { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .f10-onlymove-rule { display: block; width: 36px; height: 3px; background: var(--fire); }
+  .f10-onlymove {
+    display: flex;
+    gap: 0.26em;
+    font-size: 68px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    text-transform: lowercase;
+    color: var(--fire);
+  }
+  .f10-word { display: inline-block; transform-origin: 50% 50%; }
+  .f10-strip-label { color: var(--cream-muted); }
+  .f10-strip-rule { height: 1px; background: var(--border); margin-top: 30px; }
+  .f10-rows { display: flex; flex-direction: column; margin-top: 4px; }
+  .f10-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 30px 0;
+    border-bottom: 1px solid var(--border);
+    transform-origin: 50% 50%;
+  }
+  .f10-row-name {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 34px;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--cream);
+  }
+  .f10-row-cost {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 30px;
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--cream-muted);
+  }
+  .f10-row-coup .f10-row-name { color: var(--fire); }
+  .f10-row-coup .f10-row-cost { color: var(--mk-red-soft); }
+</style>
+
+<div data-hf-id="hf-achm" id="root" data-composition-id="10-seven-coins-buys-a-coup" data-width="1080" data-height="1920" data-duration="8.351">
+  <div data-hf-id="hf-lnfi" class="clip f10-bg" data-start="0" data-duration="8.351" data-track-index="0"></div>
+
+  <div data-hf-id="hf-we3k" class="f10-chrome">
+    <span data-hf-id="hf-qb3y">COUP</span>
+    <span data-hf-id="hf-ju5d">No. 10</span>
+  </div>
+
+  <div data-hf-id="hf-qdyo" class="f10-cam-outer" id="f10-cam-outer">
+    <div data-hf-id="hf-qoum" class="f10-cam-inner" id="f10-cam-inner">
+      <div data-hf-id="hf-c12y" class="f10-world">
+
+        <!-- instrument 1 : coin stack, ticks 0 -> 7, grows upward off a hairline baseline -->
+        <section data-hf-id="hf-kpa9" id="f10-stack">
+          <div data-hf-id="hf-xo94" class="f10-kicker f10-kicker-fin">Finance</div>
+          <div data-hf-id="hf-ut4x" class="f10-stack-row">
+            <div data-hf-id="hf-0gvr" class="f10-counter-wrap">
+              <span data-hf-id="hf-9o0f" id="f10-counter1">0</span>
+            </div>
+            <div data-hf-id="hf-500d" class="f10-coins-col">
+              <div data-hf-id="hf-9ghs" class="f10-coins">
+                <span data-hf-id="hf-i5ek" class="f10-coin"></span>
+                <span data-hf-id="hf-15uc" class="f10-coin"></span>
+                <span data-hf-id="hf-zyx9" class="f10-coin"></span>
+                <span data-hf-id="hf-0d8a" class="f10-coin"></span>
+                <span data-hf-id="hf-2crf" class="f10-coin"></span>
+                <span data-hf-id="hf-2r2g" class="f10-coin"></span>
+                <span data-hf-id="hf-1k5d" class="f10-coin"></span>
+              </div>
+              <div data-hf-id="hf-3vqg" class="f10-coins-baseline"></div>
+            </div>
+          </div>
+          <div data-hf-id="hf-l3v2" class="f10-kicker f10-stack-label">In hand</div>
+        </section>
+
+        <!-- instrument 2 : the target card, swept face-up by the coup marker -->
+        <section data-hf-id="hf-mi3l" id="f10-card">
+          <div data-hf-id="hf-eoc7" class="f10-kicker f10-kicker-red">Force</div>
+          <div data-hf-id="hf-a2p3" class="f10-cardobj">
+            <div data-hf-id="hf-g1u2" class="f10-cardback">?</div>
+            <div data-hf-id="hf-kooz" class="f10-cardface">
+              <span data-hf-id="hf-583k" class="f10-cardface-tag">Court</span>
+              <span data-hf-id="hf-oi9c" class="f10-cardface-role">duke</span>
+            </div>
+            <div data-hf-id="hf-7w0y" class="f10-sweep" id="f10-sweep"></div>
+            <div data-hf-id="hf-vdgh" class="f10-coupstamp" id="f10-coupstamp">coup</div>
+          </div>
+          <div data-hf-id="hf-izo2" class="f10-stamps">
+            <div data-hf-id="hf-x3l7" class="f10-stamp" id="f10-stamp1">unblockable</div>
+            <div data-hf-id="hf-lpya" class="f10-stamp" id="f10-stamp2">unchallengeable</div>
+          </div>
+          <div data-hf-id="hf-kfhr" class="f10-cardmeta">
+            <span data-hf-id="hf-ep81" class="f10-target">Target</span>
+            <span data-hf-id="hf-cw1p" class="f10-lifelost">Life -1</span>
+          </div>
+        </section>
+
+        <!-- instrument 3 : the vertical treasury strip -->
+        <section data-hf-id="hf-9nvj" id="f10-strip">
+          <div data-hf-id="hf-o2pc" class="f10-bloom" id="f10-bloom"></div>
+          <div data-hf-id="hf-mg5n" class="f10-strip-head">
+            <div data-hf-id="hf-jzxj" class="f10-kicker f10-kicker-tre">Treasury</div>
+            <div data-hf-id="hf-gv6t" class="f10-counter2-wrap">
+              <span data-hf-id="hf-8303" id="f10-counter2">7</span>
+            </div>
+            <div data-hf-id="hf-j2kw" class="f10-onlymove-wrap">
+              <span data-hf-id="hf-aj5h" class="f10-onlymove-rule"></span>
+              <span data-hf-id="hf-85lv" class="f10-onlymove" id="f10-onlymove"><span data-hf-id="hf-exsf" class="f10-word" data-word="only">only</span><span data-hf-id="hf-dpzt" class="f10-word" data-word="move">move</span></span>
+            </div>
+            <div data-hf-id="hf-4j2y" class="f10-kicker f10-strip-label">Coins in hand</div>
+          </div>
+          <div data-hf-id="hf-lks7" class="f10-strip-rule"></div>
+          <div data-hf-id="hf-acod" class="f10-rows">
+            <div data-hf-id="hf-w662" class="f10-row"><span data-hf-id="hf-l08g" class="f10-row-name">Income</span><span data-hf-id="hf-6lgt" class="f10-row-cost">1 coin</span></div>
+            <div data-hf-id="hf-qwny" class="f10-row"><span data-hf-id="hf-zw8j" class="f10-row-name">Foreign aid</span><span data-hf-id="hf-2ivr" class="f10-row-cost">2 coins</span></div>
+            <div data-hf-id="hf-rayz" class="f10-row"><span data-hf-id="hf-hjyc" class="f10-row-name">Tax</span><span data-hf-id="hf-p8ig" class="f10-row-cost">3 coins</span></div>
+            <div data-hf-id="hf-rpa0" class="f10-row"><span data-hf-id="hf-qyi6" class="f10-row-name">Steal</span><span data-hf-id="hf-8h07" class="f10-row-cost">2 coins</span></div>
+            <div data-hf-id="hf-ox4t" class="f10-row"><span data-hf-id="hf-7lyq" class="f10-row-name">Exchange</span><span data-hf-id="hf-82p6" class="f10-row-cost">2 coins</span></div>
+            <div data-hf-id="hf-pbfu" class="f10-row"><span data-hf-id="hf-tdsy" class="f10-row-name">Assassinate</span><span data-hf-id="hf-thv4" class="f10-row-cost">3 coins</span></div>
+            <div data-hf-id="hf-ojuw" class="f10-row f10-row-coup"><span data-hf-id="hf-qm74" class="f10-row-name">Coup</span><span data-hf-id="hf-d810" class="f10-row-cost">7 coins</span></div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var D = 7.851;
+    var W = 1080;
+    var H = 1920;
+    var tl = gsap.timeline({ paused: true });
+
+    /* fixed chrome */
+    tl.fromTo(".f10-chrome", { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0.15);
+
+    /* ---- SCENE 1 (0.0 - 1.6) : the stack ticks 0 -> 7, one coin per tick ---- */
+    tl.fromTo(
+      "#f10-stack",
+      { opacity: 0, y: 40, scale: 0.94 },
+      { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "power3.out" },
+      0
+    );
+    tl.fromTo(".f10-kicker-fin", { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 0.22);
+
+    var c1 = document.getElementById("f10-counter1");
+    var COUNT1_AT = 0.12;
+    var COUNT1_DUR = 1.5;
+    var COUNT1_EASE = "power3.out";
+    var N1 = 7;
+    var STEP1 = COUNT1_DUR / N1;
+    /* counting-dynamic-scale, seek-safe form: discrete value steps + a transform-only
+       scale growth over the same window (no font-size tween, no per-frame callback). */
+    tl.set(c1, { textContent: "0" }, 0);
+    for (var i = 1; i <= N1; i++) {
+      tl.set(c1, { textContent: String(i) }, COUNT1_AT + i * STEP1);
+    }
+    tl.fromTo(c1, { scale: 0.45 }, { scale: 1, duration: COUNT1_DUR, ease: COUNT1_EASE }, COUNT1_AT);
+    gsap.utils.toArray(".f10-coin").forEach(function (coin, i) {
+      tl.fromTo(
+        coin,
+        { y: -44, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.36, ease: "power4.out" },
+        COUNT1_AT + (i + 1) * STEP1 - 0.1
+      );
+    });
+    tl.fromTo(".f10-stack-label", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 1.45);
+
+    /* ---- SCENE 2 (1.6 - 3.6) : push through DOWN onto the target card ---- */
+    var ZOOM = 1.28;
+    var LAND_X = 540;
+    var LAND_Y = 800;
+    /* coordinate-target-zoom (nested form). #f10-card is a fixed 1080x700 box at
+       top:800px, so its centre is (540, 1150) with no font-metric dependence —
+       the offset is measured from layout, never hand-derived from text metrics.
+       T = (land - viewportCentre) / S - offset, offset = centre - viewportCentre. */
+    var CARD_CX = 540;
+    var CARD_CY = 1150;
+    var TX = (LAND_X - W / 2) / ZOOM - (CARD_CX - W / 2);
+    var TY = (LAND_Y - H / 2) / ZOOM - (CARD_CY - H / 2);
+
+    tl.to("#f10-cam-outer", { scale: ZOOM, duration: 1.0, ease: "power3.inOut" }, 1.65);
+    tl.to("#f10-cam-inner", { x: TX, y: TY, duration: 1.0, ease: "power3.inOut" }, 1.65);
+    tl.to("#f10-stack", { scale: 2.4, opacity: 0, filter: "blur(18px)", duration: 0.95, ease: "power2.in" }, 1.65);
+
+    tl.fromTo("#f10-card", { opacity: 0, scale: 0.93 }, { opacity: 1, scale: 1, duration: 0.8, ease: "power3.out" }, 2.05);
+    tl.fromTo(".f10-kicker-red", { opacity: 0, x: -14 }, { opacity: 1, x: 0, duration: 0.45, ease: "power2.out" }, 2.35);
+    tl.fromTo(".f10-target", { opacity: 0, x: -10 }, { opacity: 1, x: 0, duration: 0.45, ease: "power2.out" }, 2.45);
+
+    /* the coup marker sweeps the card face-up */
+    tl.fromTo("#f10-sweep", { opacity: 0, y: 0 }, { opacity: 1, duration: 0.16, ease: "power2.out" }, 2.4);
+    tl.to("#f10-sweep", { y: 410, duration: 0.5, ease: "power2.inOut" }, 2.46);
+    tl.to("#f10-sweep", { opacity: 0, duration: 0.2, ease: "power2.in" }, 2.86);
+    tl.to(".f10-cardback", { opacity: 0, duration: 0.28, ease: "power1.inOut" }, 2.7);
+    tl.fromTo(".f10-cardface", { opacity: 0 }, { opacity: 1, duration: 0.28, ease: "power1.inOut" }, 2.74);
+    tl.fromTo(".f10-cardface-role", { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, 2.82);
+    tl.fromTo(
+      "#f10-coupstamp",
+      { opacity: 0, scale: 1.7, rotation: -14 },
+      { opacity: 1, scale: 1, rotation: -6, duration: 0.5, ease: "power4.out" },
+      2.9
+    );
+    tl.fromTo(".f10-lifelost", { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 3.0);
+
+    /* kinetic-beat-slam: ONE onset grid, a distinct entrance per phrase */
+    var BEAT = 0.2;
+    var BEATS = [2.98, 2.98 + BEAT];
+    tl.fromTo("#f10-stamp1", { x: -260, opacity: 0 }, { x: 0, opacity: 1, duration: 0.45, ease: "expo.out" }, BEATS[0]);
+    tl.fromTo(
+      "#f10-stamp2",
+      { y: 70, rotation: 4, opacity: 0 },
+      { y: 0, rotation: 0, opacity: 1, duration: 0.45, ease: "circ.out" },
+      BEATS[1]
+    );
+
+    /* ---- SCENE 3 (3.6 - 5.6) : pull back to the vertical strip, 7 -> 10 ---- */
+    tl.to("#f10-cam-outer", { scale: 1, duration: 0.95, ease: "power3.inOut" }, 3.6);
+    tl.to("#f10-cam-inner", { x: 0, y: 0, duration: 0.95, ease: "power3.inOut" }, 3.6);
+    tl.to("#f10-card", { opacity: 0, scale: 0.94, duration: 0.55, ease: "power2.in" }, 3.62);
+
+    tl.fromTo("#f10-strip", { opacity: 0, y: 34 }, { opacity: 1, y: 0, duration: 0.7, ease: "power3.out" }, 4.5);
+    tl.fromTo(".f10-kicker-tre", { opacity: 0, y: -10 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 4.62);
+
+    var c2 = document.getElementById("f10-counter2");
+    /* counting-dynamic-scale, seek-safe form: discrete value steps + transform-only growth */
+    tl.set(c2, { textContent: "7" }, 0);
+    tl.set(c2, { textContent: "8" }, 4.85);
+    tl.set(c2, { textContent: "9" }, 5.05);
+    tl.set(c2, { textContent: "10" }, 5.25);
+    tl.fromTo(c2, { scale: 0.55 }, { scale: 1, duration: 0.85, ease: "power3.out" }, 4.7);
+    tl.fromTo(".f10-strip-label", { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 4.9);
+
+    gsap.utils.toArray(".f10-row").forEach(function (row, i) {
+      tl.fromTo(row, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, 4.62 + i * 0.06);
+    });
+
+    /* ---- SCENE 4 (5.6 - 7.851) : "only move" pins, the rest greys to cream-hint ---- */
+    tl.fromTo(".f10-onlymove-wrap", { opacity: 0, x: -26 }, { opacity: 1, x: 0, duration: 0.55, ease: "power3.out" }, 5.62);
+    tl.fromTo("#f10-bloom", { opacity: 0, scale: 0.72 }, { opacity: 1, scale: 1, duration: 0.9, ease: "power2.out" }, 5.72);
+
+    gsap.utils.toArray(".f10-row:not(.f10-row-coup)").forEach(function (row, i) {
+      var at = 5.78 + i * 0.045;
+      tl.to(row, { opacity: 0.5, duration: 0.5, ease: "power2.out" }, at);
+      tl.to(row.querySelector(".f10-row-name"), { color: "#B4BABB", duration: 0.5, ease: "power2.out" }, at);
+      tl.to(row.querySelector(".f10-row-cost"), { color: "#B4BABB", duration: 0.5, ease: "power2.out" }, at);
+    });
+    tl.to(".f10-row-coup", { scale: 1.04, duration: 0.5, ease: "power2.out" }, 5.9);
+
+    /* asr-keyword-glow — one linear driver sweeps scene time through a per-word
+       attack/sustain/release envelope. Seek-safe form: the envelope is pre-sampled
+       into keyframes at build time (no per-frame callback, no style writes). */
+    var ATTACK = 0.16;
+    var RELEASE = 0.5;
+    var REST = 0.25;
+    var MAX_BLUR = 26;
+    var MAX_BOOST = 0.075;
+    var TIMINGS = {
+      only: { start: 5.75, end: 6.15 },
+      move: { start: 6.15, end: 6.62 }
+    };
+    var words = gsap.utils.toArray(".f10-word");
+    function envelope(time, start, end) {
+      if (time < start) return 0;
+      if (time < end) return Math.min((time - start) / ATTACK, 1);
+      var releaseEnd = end + RELEASE;
+      if (time < releaseEnd) return 1 - ((time - end) / RELEASE) * (1 - REST);
+      return REST;
+    }
+    var GLOW_STEPS = 30;
+    var GLOW_FROM = 5.5;
+    var GLOW_TO = D;
+    words.forEach(function (el) {
+      var tm = TIMINGS[el.getAttribute("data-word")];
+      if (!tm) return;
+      var frames = [];
+      for (var gi = 0; gi <= GLOW_STEPS; gi++) {
+        var gt = GLOW_FROM + (gi / GLOW_STEPS) * (GLOW_TO - GLOW_FROM);
+        var env = envelope(gt, tm.start, tm.end);
+        frames.push({
+          textShadow: "0 0 " + MAX_BLUR * env + "px rgba(255,237,114," + (0.9 * env).toFixed(3) + ")",
+          scale: 1 + MAX_BOOST * env
+        });
+      }
+      tl.set(el, { textShadow: "0 0 0px rgba(255,237,114,0)", scale: 1 }, 0);
+      tl.to(el, { keyframes: frames, duration: GLOW_TO - GLOW_FROM, ease: "none" }, GLOW_FROM);
+    });
+
+    window.__timelines["10-seven-coins-buys-a-coup"] = tl;
+  })();
+</script>
+</template>
