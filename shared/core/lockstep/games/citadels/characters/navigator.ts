@@ -4,6 +4,7 @@ import {
   addGold,
   drawIntoHand,
   isSkipped,
+  NAVIGATOR_CARDS_NOTE,
   popWindow,
   seatHolding,
   withSteps,
@@ -17,8 +18,14 @@ export const NAVIGATOR_CARDS = 4;
 
 export type NavigatorGain = "gold" | "cards";
 
-/** The `pending.note` marker that selects the four-card branch over the four-gold one. */
-export const NAVIGATOR_CARDS_NOTE = "navigator-cards";
+/**
+ * The `pending.note` marker that selects the four-card branch over the four-gold
+ * one. It lives in the engine (`helpers.ts`) because `applyCall`/`resolveTurn`
+ * arm it: the Navigator's turn window is its gain choice, and the resolver writes
+ * the marker the effect below it reads. Re-exported here so the character's own
+ * unit test keeps importing it from its file.
+ */
+export { NAVIGATOR_CARDS_NOTE };
 
 /** The seat holding the Navigator this round, falling back to the acting seat. */
 const ownerOf = (ctx: CharacterCtx): SeatId => seatHolding(ctx.state, "navigator") ?? ctx.seat;
@@ -32,9 +39,9 @@ export const navigatorGain = (
   gain === "cards" ? drawIntoHand(state, seat, NAVIGATOR_CARDS) : addGold(state, seat, NAVIGATOR_GOLD);
 
 /**
- * The Navigator has no window, so its gold-or-cards choice rides the state's
- * windowless channel: an absent or unrecognised `pending.note` takes the
- * four-gold branch, the marker takes the four-card branch.
+ * The Navigator's choice rides `pending.note`: the engine's turn window records
+ * the four-card marker when the seat draws, and the effect below the resolve step
+ * reads it. An absent or unrecognised note takes the four-gold branch.
  */
 export const navigatorChoice = (state: CitadelsState): NavigatorGain =>
   state.pending?.note === NAVIGATOR_CARDS_NOTE ? "cards" : "gold";

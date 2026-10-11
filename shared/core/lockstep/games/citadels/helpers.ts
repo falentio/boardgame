@@ -10,6 +10,11 @@ import {
 } from "./districts.ts";
 import { UNIQUE_BUILD, UNIQUE_EFFECTS, UNIQUE_TRIGGERS } from "./districts/effects.ts";
 import { museumIn, museumPlace } from "./districts/museum.ts";
+import {
+  HAUNTED_QUARTER_TYPE_NOTE,
+  offerHauntedQuarterType,
+  recordHauntedQuarterType,
+} from "./districts/haunted-quarter.ts";
 import { CitadelsError } from "./error.ts";
 import { buildDraft, CITY_TARGET } from "./setup.ts";
 import type {
@@ -168,6 +173,14 @@ export const makeWindow = (purpose: WindowPurpose, seats: readonly SeatId[]): Wi
 export const windowStep = (window: Window): Step => ({ kind: "window", window });
 export const winStep = (purpose: WindowPurpose, seats: readonly SeatId[]): Step =>
   windowStep(makeWindow(purpose, seats));
+
+/**
+ * The `pending.note` marker that selects the Navigator's four-card branch over
+ * its four-gold one. `resolveTurn` writes it from the Navigator's choice window,
+ * and the Navigator effect below the resolve step reads it.
+ */
+export const NAVIGATOR_CARDS_NOTE = "navigator-cards";
+
 export const CALL: Step = { kind: "call" };
 export const RESOLVE: Step = { kind: "resolve" };
 export const END_TURN: Step = { kind: "end-turn" };
@@ -557,6 +570,13 @@ export const resolveTurn: WindowResolver = (ctx) => {
     return withSteps(state, endTurnThen(rest));
   }
   const action = actionOf(ctx.frame, seat);
+  // The Navigator's turn window is its gain choice, not a gather: a draw names the
+  // four-card branch, anything else the four-gold one. The choice rides pending.note
+  // for the resolve step above the turn window to read.
+  if (claimOf(state, seat)?.character === "navigator") {
+    const note = action?.t === "draw" ? NAVIGATOR_CARDS_NOTE : null;
+    return withSteps(withPending(state, { ...emptyPending(seat, "navigator"), note }), rest);
+  }
   if (action?.t === "draw") {
     const gathered = drawGather(state, seat, rest, ctx.rng);
     return withSteps(gathered, [
@@ -652,7 +672,14 @@ export const resolveChooseType: WindowResolver = (ctx) => {
   const actor = actorOf(ctx.state, ctx.window);
   const action = actionOf(ctx.frame, actor);
   const type = action?.t === "name-type" ? action.type : null;
-  return popWindow(type === null ? ctx.state : patchPending(ctx.state, { namedType: type }));
+  if (type === null) return popWindow(ctx.state);
+  // The Haunted Quarter's choice rides this window too, tagged by its own note;
+  // it records the type on the card at once, where the Spy carries the type on
+  // to its peek pass in `pending.namedType`.
+  if (ctx.state.pending?.note === HAUNTED_QUARTER_TYPE_NOTE) {
+    return popWindow(withPending(recordHauntedQuarterType(ctx.state, actor, type), null));
+  }
+  return popWindow(patchPending(ctx.state, { namedType: type }));
 };
 
 /** A threatened character's owner resolves the threat before their own turn. */
@@ -699,7 +726,13 @@ export const applyCall = (state: CitadelsState): CitadelsState => {
   // gather so it resolves first.
   const armed = withPending(state, emptyPending(seat, character));
   const thiefOwner = seatHolding(state, "thief");
-  const turn: readonly Step[] = [RESOLVE, winStep("turn", [seat]), END_TURN, CALL, ...rest];
+  // Every other character opens its windows above the resolve step and gathers
+  // below it. The Navigator's turn window is its gain choice, so it must resolve
+  // before the resolve step that reads the choice from pending.note.
+  const turn: readonly Step[] =
+    character === "navigator"
+      ? [winStep("turn", [seat]), RESOLVE, END_TURN, CALL, ...rest]
+      : [RESOLVE, winStep("turn", [seat]), END_TURN, CALL, ...rest];
   const called: readonly Step[] =
     state.robbed === character && thiefOwner !== null
       ? [winStep("thief-rob", [thiefOwner]), ...turn]
@@ -718,7 +751,10 @@ export const applyEndTurn = (state: CitadelsState, rng: Random): CitadelsState =
   // at the end of the acting seat's turn, above the round's continuation. Every
   // other onDestroy district (the Great Wall, the Keep) is a query, not a window.
   const destroyed = runDistrictHooks(cleared, "onDestroy", state.active, rest, rng);
-  return destroyed === cleared ? withSteps(cleared, rest) : destroyed;
+  const settled = destroyed === cleared ? withSteps(cleared, rest) : destroyed;
+  // The Haunted Quarter's owner names its counted type before scoring; the offer
+  // rides the end-of-turn seam, like the Museum's placement offer.
+  return offerHauntedQuarterType(settled, settled.active, settled.steps);
 };
 
 /** Clear the per-round markers; the Tax Collector's pot carries over. */
