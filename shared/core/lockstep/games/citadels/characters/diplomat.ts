@@ -22,6 +22,7 @@ import {
   type WindowResolver,
 } from "../helpers.ts";
 import type { CitadelsState } from "../state.ts";
+import { bishopShield } from "./bishop.ts";
 
 /** The diplomat's three in-flight sub-states, carried in `pending.note`. */
 const TARGET_NOTE = "diplomat-target";
@@ -95,6 +96,7 @@ export const diplomatResolve: WindowResolver = (ctx) => {
     if (taken === undefined || mine.some((district) => district.id === taken.id)) {
       return withSteps(withPending(ctx.state, null), rest);
     }
+    if (bishopShield(ctx.state) === target) return withSteps(withPending(ctx.state, null), rest);
     return withSteps(
       patchPending(ctx.state, { cards: [taken.id], amount: index, note: GIVE_NOTE }),
       [winStep("diplomat-exchange", [owner]), ...rest],

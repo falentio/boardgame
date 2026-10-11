@@ -21,6 +21,7 @@ import {
   type WindowResolver,
 } from "../helpers.ts";
 import type { CitadelsState } from "../state.ts";
+import { bishopShield } from "./bishop.ts";
 
 /** The marshal's two in-flight sub-states, carried in `pending.note`. */
 const TARGET_NOTE = "marshal-target";
@@ -95,6 +96,7 @@ export const marshalResolve: WindowResolver = (ctx) => {
   if (target === null) return withSteps(closed, rest);
   const placed = playerOf(ctx.state, target).city[index];
   if (placed === undefined) return withSteps(closed, rest);
+  if (bishopShield(ctx.state) === target) return withSteps(closed, rest);
   const mine = playerOf(ctx.state, owner).city;
   if (mine.some((district) => district.id === placed.id)) return withSteps(closed, rest);
   if (!isSeizable(placed.id)) return withSteps(closed, rest);
