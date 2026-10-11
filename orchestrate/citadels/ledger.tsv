@@ -24,3 +24,4 @@ pr	sha	verdict	evidence	verifier	ts
 1	42ec6a1	unit-test-verified	integration.test.ts 13 tests; full games terminal for 3-6 seats across 3 casts; redaction by keys; two peers converge byte-identical; suite 477 passed		2026-10-11T00:28:50.686Z
 1	76474ee	unit-test-verified	codec-redaction 5 tests; mid-game round-trip, snapshot, redaction walk, digest sensitivity; no leaks; suite 496 passed		2026-10-11T00:51:38.824Z
 1	2dfd6a5	unit-test-verified	theater 14 tests; onRoundStart hook; all 30 districts implemented; suite 496 passed, tsc clean		2026-10-11T00:54:06.420Z
+1	7547f8d	verifier-failed	orchestrate/citadels/verification.md + verification-report.test.ts: 14 counterexamples, all fail; D1 blocking (no character ability is ever invoked)		2026-10-11T01:17:06.078Z

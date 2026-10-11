@@ -30,4 +30,9 @@ dist-score-a	districts	done			5c37fc8	orchestrate/citadels/briefs/unit-dist-scor
 dist-score-b	districts	done			088f423	orchestrate/citadels/briefs/unit-dist-score-b.md
 dist-theater	districts	done			2dfd6a5	theater needs a round-start district hook (shared-file change)
 codec-redaction	verify	done			76474ee	orchestrate/citadels/briefs/codec-redaction.md
-independent-verification	verify	pending				orchestrate/citadels/briefs/independent-verification.md
+independent-verification	verify	done			7547f8d	orchestrate/citadels/briefs/independent-verification.md
+fix-engine	verify	pending				D1 applyCall wires character effects; D7 duplicate rule; D8 completion order; D10 museum placement; D13 step totality; D14 discard leak
+fix-scoring	verify	pending				D2 beautify in cost sum; D3 secret vault in hand; D12 ivory tower vs declared unique
+fix-warlord	verify	pending				D4 great wall toll; D5 keep protection; D6 bishop shield; D9 warlord income declared type
+fix-income	verify	pending				D9 income counters honour declared type (8 characters)
+fix-den	verify	pending				D11 thieves den mixed payment

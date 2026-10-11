@@ -26,3 +26,6 @@ ts	phase	decision	why	evidence	result
 2026-07-19T07:45:00Z	verify	codec-redaction proved mid-game snapshot round-trip and a full view walk with no leak	redaction at genesis is not redaction mid-game	commit 76474ee	5 tests, suite 496
 2026-07-19T07:52:00Z	districts	theater landed with a generic onRoundStart hook; all 30 districts implemented	the last stub needed one small shared seam	commit 2dfd6a5	0 stubs, suite 496
 2026-07-19T07:55:00Z	verify	spawned an adversarial verifier that did not write the code, to find defects rather than confirm	self-authored green tests are not independent verification	brief independent-verification.md	running
+2026-07-19T08:10:00Z	verify	independent verifier returned FAIL: 14 counterexamples, D1 blocking	an adversarial pass that did not write the code is the only way to catch this	commit 7547f8d, orchestrate/citadels/verification.md	FAIL
+2026-07-19T08:15:00Z	verify	confirmed D1 with my own probe: chars=[], cities empty, crown never moves, only draft-pick/turn windows	never trust a single report; reproduced the engine state directly	zzprobe.test.ts (deleted)	D1 real
+2026-07-19T08:20:00Z	verify	spawned 5 fix units split by file ownership so no two writers share a file	D1 blocking, 13 more defects; one unit per disjoint file set	units fix-engine, fix-scoring, fix-warlord, fix-income, fix-den	running
