@@ -530,7 +530,7 @@ export const foldTurn = (opts: {
       },
       opts.board ?? {},
     ),
-    taxPot: 0,
+    taxPot: opts.board?.pot ?? 0,
     builtThisTurn: 0,
   };
   return foldFrom(
