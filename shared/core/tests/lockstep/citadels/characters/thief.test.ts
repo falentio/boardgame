@@ -85,7 +85,9 @@ test("when the named character is called the Thief immediately takes all of its 
   const called = applyCall(armed);
   expect(topWindow(called).purpose).toBe("thief-rob");
   const next = advance(called, () => null);
-  expect(rawGold(next, ANN)).toBe(0);
+  // The rob empties ANN (7 -> 0); the merchant's own income then adds 1 before
+  // its turn window opens, which is what advance drains to.
+  expect(rawGold(next, ANN)).toBe(1);
   expect(rawGold(next, BOB)).toBe(8);
 });
 

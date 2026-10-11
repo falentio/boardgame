@@ -69,7 +69,10 @@ test("without the Library the gather keeps only one of the two drawn cards", () 
   const state = withHand(turnState([]), ANN, ["tavern"]);
   const kept = drawAndKeep(state);
   expect(rawHand(kept, ANN)).toHaveLength(2);
-  expect(kept.discard).toHaveLength(1);
+  // The unkept card came from the hidden deck, so it sinks to the deck's bottom
+  // rather than the public discard, where another seat could identify it.
+  expect(kept.discard).toHaveLength(0);
+  expect(kept.deck).toHaveLength(state.deck.length - 1);
 });
 
 test("the Library fires only on a card draw: choosing gold is untouched", () => {

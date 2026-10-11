@@ -101,7 +101,8 @@ test("a threatened player may bribe the Blackmailer by giving half their gold ro
     threats: ["merchant", "thief"],
   };
   const next = resolveThreat(armed, "bribe");
-  expect(rawGold(next, ANN)).toBe(4);
+  // Half of 7 rounds down to 3 for BOB; the merchant's own income then adds 1.
+  expect(rawGold(next, ANN)).toBe(5);
   expect(rawGold(next, BOB)).toBe(3);
   expect(next.threats).not.toContain("merchant");
 });
@@ -113,7 +114,8 @@ test("a player with 1 gold gives 0 to bribe", () => {
     threats: ["merchant", "thief"],
   };
   const next = resolveThreat(armed, "bribe");
-  expect(rawGold(next, ANN)).toBe(1);
+  // Half of 1 rounds down to 0 for BOB; the merchant's own income then adds 1.
+  expect(rawGold(next, ANN)).toBe(2);
   expect(rawGold(next, BOB)).toBe(0);
   expect(next.threats).not.toContain("merchant");
 });

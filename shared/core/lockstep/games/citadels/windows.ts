@@ -97,7 +97,10 @@ export const stepState = (
   if (isTerminal(folded)) return withSteps(folded, []);
   const top = folded.steps[0];
   if (top === undefined || top.kind !== "window") {
-    throw new CitadelsError("citadels step called with no open window");
+    // The stack tops out at a bare step: a malformed or mid-draft-resignation
+    // stack, which seatsOwed still names seats for. Coerce rather than throw:
+    // drain runs the bare step and settles on the next window or the game end.
+    return drain(folded, rng);
   }
   const owed = windowOwed(folded, top.window);
   if (owed.length === 0 && top.window.kind !== "turn") {

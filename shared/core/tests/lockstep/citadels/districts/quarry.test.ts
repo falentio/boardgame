@@ -88,12 +88,12 @@ test("only one duplicate may exist: a third identical district is refused", () =
   expect(rawGold(next, ANN)).toBe(10);
 });
 
-test("the one-duplicate cap is the Quarry's own doing, not a base rule", () => {
-  const withQuarry = tryBuild(turnState(["quarry", "tavern", "tavern"], ["tavern"], 10), ANN, 0, rawRandom());
-  const withoutQuarry = tryBuild(turnState(["tavern", "tavern"], ["tavern"], 10), ANN, 0, rawRandom());
-  // With the Quarry the third copy is refused; without it the engine builds it.
+test("the base rule forbids a duplicate; the Quarry is what permits one", () => {
+  const withQuarry = tryBuild(turnState(["quarry", "tavern"], ["tavern"], 10), ANN, 0, rawRandom());
+  const withoutQuarry = tryBuild(turnState(["tavern"], ["tavern"], 10), ANN, 0, rawRandom());
+  // The Quarry permits exactly one duplicate; without it the base rule refuses it.
   expect(cityIds(withQuarry, ANN)).toEqual(["quarry", "tavern", "tavern"]);
-  expect(cityIds(withoutQuarry, ANN)).toEqual(["tavern", "tavern", "tavern"]);
+  expect(cityIds(withoutQuarry, ANN)).toEqual(["tavern"]);
 });
 
 test("the Quarry declares the onBuild trigger", () => {

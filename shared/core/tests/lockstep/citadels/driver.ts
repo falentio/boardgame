@@ -215,7 +215,11 @@ export const seatsOwedAt = (state: CitadelsState, index = 0): readonly SeatId[] 
  * discard, and any card in flight in a pending action (a draw before its keep).
  */
 export const totalCards = (state: CitadelsState): number =>
-  state.players.reduce((n, p) => n + p.hand.length + p.city.length, 0) +
+  state.players.reduce(
+    (n, p) =>
+      n + p.hand.length + p.city.length + p.city.reduce((m, d) => m + (d.cards?.length ?? 0), 0),
+    0,
+  ) +
   state.deck.length +
   state.discard.length +
   (state.pending?.cards.length ?? 0);
@@ -305,11 +309,16 @@ export const autoAction = (seat: SeatId, view: CitadelsView): CitadelsAction | n
   const window = view.window;
   if (window === null) return null;
   if (window.purpose === "turn") {
+    const me = view.players.find((p) => p.seat === seat);
+    // The base rule forbids building a district already in the city, so a
+    // duplicate is never a legal build. The policy skips those, else it would
+    // pick the same refused card every turn and the game would never finish.
+    const inCity = new Set((me?.city ?? []).map((district) => district.id));
     const buildable = view.myHand
       .map((id, index) => ({ id, index }))
-      .filter((entry) => districtCost(entry.id) <= (view.players.find((p) => p.seat === seat)?.gold ?? 0))
+      .filter((entry) => !inCity.has(entry.id) && districtCost(entry.id) <= (me?.gold ?? 0))
       .sort((a, b) => districtCost(a.id) - districtCost(b.id))[0];
-    if (buildable !== undefined && view.players.find((p) => p.seat === seat)!.city.length < 8) {
+    if (buildable !== undefined && (me?.city.length ?? 0) < 8) {
       return { t: "build", card: buildable.index };
     }
     if (view.myHand.length < 4 && view.deckCount > 0) return { t: "draw" };

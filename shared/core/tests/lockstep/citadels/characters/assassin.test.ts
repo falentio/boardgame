@@ -15,6 +15,7 @@ import {
   ANN,
   BOB,
   SEATS3,
+  advance,
   openPurpose,
   rawFrame,
   rawGenesis,
@@ -102,7 +103,9 @@ test("the killed character skips without revealing its card", () => {
 test("a character not killed is called normally: the skip is specific", () => {
   const called = applyCall({ ...turnState(CLAIMED), callRank: 6, active: ANN });
   expect(called.active).toBe(BOB);
-  expect(openPurpose(called)).toBe("turn");
+  // The called character's turn is preceded by its resolve step, which the engine
+  // drains to reach the turn window.
+  expect(openPurpose(advance(called, () => null))).toBe("turn");
 });
 
 test("the Assassin cannot name itself: the rule is another character", () => {

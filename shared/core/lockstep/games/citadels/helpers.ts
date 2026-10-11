@@ -9,6 +9,7 @@ import {
   type DistrictId,
 } from "./districts.ts";
 import { UNIQUE_BUILD, UNIQUE_EFFECTS, UNIQUE_TRIGGERS } from "./districts/effects.ts";
+import { museumIn, museumPlace } from "./districts/museum.ts";
 import { CitadelsError } from "./error.ts";
 import { buildDraft, CITY_TARGET } from "./setup.ts";
 import type {
@@ -168,6 +169,7 @@ export const windowStep = (window: Window): Step => ({ kind: "window", window })
 export const winStep = (purpose: WindowPurpose, seats: readonly SeatId[]): Step =>
   windowStep(makeWindow(purpose, seats));
 export const CALL: Step = { kind: "call" };
+export const RESOLVE: Step = { kind: "resolve" };
 export const END_TURN: Step = { kind: "end-turn" };
 export const END_ROUND: Step = { kind: "end-round" };
 
@@ -200,6 +202,28 @@ export const actionOf = (frame: Frame<CitadelsAction>, seat: SeatId): CitadelsAc
 /** True when `seat` has built a city of the target size. */
 export const hasCompleted = (state: CitadelsState, seat: SeatId): boolean =>
   state.completed.includes(seat) || citySize(playerOf(state, seat)) >= cityTarget(state);
+
+/** The Quarry: the one district that lets its owner hold a duplicate. */
+const QUARRY: DistrictId = "quarry";
+
+/**
+ * Append every live seat whose city has reached the target to `completed`, in
+ * roster order, without duplicating a seat already recorded. Called when a turn
+ * opens and after each successful build, so `completed` carries finish order
+ * (the +4 goes to the seat that finished first) rather than roster order.
+ */
+export const recordFinished = (state: CitadelsState): CitadelsState => {
+  const target = cityTarget(state);
+  const newly = state.players
+    .filter(
+      (player) =>
+        !state.completed.includes(player.seat) &&
+        !isResigned(state, player.seat) &&
+        player.city.length >= target,
+    )
+    .map((player) => player.seat);
+  return newly.length === 0 ? state : { ...state, completed: [...state.completed, ...newly] };
+};
 
 /**
  * Run every unique district an owner holds that responds to `hook`. The trigger
@@ -319,6 +343,19 @@ export const buildLimit = (state: CitadelsState, seat: SeatId, card?: DistrictId
 };
 
 /**
+ * The base rule forbids building a district already standing in the builder's
+ * city; the Quarry (one duplicate) and the Wizard's turn ability are the two
+ * permissions. A duplicate with neither permission is refused.
+ */
+const duplicateBlocked = (state: CitadelsState, seat: SeatId, id: DistrictId): boolean => {
+  const city = playerOf(state, seat).city;
+  if (!city.some((district) => district.id === id)) return false;
+  if (city.some((district) => district.id === QUARRY)) return false;
+  const character = claimOf(state, seat)?.character ?? state.pending?.character ?? null;
+  return character !== "wizard";
+};
+
+/**
  * Fold the build terms: every unique in the builder's city answers first, then
  * the card being built answers last and overrides. So a card prices itself
  * (Framework, Necropolis, Thieves' Den) and a city card discounts it (Factory).
@@ -362,6 +399,7 @@ export const tryBuild = (
   const player = playerOf(state, seat);
   const id = player.hand[card];
   if (id === undefined) return withSteps(state, []);
+  if (duplicateBlocked(state, seat, id)) return withSteps(state, []);
   const { terms, destroySource } = buildTerms(state, seat, id, player.city);
   if (terms.legal === false) return withSteps(state, []);
 
@@ -396,12 +434,12 @@ export const tryBuild = (
 
   const builtPlayer = { ...player, gold, hand, city: [...city, { id, gold: 0 }] };
   const counted = terms.countsAsBuild !== false;
-  const builtState: CitadelsState = {
+  const builtState: CitadelsState = recordFinished({
     ...withPlayer(state, builtPlayer),
     discard,
     deck,
     builtThisTurn: counted ? (state.builtThisTurn ?? 0) + 1 : (state.builtThisTurn ?? 0),
-  };
+  });
   const taxed = chargeBuildTax(runDistrictHooks(builtState, "onBuild", seat, [], rng), seat);
   const magistrate = seatHolding(state, "magistrate");
   const warrant = state.warrants?.[0];
@@ -439,24 +477,58 @@ const drawGather = (
   return { ...hooked, deck, pending: { ...pending, cards: drawn } };
 };
 
+/**
+ * The Museum's once-per-turn placement offer. It appends a `keep` window after
+ * the turn's continuation once the turn's last build window has resolved, so
+ * the owner may tuck a card under it after gathering and building. The offer
+ * reuses the `keep` purpose (a district-owned purpose would need a new
+ * WindowPurpose, a shared-file change); `resolveKeep` tells it apart from the
+ * gather keep, which always carries a pending pool, by the offer's bare pending
+ * (`resolveTurn` clears any leftover character pending before the turn). A turn
+ * window still standing in `cont` means the turn has another build, so no offer.
+ */
+const withMuseumOffer = (
+  state: CitadelsState,
+  seat: SeatId,
+  cont: readonly Step[],
+): readonly Step[] => {
+  if (!museumIn(state, seat)) return cont;
+  const hasTurn = cont.some(
+    (step) =>
+      step.kind === "window" &&
+      step.window.purpose === "turn" &&
+      step.window.seats.includes(seat),
+  );
+  return hasTurn ? cont : [winStep("keep", [seat]), ...cont];
+};
+
 export const resolveTurn: WindowResolver = (ctx) => {
-  const rest = ctx.state.steps.slice(1);
-  const seat = ctx.window.seats[0] ?? ctx.state.active;
-  if (!hasSeat(ctx.state, seat) || isResigned(ctx.state, seat)) {
-    return withSteps(ctx.state, [END_TURN, ...rest]);
+  // Record any seat that finished on an earlier turn before this turn's build, so
+  // `completed` carries finish order and not roster order. Clear any character
+  // pending the effect above the turn window left behind, so the gather's own
+  // pending is the only one the keep windows see.
+  const state = withPending(recordFinished(ctx.state), null);
+  const rest = state.steps.slice(1);
+  const seat = ctx.window.seats[0] ?? state.active;
+  if (!hasSeat(state, seat) || isResigned(state, seat)) {
+    return withSteps(state, [END_TURN, ...rest]);
   }
   const action = actionOf(ctx.frame, seat);
   if (action?.t === "draw") {
-    return withSteps(drawGather(ctx.state, seat, rest, ctx.rng), [winStep("keep", [seat]), END_TURN, ...rest]);
+    const gathered = drawGather(state, seat, rest, ctx.rng);
+    return withSteps(gathered, [
+      winStep("keep", [seat]),
+      ...withMuseumOffer(gathered, seat, [END_TURN, ...rest]),
+    ]);
   }
   if (action?.t === "build") {
-    const built = tryBuild(ctx.state, seat, action.card, ctx.rng);
+    const built = tryBuild(state, seat, action.card, ctx.rng);
     // A build succeeds when the card left the hand; only a successful build under
     // the limit re-offers a turn window, so a failed attempt ends the turn as before.
-    const builtId = playerOf(ctx.state, seat).hand[action.card];
+    const builtId = playerOf(state, seat).hand[action.card];
     const succeeded =
-      playerOf(built, seat).hand.length < playerOf(ctx.state, seat).hand.length;
-    if (succeeded && (built.builtThisTurn ?? 0) < buildLimit(ctx.state, seat, builtId)) {
+      playerOf(built, seat).hand.length < playerOf(state, seat).hand.length;
+    if (succeeded && (built.builtThisTurn ?? 0) < buildLimit(state, seat, builtId)) {
       // Drop any duplicate turn windows a character effect pre-seeded so the
       // limit counter, not the pre-seeded count, decides how many builds remain.
       const below = rest.filter(
@@ -467,40 +539,51 @@ export const resolveTurn: WindowResolver = (ctx) => {
             step.window.seats.includes(seat)
           ),
       );
-      return withSteps(built, [...built.steps, winStep("turn", [seat]), ...below]);
+      return withSteps(built, [
+        ...withMuseumOffer(built, seat, [...built.steps, winStep("turn", [seat]), ...below]),
+      ]);
     }
-    return withSteps(built, [...built.steps, END_TURN, ...rest]);
+    return withSteps(built, [
+      ...withMuseumOffer(built, seat, [...built.steps, END_TURN, ...rest]),
+    ]);
   }
-  const gathered = runDistrictHooks(addGold(ctx.state, seat, 2), "onIncome", seat, rest, ctx.rng);
-  return withSteps(gathered, [END_TURN, ...rest]);
+  const gathered = runDistrictHooks(addGold(state, seat, 2), "onIncome", seat, rest, ctx.rng);
+  return withSteps(gathered, withMuseumOffer(gathered, seat, [END_TURN, ...rest]));
 };
 
 export const resolveKeep: WindowResolver = (ctx) => {
   const rest = ctx.state.steps.slice(1);
   const seat = ctx.window.seats[0] ?? ctx.state.active;
-  const pool = ctx.state.pending?.cards ?? [];
   const action = actionOf(ctx.frame, seat);
+  const pending = ctx.state.pending;
+  // The gather keep always carries the drawn pool on `pending`; the Museum's
+  // placement offer has a bare pending (resolveTurn clears any character
+  // leftover), so a null pending routes to the Museum.
+  if (pending === null) {
+    return withSteps(museumPlace(ctx.state, seat, action), rest);
+  }
+  const pool = pending.cards;
   const wanted = action?.t === "keep" ? action.index : 0;
   const index = Number.isInteger(wanted) && wanted >= 0 && wanted < pool.length ? wanted : 0;
   // The gather's keep count rides on `pending.gold`; the default draw keeps one.
-  const keepCount = Math.max(1, Math.min(ctx.state.pending?.gold ?? 1, pool.length));
-  const kept =
-    keepCount >= pool.length
-      ? pool
-      : index >= 0 && index < pool.length
-        ? [pool[index] as DistrictId]
-        : [];
-  const keptIndexes = new Set(
-    kept.map((card) => pool.indexOf(card)).filter((at) => at >= 0),
-  );
+  const keepCount = Math.max(1, Math.min(pending.gold, pool.length));
+  // Track kept cards by position, not by id: a pool may hold two identical cards,
+  // and `pool.indexOf` would collapse them and mis-route a copy to the deck.
+  const keptIndexes = new Set<number>();
+  if (keepCount >= pool.length) {
+    for (let i = 0; i < pool.length; i += 1) keptIndexes.add(i);
+  } else {
+    keptIndexes.add(index);
+  }
   let next = ctx.state;
-  if (kept.length > 0) {
+  if (keptIndexes.size > 0) {
+    const kept = [...keptIndexes].map((at) => pool[at] as DistrictId);
     const player = playerOf(next, seat);
     next = withPlayer(next, { ...player, hand: [...player.hand, ...kept] });
-    next = {
-      ...next,
-      discard: [...next.discard, ...pool.filter((_, i) => !keptIndexes.has(i))],
-    };
+    // The unkept cards came from the hidden deck, so they sink back to its bottom
+    // rather than into the public discard pile, which would reveal them.
+    const unkept = pool.filter((_, i) => !keptIndexes.has(i));
+    next = { ...next, deck: [...next.deck, ...unkept] };
   }
   return withSteps(withPending(next, null), rest);
 };
@@ -566,15 +649,21 @@ export const applyCall = (state: CitadelsState): CitadelsState => {
     );
   }
 
+  // Arm the character's pending record and push a resolve step above the turn
+  // window: the resolve branch runs CHARACTER_EFFECTS[character] with the turn
+  // window as its `rest`, and the steps it returns become the turn. Any window
+  // the effect opens (the Warlord's destroy, the Assassin's naming) sits above the
+  // gather so it resolves first.
+  const armed = withPending(state, emptyPending(seat, character));
   const thiefOwner = seatHolding(state, "thief");
-  const turn: readonly Step[] = [winStep("turn", [seat]), END_TURN, CALL, ...rest];
+  const turn: readonly Step[] = [RESOLVE, winStep("turn", [seat]), END_TURN, CALL, ...rest];
   const called: readonly Step[] =
     state.robbed === character && thiefOwner !== null
       ? [winStep("thief-rob", [thiefOwner]), ...turn]
       : turn;
   return withSteps(
-    { ...state, active: seat, callRank: rank + 1 },
-    withThreat(state, character, seat, called),
+    { ...armed, active: seat, callRank: rank + 1 },
+    withThreat(armed, character, seat, called),
   );
 };
 
@@ -596,9 +685,12 @@ const clearRoundMarkers = (state: CitadelsState): CitadelsState => ({
 export const applyEndRound = (state: CitadelsState, rng: Random): CitadelsState => {
   const rest = state.steps.slice(1);
   const round = state.round + 1;
-  const finished = state.players.filter((p) => p.city.length >= cityTarget(state)).map((p) => p.seat);
-  if (finished.length > 0) {
-    return clearRoundMarkers({ ...state, round, phase: "over", completed: finished, steps: [] });
+  // `completed` already holds every seat that reached the target in finish order,
+  // appended by recordFinished when a turn opened or a build landed. Recording
+  // here catches any seat a hand-built state left unrecorded, without reordering.
+  const recorded = recordFinished(state);
+  if (recorded.completed.length > 0) {
+    return clearRoundMarkers({ ...recorded, round, phase: "over", steps: [] });
   }
   // A district that acts at the start of the round (the Theater) opens its
   // window here. The window queues below the new round's draft picks, so it

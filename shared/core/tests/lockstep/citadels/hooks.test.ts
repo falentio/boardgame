@@ -105,7 +105,7 @@ test("calling a robbed character opens thief-rob for the Thief's owner above its
   const next = applyCall(state);
   expect(topWindow(next).purpose).toBe("thief-rob");
   expect(topWindow(next).seats).toEqual([BOB]);
-  expect(next.steps[1]).toMatchObject({
+  expect(next.steps[2]).toMatchObject({
     kind: "window",
     window: { purpose: "turn", seats: [ANN] },
   });
@@ -172,7 +172,7 @@ test("a threatened player's turn opens blackmailer-threat before their own windo
   const next = applyCall(state);
   expect(topWindow(next).purpose).toBe("blackmailer-threat");
   expect(topWindow(next).seats).toEqual([ANN]);
-  expect(next.steps[1]).toMatchObject({
+  expect(next.steps[2]).toMatchObject({
     kind: "window",
     window: { purpose: "turn", seats: [ANN] },
   });

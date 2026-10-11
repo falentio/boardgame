@@ -59,18 +59,20 @@ test("when you choose to draw cards while gathering, you draw three and keep one
   const kept = advance(drawn, () => ({ t: "keep", index: 0 }));
   // One card was already in hand; exactly one of the three joins it.
   expect(rawHand(kept, ANN)).toHaveLength(2);
-  expect(kept.discard).toHaveLength(2);
+  // The two unkept cards sink to the hidden deck, not the public discard.
+  expect(kept.discard).toHaveLength(0);
+  expect(kept.deck).toHaveLength(state.deck.length - 1);
   expect(totalCards(kept)).toBe(totalCards(state));
 });
 
-test("the kept card is the one named by the keep index; the other two are discarded", () => {
+test("the kept card is the one named by the keep index; the others sink to the deck", () => {
   const state = withHand(turnState([OBSERVATORY]), ANN, ["tavern"]);
   const drawn = advance(state, () => ({ t: "draw" }));
   const pool = drawn.pending?.cards ?? [];
   expect(pool).toHaveLength(3);
   const kept = advance(drawn, () => ({ t: "keep", index: 1 }));
   expect(rawHand(kept, ANN)).toEqual(["tavern", pool[1]]);
-  expect(kept.discard).toEqual([pool[0], pool[2]]);
+  expect(kept.deck.slice(-2)).toEqual([pool[0], pool[2]]);
 });
 
 test("without the Observatory the gather draws only two", () => {
