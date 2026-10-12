@@ -1576,11 +1576,15 @@ describe("engine coverage: the Blackmailer's two threat markers", () => {
     const threatenedTurn = (
       character: CharacterId,
       entropy: string,
+      threats: readonly CharacterId[] = [character],
     ): {
       readonly purposes: readonly (string | null)[];
       readonly cityAtThreat: readonly DistrictId[];
       readonly tuckAtThreat: number;
       readonly finalCity: readonly DistrictId[];
+      readonly finalGold: number;
+      readonly finalHand: number;
+      readonly finalTuck: number;
     } => {
       const base = rawGenesis(SEATS3, castWithThreat(character), entropy);
       const partner =
@@ -1597,7 +1601,7 @@ describe("engine coverage: the Blackmailer's two threat markers", () => {
         steps: [{ kind: "call" }, { kind: "end-round" }],
         pending: null,
         builtThisTurn: 0,
-        threats: [character],
+        threats: [...threats],
         players: base.players.map((player) =>
           player.seat === BOB
             ? { ...player, gold: 20, hand: [...HAND], city: [...MUSEUM_CITY] }
@@ -1624,6 +1628,9 @@ describe("engine coverage: the Blackmailer's two threat markers", () => {
         cityAtThreat: at < 0 ? [] : (cities[at] ?? []),
         tuckAtThreat: at < 0 ? -1 : (tucks[at] ?? -1),
         finalCity: cityIdsOf(cur, BOB),
+        finalGold: rawGold(cur, BOB),
+        finalHand: rawHand(cur, BOB).length,
+        finalTuck: rawPlayer(cur, BOB).city[0]?.cards?.length ?? 0,
       };
     };
 
@@ -1636,6 +1643,19 @@ describe("engine coverage: the Blackmailer's two threat markers", () => {
     ];
     for (const [character, built] of reshapers) {
       const r = threatenedTurn(character, "coverage-d12-" + character);
+      // The Alchemist's settle step must still ride the threat: its end-of-turn
+      // refund reads the gold the build spent, so a threat that strands that
+      // resolve (or drops it below a second end-turn) silently costs the seat its
+      // build. Fold the same turn unthreatened and demand the same purse, city and
+      // hand - D12-2 measured 4 gold threatened against 5 unthreatened.
+      if (character === "alchemist") {
+        const plain = threatenedTurn("alchemist", "coverage-d12-alchemist-plain", []);
+        expect(plain.finalCity, "the control turn builds the Tavern").toEqual(["museum", "tavern"]);
+        expect(r.finalGold, "the settlement refund still lands: " + r.purposes.join(",")).toBe(
+          plain.finalGold,
+        );
+        expect(r.finalHand, "the settlement left the hand alone").toBe(plain.finalHand);
+      }
       expect(r.purposes, character + " opens its threat window").toContain("blackmailer-threat");
       expect(
         r.cityAtThreat,
@@ -1650,6 +1670,12 @@ describe("engine coverage: the Blackmailer's two threat markers", () => {
         r.finalCity,
         character + " still builds below the resolved threat: " + r.purposes.join(","),
       ).toEqual(["museum", ...built]);
+      // The Museum's once-per-turn placement is an ability too, so it opens below
+      // the resolved threat (D11-2's clause) and still tucks one card.
+      expect(
+        r.finalTuck,
+        character + " still tucks one card below the resolved threat: " + r.purposes.join(","),
+      ).toBe(1);
     }
 
     // The sweep: every threatenable character, each with a non-empty hand and a
