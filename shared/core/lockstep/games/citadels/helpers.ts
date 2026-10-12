@@ -755,12 +755,24 @@ export const resolveTurn: WindowResolver = (ctx) => {
     // window leads its resolve, so the offer follows the resolve, not the window.
     const at = rest.findIndex((step) => step.kind === "resolve");
     if (at < 0) return withSteps(armed, rest);
+    const below = rest.slice(at + 1);
+    // A threatened Navigator's threat window leads that continuation, so the offer
+    // splices below it, where a threatened seat's deferred build window sits:
+    // rules.json (blackmailer) "A threatened player must resolve the threat before
+    // using abilities or building", and the Museum's placement is an ability.
+    const threatAt = below.findIndex(
+      (step) => step.kind === "window" && step.window.purpose === "blackmailer-threat",
+    );
     const offer = withMuseumOffer(
       armed,
       seat,
-      endTurnThen(withoutTurnWindows(rest.slice(at + 1), seat)),
+      endTurnThen(withoutTurnWindows(threatAt < 0 ? below : below.slice(threatAt + 1), seat)),
     );
-    return withSteps(offer.state, [...rest.slice(0, at + 1), ...offer.steps]);
+    return withSteps(offer.state, [
+      ...rest.slice(0, at + 1),
+      ...below.slice(0, threatAt < 0 ? 0 : threatAt + 1),
+      ...offer.steps,
+    ]);
   }
 
   // The turn's build window. The gather already landed above it (or the Witch

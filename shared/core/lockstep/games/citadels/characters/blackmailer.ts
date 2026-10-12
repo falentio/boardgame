@@ -103,19 +103,41 @@ const resolveThreat = (ctx: WindowCtx, rest: readonly Step[]): CitadelsState => 
     const half = Math.floor(playerOf(state, seat).gold / 2);
     const paid =
       blackmailerOwner === null ? state : transferGold(state, seat, blackmailerOwner, half);
-    return withSteps({ ...paid, threats: (paid.threats ?? []).filter((c) => c !== character) }, rest);
+    return withSteps({ ...paid, threats: spendMarker(paid.threats ?? [], character) }, rest);
   }
   if (blackmailerOwner === null) {
-    return withSteps(
-      { ...state, threats: (state.threats ?? []).filter((c) => c !== character) },
-      rest,
-    );
+    return withSteps({ ...state, threats: spendMarker(state.threats ?? [], character) }, rest);
   }
   const armed = withPending(state, {
     ...emptyPending(blackmailerOwner, "blackmailer"),
     note: REVEAL,
   });
   return withSteps(armed, [winStep("blackmailer-resolve", [blackmailerOwner]), ...rest]);
+};
+
+/**
+ * True when the threat array records that the flowered-lace marker is already
+ * spent. The lace rides the placement order, so the only fact the array keeps
+ * about it is that it stood first; spending that marker doubles the survivors
+ * (see spendMarker), and a doubled head is the spent-lace mark.
+ */
+const laceSpent = (threats: readonly CharacterId[]): boolean =>
+  threats.length > 1 && threats[0] === threats[threats.length - 1];
+
+/**
+ * Drop the marker character carried from the threat array. When that marker is
+ * the one the lace rode - it stood first and no lace was already spent - the
+ * survivors are doubled, so a later reveal still tells a standing lace from a
+ * spent one: while both markers stand the array reads [lace, decoy], it reads
+ * [decoy] once the decoy is spent, and [decoy, decoy] once the lace is.
+ */
+const spendMarker = (
+  threats: readonly CharacterId[],
+  character: CharacterId,
+): readonly CharacterId[] => {
+  const survivors = threats.filter((c) => c !== character);
+  const laced = threats[0] === character && !laceSpent(threats);
+  return laced ? [...survivors, ...survivors] : survivors;
 };
 
 /** The Blackmailer may reveal the marker; the flowered lace takes all the gold. */
@@ -129,8 +151,8 @@ const resolveReveal = (ctx: WindowCtx, rest: readonly Step[]): CitadelsState => 
   const threats = cleared.threats ?? [];
   const action = actionOf(ctx.frame, actor);
   const revealed = action?.t === "choose" && action.value === "reveal";
-  const flowered = threats[0] === character;
-  let next: CitadelsState = { ...cleared, threats: threats.filter((c) => c !== character) };
+  const flowered = threats[0] === character && !laceSpent(threats);
+  let next: CitadelsState = { ...cleared, threats: spendMarker(threats, character) };
   if (revealed && flowered) {
     next = transferGold(next, victim, actor, playerOf(next, victim).gold);
   }
