@@ -1367,3 +1367,169 @@ describe("engine coverage: a character turn that owns a Museum", () => {
     ).toBe(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// The two-marker dimension. Every threat row above folds a SINGLE threatened
+// seat (threats: [threatened, "assassin"], and the assassin is rank 1, so it is
+// never the threatened one in play), so the eleventh-pass defects in the second
+// marker were unreachable here. These two rows fold BOTH markers in one round.
+// ---------------------------------------------------------------------------
+
+describe("engine coverage: the Blackmailer's two threat markers", () => {
+  const EMPTY_HAND: readonly DistrictId[] = [];
+  const ONE_CARD: readonly DistrictId[] = ["tavern"];
+  const MUSEUM_CITY: readonly PlacedDistrict[] = [{ id: "museum", gold: 0 }];
+
+  /** The threatened purse at the threat window: the Merchant's +1, the Architect's +0. */
+  const purseOf = (character: CharacterId): number => (character === "merchant" ? 8 : 7);
+
+  /**
+   * Fold a round in which both markers are threatened, both seats refuse, and the
+   * Blackmailer answers every reveal with reveal. rules.json (blackmailer): "one
+   * shows the flowered lace and is the target ... revealing the flowered lace
+   * takes all their gold." Exactly one marker carries the lace, so exactly one
+   * seat is ever looted. The Merchant (rank 6) is called before the Architect
+   * (rank 7), so naming the Merchant as the lace folds the lace resolving first
+   * and naming the Architect folds the decoy first.
+   */
+  const foldBoth = (
+    lace: CharacterId,
+    decoy: CharacterId,
+    reveal: "reveal" | "spare",
+    entropy: string,
+  ): CitadelsState => {
+    const base = rawGenesis(SEATS3, castWithThreat(lace), entropy);
+    let cur: CitadelsState = {
+      ...base,
+      phase: "turn",
+      draft: null,
+      claimed: [
+        { seat: ANN, character: "blackmailer" },
+        { seat: BOB, character: "merchant" },
+        { seat: CARA, character: "architect" },
+      ],
+      callRank: 6,
+      active: BOB,
+      steps: [{ kind: "call" }, { kind: "end-round" }],
+      pending: null,
+      builtThisTurn: 0,
+      threats: [lace, decoy],
+      players: base.players.map((player) => ({
+        ...player,
+        gold: player.seat === ANN ? 0 : 5,
+        hand: [...EMPTY_HAND],
+        city: [],
+      })),
+    };
+    const answer = (_seat: SeatId, state: CitadelsState): CitadelsAction | null => {
+      const purpose = openPurpose(state);
+      if (purpose === "turn") return { t: "gold" };
+      if (purpose === "keep") return { t: "keep", index: 0 };
+      if (purpose === "blackmailer-threat") return { t: "choose", value: "refuse" };
+      if (purpose === "blackmailer-resolve") return { t: "choose", value: reveal };
+      return null;
+    };
+    for (let i = 0; i < 40 && cur.phase !== "draft"; i += 1) cur = advance(cur, answer);
+    return cur;
+  };
+
+  /**
+   * D11-1 teeth, both orders. The Blackmailer places two markers and reveals both
+   * refusals; the rule allows exactly one looting, of the laced marker's seat.
+   * The reveal once answered "is this the lace?" with threats[0] - the first
+   * threat STILL STANDING - so once the target's marker left the list the decoy
+   * inherited the lace and was looted too: measured 15 gold out of ten on the
+   * table. Reverting the spent-lace record (the doubled survivor written by
+   * spendMarker in characters/blackmailer.ts) re-loots the decoy in the
+   * lace-first order and stops the lace from looting in the decoy-first order, so
+   * the assertions below go RED either way. The control isolates it: with every
+   * reveal declined no gold crosses at all.
+   */
+  test("a revealed laced target is looted and a refused decoy never is", () => {
+    const quiet = foldBoth("merchant", "architect", "spare", "coverage-two-quiet");
+    expect(rawGold(quiet, BOB), "a refused, unrevealed threat costs nothing").toBe(8);
+    expect(rawGold(quiet, CARA)).toBe(7);
+    expect(rawGold(quiet, ANN), "no reveal, no looting").toBe(0);
+
+    const orders: readonly (readonly [CharacterId, CharacterId])[] = [
+      ["merchant", "architect"],
+      ["architect", "merchant"],
+    ];
+    for (const [lace, decoy] of orders) {
+      const loud = foldBoth(lace, decoy, "reveal", "coverage-two-" + lace);
+      const laceSeat = lace === "merchant" ? BOB : CARA;
+      const decoySeat = lace === "merchant" ? CARA : BOB;
+      expect(
+        rawGold(loud, laceSeat),
+        "revealing the flowered lace took all of the laced seat's gold",
+      ).toBe(0);
+      expect(
+        rawGold(loud, decoySeat),
+        "the decoy's marker carries no lace: revealing it took nothing",
+      ).toBe(purseOf(decoy));
+      expect(rawGold(loud, ANN), "one lace, one looting").toBe(purseOf(lace));
+    }
+  });
+
+  /**
+   * D11-2 teeth. A threatened Navigator owning a Museum. The Navigator's turn
+   * window is its gain choice and the Museum's once-per-turn placement is an
+   * ability, so rules.json (blackmailer) "A threatened player must resolve the
+   * threat before using abilities or building" puts the threat above the offer.
+   * The offer was spliced at the head of the continuation the resolve step left,
+   * which is exactly where the threat window sits: measured purposes ran turn,
+   * keep, blackmailer-threat - the seat tucked a card before it resolved. Revert
+   * the threat splice in the Navigator branch (helpers.ts resolveTurn) and the
+   * keep window moves back above the threat: the ordering assertion goes RED.
+   */
+  test("a threatened Navigator resolves the threat before its Museum offer", () => {
+    const base = rawGenesis(
+      SEATS3,
+      castWithThreat("navigator"),
+      "coverage-navigator-museum-threat",
+    );
+    let cur: CitadelsState = {
+      ...base,
+      phase: "turn",
+      draft: null,
+      claimed: [
+        { seat: ANN, character: "blackmailer" },
+        { seat: BOB, character: "navigator" },
+      ],
+      callRank: specOfCharacter("navigator").rank,
+      active: BOB,
+      steps: [{ kind: "call" }, { kind: "end-round" }],
+      pending: null,
+      builtThisTurn: 0,
+      threats: ["navigator", "assassin"],
+      players: base.players.map((player) =>
+        player.seat === BOB
+          ? { ...player, gold: 0, hand: [...ONE_CARD], city: [...MUSEUM_CITY] }
+          : player,
+      ),
+    };
+    const purposes: (string | null)[] = [];
+    const answer = (_seat: SeatId, state: CitadelsState): CitadelsAction | null => {
+      const purpose = openPurpose(state);
+      if (purpose === "turn") return { t: "gold" };
+      if (purpose === "keep") return { t: "keep", index: 0 };
+      return null;
+    };
+    for (let i = 0; i < 40 && cur.phase !== "draft"; i += 1) {
+      purposes.push(openPurpose(cur));
+      cur = advance(cur, answer);
+    }
+    const at = purposes.indexOf("blackmailer-threat");
+    const keep = purposes.indexOf("keep");
+    expect(at, "the threatened Navigator was called").toBeGreaterThanOrEqual(0);
+    expect(
+      at < keep,
+      "measured order " + purposes.join(",") + ": the placement offer ran first",
+    ).toBe(true);
+    const museum = rawPlayer(cur, BOB).city.find((district) => district.id === "museum");
+    expect(
+      museum?.cards?.length ?? 0,
+      "the Museum's offer still opened and tucked one card",
+    ).toBe(1);
+  });
+});
