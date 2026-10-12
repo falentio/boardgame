@@ -137,6 +137,13 @@ The gold at the threat window is still post-gain (the D10-3 fix holds: a bribing
 Navigator pays half of 4 = 2), so the ordering is the only clause broken — but
 the rule states it flatly.
 
+The coordinator's own fix10 seam ruling already names the clause this defect
+breaks. `orchestrate/citadels/decisions.tsv`, 2026-10-12T06:01:00Z: "the rule
+text ('gather resources, then resolve the threat' + **'before using abilities or
+building'**) settles the order". The offer was routed with the first half in mind
+and not the second: `withMuseumOffer` was told to step past a standing turn
+window, never past a standing `blackmailer-threat` window.
+
 ## The teeth audit
 
 Method: `cp -r` the worktree to `/tmp/citadels-v11` (no git command ran in the
