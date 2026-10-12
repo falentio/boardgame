@@ -867,14 +867,19 @@ export const resolveTurn: WindowResolver = (ctx) => {
     // rules.json (blackmailer) "A threatened player must resolve the threat
     // before using abilities or building".
     const threatAt = rest.findIndex(isThreatWindow);
-    // Steps hoisted above the threat that are not this seat's own build windows
-    // ride below the build, where they belong: the Alchemist's settle resolve
-    // refunds a build, so it must not run first. Pre-seeded build windows are
-    // dropped here because the build limit re-offers them from its own counter
-    // (see withoutTurnWindows).
-    const hoisted = withoutTurnWindows(rest.slice(0, Math.max(threatAt, 0)), seat);
-    const below = [...hoisted, ...rest.slice(Math.max(threatAt + 1, 0))];
     const threat = threatAt < 0 ? undefined : rest[threatAt];
+    // What rides below the build: the steps that stood below the threat, preceded
+    // by the steps hoisted above it that are not this seat's own build windows.
+    // Those belong under the build (the Alchemist's settle resolve refunds a build,
+    // so it must not run first), and the pre-seeded build windows drop because the
+    // build limit re-offers them from its own counter (see withoutTurnWindows).
+    const below =
+      threatAt < 0
+        ? rest
+        : [
+            ...withoutTurnWindows(rest.slice(0, threatAt), seat),
+            ...rest.slice(threatAt + 1),
+          ];
     // The gather has landed, so the build window below the threat takes no second
     // one. The post-threat build window reads that off the stack: a bare resolve
     // step standing under it. The Alchemist's settle resolve already plays that
