@@ -670,13 +670,11 @@ const withMuseumOffer = (
  * there, else supply one, so end-of-turn districts fire exactly once per turn.
  */
 const endTurnThen = (rest: readonly Step[]): readonly Step[] => {
-  // The resolve steps that sit directly above the turn's END_TURN are the
-  // Alchemist's settle (see alchemist.ts) and the engine's post-threat marker, so
-  // step past every one of them to find the turn's own END_TURN. A Blackmailer's
-  // threat window is spliced directly below the turn window (the gather must land
-  // before the threat), so step past it too.
-  let head = rest;
-  while (head[0]?.kind === "resolve") head = head.slice(1);
+  // The Alchemist's end-of-turn resolve, or the engine's post-threat marker, sits
+  // directly above the turn's END_TURN, so step past it to find the turn's own
+  // END_TURN. A Blackmailer's threat window is spliced directly below the turn
+  // window (the gather must land before the threat), so step past it too.
+  const head = rest[0]?.kind === "resolve" ? rest.slice(1) : rest;
   const past =
     head[0]?.kind === "window" && head[0].window.purpose === "blackmailer-threat"
       ? head.slice(1)

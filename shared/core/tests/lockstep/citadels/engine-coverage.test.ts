@@ -55,6 +55,13 @@ const UNHOOKED: readonly DistrictId[] = UNIQUE_IDS.filter(
 const rivalOf = (state: CitadelsState, seat: SeatId): SeatId =>
   state.players.find((player) => player.seat !== seat)?.seat ?? seat;
 
+/** A cast with the Blackmailer at rank 2 and the target at its own rank. */
+const castWithThreat = (target: CharacterId): readonly CharacterId[] => {
+  const cast = [...castWith("blackmailer")];
+  cast[specOfCharacter(target).rank - 1] = target;
+  return cast;
+};
+
 /** The first cast character at rank three or later: legal to name for every namer. */
 const nameTarget = (state: CitadelsState): CharacterId => {
   const taken = new Set<CharacterId>([
@@ -576,6 +583,70 @@ const CHARACTER_GUARDS: readonly CharacterGuard[] = [
       expect(cityIdsOf(end, BOB), "the threatened build lands after the threat").toContain(
         "tavern",
       );
+
+      // The refuse path. Every row above answers the threat with a bribe, so a
+      // refused threat was never folded by the guard and the tenth pass found
+      // three defects in it: D10-1 a refused seat gathered a second time, D10-2 a
+      // refused Navigator lost the gain its reveal wiped, D10-3 the Navigator's
+      // threat resolved before it gained. rules.json (blackmailer): "When a
+      // threatened player is called, they must gather resources, then resolve the
+      // threat ... or refuse. If they refuse you may reveal their marker." The
+      // Blackmailer answers the reveal window with an idle, so no gold crosses and
+      // only the ordering of gather and threat is under test.
+      const refuse = (threatened: CharacterId, gold: number): CitadelsState => {
+        const base = rawGenesis(
+          SEATS3,
+          castWithThreat(threatened),
+          "coverage-blackmailer-refuse",
+        );
+        let cur: CitadelsState = {
+          ...base,
+          phase: "turn",
+          draft: null,
+          claimed: [
+            { seat: CARA, character: "assassin" },
+            { seat: ANN, character: "blackmailer" },
+            { seat: BOB, character: threatened },
+          ],
+          callRank: specOfCharacter(threatened).rank,
+          active: BOB,
+          steps: [{ kind: "call" }, { kind: "end-round" }],
+          pending: null,
+          builtThisTurn: 0,
+          threats: [threatened, "assassin"],
+          players: base.players.map((player) =>
+            player.seat === BOB ? { ...player, gold, hand: [], city: [] } : player,
+          ),
+        };
+        for (let i = 0; i < 40 && cur.phase !== "draft"; i += 1) {
+          cur = advance(cur, (_seat, state) => {
+            const purpose = openPurpose(state);
+            if (purpose === "turn") return { t: "gold" };
+            if (purpose === "keep") return { t: "keep", index: 0 };
+            if (purpose === "blackmailer-threat") return { t: "choose", value: "refuse" };
+            return null;
+          });
+        }
+        return cur;
+      };
+      // The threat resolves once, so its marker is off the table at the turn's end.
+      expect(
+        refuse("king", 0).threats ?? [],
+        "the refused threat resolved and its marker came off",
+      ).not.toContain("king");
+      // One gather: 0 + 2. A second gather on the post-threat build window is the
+      // D10-1 double gather, measured 4 on the head this guard missed.
+      expect(rawGold(refuse("king", 0), BOB), "the refused King gathered exactly once").toBe(2);
+      // The gain lands before the threat opens, and the reveal that follows a
+      // refused threat must not wipe it: 0 + 4, measured 0 on that head.
+      expect(
+        rawGold(refuse("navigator", 0), BOB),
+        "the refused Navigator kept the four gold it gained",
+      ).toBe(4);
+      expect(
+        rawGold(refuse("navigator", 0), ANN),
+        "the Blackmailer took nothing from the unrevealed refusal",
+      ).toBe(2);
     },
   },
   {
