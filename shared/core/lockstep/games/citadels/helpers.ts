@@ -831,10 +831,11 @@ export const resolveTurn: WindowResolver = (ctx) => {
   // `threats` and clears the pending the gathered marker rode, so the post-threat
   // window is told from the stack instead: a bare resolve step standing under it
   // marks a gather that already landed. The bare step runs nothing, so draining
-  // it costs no input and no effect. No character action is in flight at that
-  // point, which is what tells the marker apart from a character's own resolve
-  // step below its turn window (the Alchemist's settle carries its pending).
-  const postThreat = state.pending === null && rest[0]?.kind === "resolve";
+  // it costs no input and no effect. Reading the INCOMING pending is what tells
+  // the marker apart from a character's own resolve step below its turn window:
+  // the Alchemist's settle step carries that character's pending, while the
+  // reveal left none behind.
+  const postThreat = incoming === null && rest[0]?.kind === "resolve";
   const alreadyGathered = resumedWitch || gatheredPending !== null || postThreat;
 
   // A threatened seat must gather, then resolve the threat, then build: the gather
