@@ -706,6 +706,10 @@ const withoutTurnWindows = (steps: readonly Step[], seat: SeatId): readonly Step
       ),
   );
 
+/** True for a seat's Blackmailer threat window, wherever it sits in the stack. */
+const isThreatWindow = (step: Step): boolean =>
+  step.kind === "window" && step.window.purpose === "blackmailer-threat";
+
 /**
  * The continuation a gather hands the turn: one build-capable window, then the
  * turn's close. Any build window a character pre-seeded is dropped so the gather
@@ -853,15 +857,30 @@ export const resolveTurn: WindowResolver = (ctx) => {
   // build window sits below the threat, so nothing stands in the city while the
   // threat is open (rules.json blackmailer).
   if (threatened && !alreadyGathered) {
-    const threat = rest[0];
-    const hasThreat =
-      threat?.kind === "window" && threat.window.purpose === "blackmailer-threat";
+    // SEARCH the stack for the threat window instead of reading its top: the
+    // character's own effect reshapes the stack above it. The Architect and the
+    // Scholar hoist their extra build windows above the threat, and the Alchemist
+    // splices its settle resolve between this window and the threat, so the
+    // threat window is not at rest[0] and a build window runs ahead of it
+    // (D12-1..3). Whatever the shape, the seat gathers on this window, opens the
+    // threat on the post-gather purse, and builds only below the resolved threat:
+    // rules.json (blackmailer) "A threatened player must resolve the threat
+    // before using abilities or building".
+    const threatAt = rest.findIndex(isThreatWindow);
+    // Steps hoisted above the threat that are not this seat's own build windows
+    // ride below the build, where they belong: the Alchemist's settle resolve
+    // refunds a build, so it must not run first. Pre-seeded build windows are
+    // dropped here because the build limit re-offers them from its own counter
+    // (see withoutTurnWindows).
+    const hoisted = withoutTurnWindows(rest.slice(0, Math.max(threatAt, 0)), seat);
     // The gather has landed, so the build window below the threat takes no second
     // one: the marker rides the pending, and the bare resolve step under the
     // window carries it past the reveal, which clears that pending.
-    const belowThreat: readonly Step[] = hasThreat
-      ? [threat, buildWindow, POST_THREAT, ...rest.slice(1)]
-      : [buildWindow, ...rest];
+    const threat = threatAt < 0 ? undefined : rest[threatAt];
+    const belowThreat: readonly Step[] =
+      threat === undefined
+        ? [buildWindow, ...rest]
+        : [threat, buildWindow, POST_THREAT, ...hoisted, ...rest.slice(threatAt + 1)];
     if (action?.t === "draw") {
       const gathered = drawGather(state, seat, rest, ctx.rng);
       return withSteps(gathered, [winStep("keep", [seat]), ...belowThreat]);
