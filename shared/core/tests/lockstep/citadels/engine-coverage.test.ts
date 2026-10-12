@@ -1532,4 +1532,156 @@ describe("engine coverage: the Blackmailer's two threat markers", () => {
       "the Museum's offer still opened and tucked one card",
     ).toBe(1);
   });
+
+  /**
+   * D12-1..3 teeth, and the sweep that proves there is no fourth. The rule is
+   * shape-independent: rules.json (blackmailer) "A threatened player must resolve
+   * the threat before using abilities or building", over the turn model
+   * (docs/design/citadels-full-game.md) "A turn: gather (2 gold, or draw 2 keep 1),
+   * then optionally build one district."
+   *
+   * Both verification passes folded a threatened seat with an EMPTY hand, so the
+   * stack shape a build-capable character leaves was never folded: a character
+   * whose effect reshapes the turn stack pushed its build windows above the
+   * threat window, and the seat built before its marker resolved.
+   *   D12-1 the Architect's withBuildLimit hoists three turn windows above the
+   *         blackmailer-threat: measured turn,turn,turn,keep,blackmailer-threat
+   *         with four districts already in the city.
+   *   D12-2 the Alchemist's atTop pass splices a bare RESOLVE between the turn
+   *         window and the threat: measured turn,turn,keep,blackmailer-threat with
+   *         the Tavern built and a card tucked under the Museum.
+   *   D12-3 the Scholar's withBuildLimit hoists two turn windows above the
+   *         threat: measured scholar-keep,turn,turn,turn,keep,blackmailer-threat
+   *         with two districts already built.
+   * resolveTurn (helpers.ts) searched the stack for the threat window instead of
+   * reading rest[0], so the seat gathers, opens the threat on the post-gather
+   * purse, and builds only below the resolved threat whatever the shape.
+   */
+  test("a threatened seat resolves its threat before it builds, on every stack shape", () => {
+    const HAND: readonly DistrictId[] = ["tavern", "palace", "dragon-gate", "market"];
+    const claimsByRank = (
+      pairs: readonly (readonly [SeatId, CharacterId])[],
+    ): readonly { readonly seat: SeatId; readonly character: CharacterId }[] =>
+      [...pairs]
+        .sort((a, b) => specOfCharacter(a[1]).rank - specOfCharacter(b[1]).rank)
+        .map(([seat, character]) => ({ seat, character }));
+
+    /**
+     * Fold one threatened turn: BOB holds the character, a non-empty hand, twenty
+     * gold and a Museum, with the Blackmailer's marker already in threats. The
+     * seat answers every window the engine opens, takes the greedy build, and
+     * REFUSES the threat, so the deferred build after a refused marker is in the
+     * frame the assertions read.
+     */
+    const threatenedTurn = (
+      character: CharacterId,
+      entropy: string,
+    ): {
+      readonly purposes: readonly (string | null)[];
+      readonly cityAtThreat: readonly DistrictId[];
+      readonly tuckAtThreat: number;
+      readonly finalCity: readonly DistrictId[];
+    } => {
+      const base = rawGenesis(SEATS3, castWithThreat(character), entropy);
+      const partner =
+        base.cast.find((id) => specOfCharacter(id).rank > specOfCharacter(character).rank) ??
+        base.cast[base.cast.length - 1] ??
+        character;
+      let cur: CitadelsState = {
+        ...base,
+        phase: "turn",
+        draft: null,
+        claimed: claimsByRank([[ANN, "blackmailer"], [BOB, character], [CARA, partner]]),
+        callRank: specOfCharacter(character).rank,
+        active: BOB,
+        steps: [{ kind: "call" }, { kind: "end-round" }],
+        pending: null,
+        builtThisTurn: 0,
+        threats: [character],
+        players: base.players.map((player) =>
+          player.seat === BOB
+            ? { ...player, gold: 20, hand: [...HAND], city: [...MUSEUM_CITY] }
+            : player,
+        ),
+      };
+      const purposes: (string | null)[] = [];
+      const cities: readonly DistrictId[][] = [];
+      const tucks: number[] = [];
+      for (let i = 0; i < 60 && cur.phase === "turn"; i += 1) {
+        purposes.push(openPurpose(cur));
+        cities.push(cityIdsOf(cur, BOB));
+        tucks.push(rawPlayer(cur, BOB).city[0]?.cards?.length ?? 0);
+        cur = advance(cur, (seat, state) => {
+          const purpose = openPurpose(state);
+          if (purpose === "turn") return buildOrGold(seat, state);
+          if (purpose === "blackmailer-threat") return { t: "choose", value: "refuse" };
+          return windowAnswer(seat, state);
+        });
+      }
+      const at = purposes.indexOf("blackmailer-threat");
+      return {
+        purposes,
+        cityAtThreat: at < 0 ? [] : (cities[at] ?? []),
+        tuckAtThreat: at < 0 ? -1 : (tucks[at] ?? -1),
+        finalCity: cityIdsOf(cur, BOB),
+      };
+    };
+
+    // The three stack-reshaping characters D12 folded, with the deferral's own
+    // teeth: the build must land BELOW the threat, not be dropped by it.
+    const reshapers: readonly (readonly [CharacterId, readonly DistrictId[]])[] = [
+      ["architect", ["tavern", "market", "palace"]],
+      ["alchemist", ["tavern"]],
+      ["scholar", ["tavern", "market"]],
+    ];
+    for (const [character, built] of reshapers) {
+      const r = threatenedTurn(character, "coverage-d12-" + character);
+      expect(r.purposes, character + " opens its threat window").toContain("blackmailer-threat");
+      expect(
+        r.cityAtThreat,
+        character + " gathered only before its threat resolved: " + r.purposes.join(","),
+      ).toEqual(["museum"]);
+      expect(
+        r.tuckAtThreat,
+        character + " tucked nothing under its Museum before its threat resolved: " +
+          r.purposes.join(","),
+      ).toBe(0);
+      expect(
+        r.finalCity,
+        character + " still builds below the resolved threat: " + r.purposes.join(","),
+      ).toEqual(["museum", ...built]);
+    }
+
+    // The sweep: every threatenable character, each with a non-empty hand and a
+    // buildable card. The Trader is held out and reported to the coordinator: its
+    // trade-build windows sit above the turn window, so it builds trade districts
+    // before the threat opens - the same clause, but the fix needs a shared-file
+    // change outside this unit's scope (orchestrate/citadels D12-4).
+    const heldOut = new Set<CharacterId>(["trader"]);
+    const THREATENABLE: readonly CharacterId[] = [
+      "assassin", "witch", "magistrate", "thief", "spy", "magician", "wizard", "seer",
+      "king", "emperor", "patrician", "bishop", "abbot", "cardinal", "merchant", "alchemist",
+      "trader", "architect", "navigator", "scholar", "warlord", "diplomat", "marshal", "artist",
+      "queen", "tax-collector",
+    ];
+    const swept = THREATENABLE.filter((id) => !heldOut.has(id));
+    expect(swept.length, "the sweep covers every threatenable character but the held-out Trader").toBe(25);
+    for (const character of swept) {
+      const r = threatenedTurn(character, "coverage-d12-sweep-" + character);
+      const at = r.purposes.indexOf("blackmailer-threat");
+      expect(at, character + " is called while its marker stands").toBeGreaterThanOrEqual(0);
+      expect(
+        r.cityAtThreat,
+        character + " built or tucked before its threat resolved: " + r.purposes.join(","),
+      ).toEqual(["museum"]);
+      expect(
+        r.tuckAtThreat,
+        character + " tucked a card before its threat resolved: " + r.purposes.join(","),
+      ).toBe(0);
+      expect(
+        r.purposes.slice(at + 1).includes("turn"),
+        character + " keeps its build window below the resolved threat: " + r.purposes.join(","),
+      ).toBe(true);
+    }
+  });
 });
