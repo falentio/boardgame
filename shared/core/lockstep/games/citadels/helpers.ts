@@ -873,14 +873,18 @@ export const resolveTurn: WindowResolver = (ctx) => {
     // dropped here because the build limit re-offers them from its own counter
     // (see withoutTurnWindows).
     const hoisted = withoutTurnWindows(rest.slice(0, Math.max(threatAt, 0)), seat);
-    // The gather has landed, so the build window below the threat takes no second
-    // one: the marker rides the pending, and the bare resolve step under the
-    // window carries it past the reveal, which clears that pending.
+    const below = [...hoisted, ...rest.slice(Math.max(threatAt + 1, 0))];
     const threat = threatAt < 0 ? undefined : rest[threatAt];
+    // The gather has landed, so the build window below the threat takes no second
+    // one. The post-threat build window reads that off the stack: a bare resolve
+    // step standing under it. The Alchemist's settle resolve already plays that
+    // part - it sits directly below the build window, and the reveal left no
+    // pending behind - so the marker is added only when the build window would
+    // otherwise face the turn's END_TURN, which endTurnThen reads as the turn's
+    // own close and leaves the settle step stranded above a second end-turn.
+    const marked = below[0]?.kind === "resolve" ? below : [POST_THREAT, ...below];
     const belowThreat: readonly Step[] =
-      threat === undefined
-        ? [buildWindow, ...rest]
-        : [threat, buildWindow, POST_THREAT, ...hoisted, ...rest.slice(threatAt + 1)];
+      threat === undefined ? [buildWindow, ...rest] : [threat, buildWindow, ...marked];
     if (action?.t === "draw") {
       const gathered = drawGather(state, seat, rest, ctx.rng);
       return withSteps(gathered, [winStep("keep", [seat]), ...belowThreat]);
