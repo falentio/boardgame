@@ -242,6 +242,16 @@ export const RESOLVE: Step = { kind: "resolve" };
 export const END_TURN: Step = { kind: "end-turn" };
 export const END_ROUND: Step = { kind: "end-round" };
 
+/**
+ * The bare resolve step standing under a threatened seat's post-threat turn
+ * window. Resolving the threat clears the pending the turn's gathered marker rode
+ * (the threat arms its own pending, and the reveal clears it), so the build window
+ * below the threat cannot be marked that way: it reads this step off the stack
+ * instead and takes no second gather. A resolve step with nothing pending to run
+ * is a no-op, so the marker costs nothing to drain.
+ */
+const POST_THREAT: Step = { kind: "resolve" };
+
 export const emptyPending = (actor: SeatId, character: CharacterId | null): Pending => ({
   actor,
   character,
@@ -660,11 +670,13 @@ const withMuseumOffer = (
  * there, else supply one, so end-of-turn districts fire exactly once per turn.
  */
 const endTurnThen = (rest: readonly Step[]): readonly Step[] => {
-  // The Alchemist's end-of-turn resolve sits directly above the turn's END_TURN
-  // (see alchemist.ts), so step past it to find the turn's own END_TURN. A
-  // Blackmailer's threat window is spliced directly below the turn window (the
-  // gather must land before the threat), so step past it too.
-  const head = rest[0]?.kind === "resolve" ? rest.slice(1) : rest;
+  // The resolve steps that sit directly above the turn's END_TURN are the
+  // Alchemist's settle (see alchemist.ts) and the engine's post-threat marker, so
+  // step past every one of them to find the turn's own END_TURN. A Blackmailer's
+  // threat window is spliced directly below the turn window (the gather must land
+  // before the threat), so step past it too.
+  let head = rest;
+  while (head[0]?.kind === "resolve") head = head.slice(1);
   const past =
     head[0]?.kind === "window" && head[0].window.purpose === "blackmailer-threat"
       ? head.slice(1)
@@ -809,11 +821,21 @@ export const resolveTurn: WindowResolver = (ctx) => {
     return withSteps(offer.state, [...built.steps, ...offer.steps]);
   };
 
-  const alreadyGathered = resumedWitch || gatheredPending !== null;
   const threatened =
     !resumedWitch &&
     playedCharacter !== null &&
     (state.threats ?? []).includes(playedCharacter);
+  // The threatened seat's turn window is visited twice: the pre-threat window,
+  // with the threat window standing directly below it, and the post-threat window
+  // below the resolved threat. Resolving the threat drops the character from
+  // `threats` and clears the pending the gathered marker rode, so the post-threat
+  // window is told from the stack instead: a bare resolve step standing under it
+  // marks a gather that already landed. The bare step runs nothing, so draining
+  // it costs no input and no effect. No character action is in flight at that
+  // point, which is what tells the marker apart from a character's own resolve
+  // step below its turn window (the Alchemist's settle carries its pending).
+  const postThreat = state.pending === null && rest[0]?.kind === "resolve";
+  const alreadyGathered = resumedWitch || gatheredPending !== null || postThreat;
 
   // A threatened seat must gather, then resolve the threat, then build: the gather
   // lands on this window, the threat window opens on the post-gather gold, and a
@@ -823,8 +845,11 @@ export const resolveTurn: WindowResolver = (ctx) => {
     const threat = rest[0];
     const hasThreat =
       threat?.kind === "window" && threat.window.purpose === "blackmailer-threat";
+    // The gather has landed, so the build window below the threat takes no second
+    // one: the marker rides the pending, and the bare resolve step under the
+    // window carries it past the reveal, which clears that pending.
     const belowThreat: readonly Step[] = hasThreat
-      ? [threat, buildWindow, ...rest.slice(1)]
+      ? [threat, buildWindow, POST_THREAT, ...rest.slice(1)]
       : [buildWindow, ...rest];
     if (action?.t === "draw") {
       const gathered = drawGather(state, seat, rest, ctx.rng);
@@ -931,10 +956,13 @@ export const resolveChooseType: WindowResolver = (ctx) => {
 
 /**
  * A threatened character's owner gathers resources first, then resolves the
- * threat. The turn's gather rides the `turn` window, so the threat window is
- * spliced directly below it (above the turn's END_TURN): the seat answers the
- * turn window (gathering), and the threat opens on the post-gather gold. A stack
- * with no turn window (the Witch's takeover) prepends it instead.
+ * threat (rules.json blackmailer: "they must gather resources, then resolve the
+ * threat"). The window the gather lands on therefore sits above the threat
+ * window: an ordinary character gathers on its turn window, so the threat is
+ * spliced directly below it (above the turn's END_TURN) and opens on the
+ * post-gather gold; the Navigator gathers on the resolve step below its turn
+ * window, so the threat is spliced below that resolve and opens on the post-gain
+ * purse. A stack with neither (the Witch's takeover) gets the threat prepended.
  */
 const withThreat = (
   state: CitadelsState,
@@ -943,9 +971,18 @@ const withThreat = (
   stack: readonly Step[],
 ): readonly Step[] => {
   if (!(state.threats ?? []).includes(character)) return stack;
-  const at = stack.findIndex(
-    (step) => step.kind === "window" && step.window.purpose === "turn",
-  );
+  // The threatened seat completes its gather before the threat opens, so the
+  // window the gather lands on must sit above the threat. For every character but
+  // the Navigator that is the turn window, and the threat goes directly below it,
+  // above the turn's END_TURN. The Navigator's turn window is its gain choice and
+  // its gain rides the resolve step below it, so the threat goes below that
+  // resolve: the gain lands first and the threat opens on the post-gain purse
+  // (rules.json blackmailer: "they must gather resources, then resolve the
+  // threat").
+  const at =
+    character === "navigator"
+      ? stack.findIndex((step) => step.kind === "resolve")
+      : stack.findIndex((step) => step.kind === "window" && step.window.purpose === "turn");
   if (at < 0) return [winStep("blackmailer-threat", [seat]), ...stack];
   return [
     ...stack.slice(0, at + 1),
