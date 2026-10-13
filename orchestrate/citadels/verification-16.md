@@ -286,7 +286,7 @@ attempted here.
   `orchestrate/citadels/verification-16.md` (this report).
 - **Verify command:** `scripts/citadels-verify.sh shared/core/tests/lockstep/citadels/verification16.test.ts --own shared/core/tests/lockstep/citadels/verification16.test.ts`
 - **Raw result:** `Tests 2 failed | 3 passed (5)`; `VERIFY FAILED: vitest`.
-- **Commit SHA:** (filled at commit)
+- **Commit SHA:** 4bb5f57 (report + test file)
 - **Shared-file change needed:** `helpers.ts` + `characters/witch.ts` — the plain-
   turn relocation must not move the bewitched effect's window past the
   `witch-resume` turn window, or `resolveTurn` must recognize the resume turn from
