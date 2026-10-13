@@ -24,15 +24,6 @@ const GATHER = 2;
 /** Tags the witch's in-flight commit so its second pass is distinguishable. */
 const NAME_NOTE = "witch-name";
 
-/**
- * The tag the resume turn window's pending carries so a consumer can locate the
- * window by position. A locator only: the resume IDENTITY (whose seat, which
- * character) is owned by `state.resume`, and no engine decision reads this
- * tag. It rides the arm step directly above the turn window, below the effect's
- * resolve pass, so the bewitched effect still opens on a clean pending and the
- * locator survives whatever the effect prepends.
- */
-const RESUME_WINDOW_TAG = "witch-resume";
 
 /**
  * Gather resources (the fixed +2), then call the name of another character to

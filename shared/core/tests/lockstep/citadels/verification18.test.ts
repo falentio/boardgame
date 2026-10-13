@@ -266,10 +266,11 @@ test("P3 a mid-resume snapshot leaks no hidden information through project", () 
 });
 
 /**
- * P4 - the fix17 rename removed the old `WITCH_RESUME_NOTE` plumbing: helpers.ts
- * no longer exports it. The tag the resume arm step carries is a locator only -
- * `seatHolding` and `buildLimit` key on the owned `resume` record, so a state with
- * the tag in `pending` but no owned record must not report the Witch as holder.
+ * P4 - the resume identity is owned state, not the `pending` slot: `seatHolding`
+ * and `buildLimit` key on the `state.resume` record, so a state with no owned
+ * record must not report the Witch as the bewitched character's holder. (The old
+ * `WITCH_RESUME_NOTE` marker and the interim locator tag are both gone; the fix19
+ * reuse of `armCharacterTurn` removed the tag's last home.)
  */
 test("P4 the old WITCH_RESUME_NOTE export is gone and the tag is inert", () => {
   const mid = resumeWindow("scholar");
