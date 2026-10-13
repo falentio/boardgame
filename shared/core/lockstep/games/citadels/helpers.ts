@@ -100,14 +100,14 @@ export const claimOf = (state: CitadelsState, seat: SeatId): Claim | null =>
 /**
  * The seat holding a character this round, or null. During the Witch's resume the
  * bewitched character is played by the Witch, so its own effect must act on her
- * hand, gold, and city: the resume pending names her seat and carries the
- * bewitched id, so this reports her seat for that one character.
+ * hand, gold, and city: the resume record names her seat and carries the
+ * bewitched id, so this reports her seat for that one character. The record is
+ * owned state, not the shared pending slot an effect overwrites when its own
+ * turn opens.
  */
 export const seatHolding = (state: CitadelsState, character: CharacterId): SeatId | null => {
-  const resume = state.pending;
-  if (resume?.note === WITCH_RESUME_NOTE && resume.character === character) {
-    return resume.actor;
-  }
+  const resume = state.resume ?? null;
+  if (resume !== null && resume.character === character) return resume.seat;
   return state.claimed.find((claim) => claim.character === character)?.seat ?? null;
 };
 
@@ -199,14 +199,6 @@ export const NAVIGATOR_CARDS_NOTE = "navigator-cards";
  * its gold share, per rules.json).
  */
 export const CONFISCATE_REFUND_NOTE = "confiscate-refund";
-
-/**
- * The `pending.note` marker the Witch sets when her held turn resumes. Her
- * gather already happened on her held turn (her fixed +2), so the resumed turn —
- * which the engine models as an ordinary `turn` window for the bewitched
- * character — takes no gather of its own.
- */
-export const WITCH_RESUME_NOTE = "witch-resume";
 
 /**
  * The `pending.note` marker the engine writes when a Cardinal's build fails for
@@ -433,10 +425,10 @@ export const BUILD_LIMITS: Partial<Record<CharacterId, number>> = {
  */
 export const buildLimit = (state: CitadelsState, seat: SeatId, card?: DistrictId): number => {
   // The Witch's resume plays the bewitched character's turn with the Witch's
-  // resources, so its limit is the bewitched character's: the resume rides
-  // `pending.note` with the bewitched id in `pending.character`.
-  const resumed =
-    state.pending?.note === WITCH_RESUME_NOTE ? state.pending.character : null;
+  // resources, so its limit is the bewitched character's: the owned resume record
+  // names her seat and the character she plays.
+  const resume = state.resume ?? null;
+  const resumed = resume !== null && resume.seat === seat ? resume.character : null;
   const character = resumed ?? activeCharacterOf(state, seat);
   if (character === "trader" && card !== undefined && specOfDistrict(card).type === "trade") {
     return Number.POSITIVE_INFINITY;
@@ -794,16 +786,6 @@ export const relocateEffectBelowThreat = (
   return [...mid, threat, ...carried, ...steps.slice(threatAt + 1)];
 };
 
-/**
- * The continuation a gather hands the turn: one build-capable window, then the
- * turn's close. Any build window a character pre-seeded is dropped so the gather
- * is followed by exactly one build opportunity.
- */
-const gatherThenBuild = (rest: readonly Step[], seat: SeatId): readonly Step[] => [
-  winStep("turn", [seat]),
-  ...endTurnThen(withoutTurnWindows(rest, seat)),
-];
-
 export const resolveTurn: WindowResolver = (ctx) => {
   // Record any seat that finished on an earlier turn before this turn's build, so
   // `completed` carries finish order and not roster order. Preserve the two markers
@@ -811,16 +793,16 @@ export const resolveTurn: WindowResolver = (ctx) => {
   // the turn's gathered marker (a build window below the gather) — and clear any
   // other character pending the effect above the turn window left behind.
   const incoming = ctx.state.pending;
-  const resumePending = incoming?.note === WITCH_RESUME_NOTE ? incoming : null;
+  const resume = ctx.state.resume ?? null;
   const gatheredPending = incoming?.note === TURN_GATHERED_NOTE ? incoming : null;
-  const state = withPending(recordFinished(ctx.state), resumePending ?? gatheredPending);
+  const state = withPending(recordFinished(ctx.state), gatheredPending);
   const rest = state.steps.slice(1);
   const seat = ctx.window.seats[0] ?? state.active;
+  const resumedWitch = resume !== null && resume.seat === seat;
   if (!hasSeat(state, seat) || isResigned(state, seat)) {
     return withSteps(state, endTurnThen(rest));
   }
   const action = actionOf(ctx.frame, seat);
-  const resumedWitch = resumePending !== null;
   // The Witch plays two turns with one seat. Her held turn (her own rank) is put
   // on hold: no gather (her fixed +2 was the gather) and no build ("you cannot
   // build"), so it closes at once. The window stays in the stack so the engine
@@ -869,13 +851,18 @@ export const resolveTurn: WindowResolver = (ctx) => {
   // the gather's keep, the Blackmailer's threat, or the Cardinal's shortfall offer.
   const buildWindow = winStep("turn", [seat]);
   const markGathered = (s: CitadelsState): CitadelsState =>
-    withPending(s, resumedWitch ? (resumePending as Pending) : turnGatheredPending(seat));
+    withPending(
+      s,
+      resumedWitch
+        ? emptyPending(seat, resume?.character ?? null)
+        : turnGatheredPending(seat),
+    );
   // End the turn, clearing the turn marker so a following Museum keep (which the
   // gather keep distinguishes by a bare pending) is not misrouted. The Alchemist's
   // settle pending (character "alchemist", note null) is left for its resolve step.
   const clearMarker = (s: CitadelsState): CitadelsState => {
     const note = s.pending?.note ?? null;
-    return note === TURN_GATHERED_NOTE || note === WITCH_RESUME_NOTE ? withPending(s, null) : s;
+    return note === TURN_GATHERED_NOTE ? withPending(s, null) : s;
   };
   const closeTurn = (s: CitadelsState, cont: readonly Step[]): CitadelsState => {
     const cleared = clearMarker(s);
@@ -1218,7 +1205,7 @@ export const applyCall = (state: CitadelsState): CitadelsState => {
 export const applyEndTurn = (state: CitadelsState, rng: Random): CitadelsState => {
   const rest = state.steps.slice(1);
   const hooked = runDistrictHooks(state, "onEndTurn", state.active, rest, rng);
-  const cleared = withPending({ ...hooked, builtThisTurn: 0 }, null);
+  const cleared = withPending({ ...hooked, builtThisTurn: 0, resume: null }, null);
   // The Armory's "on your turn" clause: offer its destroy window once per turn,
   // at the end of the acting seat's turn, above the round's continuation. Every
   // other onDestroy district (the Great Wall, the Keep) is a query, not a window.

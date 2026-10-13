@@ -132,6 +132,20 @@ export interface Pending {
 }
 
 /**
+ * The Witch's resumed turn: which seat plays it and as which bewitched
+ * character. Her gather already landed on the held turn, so the resume turn
+ * takes no gather; this record is the resume's identity, read by seatHolding,
+ * buildLimit, and resolveTurn. It is owned here, not by the shared pending slot
+ * an effect overwrites when its own turn opens.
+ */
+export interface Resume {
+  /** The Witch's seat, the acting player on the resume. */
+  readonly seat: SeatId;
+  /** The bewitched character the resume plays as, or null when none. */
+  readonly character: CharacterId | null;
+}
+
+/**
  * A stack entry. `window` needs input from its seats; `call` advances the rank
  * cursor; `end-turn` closes the character's turn; `end-round` closes the round.
  * Everything below a window is its continuation, so a whole round is a
@@ -169,6 +183,12 @@ export interface CitadelsState {
   readonly skipped: readonly CharacterId[];
   /** The character action in flight, or null between turns. */
   readonly pending: Pending | null;
+  /**
+   * The Witch's resumed turn, or null. Set when the resume opens and cleared
+   * when the resumed turn ends, so a character effect that overwrites pending
+   * cannot clobber the resume identity.
+   */
+  readonly resume?: Resume | null;
   /** Seats that have finished their city, in completion order. */
   readonly completed: readonly SeatId[];
   /** Seats that resigned. */
@@ -241,6 +261,7 @@ export const withCrossTurnDefaults = (state: CitadelsState): CitadelsState => ({
   warrants: state.warrants ?? [],
   taxPot: state.taxPot ?? 0,
   builtThisTurn: state.builtThisTurn ?? 0,
+  resume: state.resume ?? null,
 });
 
 export const windowKindFor = (purpose: WindowPurpose): WindowKind => WINDOW_KIND[purpose];
@@ -285,6 +306,15 @@ const decodeNullableCharacter = (json: Json, what: string): CharacterId | null =
 
 const decodeNullableType = (json: Json, what: string): DistrictType | null =>
   json === null ? null : asDistrictType(expectString(json, what));
+
+const decodeResume = (json: Json): Resume | null => {
+  if (json === null) return null;
+  const object = expectObject(json, "resume");
+  return {
+    seat: decodeSeat(field(object, "seat"), "resume seat"),
+    character: decodeNullableCharacter(field(object, "character"), "resume character"),
+  };
+};
 
 const decodeDistrict = (json: Json, what: string): DistrictId => {
   const id = expectString(json, what);
@@ -495,6 +525,10 @@ export const stateCodec: Codec<CitadelsState> = {
     warrants: [...(state.warrants ?? [])],
     taxPot: state.taxPot ?? 0,
     builtThisTurn: state.builtThisTurn ?? 0,
+    resume:
+      state.resume === null || state.resume === undefined
+        ? null
+        : { seat: state.resume.seat, character: state.resume.character },
   }),
   decode: (json): CitadelsState => {
     const object = expectObject(json, "citadels state");
@@ -521,6 +555,7 @@ export const stateCodec: Codec<CitadelsState> = {
       warrants: decodeCharacters(field(object, "warrants"), "warrants"),
       taxPot: expectInteger(field(object, "taxPot"), "taxPot"),
       builtThisTurn: expectInteger(field(object, "builtThisTurn"), "builtThisTurn"),
+      resume: decodeResume(field(object, "resume")),
     };
   },
 };

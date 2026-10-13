@@ -23,14 +23,14 @@ const GATHER = 2;
 const NAME_NOTE = "witch-name";
 
 /**
- * Marks the Witch's resumed turn. Her gather already happened on her held turn
- * (the fixed +2), so the resumed turn must not gather again; the marker tells
- * `resolveTurn` to skip the gather and take the turn as the bewitched character's
- * own turn. Its `pending.character` carries the bewitched id, so `buildLimit`
- * reads that character's limit and `seatHolding` points the bewitched effect at
- * the Witch's seat.
+ * The tag the resume turn window's pending carries so a consumer can locate the
+ * window by position. A locator only: the resume IDENTITY (whose seat, which
+ * character) is owned by `state.resume`, and no engine decision reads this
+ * tag. It rides the arm step directly above the turn window, below the effect's
+ * resolve pass, so the bewitched effect still opens on a clean pending and the
+ * locator survives whatever the effect prepends.
  */
-export const WITCH_RESUME_NOTE = "witch-resume";
+const RESUME_WINDOW_TAG = "witch-resume";
 
 /**
  * Gather resources (the fixed +2), then call the name of another character to
@@ -59,9 +59,10 @@ export const witch: CharacterEffect = (ctx: CharacterCtx) => {
 /**
  * The stack the Witch's resume runs: a `resolve` step above the turn window,
  * exactly as `applyCall` arms an ordinary character turn. The engine's resolve
- * step runs `CHARACTER_EFFECTS[bewitched]` with the Witch's seat, and `seatHolding`
- * (keyed on the resume note) points the bewitched character's owner lookup at the
- * Witch, so its ability lands on her hand, gold, and city.
+ * step runs `CHARACTER_EFFECTS[bewitched]` with the Witch's seat, and
+ * `seatHolding` (keyed on the owned `resume` record) points the bewitched
+ * character's owner lookup at the Witch, so its ability lands on her hand, gold,
+ * and city.
  */
 const resumeStack = (
   witchSeat: SeatId,
@@ -69,7 +70,7 @@ const resumeStack = (
   rest: readonly Step[],
 ): readonly Step[] => [
   RESOLVE,
-  { kind: "arm", pending: resumePending },
+  { kind: "arm", pending: { ...resumePending, note: RESUME_WINDOW_TAG } },
   winStep("turn", [witchSeat]),
   ...rest,
 ];
@@ -90,12 +91,18 @@ export const witchResolve: WindowResolver = (ctx) => {
   if (witchSeat === undefined || witchSeat === null) return withSteps(ctx.state, rest);
   if (ctx.window.purpose === "witch-resume") {
     const bewitched = ctx.state.bewitched ?? null;
-    // Clear the marker so the bewitched character's own effect (which suppresses
-    // itself while `bewitched` names it) runs for the resume; `resolveTurn`
-    // restores it from the resume pending when the turn window opens.
-    const resumePending = { ...emptyPending(witchSeat, bewitched), note: WITCH_RESUME_NOTE };
+    // The resume identity is owned state, not the shared pending slot: every
+    // effect the resume runs writes its own pending record, so a marker there
+    // would be clobbered. `bewitched` clears so the bewitched character's own
+    // effect (which suppresses itself while `bewitched` names it) runs.
+    const resumePending = emptyPending(witchSeat, bewitched);
     const resumed = withPending(
-      { ...ctx.state, active: witchSeat, bewitched: null },
+      {
+        ...ctx.state,
+        active: witchSeat,
+        bewitched: null,
+        resume: { seat: witchSeat, character: bewitched },
+      },
       resumePending,
     );
     // The resumed turn is the bewitched character's turn played with the Witch's
