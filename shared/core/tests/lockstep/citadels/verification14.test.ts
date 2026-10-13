@@ -110,6 +110,19 @@ test("D14-1 a refused threatened Scholar builds before it draws, losing a build"
     // it, not the gather. Measured plain: -,turn,scholar-keep,turn,...
     const firstBuild = plain.purposes.findIndex((p, i) => i > keep && p === "turn");
     expect(keep, label + " plain: the Scholar's keep leads its build; " + plain.purposes.join(",")).toBeLessThan(firstBuild);
+    // And the gather must lead the keep: the plain turn is gather -> abilities ->
+    // build, so the D15 relocation plants the ability window BELOW the gather turn
+    // window. A relocation revert (the ability drains above the gather) leaves
+    // `-,scholar-keep,turn,...` and reddens here, which the keep-before-build
+    // assertion above cannot see (it holds either way). Measured plain at head:
+    // `-,turn,scholar-keep,turn,...`; with the plain relocation reverted:
+    // `-,scholar-keep,turn,...`.
+    const gatherAt = plain.purposes.indexOf("turn");
+    expect(gatherAt, label + " plain: the gather turn window opened; " + plain.purposes.join(",")).toBeGreaterThanOrEqual(0);
+    expect(
+      keep,
+      label + " plain: the gather leads the Scholar's keep (gather -> abilities -> build); " + plain.purposes.join(","),
+    ).toBeGreaterThan(gatherAt);
     expect(buildsOf(plain.end), label + " plain: the Scholar builds the card it drew").toBe(1);
     // The rule: the threatened seat's ability drains before its post-threat build
     // window, exactly as the plain turn's draw precedes its build. The refused
