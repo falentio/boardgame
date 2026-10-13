@@ -292,3 +292,28 @@ attempted here.
   `witch-resume` turn window, or `resolveTurn` must recognize the resume turn from
   the stack rather than the pending, so the resumed turn takes no gather.
   Coordinator-owned.
+
+## Correction note (fix16-witch-resume, this unit)
+
+D16-1 is fixed. The Witch's `resumeStack` now carries the resume pending on an
+explicit `arm` step directly above the resume turn window
+(`[RESOLVE, arm(resumePending), turn, ...rest]`); the relocation's first-pass
+guard (`hasArmAbove`) then reads that arm and skips, so the bewitched effect's
+window keeps its place below the resume turn window and `resolveTurn` recognizes
+the resumed turn from the pending. No shared `helpers.ts` change was needed, so
+the coordinator's "shared-file change needed" line above is superseded: the fix is
+`characters/witch.ts` only.
+
+The two audit findings are closed:
+
+- **Finding 2 (the multi-pass guard).** `verification16.test.ts` P4 parameterizes
+  the one-gather guard over all five multi-pass effects (Spy, Assassin, Magistrate,
+  Thief, Blackmailer). Neuter the first-pass guard (`if (hasArmAbove ||
+  !hasWindowAbove)` -> `if (false)`) and all five rows redden: Spy 8,
+  Assassin 4, Magistrate 4, Thief 4, Blackmailer 6 (each 2 at head).
+- **T7 (the D14-1 re-frame).** `verification14` D14-1 now also asserts the plain
+  gather turn window leads the `scholar-keep` window (gather -> abilities ->
+  build). Reverting the plain relocation (`if (threatAt < 0) return steps`)
+  leaves `-,scholar-keep,turn,...` and reddens the row, which the keep-before-build
+  assertion alone could not see. Its D14-splice teeth (T6) are preserved: the
+  pre-D14 splice still reddens D14-1 (plus P1 and P4).
