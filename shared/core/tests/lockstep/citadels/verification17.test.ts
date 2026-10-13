@@ -5,6 +5,8 @@ import {
 } from "./driver.ts";
 import { specOfCharacter, type CharacterId, type Rank } from "../../../lockstep/games/citadels/characters.ts";
 import type { DistrictId } from "../../../lockstep/games/citadels/districts.ts";
+import { stateCodec } from "../../../lockstep/games/citadels/state.ts";
+import { buildLimit } from "../../../lockstep/games/citadels/helpers.ts";
 
 /**
  * Seventeenth pass. fix16 (73a5258) made the Witch's resume stack carry the
@@ -402,4 +404,104 @@ test("P4 a refused threatened Scholar reaches the plain end state", () => {
   const refused = fold(["scholar"]);
   expect(cityIds(refused, BOB), "the refused Scholar built what the plain turn built").toEqual(cityIds(plain, BOB));
   expect(gold(refused, BOB), "the refused Scholar reaches the plain purse").toBe(gold(plain, BOB));
+});
+
+// ---------------------------------------------------------------------------
+// P5 - the redesign owns the resume identity in a dedicated state field
+// ---------------------------------------------------------------------------
+
+/** Fold the Witch's held turn and resume, stopping AT the resume turn window. */
+const resumeWindowState = (bewitched: CharacterId): CitadelsState => {
+  let s = resumeBoard(bewitched);
+  for (let i = 0; i < 200; i += 1) {
+    const top = s.steps[0];
+    if (
+      top !== undefined && top.kind === "window" && top.window.purpose === "turn" &&
+      s.resume !== null && s.resume !== undefined
+    ) {
+      return s;
+    }
+    if (openPurpose(s) === "draft-pick" || s.phase !== "turn") break;
+    s = advance(s, (seat, st) => {
+      const p = openPurpose(st);
+      if (p === "choose-character") return { t: "name-character", character: bewitched };
+      if (p === "witch-takeover" || p === "witch-resume") return { t: "pass" };
+      return idleTurn(seat, st);
+    });
+  }
+  throw new Error("the fold never reached the resume turn window");
+};
+
+/**
+ * The resume identity is owned state (CitadelsState.resume), not the shared
+ * pending slot a bewitched effect overwrites. The engine encodes and decodes the
+ * state between frames, so a mid-resume snapshot must restore the identity or the
+ * resumed turn would lose it across a frame boundary. The Scholar re-seats turn
+ * windows and the Spy writes pending.note; both must round-trip.
+ */
+test("P5 the resume identity survives a mid-resume codec round-trip", () => {
+  for (const bewitched of ["scholar", "spy"] as CharacterId[]) {
+    const mid = resumeWindowState(bewitched);
+    expect(mid.resume, "the resume opened with an owned identity; " + bewitched).toEqual({
+      seat: ANN,
+      character: bewitched,
+    });
+    const round = stateCodec.decode(stateCodec.encode(mid));
+    expect(
+      round.resume,
+      "the resume identity survives encode/decode; " + bewitched,
+    ).toEqual(mid.resume);
+  }
+});
+
+/**
+ * The resume record is turn-local: it must be cleared when the resumed turn
+ * ends, or the Witch's seat would keep playing the bewitched character on every
+ * later turn. Fold the resume past its own turn window and assert the record is
+ * gone. Neuter the end-of-turn clear and this reddens.
+ */
+test("P6 the resume record clears when the resumed turn ends", () => {
+  let s = resumeBoard("scholar");
+  let sawResume = false;
+  let sawClear = false;
+  for (let i = 0; i < 300; i += 1) {
+    const hasResume = s.resume !== null && s.resume !== undefined;
+    if (hasResume) sawResume = true;
+    // The resume record is turn-local: it opens on the resume turn window and
+    // clears as that window's turn closes. A state past the resume whose record
+    // is gone is the clear; a state past the resume that still carries it is the
+    // leak this guards.
+    if (sawResume && !hasResume) {
+      sawClear = true;
+      break;
+    }
+    if (openPurpose(s) === "draft-pick" || s.phase !== "turn") break;
+    s = advance(s, (seat, st) => {
+      const p = openPurpose(st);
+      if (p === "choose-character") return { t: "name-character", character: "scholar" };
+      if (p === "witch-takeover" || p === "witch-resume") return { t: "pass" };
+      return idleTurn(seat, st);
+    });
+  }
+  expect(sawResume, "the fold reached the resume").toBe(true);
+  expect(sawClear, "the resume record cleared once the resumed turn ended").toBe(true);
+  expect(s.resume, "no resume record leaks past the resumed turn").toBeFalsy();
+});
+
+/**
+ * The resume identity is read from the owned field, not inferred from the rank
+ * cursor. The cursor happens to coincide with the bewitched rank on a real
+ * resume, so a direct read pins the owned record as the source: with the record
+ * set and the cursor pointed elsewhere, buildLimit must still report the
+ * bewitched character's limit (the rule: the resume uses the bewitched
+ * character's build limit). Neuter the buildLimit resume branch and this
+ * reddens.
+ */
+test("P7 buildLimit reads the resume character from the owned field", () => {
+  const mid = resumeWindowState("scholar");
+  const cursorMoved = { ...mid, callRank: 1 };
+  expect(
+    buildLimit(cursorMoved, ANN),
+    "the resume's build limit is the bewitched Scholar's (2), not the Witch's (1)",
+  ).toBe(2);
 });
