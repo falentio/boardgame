@@ -273,7 +273,7 @@ seating), both shared, so it is routed to the coordinator rather than attempted 
   `orchestrate/citadels/verification-15.md` (this report).
 - **Verify command:** `scripts/citadels-verify.sh shared/core/tests/lockstep/citadels/verification15.test.ts --own shared/core/tests/lockstep/citadels/verification15.test.ts`
 - **Raw result:** `Tests 3 failed | 6 passed (9)`; `VERIFY FAILED: vitest`.
-- **Commit SHA:** <filled after commit>
+- **Commit SHA:** 4a22178 (this report and the test file)
 - **Shared-file change needed:** `helpers.ts` — the threatened branch of `resolveTurn`
   (with `relocateEffectBelowThreat` and `withThreat`) must preserve each ability's
   plain-turn position relative to the gather, so a pre-gather ability (Warlord destroy,
