@@ -30,7 +30,12 @@ const stop = (steps: readonly CitadelsState[]): boolean => {
   return openPurpose(s) === "draft-pick" || s.phase !== "turn";
 };
 
-const HAND: readonly DistrictId[] = ["tavern", "palace", "dragon-gate", "market"];
+/**
+ * The D12 hand: the non-trade cards let a build-capable character trade, and the
+ * three trade districts let the Trader spend its unlimited trade builds - the
+ * hand that decides whether a hoisted build window is reachable (D12-4).
+ */
+const HAND: readonly DistrictId[] = ["tavern", "market", "trading-post", "palace"];
 
 const threatTurn = (character: CharacterId, entropy: string) => {
   const base = rawGenesis(SEATS3, castFor([character]), entropy);
@@ -53,6 +58,7 @@ const threatTurn = (character: CharacterId, entropy: string) => {
   const answer = (_seat: SeatId, s: CitadelsState): CitadelsAction | null => {
     const purpose = openPurpose(s);
     if (purpose === "turn") return rawHand(s, BOB).length > 0 ? { t: "build", card: 0 } : { t: "gold" };
+    if (purpose === "trader-build") return rawHand(s, BOB).length > 0 ? { t: "build", card: 0 } : null;
     if (purpose === "keep") return { t: "keep", index: 0 };
     if (purpose === "blackmailer-threat") return { t: "choose", value: "refuse" };
     if (purpose === "blackmailer-resolve") return { t: "choose", value: "no" };
@@ -72,6 +78,9 @@ const threatTurn = (character: CharacterId, entropy: string) => {
     purposes: frames.map((f) => f.purpose).join(","), threatIdx,
     cityAtThreat: threatIdx < 0 ? [] : frames[threatIdx]!.city,
     tuckAtThreat: threatIdx < 0 ? -1 : frames[threatIdx]!.tuck,
+    // The city the fold ends on: a deferred build window still lands below the resolved
+    // threat, so a marker costs the seat its turn order, not its build (D12-4).
+    finalCity: cityIds(run.steps[run.steps.length - 1] as CitadelsState, BOB),
   };
 };
 
@@ -98,6 +107,21 @@ test("D12-2 a threatened Alchemist resolves its threat before it builds", () => 
 
 test("D12-3 a threatened Scholar resolves its threat before it builds", () => {
   assertNothingBuiltBeforeThreat("scholar", "v12-d3");
+});
+
+test("D12-4 a threatened Trader resolves its threat before it trades", () => {
+  const r = threatTurn("trader", "v12-d4");
+  expect(r.threatIdx, "the blackmailer-threat window opened").toBeGreaterThanOrEqual(0);
+  expect(
+    r.cityAtThreat,
+    "purposes " + r.purposes + ": trader built " + r.cityAtThreat.join("+") + " before its threat resolved",
+  ).toEqual(["museum"]);
+  // The Trader still trades below the resolved threat: its limit is unbounded
+  // for trade districts, so all three land once the marker is spent.
+  expect(
+    r.finalCity,
+    "purposes " + r.purposes + ": the Trader traded " + r.finalCity.slice(1).join("+") + " below its threat",
+  ).toEqual(["museum", "tavern", "market", "trading-post", "palace"]);
 });
 
 test("P1 a threatened King and Merchant still resolve the threat before they build", () => {

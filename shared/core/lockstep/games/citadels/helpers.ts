@@ -513,12 +513,28 @@ const recordAlchemistSpend = (
       });
 
 /**
+ * A threatened player must resolve the threat before using abilities or building
+ * (rules.json blackmailer). `resolveTurn` reorders a threatened seat's own turn
+ * window below the marker, but a character effect may hoist a build window that
+ * reorder never sees: the Trader opens its trade-build window above the turn
+ * window, so it drained first and the seat built four trade districts with its
+ * marker still standing (D12-4). The build seam itself therefore refuses while
+ * the marker stands, wherever in the stack the effect left its window, and the
+ * character's own limit counter re-offers the window once the marker is spent.
+ */
+const buildBlockedByThreat = (state: CitadelsState, seat: SeatId): boolean => {
+  const character = activeCharacterOf(state, seat);
+  return character !== null && (state.threats ?? []).includes(character);
+};
+
+/**
  * Build a district from hand index `card` under the terms its city and the card
  * declare; otherwise do nothing. A build may be rejected for being illegal, for
- * an unaffordable gold cost, or for lacking the cards or city district an
- * alternative payment needs. The returned state carries the build's follow-up
- * windows (the Magistrate's confiscation, for a gold-paid build) as its step
- * stack, which `resolveTurn` splices below `end-turn`.
+ * an unaffordable gold cost, for a standing Blackmailer marker, or for lacking
+ * the cards or city district an alternative payment needs. The returned state
+ * carries the build's follow-up windows (the Magistrate's confiscation, for a
+ * gold-paid build) as its step stack, which `resolveTurn` splices below
+ * `end-turn`.
  */
 export const tryBuild = (
   state: CitadelsState,
@@ -530,6 +546,7 @@ export const tryBuild = (
   const id = player.hand[card];
   if (id === undefined) return withSteps(state, []);
   if (duplicateBlocked(state, seat, id)) return withSteps(state, []);
+  if (buildBlockedByThreat(state, seat)) return withSteps(state, []);
   const { terms, destroySource } = buildTerms(state, seat, id, player.city);
   if (terms.legal === false) return withSteps(state, []);
 
