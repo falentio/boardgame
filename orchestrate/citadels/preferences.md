@@ -10,4 +10,4 @@
 10. ONE WRITER PER FILE. Every character and district effect lives in its own file and is pre-registered. You edit only your own file(s).
 11. STACKER. The coordinator is the only actor that rebases or retargets. Workers never do.
 12. BASELINE IS RED. 5 pre-existing failures in server/modules/rooms/tests/http.test.ts and repo-wide formatting failures predate this branch. Do not try to fix them.
-13. EXECUTOR DOWN: after two T3 restarts, delegate_task and t3_thread_launch fail with parent_not_active. Resume from orchestrate/citadels/HANDOFF.md; it names the 3 remaining fixes and the 3 flawed counterexamples.
+13. FIX SHAPE. The plain turn order is gather -> abilities -> build, and the threatened turn order is gather -> threat -> abilities -> build (rules.json blackmailer). A refused turn must equal the plain turn. Any unit touching helpers.ts resolveTurn preserves this.
