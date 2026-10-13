@@ -1,10 +1,10 @@
 # Orchestrate status
 
-Generated: 2026-10-13T13:18:34.650Z
+Generated: 2026-10-13T13:39:04.254Z
 
 ## Units
 
-States: abandoned=10, done=75, failed=4, partial=3
+States: abandoned=10, done=75, failed=4, partial=3, running=1
 
 | ID | Track | State | Branch | PR | SHA | Brief |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -100,6 +100,7 @@ States: abandoned=10, done=75, failed=4, partial=3
 | fix13c-refuse-regression | verify | done |  |  | aa6f553 | D13 seam regression: a refused threatened seat loses its relocated ability windows (scholar draw); owns helpers.ts + windows.ts + verification11.test.ts |
 | verify-14 | verify | done |  |  | fbce10b | fourteenth independent adversarial pass at aa6f553 (post fix13c payload/close seam): predicate audit, teeth audit incl the new arm step and endTurnThen, verification14.test.ts counterexamples, the threatened-Witch exemption, the two-character seat, and the four build-path plain-vs-refuse divergences |
 | verify-15 | verify | done |  |  |  | fifteenth independent adversarial pass at 536f78d (post D14-1 ability-before-build order): predicate audit, end-to-end threatened-seat ordering sweep over every window-opening character, teeth audit incl the new continuation shape and the rearm arm step, verification15.test.ts counterexamples |
+| fix15-plain-order | verify | running | feat/citadels-game-definitions |  |  | D15: the plain turn order is gather -> abilities -> build; relocate the effect windows below the gather window on a plain turn (relocateEffectBelowThreat) and place the build window after them, mirroring the threatened branch; owns helpers.ts + windows.ts + the re-framed fixtures |
 
 ## Verification ledger
 
@@ -185,4 +186,4 @@ Lowest unmerged: none
 
 (none)
 
-<!-- orch-summary {"unitStates":{"abandoned":10,"done":75,"failed":4,"partial":3},"ledgerVerdicts":{"unit-test-verified":50,"verifier-failed":16},"frontierGeneration":0,"openGateIds":[]} -->
+<!-- orch-summary {"unitStates":{"abandoned":10,"done":75,"failed":4,"partial":3,"running":1},"ledgerVerdicts":{"unit-test-verified":50,"verifier-failed":16},"frontierGeneration":0,"openGateIds":[]} -->
