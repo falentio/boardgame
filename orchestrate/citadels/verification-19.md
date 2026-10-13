@@ -272,7 +272,8 @@ per-character files). The standing gaps from passes 10-18 remain:
   `scripts/citadels-verify.sh shared/core/tests/lockstep/citadels/verification19.test.ts --own shared/core/tests/lockstep/citadels/verification19.test.ts`
 - **Raw result:** `Tests 4 failed | 4 passed (8)` then `VERIFY FAILED: vitest`.
   `npx tsc -p tsconfig.citadels.json` is clean (rc 0).
-- **Commit SHA:** b411d2c (the test file); 87abac5 (this report).
+- **Commit SHA:** b411d2c (the test file); this report lands in a follow-up
+  `verify(citadels): verify-19 report` commit at the branch tip.
 - **Deviation / shared-file change needed:** none written. The fix needs a shared
   change (`helpers.ts` `resolveTurn`'s `resumedWitch` handling of the leading turn
   window, or a resume-turn step kind), so per standing order 4 I report it and stop.
