@@ -44,3 +44,5 @@ These do not block the D15 frontier; they are recorded so they are not lost.
 - **HANDOFF.md is stale.** The executor-down outage it describes is over (delegate_task
   works again); the three defects and three flawed counterexamples it names are long
   fixed. Left in place as history; the live resume point is `units.tsv`.
+
+- **No CI in this repo.** There is no `.github/workflows`, so PR 20 reports "no checks reported" and a CLEAN/MERGEABLE state with no automated gate. The verification gate is the local citadels suite (`scripts/citadels-verify.sh` + `vp test`), which is why every ledger verdict is local. Do not wait on a CI check; it will never appear.
