@@ -739,8 +739,14 @@ export const relocateEffectBelowThreat = (
   pending: Pending | null,
   seat: SeatId,
   character: CharacterId | null,
+  resumed = false,
 ): readonly Step[] => {
   if (character === "witch") return steps;
+  // A resumed turn has no gather, so the ability windows stay ABOVE the resume
+  // turn window (which resolves as the build): the turn reads abilities -> build,
+  // the order a plain turn reaches after its gather. Relocating them below would
+  // put the build window ahead of the ability (D19-1/D19-2).
+  if (resumed) return steps;
   const turnAt = steps.findIndex(
     (step) => step.kind === "window" && step.window.purpose === "turn" && step.window.seats.includes(seat),
   );

@@ -53,6 +53,7 @@ const applyImmediate = (state: CitadelsState, step: Step, rng: Random): Citadels
           produced.pending,
           pending.actor,
           pending.character,
+          state.resume != null,
         ),
       );
     }
