@@ -120,8 +120,14 @@ test("a folded game that names characters records at least one kill, rob, or bew
 
 test("the Assassin's choose-character window surfaces through the engine", () => {
   const landed = callAndDrain(RANK1, "assassin", 1);
-  expect(openWindow(landed)).toBe("choose-character");
-  const named = advance(landed, (seat) =>
+  // The plain turn gathers first, then the Assassin names (gather -> abilities ->
+  // build). Measured: landed tops on the gather `turn` window, and the
+  // choose-character window surfaces on the next step. Before the D15 fix the
+  // naming window opened above the gather, so the turn had not gathered yet.
+  expect(openWindow(landed)).toBe("turn");
+  const gathered = advance(landed, () => null);
+  expect(openWindow(gathered)).toBe("choose-character");
+  const named = advance(gathered, (seat) =>
     seat === ANN ? { t: "name-character", character: "merchant" } : null,
   );
   expect(named.skipped).toContain("merchant");
@@ -140,8 +146,10 @@ test("the Witch's choose-character window surfaces through the engine", () => {
 test("the Magistrate's choose-character window surfaces through the engine", () => {
   const cast: readonly CharacterId[] = ["magistrate", "thief", "magician", "king", "bishop", "merchant", "architect", "warlord"];
   const landed = callAndDrain(cast, "magistrate", 1);
-  expect(openWindow(landed)).toBe("choose-character");
-  const named = advance(landed, (seat) =>
+  expect(openWindow(landed)).toBe("turn");
+  const gathered = advance(landed, () => null);
+  expect(openWindow(gathered)).toBe("choose-character");
+  const named = advance(gathered, (seat) =>
     seat === ANN ? { t: "name-character", character: "merchant" } : null,
   );
   expect(named.warrants?.length ?? 0).toBeGreaterThan(0);
@@ -149,8 +157,10 @@ test("the Magistrate's choose-character window surfaces through the engine", () 
 
 test("the Thief's choose-character window surfaces through the engine", () => {
   const landed = callAndDrain(RANK1, "thief", 2);
-  expect(openWindow(landed)).toBe("choose-character");
-  const named = advance(landed, (seat) =>
+  expect(openWindow(landed)).toBe("turn");
+  const gathered = advance(landed, () => null);
+  expect(openWindow(gathered)).toBe("choose-character");
+  const named = advance(gathered, (seat) =>
     seat === ANN ? { t: "name-character", character: "merchant" } : null,
   );
   expect(named.robbed).toBe("merchant");
@@ -159,7 +169,9 @@ test("the Thief's choose-character window surfaces through the engine", () => {
 test("the Spy's choose-seat window surfaces through the engine", () => {
   const cast: readonly CharacterId[] = ["assassin", "spy", "magician", "king", "bishop", "merchant", "architect", "warlord"];
   const landed = callAndDrain(cast, "spy", 2);
-  expect(openWindow(landed)).toBe("choose-seat");
+  expect(openWindow(landed)).toBe("turn");
+  const gathered = advance(landed, () => null);
+  expect(openWindow(gathered)).toBe("choose-seat");
 });
 
 // V2-2: the Blackmailer's first pass is guarded by `pending === null`, but
@@ -168,7 +180,8 @@ test("the Spy's choose-seat window surfaces through the engine", () => {
 test("the Blackmailer assigns threat markers through the engine", () => {
   const cast: readonly CharacterId[] = ["assassin", "blackmailer", "magician", "king", "bishop", "merchant", "architect", "warlord"];
   const landed = callAndDrain(cast, "blackmailer", 2);
-  let s = landed;
+  expect(openWindow(landed), "the gather turn window leads the Blackmailer's naming").toBe("turn");
+  let s = advance(landed, () => null);
   for (let i = 0; i < 6 && openWindow(s) === "blackmailer-resolve"; i += 1) {
     s = advance(s, (seat) => (seat === ANN ? { t: "name-character", character: "merchant" } : null));
   }
@@ -292,13 +305,22 @@ test("the Diplomat pays one extra gold to exchange a district out of a Great Wal
     ANN,
     20,
   );
+  // The plain turn gathers first, then the Diplomat's exchange opens (gather ->
+  // abilities -> build). Measured: the call lands on the gather `turn` window;
+  // the diplomat-exchange window surfaces on the next step. Before the D15 fix the
+  // exchange window opened above the gather, so the test drove the three stages
+  // one step earlier.
   let s = advance(state, () => null);
+  expect(openWindow(s), "the gather leads the Diplomat's exchange").toBe("turn");
+  s = advance(s, () => null);
+  expect(openWindow(s)).toBe("diplomat-exchange");
   s = advance(s, (seat) => (seat === ANN ? { t: "target", seat: BOB } : null));
   s = advance(s, (seat) => (seat === ANN ? { t: "keep", index: 1 } : null));
   s = advance(s, (seat) => (seat === ANN ? { t: "keep", index: 0 } : null));
   // Palace (5) for Tavern (1): base difference 4, Great Wall toll 1 => 5 paid.
+  // 20 gold + 2-gold gather - 5 paid = 17.
   expect(s.players.find((p) => p.seat === ANN)?.city.map((d) => d.id)).toEqual(["palace"]);
-  expect(rawGold(s, ANN)).toBe(15);
+  expect(rawGold(s, ANN)).toBe(17);
 });
 
 // ---------------------------------------------------------------------------

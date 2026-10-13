@@ -103,7 +103,12 @@ test("D14-1 a refused threatened Scholar builds before it draws, losing a build"
     const plain = fold({ character: "scholar", threats: [], entropy: "v14-d1-" + label, ...board }, "none");
     const refused = fold({ character: "scholar", threats: ["scholar"], entropy: "v14-d1-" + label, ...board }, "refuse");
     const keep = plain.purposes.indexOf("scholar-keep");
-    const firstBuild = plain.purposes.indexOf("turn");
+    // The plain turn gathers first (the gather is a `turn` window), then the
+    // Scholar's keep, then the build (the next `turn` window): gather -> abilities
+    // -> build (docs/design/citadels-full-game.md "A turn: gather ..., then
+    // optionally build one district"). The keep must lead the build that follows
+    // it, not the gather. Measured plain: -,turn,scholar-keep,turn,...
+    const firstBuild = plain.purposes.findIndex((p, i) => i > keep && p === "turn");
     expect(keep, label + " plain: the Scholar's keep leads its build; " + plain.purposes.join(",")).toBeLessThan(firstBuild);
     expect(buildsOf(plain.end), label + " plain: the Scholar builds the card it drew").toBe(1);
     // The rule: the threatened seat's ability drains before its post-threat build

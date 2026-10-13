@@ -119,13 +119,14 @@ const endKey = (s: CitadelsState): string =>
  * The rule (rules.json warlord): "You may destroy one district of your choice ...
  * by paying one fewer gold than its cost." A turn gathers two gold first, so a
  * Warlord with an empty purse gathers to 2 and can pay 2 to destroy a Barracks
- * (cost 3). Measured: the refused threatened Warlord DOES destroy the rival's
- * Barracks (it drains below the threat, i.e. below the gather) and ends with 0
- * gold; the plain Warlord drains its destroy window ABOVE its gather window, so it
- * holds 0 gold at the window, destroys nothing, and ends with 2. Same character,
- * same board, different result - the refused turn no longer equals the plain turn.
+ * (cost 3). The D15 fix gives the plain turn and the refused turn one order -
+ * gather -> abilities -> build - so both Warlords destroy the Barracks and both
+ * end with 0 gold. Measured: plain and refused each end 0||||0|57 with the rival's
+ * city empty. Before the fix the plain Warlord drained its destroy window ABOVE
+ * the gather, held 0 gold at the window, destroyed nothing, and ended 2|||barracks|0|56,
+ * so refused != plain.
  */
-test("D15-1 a refused threatened Warlord destroys on its post-gather purse, the plain turn cannot", () => {
+test("D15-1 a refused threatened Warlord destroys exactly where the plain Warlord does", () => {
   const board: Board = {
     gold: { ann: 0, bob: 0, cara: 0 },
     hands: { ann: [], bob: [], cara: [] },
@@ -134,7 +135,9 @@ test("D15-1 a refused threatened Warlord destroys on its post-gather purse, the 
   const plain = fold({ character: "warlord", threats: [], entropy: "v15-d1", ...board }, "none");
   const refused = fold({ character: "warlord", threats: ["warlord"], entropy: "v15-d1", ...board }, "refuse");
   expect(seat(refused.end, CARA).city.map((d) => d.id), "refused: the post-gather purse pays for the destroy").toEqual([]);
-  expect(seat(plain.end, CARA).city.map((d) => d.id), "plain: the pre-gather purse cannot").toEqual(["barracks"]);
+  expect(seat(plain.end, CARA).city.map((d) => d.id), "plain: the same gather pays for the destroy").toEqual([]);
+  expect(rawGold(refused.end, BOB), "refused: 0 gold after the destroy").toBe(0);
+  expect(rawGold(plain.end, BOB), "plain: 0 gold after the destroy").toBe(0);
   expect(
     endKey(refused.end),
     "the refused Warlord must end where the plain Warlord ends; refused " +
@@ -199,6 +202,39 @@ test("D15-3 the purse-timing family: a refused Marshal and Diplomat diverge from
     endKey(rd.end),
     "the refused Diplomat must end where the plain Diplomat ends; refused " + rd.purposes.join(","),
   ).toBe(endKey(pd.end));
+});
+
+/**
+ * The double-gather regression guard for a multi-pass effect. The Spy walks four
+ * passes (seat, type, peek, apply), each re-entering resolveTurn's turn window, so
+ * a relocation that fires on a later pass hoists the enclosing BUILD window over
+ * the arm step that arms its gather marker and the turn gathers again. Measured on
+ * the engine-coverage Spy guard before the fix: purposes
+ * [null,turn,choose-seat,turn,choose-type,turn,draft-pick] - three gathers - and a
+ * goldDelta of 6 where 4 is correct. Here the Spy names a type the target holds
+ * none of, so its ability moves no gold: the turn must then show exactly the
+ * gather's 2 gold, plain and refused alike. A second gather leaves 4.
+ */
+test("the Spy gathers exactly once per turn across its four passes", () => {
+  const board: Board = {
+    gold: { ann: 0, bob: 0, cara: 5 },
+    hands: { ann: [], bob: [], cara: ["manor"] },
+    cities: { ann: [], bob: [], cara: [] },
+  };
+  const plain = fold({ character: "spy", threats: [], entropy: "v15-g1", ...board }, "none");
+  const refused = fold({ character: "spy", threats: ["spy"], entropy: "v15-g1", ...board }, "refuse");
+  expect(
+    rawGold(plain.end, BOB),
+    "the plain Spy gathered exactly once; " + plain.purposes.join(","),
+  ).toBe(2);
+  expect(
+    rawGold(refused.end, BOB),
+    "the refused Spy gathered exactly once; " + refused.purposes.join(","),
+  ).toBe(2);
+  expect(
+    endKey(refused.end),
+    "and the refused Spy still ends where the plain Spy ends; " + refused.purposes.join(","),
+  ).toBe(endKey(plain.end));
 });
 
 // ---------------------------------------------------------------------------
