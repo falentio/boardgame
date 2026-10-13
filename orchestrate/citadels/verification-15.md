@@ -279,3 +279,37 @@ seating), both shared, so it is routed to the coordinator rather than attempted 
   plain-turn position relative to the gather, so a pre-gather ability (Warlord destroy,
   Marshal seize, Diplomat exchange, Abbot richest) still runs pre-gather on a refused
   turn. Coordinator-owned.
+
+
+## Correction note — fix15-plain-order-r2 (the D15 fix landed)
+
+The coordinator ruled the D15 fix shape (decisions.tsv row 112): the plain turn is
+gather -> abilities -> build, and the refused threatened turn is the same order with
+the Blackmailer threat spliced in after the gather. `relocateEffectBelowThreat`
+(helpers.ts) now relocates an effect's windows below the **gather** turn window when
+no threat stands (previously it returned early), and `resolveTurn`'s gather branch
+places the build window **after** those relocated windows, mirroring the threatened
+branch. The two paths now share one order, so refused == plain.
+
+The r1 salvage's real bug is fixed with it: the relocation ran on **every** `resolve`
+step, so a multi-pass effect (the Spy's four passes, the Blackmailer's two markers,
+the Assassin's commit) pushed a second window above the turn window on a later pass,
+and the relocation hoisted the enclosing **build** window over the `rearm` arm step
+that arms its gather marker — the turn gathered again. The Spy measured purposes
+`[null,turn,choose-seat,turn,choose-type,turn,draft-pick]` (three gathers) and a
+`goldDelta` of 6 where 4 is correct. `relocateEffectBelowThreat` now skips any pass
+whose segment above the turn window already holds an `arm` step (a placed build window
+always has one directly above it), so it relocates the first pass only. No character
+is special-cased.
+
+**Stale fixture re-framed (D15-1).** The original second assertion ("plain: the
+pre-gather purse cannot" -> CARA keeps `["barracks"]`) encoded the bug: it asserted
+the plain Warlord could *not* destroy, which is exactly the divergence the pass
+reported. Under the rule both turns gather first, so both destroy and both end
+`0||||0|57`; the assertion now pins that measured number instead of the buggy one.
+D15-2 and D15-3 are unchanged (their assertions are order-agnostic).
+
+Also re-framed to the new order: `verification2`'s six window-surfacing rows (the
+ability window now opens on the step **after** the gather `turn` window) and
+`verification14` D14-1's plain build proxy (the first `turn` window is now the
+gather, not the build). Each carries its measured before/after.
