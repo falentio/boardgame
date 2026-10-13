@@ -888,7 +888,12 @@ export const resolveTurn: WindowResolver = (ctx) => {
     const builtId = playerOf(base, seat).hand[card];
     const succeeded =
       playerOf(built, seat).hand.length < playerOf(base, seat).hand.length;
-    if (!succeeded && !resumedWitch && playedCharacter === "cardinal" && builtId !== undefined) {
+    // The Cardinal's shortfall offer is a build-path clause the plain turn
+    // reaches; the resume reaches it too (the Witch plays the Cardinal's turn with
+    // her own gold). Keying this on !resumedWitch silently dropped the offer on the
+    // resume, so a resume build the Witch could not afford was lost where the plain
+    // turn completes it from a donor (D20-1).
+    if (!succeeded && playedCharacter === "cardinal" && builtId !== undefined) {
       const shortfall = Math.max(0, specOfDistrict(builtId).cost - playerOf(base, seat).gold);
       if (shortfall > 0) {
         const armed = withPending(base, {
