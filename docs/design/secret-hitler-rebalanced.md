@@ -130,6 +130,12 @@ https://github.com/cozuya/secret-hitler/blob/master/routes/socket/game/common.js
 The variant table encodes this as `fascistSupply: 11, preEnactedFascist: 1`.
 `variant.test.ts` pins the resulting deck at 6 Liberal / 10 Fascist with track 1.
 
+The same master file disagrees with the table at 9 players. Under `rebalance9p2f` it
+sets `deckState.fas = 10` (`routes/socket/game/start-game.js`, line 41), where this
+table keeps 9. The 9-player row follows the archived [SHIO] rules page, the primary
+source cited above ("9 player games start with 9 Fascist Policies in the deck"), not
+the master branch code.
+
 ## Decisions a maintainer inherits
 
 - **The delta is one table.** Adding or moving a rebalanced count is one row edit in
