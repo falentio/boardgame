@@ -4,12 +4,12 @@
  * always deals 6 Liberal and 11 Fascist tiles [RB p2]. It applies at 6, 7, and 9
  * players and changes nothing else. See docs/design/secret-hitler-rebalanced.md.
  */
-import type { Random, Roster } from "../../index.ts";
+import type { Codec, Random, Roster } from "../../index.ts";
 import { SecretHitlerError } from "../secret-hitler/error.ts";
 import { deckFor, POLICY_MIX, type PolicyMix } from "../secret-hitler/policies.ts";
-import { dealRoles, type PlayerCount } from "../secret-hitler/roles.ts";
+import { dealRoles, playerCountOf, type PlayerCount } from "../secret-hitler/roles.ts";
 import { validateSetup, type SecretHitlerSetup } from "../secret-hitler/setup.ts";
-import type { PlayerState, SecretHitlerState } from "../secret-hitler/state.ts";
+import { stateCodecFor, type PlayerState, type SecretHitlerState } from "../secret-hitler/state.ts";
 
 /** What the variant adds at one count: a pre-enacted policy and/or a smaller Fascist supply. */
 export interface RebalanceDelta {
@@ -25,6 +25,11 @@ const BASE_DELTA: RebalanceDelta = { preEnactedFascist: 0, fascistSupply: POLICY
  * The rebalanced delta per count, the single owner of the three variant numbers
  * [SHIO]: 6 players pre-enact one Fascist Policy, 7 players hold 10 Fascist
  * tiles, and 9 players hold 9. Every other row is the base game.
+ *
+ * The 6-player pre-enactment is drawn from the supply, not an extra tile. The
+ * secrethitler.io source sets the track to 1 under `rebalance6p` and its
+ * `shufflePolicies` builds the deck as `deckState.fas - trackState.fascistPolicyCount`,
+ * so the pre-enacted tile is subtracted from the 11-tile supply.
  */
 export const REBALANCE_DELTA: Readonly<Record<PlayerCount, RebalanceDelta>> = {
   5: BASE_DELTA,
@@ -42,6 +47,30 @@ export const variantMixFor = (count: PlayerCount): PolicyMix => ({
   liberal: POLICY_MIX.liberal,
   fascist: rebalanceOf(count).fascistSupply,
 });
+
+const conservedCodec = stateCodecFor(variantMixFor);
+
+/**
+ * The variant codec: the base codec plus the pre-enactment floor. At 6 players the
+ * supply is the base 11, so conservation cannot tell the pre-enacted policy from a
+ * deck tile: a base-shaped state (track 0, 11 Fascist in the deck) conserves and
+ * would decode, letting a joiner play the base game. Genesis is the track's only
+ * writer and the fold only increments it, so the track is never below the
+ * pre-enactment.
+ */
+export const variantStateCodec: Codec<SecretHitlerState> = {
+  encode: conservedCodec.encode,
+  decode: (json) => {
+    const state = conservedCodec.decode(json);
+    const floor = rebalanceOf(playerCountOf(state.players.length)).preEnactedFascist;
+    if (state.fascistPolicies < floor) {
+      throw new SecretHitlerError(
+        `fascist policies are below the ${String(floor)} pre-enacted at ${String(state.players.length)} players: ${String(state.fascistPolicies)}`,
+      );
+    }
+    return state;
+  },
+};
 
 /**
  * Build the initial variant state. Same two shuffles, in the same fixed order, as
