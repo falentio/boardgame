@@ -401,3 +401,31 @@ export const policiesConserved = (state: SecretHitlerState): boolean => {
 export const currentPhase = (state: SecretHitlerState): Phase => state.phase;
 
 export const boardOf = (count: PlayerCount): readonly BoardSlot[] => boardFor(count);
+
+/** Drive a 5-player table to an open veto phase: five Fascist Policies on the board,
+ *  a unanimous yes, then the chancellor proposes the veto. */
+export const driveToVeto = (entropy: string): Checkpoint<SecretHitlerState> => {
+  let checkpoint = withRoles(rawGenesis(5, entropy), [
+    [ANN, "fascist"],
+    [BOB, "hitler"],
+    [CARA, "liberal"],
+    [DEE, "liberal"],
+    [EVE, "liberal"],
+  ]);
+  checkpoint = withTracks(checkpoint, 0, VETO_UNLOCK_FASCIST);
+  checkpoint = withStackedPile(checkpoint, ["liberal", "liberal", "fascist"]);
+  const president = ANN;
+  const chancellor = CARA;
+  checkpoint = withPresident(checkpoint, president);
+  checkpoint = rawStep(checkpoint, [[president, { t: "nominate", chancellor }]]);
+  checkpoint = rawStep(
+    checkpoint,
+    owedNow(checkpoint.state).map(
+      (seat): readonly [SeatId, SecretHitlerAction] => [seat, { t: "vote", ja: true }],
+    ),
+  );
+  checkpoint = rawStep(checkpoint, [[president, { t: "discard", index: 0 }]]);
+  checkpoint = rawStep(checkpoint, [[chancellor, { t: "propose-veto" }]]);
+  if (checkpoint.state.phase.kind !== "veto") throw new Error("did not reach a veto phase");
+  return checkpoint;
+};

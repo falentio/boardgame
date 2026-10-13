@@ -5,6 +5,7 @@ import {
   CARA,
   activeSeats,
   driveRaw,
+  driveToVeto,
   fascistSeats,
   hitlerSeat,
   isTerminal,
@@ -97,10 +98,11 @@ const assertRedacted = (state: SecretHitlerState, seat: SeatId): SecretHitlerVie
   } else {
     expect(view.myDrawn).toBeNull();
   }
-  if (view.phase.kind === "chancellor-enact" || view.phase.kind === "veto") {
+  if (view.phase.kind === "chancellor-enact") {
     if (view.phase.chancellor === seat) expect(view.myOffered).not.toBeNull();
     else expect(view.myOffered).toBeNull();
   } else {
+    // Only chancellor-enact hands the offered cards to their holder; a veto withholds them.
     expect(view.myOffered).toBeNull();
   }
   return view;
@@ -254,6 +256,19 @@ test("a policy peek reaches only the peeking president", () => {
   for (const seat of allSeats(after)) {
     if (seat === ANN) continue;
     expect(project(after, seat).myPeeks).toEqual([]);
+  }
+});
+
+test("a veto phase withholds the offered cards from every seat, including the chancellor", () => {
+  const state = driveToVeto("redact-veto").state;
+  expect(state.phase.kind).toBe("veto");
+  const offered = state.phase.kind === "veto" ? state.phase.offered : [];
+  expect(offered.length).toBe(2);
+  for (const seat of allSeats(state)) {
+    const view = assertRedacted(state, seat);
+    expect(view.myOffered).toBeNull();
+    expect(view.myDrawn).toBeNull();
+    expect(serialized(view)).not.toContain(JSON.stringify(offered));
   }
 });
 

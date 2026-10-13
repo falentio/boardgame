@@ -26,6 +26,7 @@ import {
   type Checkpoint,
   type FramePolicy,
   type PlayerCount,
+  type Policy,
   type SecretHitlerState,
   type SeatId,
 } from "./driver.ts";
@@ -108,16 +109,39 @@ test("genesis is deterministic: the same seed deals the same roles and the same 
 });
 
 test("genesis runs exactly two shuffles, in a fixed order", () => {
-  // Two peers with the same seed must agree on the deal AND the deck, which only
-  // holds if the two shuffles consume rng in a fixed order.
+  // Pinned to a fixed seed: the role deal runs first, then the deck. A changed
+  // shuffle order, or a third shuffle, moves a value here.
   const roster = makeRoster(seatsFor(8));
   const state = secretHitler.genesis({}, roster, makeRandom(genesisSeed("full-order")));
-  const expected = makeRandom(genesisSeed("full-order"));
-  const roles = expected.shuffle(state.players.map((player) => player.role));
-  const deck = expected.shuffle(state.drawPile);
-  // The deck was shuffled from the sorted 6/11 mix; the deal shuffled the multiset.
-  expect([...deck].sort()).toEqual([...state.drawPile].sort());
-  expect(roles.length).toBe(8);
+  expect(state.players.map((player) => player.role)).toEqual([
+    "liberal",
+    "fascist",
+    "hitler",
+    "liberal",
+    "fascist",
+    "liberal",
+    "liberal",
+    "liberal",
+  ]);
+  expect(state.drawPile).toEqual([
+    "fascist",
+    "fascist",
+    "fascist",
+    "liberal",
+    "liberal",
+    "fascist",
+    "fascist",
+    "fascist",
+    "fascist",
+    "liberal",
+    "liberal",
+    "fascist",
+    "fascist",
+    "liberal",
+    "fascist",
+    "liberal",
+    "fascist",
+  ]);
 });
 
 test("the mid-game reshuffle is deterministic and consumes rng only from frame.seed", () => {
@@ -148,19 +172,34 @@ test("the mid-game reshuffle is deterministic and consumes rng only from frame.s
   expect(sawReshuffle).toBe(true);
 });
 
-test("the deck reshuffles from the discard when fewer than three tiles remain", () => {
-  let checkpoint = withTracks(rawGenesis(5, "full-reshuffle-trigger"), 0, 0);
-  // 6 liberal, 11 fascist: stack a deck so the top three are known, then drive.
-  checkpoint = withStackedPile(checkpoint, ["liberal", "liberal", "fascist"]);
-  const before = checkpoint.state.drawPile.length;
-  expect(before).toBe(17);
-  // After a session the deck shrinks by 3; the discard grows by 2.
-  let steps = 0;
-  while (!isTerminal(checkpoint.state) && steps < 60) {
-    checkpoint = driveRaw(checkpoint, teamPolicy, steps);
-    steps += 1;
-  }
-  expect(policiesConserved(checkpoint.state)).toBe(true);
+test("a draw with fewer than three tiles folds the discard into the deck", () => {
+  const base = withTracks(rawGenesis(5, "full-reshuffle-fold"), 0, 0).state;
+  const president = base.president;
+  const chancellor = activeSeats(base).find((seat) => seat !== president);
+  if (chancellor === undefined) throw new Error("no chancellor");
+  // Two tiles in the deck and fifteen in the discard: a draw must reshuffle first.
+  const state: SecretHitlerState = {
+    ...base,
+    drawPile: ["liberal", "fascist"],
+    discardPile: [...Array<Policy>(5).fill("liberal"), ...Array<Policy>(10).fill("fascist")],
+    phase: { kind: "vote", president, chancellor },
+  };
+  expect(state.drawPile.length).toBe(2);
+  expect(state.discardPile.length).toBe(15);
+  const after = stepState(
+    state,
+    activeSeats(state).map(
+      (seat): readonly [SeatId, { t: "vote"; ja: boolean }] => [seat, { t: "vote", ja: true }],
+    ),
+  );
+  const drawn = after.phase.kind === "president-discard" ? after.phase.drawn : [];
+  expect(drawn.length).toBe(3);
+  // The discard emptied into the deck, and the deck is exactly the drawn three plus
+  // what remains: draw + discard before the draw was 17.
+  expect(after.discardPile.length).toBe(0);
+  expect(after.drawPile.length).toBe(14);
+  expect(after.drawPile.length + drawn.length).toBe(17);
+  expect(policiesConserved(after)).toBe(true);
 });
 
 test("the four stated endings are all reachable across the sweep", () => {

@@ -9,14 +9,19 @@ import {
   BOB,
   CARA,
   DEE,
+  EVE,
   driveRaw,
   legalActions,
+  policiesConserved,
   project,
   rawGenesis,
   seatsOwedNow,
+  stepResign,
   stepState,
+  withExecuted,
   withPhase,
   withPresident,
+  withRoles,
   withStackedPile,
   withTracks,
   type SecretHitlerState,
@@ -79,6 +84,42 @@ test("state codec round-trips a state carrying an investigation and a peek", () 
   });
   const after = stepState(investigate.state, [[ANN, { t: "investigate", target: BOB }]]);
   expect(stateCodec.decode(stateCodec.encode(after))).toEqual(after);
+});
+
+test("a collapsed table returns the open payload, so decode(encode(x)) holds", () => {
+  let checkpoint = withRoles(rawGenesis(5, "codec-abandon-payload"), [
+    [ANN, "fascist"],
+    [BOB, "hitler"],
+    [CARA, "liberal"],
+    [DEE, "liberal"],
+    [EVE, "liberal"],
+  ]);
+  // Execute two seats, leaving three active: the table collapses when one resigns.
+  checkpoint = withExecuted(checkpoint, [DEE, EVE]);
+  checkpoint = withPresident(checkpoint, ANN);
+  checkpoint = withPhase(checkpoint, { kind: "nominate", president: ANN });
+  const nominated = stepState(checkpoint.state, [[ANN, { t: "nominate", chancellor: CARA }]]);
+  const passed = stepState(
+    nominated,
+    seatsOwedNow(nominated).map(
+      (seat): readonly [SeatId, { t: "vote"; ja: boolean }] => [seat, { t: "vote", ja: true }],
+    ),
+  );
+  expect(passed.phase.kind).toBe("president-discard");
+
+  // The president resigns holding three drawn cards: they must reach the discard.
+  const afterPresident = stepResign(passed, ANN);
+  expect(afterPresident.phase).toEqual({ kind: "over", outcome: { kind: "abandoned" } });
+  expect(policiesConserved(afterPresident)).toBe(true);
+  expect(stateCodec.decode(stateCodec.encode(afterPresident))).toEqual(afterPresident);
+
+  // The same collapse with the two offered cards held by the chancellor.
+  const offered = stepState(passed, [[ANN, { t: "discard", index: 0 }]]);
+  expect(offered.phase.kind).toBe("chancellor-enact");
+  const afterChancellor = stepResign(offered, CARA);
+  expect(afterChancellor.phase).toEqual({ kind: "over", outcome: { kind: "abandoned" } });
+  expect(policiesConserved(afterChancellor)).toBe(true);
+  expect(stateCodec.decode(stateCodec.encode(afterChancellor))).toEqual(afterChancellor);
 });
 
 test("state codec rejects a malformed payload at the boundary", () => {

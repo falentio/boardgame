@@ -8,6 +8,7 @@ import { isFascistTeam, partyOf, playerCountOf, type PlayerCount } from "./roles
 import {
   activeSeats,
   MIN_ACTIVE_SEATS,
+  phasePayload,
   roleOf,
   type Investigation,
   type Outcome,
@@ -175,7 +176,7 @@ const eligibleChancellor = (state: SecretHitlerState, seat: SeatId): boolean => 
   if (seat === state.president) return false;
   if (seat === state.lastElectedChancellor) return false;
   // Only at five players may the last elected President be renominated [RB p3].
-  if (state.players.length > 5 && seat === state.lastElectedPresident) return false;
+  if (activeSeats(state).length > 5 && seat === state.lastElectedPresident) return false;
   return true;
 };
 
@@ -188,6 +189,7 @@ const stepNominate = (
   frame: Frame<SecretHitlerAction>,
   rng: Random,
 ): SecretHitlerState => {
+  if (!isActive(state, phase.president)) return beginNextRound(state);
   const input = actOf(frame, phase.president);
   const requested = input?.t === "nominate" ? input.chancellor : null;
   const eligible = eligibleChancellors(state);
@@ -420,7 +422,9 @@ export const step = (
 ): SecretHitlerState => {
   if (isTerminal(state)) return state;
   const folded = foldResigns(state, frame);
-  if (activeSeats(folded).length < MIN_ACTIVE_SEATS) return endAbandoned(folded);
+  if (activeSeats(folded).length < MIN_ACTIVE_SEATS) {
+    return endAbandoned(withDiscard(folded, phasePayload(folded.phase)));
+  }
   return runPhase(folded, frame, rng);
 };
 

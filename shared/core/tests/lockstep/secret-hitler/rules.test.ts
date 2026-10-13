@@ -24,6 +24,7 @@ import {
   secretHitler,
   stepResign,
   stepState,
+  withExecuted,
   withPhase,
   withPresident,
   withResigned,
@@ -312,6 +313,37 @@ test("term limits bar the last elected pair, but only the last chancellor at fiv
   const six = withTerms(sixBase, ANN, CARA).state;
   expect(eligibleChancellors(six)).not.toContain(ANN);
   expect(eligibleChancellors(six)).not.toContain(CARA);
+});
+
+test("the five-player term-limit relaxation counts living seats, not roster size", () => {
+  // Six seats with one executed leaves five players in the game, so the last
+  // elected President may be renominated [RB p3].
+  let checkpoint = withRoles(rawGenesis(6, "rules-term-living"), [
+    [ANN, "fascist"],
+    [BOB, "hitler"],
+    [CARA, "liberal"],
+    [DEE, "liberal"],
+    [EVE, "liberal"],
+    [FINN, "liberal"],
+  ]);
+  checkpoint = withExecuted(checkpoint, [FINN]);
+  checkpoint = withPresident(checkpoint, DEE);
+  const state = withTerms(checkpoint, ANN, CARA).state;
+  expect(activeSeats(state).length).toBe(5);
+  expect(eligibleChancellors(state)).toContain(ANN);
+  expect(eligibleChancellors(state)).not.toContain(CARA);
+});
+
+test("a president who resigns at the nomination hands the round on, never a vote naming them", () => {
+  const start = fiveTable("rules-resign-nominate");
+  const after = stepResign(start.state, ANN);
+  expect(after.phase).toEqual({ kind: "nominate", president: BOB });
+  expect(after.resigned).toContain(ANN);
+  // The next government seats a living President, so the resigned seat is never
+  // recorded as elected by a later vote.
+  const nominated = nominate(after, BOB, CARA);
+  const passed = stepState(nominated, voteFrame(nominated, [BOB, CARA, DEE, EVE]));
+  expect(passed.lastElectedPresident).toBe(BOB);
 });
 
 test("a table below the active floor is terminal and reads abandoned, never an empty owed set", () => {
