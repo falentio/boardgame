@@ -1,10 +1,10 @@
 # Orchestrate status
 
-Generated: 2026-10-13T08:39:46.922Z
+Generated: 2026-10-13T10:16:47.432Z
 
 ## Units
 
-States: abandoned=10, done=73, failed=4, partial=3
+States: abandoned=10, done=74, failed=4, partial=3, pending=1
 
 | ID | Track | State | Branch | PR | SHA | Brief |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -98,10 +98,12 @@ States: abandoned=10, done=73, failed=4, partial=3
 | fix13b-p1-fixture | verify | failed |  |  |  | correct verification11.test.ts P1 emperor/museum bribe arithmetic to the post-relocation order (bribe on post-gather pre-ability gold); owns verification11.test.ts only |
 | fix13b-p1-r2 | verify | failed |  |  |  | P1 correction retry: derive the bribe arithmetic from the purse measured at the threat frame, not from the plain end; owns verification11.test.ts only |
 | fix13c-refuse-regression | verify | done |  |  | aa6f553 | D13 seam regression: a refused threatened seat loses its relocated ability windows (scholar draw); owns helpers.ts + windows.ts + verification11.test.ts |
+| verify-14 | verify | done |  |  | fbce10b | fourteenth independent adversarial pass at aa6f553 (post fix13c payload/close seam): predicate audit, teeth audit incl the new arm step and endTurnThen, verification14.test.ts counterexamples, the threatened-Witch exemption, the two-character seat, and the four build-path plain-vs-refuse divergences |
+| verify-15 | verify | pending |  |  |  | fifteenth independent adversarial pass at 536f78d (post D14-1 ability-before-build order): predicate audit, end-to-end threatened-seat ordering sweep over every window-opening character, teeth audit incl the new continuation shape and the rearm arm step, verification15.test.ts counterexamples |
 
 ## Verification ledger
 
-Verdicts: unit-test-verified=49, verifier-failed=14
+Verdicts: unit-test-verified=50, verifier-failed=15
 
 | PR | SHA | Verdict | Evidence | Verifier | Timestamp |
 | --- | --- | --- | --- | --- | --- |
@@ -168,6 +170,8 @@ Verdicts: unit-test-verified=49, verifier-failed=14
 | 20 | f6cf5c9 | verifier-failed | independent pass 13 at f6cf5c9: verification13.test.ts 11 failed; the D13 family (ability windows drain before the threat); teeth audit 13/15 red with 2 findings | verify-13-subagent | 2026-10-13T04:52:49.188Z |
 | 20 | 2b6727c | unit-test-verified | coordinator re-ran at 2b6727c: verification13.test.ts 14/14; full citadels suite 86 files / 699 tests green except the coordinator-ruled stale P1 fixture; commits touch helpers.ts + windows.ts + engine-coverage.test.ts | coordinator-2fe386ea | 2026-10-13T05:30:11.578Z |
 | 20 | aa6f553 | unit-test-verified | coordinator re-ran at aa6f553: verification11 5/5 (P1 green, new P3 single-close guard green) and verification13 14/14 (D13-9 corrected); full citadels suite 86 files / 700 tests green; commits touch helpers.ts + state.ts + windows.ts + verification11.test.ts + verification13.test.ts; teeth proven (revert the arm carry -> P1+D13-7+D13-9 red; revert endTurnThen -> P3 red, refused Smithy pays 4 for 6 instead of 2 for 3) | coordinator-85bd98d5 | 2026-10-13T08:39:39.088Z |
+| 20 | fbce10b | verifier-failed | verify-14 at fbce10b: verification14.test.ts 1 failed / 4 passed; D14-1 a refused threatened Scholar builds before it draws, losing the build the plain turn takes (purposes -,turn,blackmailer-threat,blackmailer-resolve,turn,scholar-keep,...; refused builds 0, plain builds 1); present at pre-fix13c 2b6727c too, so it is the D13 build-window splice; cardinal/school + architect/school adjudicated probe artifacts (0/6000 divergent boards); Witch exemption unreachable (canThreat refuses rank 1); arm codec round-trip and single end-of-turn close hold | verify-14-subagent | 2026-10-13T10:06:36.540Z |
+| 20 | 536f78d | unit-test-verified | coordinator re-ran at 536f78d: verification14 5/5 (D14-1 green), verification11 5/5, verification13 14/14; full citadels suite 87 files / 705 tests green; commits touch helpers.ts + verification14.test.ts; teeth proven (revert the post-threat splice -> D14-1 red); adaptive probe (re-reads the hand at every build window, 26 chars x 2 boards) finds 0/52 refused-vs-plain divergences, and the two report cases cardinal/school + architect/school were the old probe's fixed-hand-index artifact | coordinator-85bd98d5 | 2026-10-13T10:15:55.087Z |
 
 ## Frontier
 
@@ -180,4 +184,4 @@ Lowest unmerged: none
 
 (none)
 
-<!-- orch-summary {"unitStates":{"abandoned":10,"done":73,"failed":4,"partial":3},"ledgerVerdicts":{"unit-test-verified":49,"verifier-failed":14},"frontierGeneration":0,"openGateIds":[]} -->
+<!-- orch-summary {"unitStates":{"abandoned":10,"done":74,"failed":4,"partial":3,"pending":1},"ledgerVerdicts":{"unit-test-verified":50,"verifier-failed":15},"frontierGeneration":0,"openGateIds":[]} -->
