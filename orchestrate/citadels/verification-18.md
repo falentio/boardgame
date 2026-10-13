@@ -273,7 +273,7 @@ per-character files). The standing gaps from passes 10-17 remain:
 - **Exact verify command:**
   `scripts/citadels-verify.sh shared/core/tests/lockstep/citadels/verification18.test.ts --own shared/core/tests/lockstep/citadels/verification18.test.ts`
 - **Raw result:** `Tests 2 failed | 5 passed (7)` then `VERIFY FAILED: vitest`.
-- **Commit SHA:** recorded at commit time (below).
+- **Commit SHA:** 9ac099d on feat/citadels-game-definitions.
 - **Deviation / shared-file change needed:** none written. The fix needs a shared
   change (`helpers.ts` `resolveTurn` / `characters/witch.ts` `resumeStack`), so
   per standing order 4 I report it and stop. The fix shape is the seam fix named
