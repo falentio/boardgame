@@ -25,3 +25,22 @@ Spawned units (reconcile at drain; zombie of b320ea9b killed, salvage handed to 
 - fix2-verification-tests: taskId node:delegated-task:command%3Amcp%3A69bf45e4-c67d-48cd-b9b2-235d7c50500e%3Adelegate-task%3Acitadels-fix2-verification-tests-2026-10-11 — owns verification2.test.ts, verification-report.test.ts (3 flawed counterexamples + stale D10)
 
 Queued next: fix2-regression (engine-coverage.test.ts folded-game guard) after the wave lands; then verify-3, an independent adversarial pass over the new head.
+## Open follow-ups (parked, from passes 10-16)
+
+These do not block the D15 frontier; they are recorded so they are not lost.
+
+- **Character summaries vs rules.json.** Passes 10-15 each flagged the same gap: no
+  data-driven test compares the 27 character `summary` strings to `rules.json`. fix5-data
+  reconciled 14 by hand; nothing guards against a future drift.
+- **Close-once guard gap (verify-15 T5b).** `verification15.test.ts` has no probe that
+  reddens on a symmetric double close of the turn; `verification11` P3 and
+  `engine-coverage.test.ts` own it. verify-16 should consider adding one.
+- **Pre-fix `endTurnThen` form (verify-15 T10).** The pre-fix13c form is green on
+  verification11 P3 and verification14 P4 at the current head. Not a defect; recorded so
+  no future pass mistakes it for a live regression.
+- **Unverified surfaces.** The six preset casts; scoring under two claims; terminal and
+  winner resolution under every stack shape; determinism and convergence at 2-7 seats.
+  None has been re-derived since the D10-D15 seams landed.
+- **HANDOFF.md is stale.** The executor-down outage it describes is over (delegate_task
+  works again); the three defects and three flawed counterexamples it names are long
+  fixed. Left in place as history; the live resume point is `units.tsv`.
