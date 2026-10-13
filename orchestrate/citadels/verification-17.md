@@ -363,7 +363,7 @@ shared, so they are routed to the coordinator rather than attempted here.
   (new), orchestrate/citadels/verification-17.md (this report).
 - **Verify command:** scripts/citadels-verify.sh shared/core/tests/lockstep/citadels/verification17.test.ts --own shared/core/tests/lockstep/citadels/verification17.test.ts
 - **Raw result:** Tests 6 failed | 4 passed (10); VERIFY FAILED: vitest.
-- **Commit SHA:** <filled at commit>
+- **Commit SHA:** 699e81e (the test file and this report)
 - **Shared-file change needed:** helpers.ts (resolveTurn's resume detection and
   seatHolding/buildLimit keying) plus the effect files that clobber pending.note - a
   step-carried resume token no effect can overwrite. Coordinator-owned.
