@@ -8,6 +8,7 @@ import {
 import { specOfDistrict, type DistrictId } from "../../../lockstep/games/citadels/districts.ts";
 import type { CharacterId } from "../../../lockstep/games/citadels/characters.ts";
 import { citadels } from "../../../lockstep/games/citadels/index.ts";
+import { buildLimit } from "../../../lockstep/games/citadels/helpers.ts";
 import type { SeatId } from "../../../index.ts";
 import {
   ANN,
@@ -20,6 +21,7 @@ import {
   advance,
   castWith,
   foldEnd,
+  foldFrom,
   foldGame,
   foldPurposes,
   foldStart,
@@ -1709,5 +1711,206 @@ describe("engine coverage: the Blackmailer's two threat markers", () => {
         character + " keeps its build window below the resolved threat: " + r.purposes.join(","),
       ).toBe(true);
     }
+  });
+});
+
+
+/* ---------------------------------------------------------------------------
+ * D13 threat-window sweep and guards. The engine relocates a threatened seat's
+ * own ability windows below the Blackmailer threat window (helpers.ts:
+ * relocateEffectBelowThreat), so folding a threatened turn and DRIVING EVERY
+ * window must show a pristine board at the blackmailer-threat frame. Pass 12
+ * missed the Trader because its policy drove only the turn window; this sweep
+ * drives every purpose a character opens.
+ * ------------------------------------------------------------------------- */
+
+const SWEEP_BASE: Record<number, CharacterId> = {
+  1: "assassin", 2: "thief", 3: "magician", 4: "king", 5: "bishop", 6: "merchant",
+  7: "architect", 8: "warlord",
+};
+const SWEEP_HAND: readonly DistrictId[] = ["tavern", "market", "trading-post", "palace"];
+
+const sweepClaims = (
+  pairs: readonly (readonly [SeatId, CharacterId])[],
+): readonly { readonly seat: SeatId; readonly character: CharacterId }[] =>
+  [...pairs]
+    .sort((a, b) => specOfCharacter(a[1]).rank - specOfCharacter(b[1]).rank)
+    .map(([seat, character]) => ({ seat, character }));
+
+const sweepStop = (steps: readonly CitadelsState[]): boolean => {
+  const last = steps[steps.length - 1] as CitadelsState;
+  const purpose = openPurpose(last);
+  return purpose === "blackmailer-threat" || purpose === "draft-pick" || last.phase !== "turn";
+};
+
+const sweepDrive = (_seat: SeatId, state: CitadelsState): CitadelsAction | null => {
+  const purpose = openPurpose(state);
+  if (purpose === "turn") {
+    return rawHand(state, BOB).length > 0 ? { t: "build", card: 0 } : { t: "gold" };
+  }
+  switch (purpose) {
+    case "keep":
+    case "scholar-keep":
+    case "artist-beautify":
+    case "seer-give":
+    case "magician-discard":
+      return { t: "keep", index: 0 };
+    case "trader-build":
+      return rawHand(state, BOB).length > 0 ? { t: "build", card: 0 } : null;
+    case "wizard-take":
+    case "diplomat-exchange":
+    case "marshal-seize":
+    case "warlord-destroy":
+    case "emperor-crown":
+    case "seer-receive":
+      return state.pending !== null && state.pending.target === null
+        ? { t: "target", seat: CARA }
+        : { t: "keep", index: 0 };
+    case "magician-swap":
+      return { t: "target", seat: CARA };
+    case "tax-collect":
+      return { t: "gold" };
+    case "choose-character":
+      return { t: "name-character", character: "king" };
+    case "choose-seat":
+      return { t: "target", seat: CARA };
+    case "choose-type":
+      return { t: "name-type", type: "noble" };
+    case "abbot-split":
+      return state.pending?.note === "abbot-tie" ? { t: "target", seat: CARA } : { t: "choose", value: "0" };
+    default:
+      return null;
+  }
+};
+
+
+interface SweepFrame {
+  readonly threatIdx: number;
+  readonly purposes: string;
+  readonly caraCity: readonly DistrictId[];
+  readonly bobCity: readonly DistrictId[];
+  readonly markers: readonly number[];
+  readonly caraGold: number;
+  readonly caraHand: number;
+}
+
+/** Read the board at the blackmailer-threat frame (the last frame if none opened). */
+const frameAt = (run: Fold, _character: CharacterId): SweepFrame => {
+  const threatIdx = run.steps.findIndex((s) => openPurpose(s) === "blackmailer-threat");
+  const at = threatIdx < 0 ? run.steps.length - 1 : threatIdx;
+  const frame = run.steps[at] as CitadelsState;
+  const cara = frame.players.find((p) => p.seat === CARA)!;
+  const bob = frame.players.find((p) => p.seat === BOB)!;
+  return {
+    threatIdx,
+    purposes: run.steps.map((s) => openPurpose(s) ?? "-").join(","),
+    caraCity: cara.city.map((d) => d.id),
+    bobCity: bob.city.map((d) => d.id),
+    markers: bob.city.map((d) => d.gold),
+    caraGold: cara.gold,
+    caraHand: cara.hand.length,
+  };
+};
+
+const sweepStart = (
+  character: CharacterId,
+  entropy: string,
+  extraClaims: readonly (readonly [SeatId, CharacterId])[] = [],
+): CitadelsState => {
+  const rank = specOfCharacter(character).rank;
+  const cast: CharacterId[] = [];
+  for (let r = 1; r <= 8; r += 1) {
+    cast.push(r === rank ? character : r === 2 ? "blackmailer" : (SWEEP_BASE[r] as CharacterId));
+  }
+  if (rank === 9) cast.push(character);
+  const base = rawGenesis(SEATS3, cast, entropy);
+  const partner = (SWEEP_BASE[rank === 4 ? 6 : 4] ?? "king") as CharacterId;
+  const claims = sweepClaims(
+    extraClaims.length > 0 ? extraClaims : [[ANN, "blackmailer"], [BOB, character], [CARA, partner]],
+  );
+  const start: CitadelsState = {
+    ...base, phase: "turn", draft: null,
+    claimed: claims,
+    callRank: rank, active: BOB,
+    steps: [{ kind: "call" }, { kind: "end-round" }],
+    pending: null, threats: [character], builtThisTurn: 0, bewitched: null,
+    players: base.players.map((p) => ({
+      ...p,
+      gold: p.seat === BOB ? 20 : p.seat === CARA ? 6 : 4,
+      hand: p.seat === BOB ? [...SWEEP_HAND]
+        : p.seat === CARA ? (["market", "palace"] as DistrictId[])
+        : (["tavern"] as DistrictId[]),
+      city: p.seat === BOB ? [{ id: "museum" as DistrictId, gold: 0 }]
+        : p.seat === CARA ? [{ id: "tavern" as DistrictId, gold: 0 }]
+        : [],
+    })),
+  };
+  return start;
+};
+
+const sweepFold = (character: CharacterId, entropy: string): SweepFrame => {
+  const run = foldFrom(sweepStart(character, entropy), sweepDrive, sweepStop, 600, entropy);
+  return frameAt(run, character);
+};
+
+const THREATENABLE: readonly CharacterId[] = CHARACTER_CATALOG.map((spec) => spec.id)
+  .filter((id) => id !== "blackmailer");
+
+describe("D13 guard: a threatened seat lands nothing before the threat (relocation)", () => {
+  test("the threatenable set is every character but the Blackmailer (26)", () => {
+    expect(THREATENABLE.length).toBe(26);
+    expect(THREATENABLE).not.toContain("blackmailer");
+  });
+
+  test("every threatenable character reaches its threat window with a pristine board", () => {
+    for (const character of THREATENABLE) {
+      const r = sweepFold(character, "d13-sweep-" + character);
+      expect(r.threatIdx, character + " reached its threat window: " + r.purposes).toBeGreaterThanOrEqual(0);
+      expect(r.caraCity, character + " a rival's city changed: " + r.purposes).toEqual(["tavern"]);
+      expect(r.bobCity, character + " its own city changed: " + r.purposes).toEqual(["museum"]);
+      expect(r.markers, character + " a district was marked: " + r.purposes).toEqual([0]);
+      expect(r.caraGold, character + " took a rival's gold: " + r.purposes).toBe(6);
+      expect(r.caraHand, character + " took a rival's card: " + r.purposes).toBe(2);
+    }
+  });
+});
+
+describe("D13 guard: buildBlockedByThreat keys on the ACTING character", () => {
+  test("a threatened two-character seat refuses on the acting character, not the first claim", () => {
+    const start = sweepStart("warlord", "d13-twoclaim", [
+      [ANN, SWEEP_BASE[2] as CharacterId],
+      [BOB, "king"],
+      [BOB, "warlord"],
+      [CARA, SWEEP_BASE[6] as CharacterId],
+    ]);
+    const run = foldFrom(start, sweepDrive, sweepStop, 600, "d13-twoclaim-fold");
+    const r = frameAt(run, "warlord");
+    expect(r.threatIdx, "the threatened Warlord (acting char) reached its threat: " + r.purposes).toBeGreaterThanOrEqual(0);
+    expect(r.caraCity, "the Warlord destroyed before its threat: " + r.purposes).toEqual(["tavern"]);
+    expect(r.bobCity, "the seat built before its threat: " + r.purposes).toEqual(["museum"]);
+    expect(r.markers, "a district was marked: " + r.purposes).toEqual([0]);
+  });
+});
+
+describe("D13 guard: the Architect's build limit is the live clause (BUILD_LIMITS)", () => {
+  test("buildLimit reads the live BUILD_LIMITS entry, not the withBuildLimit pre-seed mirror", () => {
+    const base = rawGenesis(SEATS3, castWith("architect"), "d13-ablimit");
+    const armed: CitadelsState = {
+      ...base, phase: "turn", draft: null,
+      claimed: [{ seat: ANN, character: "architect" }],
+      callRank: specOfCharacter("architect").rank, active: ANN,
+      steps: [{ kind: "call" }, { kind: "end-round" }], pending: null,
+    };
+    expect(buildLimit(armed, ANN)).toBe(3);
+  });
+
+  test("a threatened Architect still builds its full limit below the resolved threat", () => {
+    const start = sweepStart("architect", "d13-abend");
+    const run = foldFrom(start, sweepDrive, (steps) => {
+      const last = steps[steps.length - 1] as CitadelsState;
+      return openPurpose(last) === "draft-pick" || last.phase !== "turn";
+    }, 600, "d13-abend-fold");
+    const end = run.steps[run.steps.length - 1] as CitadelsState;
+    expect(end.players.find((p) => p.seat === BOB)!.city.length).toBeGreaterThanOrEqual(3);
   });
 });
