@@ -106,14 +106,16 @@ test("D14-1 a refused threatened Scholar builds before it draws, losing a build"
     const firstBuild = plain.purposes.indexOf("turn");
     expect(keep, label + " plain: the Scholar's keep leads its build; " + plain.purposes.join(",")).toBeLessThan(firstBuild);
     expect(buildsOf(plain.end), label + " plain: the Scholar builds the card it drew").toBe(1);
-    // The refused fold's post-threat build window (the first `turn` window below
-    // the resolved threat) runs ABOVE the relocated keep window.
+    // The rule: the threatened seat's ability drains before its post-threat build
+    // window, exactly as the plain turn's draw precedes its build. The refused
+    // fold's relocated keep window must therefore lead the first `turn` window
+    // below the resolved threat.
     const rResolve = refused.purposes.indexOf("blackmailer-resolve");
     const rKeep = refused.purposes.indexOf("scholar-keep");
     const rBuild = refused.purposes.findIndex((p, i) => i > rResolve && p === "turn");
     expect(
-      rResolve >= 0 && rBuild >= 0 && rKeep >= 0 && rBuild < rKeep,
-      label + " refused: the post-threat build window ran before the draw; " + refused.purposes.join(","),
+      rResolve >= 0 && rBuild >= 0 && rKeep >= 0 && rKeep < rBuild,
+      label + " refused: the draw must lead the post-threat build; " + refused.purposes.join(","),
     ).toBe(true);
     expect(
       buildsOf(refused.end),

@@ -242,16 +242,6 @@ export const RESOLVE: Step = { kind: "resolve" };
 export const END_TURN: Step = { kind: "end-turn" };
 export const END_ROUND: Step = { kind: "end-round" };
 
-/**
- * The bare resolve step standing under a threatened seat's post-threat turn
- * window. Resolving the threat clears the pending the turn's gathered marker rode
- * (the threat arms its own pending, and the reveal clears it), so the build window
- * below the threat cannot be marked that way: it reads this step off the stack
- * instead and takes no second gather. A resolve step with nothing pending to run
- * is a no-op, so the marker costs nothing to drain.
- */
-const POST_THREAT: Step = { kind: "resolve" };
-
 export const emptyPending = (actor: SeatId, character: CharacterId | null): Pending => ({
   actor,
   character,
@@ -925,11 +915,12 @@ export const resolveTurn: WindowResolver = (ctx) => {
     // before using abilities or building".
     const threatAt = rest.findIndex(isThreatWindow);
     const threat = threatAt < 0 ? undefined : rest[threatAt];
-    // What rides below the build: the steps that stood below the threat, preceded
-    // by the steps hoisted above it that are not this seat's own build windows.
-    // Those belong under the build (the Alchemist's settle resolve refunds a build,
-    // so it must not run first), and the pre-seeded build windows drop because the
-    // build limit re-offers them from its own counter (see withoutTurnWindows).
+    // The continuation the resolved threat hands the turn: the steps hoisted above
+    // the threat that are not this seat's own build windows (the effect's relocated
+    // ability windows with their arm step, or the Alchemist's settle resolve),
+    // followed by the steps that stood below the threat. Pre-seeded build windows
+    // drop because the build limit re-offers them from its own counter (see
+    // withoutTurnWindows).
     const below =
       threatAt < 0
         ? rest
@@ -937,16 +928,32 @@ export const resolveTurn: WindowResolver = (ctx) => {
             ...withoutTurnWindows(rest.slice(0, threatAt), seat),
             ...rest.slice(threatAt + 1),
           ];
-    // The gather has landed, so the build window below the threat takes no second
-    // one. The post-threat build window reads that off the stack: a bare resolve
-    // step standing under it. The Alchemist's settle resolve already plays that
-    // part - it sits directly below the build window, and the reveal left no
-    // pending behind - so the marker is added only when the build window would
-    // otherwise face the turn's END_TURN, which endTurnThen reads as the turn's
-    // own close and leaves the settle step stranded above a second end-turn.
-    const marked = below[0]?.kind === "resolve" ? below : [POST_THREAT, ...below];
+    // Where the turn's build window belongs below the resolved threat. The plain
+    // turn builds AFTER its ability: the effect's windows sit above its gather
+    // window, so they precede its build (the Scholar draws and keeps before it
+    // builds the kept card, the Marshal seizes before it builds). A threatened
+    // seat builds after its relocated ability windows too, above the turn's own
+    // END_TURN. An effect resolve that must run after the build (the Alchemist's
+    // settle refund) leads the continuation instead, so there the build window
+    // goes directly under the threat and that resolve stays beneath it.
+    //
+    // Either way the build window takes no second gather. The Alchemist's settle
+    // resolve already stands directly beneath it, and elsewhere a turn-gathered
+    // arm step is planted directly beneath it, so the build window reads the same
+    // marker a build window an ordinary turn re-offers carries (TURN_GATHERED_NOTE)
+    // rather than depending on the pending the relocated abilities leave behind.
+    const leadsWithResolve = below[0]?.kind === "resolve";
+    const endAt = below.findIndex((step) => step.kind === "end-turn");
+    const ability: readonly Step[] =
+      leadsWithResolve || endAt < 0 ? below : below.slice(0, endAt);
+    const close: readonly Step[] = leadsWithResolve || endAt < 0 ? [] : below.slice(endAt);
+    const rearm: Step = { kind: "arm", pending: turnGatheredPending(seat) };
     const belowThreat: readonly Step[] =
-      threat === undefined ? [buildWindow, ...rest] : [threat, buildWindow, ...marked];
+      threat === undefined
+        ? [buildWindow, ...rest]
+        : leadsWithResolve
+          ? [threat, buildWindow, ...ability]
+          : [threat, ...ability, rearm, buildWindow, ...close];
     if (action?.t === "draw") {
       const gathered = drawGather(state, seat, rest, ctx.rng);
       return withSteps(gathered, [winStep("keep", [seat]), ...belowThreat]);
