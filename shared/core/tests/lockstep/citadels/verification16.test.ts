@@ -234,6 +234,61 @@ test("P2 the Spy gathers exactly once across its four passes", () => {
 });
 
 /**
+ * The first-pass guard (helpers.ts `relocateEffectBelowThreat`) is load-bearing
+ * for every effect whose ability walks the turn window more than once: a
+ * relocation on a later pass hoists the enclosing build window over the arm step
+ * that arms its gather marker, so the turn gathers again. Only the Spy had a
+ * one-gather guard (P2 here, and verification15's Spy row); this parameterized
+ * guard pins the other four multi-pass effects. Each is folded on an
+ * empty-purse board where its ability moves no gold, so the only gold BOB holds
+ * is the turn's gather and the purse must never exceed 2. Neuter the guard
+ * (`if (hasArmAbove || !hasWindowAbove)` -> `if (false)`) and every row
+ * reddens: Spy 8, Assassin 4, Magistrate 4, Thief 4, Blackmailer 6.
+ */
+const MULTI_PASS: readonly (readonly [CharacterId, string])[] = [
+  ["spy", "choose-type"],
+  ["assassin", "choose-character"],
+  ["magistrate", "choose-character"],
+  ["thief", "choose-character"],
+  ["blackmailer", "blackmailer-resolve"],
+];
+
+test("P4 every multi-pass effect gathers exactly once (the first-pass guard)", () => {
+  for (const [character, window] of MULTI_PASS) {
+    const base = rawGenesis(SEATS3, castFor([character]), "v16-p4-" + character);
+    const filler: CharacterId = character === "assassin" ? "thief" : "assassin";
+    const partner =
+      DEFAULTS.find((c) => specOfCharacter(c).rank > specOfCharacter(character).rank && c !== filler) ?? "king";
+    const armed: CitadelsState = {
+      ...base, phase: "turn", draft: null,
+      claimed: claimsOf([[ANN, filler], [BOB, character], [CARA, partner]]),
+      callRank: specOfCharacter(character).rank, active: BOB,
+      steps: [{ kind: "call" }, { kind: "end-round" }],
+      pending: null, threats: [], builtThisTurn: 0,
+      players: base.players.map((p) => ({ ...p, gold: 0, hand: [], city: [] })),
+    };
+    const policy = (_seat: SeatId, s: CitadelsState): CitadelsAction | null => {
+      const p = openPurpose(s);
+      if (p === "turn") { const h = rawHand(s, BOB); return h.length > 0 ? { t: "build", card: 0 } : { t: "gold" }; }
+      if (p === "keep") return { t: "keep", index: 0 };
+      if (p === "choose-character") return { t: "name-character", character: "warlord" };
+      if (p === "choose-seat") return { t: "target", seat: CARA };
+      if (p === "choose-type") return { t: "name-type", type: "trade" };
+      if (p === "blackmailer-resolve") return { t: "choose", value: "no" };
+      return null;
+    };
+    const run = foldFrom(armed, policy, stop, 300, "v16-p4-" + character);
+    const purposes = run.steps.map((s) => openPurpose(s) ?? "-");
+    const golds = run.steps.map((s) => rawGold(s, BOB));
+    expect(purposes, character + " ran its ability: " + purposes.join(",")).toContain(window);
+    expect(
+      Math.max(...golds),
+      character + " gathered exactly once (2 gold); gold trail " + golds.join(",") + "; windows " + purposes.join(","),
+    ).toBe(2);
+  }
+});
+
+/**
  * P3 - the Alchemist's settle refund still runs after its build on a refused
  * threat, so the refused turn reaches the plain turn's end state.
  */
