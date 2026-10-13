@@ -1,4 +1,4 @@
-# Unit: verify-17 (SEVENTEENTH adversarial pass, head <FIX16_SHA>)
+# Unit: verify-17 (SEVENTEENTH adversarial pass, head 1f892a1)
 
 ## GOAL
 Re-verify the citadels game definition at the head fix16-witch-resume lands. Passes
@@ -7,7 +7,7 @@ what is STILL wrong, including anything the D16-1 fix (the Witch resume) introdu
 papered over.
 
 ## HEAD
-`<FIX16_SHA>` on `feat/citadels-game-definitions`, worktree
+`1f892a1` on `feat/citadels-game-definitions`, worktree
 `/home/kevin/.t3/worktrees/boardgame/t3-a32da114`. Confirm the full citadels suite is
 green before you start. Do not trust the green suite.
 

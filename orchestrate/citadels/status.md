@@ -1,10 +1,10 @@
 # Orchestrate status
 
-Generated: 2026-10-13T15:01:26.018Z
+Generated: 2026-10-13T16:10:46.250Z
 
 ## Units
 
-States: abandoned=10, done=76, failed=5, partial=3
+States: abandoned=10, done=78, failed=5, partial=3
 
 | ID | Track | State | Branch | PR | SHA | Brief |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -102,10 +102,12 @@ States: abandoned=10, done=76, failed=5, partial=3
 | verify-15 | verify | done |  |  |  | fifteenth independent adversarial pass at 536f78d (post D14-1 ability-before-build order): predicate audit, end-to-end threatened-seat ordering sweep over every window-opening character, teeth audit incl the new continuation shape and the rearm arm step, verification15.test.ts counterexamples |
 | fix15-plain-order | verify | failed | feat/citadels-game-definitions |  |  | D15: the plain turn order is gather -> abilities -> build; relocate the effect windows below the gather window on a plain turn (relocateEffectBelowThreat) and place the build window after them, mirroring the threatened branch; owns helpers.ts + windows.ts + the re-framed fixtures |
 | fix15-plain-order-r2 | verify | done |  |  |  | D15: plain turn is gather -> abilities -> build; relocate the effect windows below the gather on the first pass only (arm-step guard), build window after them; r1 salvage + double-gather fix; owns helpers.ts + re-framed fixtures |
+| verify-16 | verify | done |  |  |  | sixteenth independent adversarial pass at e12a21c (post D15 plain-turn relocation): found D16-1, the Witch resume double-gather |
+| fix16-witch-resume | verify | done |  |  |  | D16-1: the Witch resume turn double-gathers; resumeStack carries the resume pending on an arm step so the D15 relocation keeps the resume turn window; owns characters/witch.ts + the guard-gap tests |
 
 ## Verification ledger
 
-Verdicts: unit-test-verified=51, verifier-failed=16
+Verdicts: unit-test-verified=52, verifier-failed=17
 
 | PR | SHA | Verdict | Evidence | Verifier | Timestamp |
 | --- | --- | --- | --- | --- | --- |
@@ -176,6 +178,8 @@ Verdicts: unit-test-verified=51, verifier-failed=16
 | 20 | 536f78d | unit-test-verified | coordinator re-ran at 536f78d: verification14 5/5 (D14-1 green), verification11 5/5, verification13 14/14; full citadels suite 87 files / 705 tests green; commits touch helpers.ts + verification14.test.ts; teeth proven (revert the post-threat splice -> D14-1 red); adaptive probe (re-reads the hand at every build window, 26 chars x 2 boards) finds 0/52 refused-vs-plain divergences, and the two report cases cardinal/school + architect/school were the old probe's fixed-hand-index artifact | coordinator-85bd98d5 | 2026-10-13T10:15:55.087Z |
 | 20 | 4a22178 | verifier-failed | verify-15 at 4a22178: verification15.test.ts 3 failed / 6 passed; D15-1..3 the purse-timing family - a refused threatened seat's gold-gated ability (Warlord destroy, Marshal seize, Diplomat exchange, Abbot richest clause) runs on the POST-gather purse while the plain turn runs it pre-gather, so refused != plain; attribution measured clean at 5305109, appears at aa6f553 (the fix13c arm step), persists at 536f78d; D14-1 fix itself holds; two-character keying holds (T8); 8/10 teeth red with 2 GREEN findings (no close-once probe in the file; pre-fix endTurnThen green on its fixtures) | verify-15-subagent | 2026-10-13T13:18:34.597Z |
 | 20 | e12a21c | unit-test-verified | coordinator re-ran at e12a21c: full citadels suite 88 files / 715 tests green, tsc -p tsconfig.citadels.json clean; independent teeth probe (git archive HEAD \| tar -x to /tmp, neuter the plain-turn relocation in relocateEffectBelowThreat) reddens 9 tests across verification15/14/2; fix confined to helpers.ts (windows.ts unchanged); D15-1/2/3 green, the r1 double-gather fixed (engine-coverage spy goldDelta 6->4, one gather), D14-1 re-framed to the gather->keep->build order; commits 3a3c85d (fix + fixtures) + e12a21c (report note) | coordinator-01a13566 | 2026-10-13T15:01:25.998Z |
+| 20 | b1382df | verifier-failed | verify-16 at b1382df: verification16.test.ts 2 failed / 3 passed; D16-1 (real, NEW at the D15 fix 3a3c85d) the Witch's resume turn gathers a second time - the plain-turn relocation moves the bewitched effect's window below the resume turn window, so its pending survives to that window and resolveTurn no longer reads the WITCH_RESUME_NOTE marker, taking the gather path instead; measured gold trail 0,2,2,2,2,2,2,2,4 (rule caps at 2), and 0,0,0,2,...,4 through a real deal; clean at aa6f553/5305109/536f78d (all 2), appears at e12a21c (4); blast radius Thief/Magician/Wizard/Seer/Emperor/Abbot/Cardinal/Scholar/Warlord/Diplomat/Marshal/Tax Collector/Navigator/Merchant; teeth audit: all prior passes 125 tests green, D15 P1-P3 red under the relocation neuter, 500-seed random sweep 0 divergences; two findings - verification14 D14-1 stays green under the D15 revert (blind to gather position), and the first-pass guard is load-bearing for 5 multi-pass effects but only the Spy has an absolute-gold guard | verify-16-subagent | 2026-10-13T15:55:19.454Z |
+| 20 | 1f892a1 | unit-test-verified | coordinator re-ran at 1f892a1: full citadels suite 89 files / 721 tests green, tsc -p tsconfig.citadels.json clean; independent teeth probe (git archive HEAD \| tar -x to /tmp, remove the resume arm step) reddens D16-1 + D16-1b; fix confined to characters/witch.ts (helpers.ts untouched, no shared-file change); D16-1 fixed (gold trail 4->2), both verify-16 guard gaps closed (new parameterized P4 one-gather guard for Spy/Assassin/Magistrate/Thief/Blackmailer, D14-1 now reddens when the plain gather moves); commits 73a5258 (fix) + 959cc03 (P4) + 6e6e977 (D14-1) + 1f892a1 (report note) | coordinator-01a13566 | 2026-10-13T16:10:46.233Z |
 
 ## Frontier
 
@@ -188,4 +192,4 @@ Lowest unmerged: none
 
 (none)
 
-<!-- orch-summary {"unitStates":{"abandoned":10,"done":76,"failed":5,"partial":3},"ledgerVerdicts":{"unit-test-verified":51,"verifier-failed":16},"frontierGeneration":0,"openGateIds":[]} -->
+<!-- orch-summary {"unitStates":{"abandoned":10,"done":78,"failed":5,"partial":3},"ledgerVerdicts":{"unit-test-verified":52,"verifier-failed":17},"frontierGeneration":0,"openGateIds":[]} -->
