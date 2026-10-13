@@ -1,14 +1,21 @@
 import { expect, test } from "vitest";
 import {
+  decodeSnapshot,
+  encodeSnapshot,
   frameIndex,
   genesisSeed,
   makeRandom,
   makeRoster,
   stateDigest,
   type Checkpoint,
+  type Json,
   type SeatId,
+  type Snapshot,
 } from "../../../index.ts";
-import { actionCodec } from "../../../lockstep/games/secret-hitler/actions.ts";
+import {
+  actionCodec,
+  type SecretHitlerAction,
+} from "../../../lockstep/games/secret-hitler/actions.ts";
 import { secretHitler } from "../../../lockstep/games/secret-hitler/index.ts";
 import { countPolicies, POLICY_MIX } from "../../../lockstep/games/secret-hitler/policies.ts";
 import { isTerminal, seatsOwed, step } from "../../../lockstep/games/secret-hitler/reducer.ts";
@@ -173,6 +180,42 @@ test("the variant codec rejects a state whose fascist supply is off by one", () 
   ).toThrow();
 });
 
+test("the 6-player codec rejects a base-shaped state: the pre-enactment is not optional", () => {
+  // At 6 players the supply is the base 11, so conservation alone cannot tell the
+  // pre-enacted policy from a deck tile. Only the pre-enactment floor rejects it.
+  const state = variantGenesis(6, "variant-pre-enact-floor").state;
+  const json = secretHitlerRebalanced.state.encode(state) as { [key: string]: Json };
+  const baseShape: Json = {
+    ...json,
+    fascistPolicies: 0,
+    drawPile: [
+      ...Array<Json>(POLICY_MIX.liberal).fill("liberal"),
+      ...Array<Json>(POLICY_MIX.fascist).fill("fascist"),
+    ],
+  };
+  expect(() => secretHitlerRebalanced.state.decode(baseShape)).toThrow(/pre-enacted/);
+
+  // The same leak through the joiner's path: a frame-0 snapshot carrying the
+  // base shape must not decode into a variant session.
+  const roster = makeRoster(seatsFor(6));
+  const snapshot: Snapshot<SecretHitlerAction> = {
+    gameId: secretHitlerRebalanced.id,
+    version: secretHitlerRebalanced.version,
+    frame: frameIndex(0),
+    seed: genesisSeed("variant-pre-enact-floor"),
+    roster,
+    state: baseShape,
+    head: null,
+    deadline: null,
+  };
+  expect(() =>
+    decodeSnapshot(secretHitlerRebalanced, encodeSnapshot(secretHitlerRebalanced, snapshot)),
+  ).toThrow(/pre-enacted/);
+
+  // A legitimate 6-player state still decodes: the floor is 1, not an exact match.
+  expect(secretHitlerRebalanced.state.decode(json)).toEqual(state);
+});
+
 test("the base codec rejects a variant state, so the parameterized supply is load-bearing", () => {
   // Proves the seam is required: the base hard-codes 6/11 and cannot decode a 7-player variant.
   const state = variantGenesis(7, "variant-base-rejects").state;
@@ -202,4 +245,34 @@ test("a seat's owed set and terminal test come from the shared fold, not a varia
   expect(secretHitlerRebalanced.isTerminal(state)).toBe(secretHitler.isTerminal(state));
   const seat: SeatId = seatsFor(6)[0]!;
   expect(secretHitlerRebalanced.project(state, seat)).toEqual(secretHitler.project(state, seat));
+});
+
+test("two peers at one seed agree at 6, 7, and 9, and a snapshot round-trips to the same digests", () => {
+  for (const count of DELTA_COUNTS) {
+    const entropy = `variant-peers-${String(count)}`;
+    const roster = makeRoster(seatsFor(count));
+    const seed = genesisSeed(entropy);
+    const first = variantGenesis(count, entropy).state;
+    const second = secretHitlerRebalanced.genesis({}, roster, makeRandom(seed));
+    expect(digest(second)).toBe(digest(first));
+
+    const snapshot: Snapshot<SecretHitlerAction> = {
+      gameId: secretHitlerRebalanced.id,
+      version: secretHitlerRebalanced.version,
+      frame: frameIndex(0),
+      seed,
+      roster,
+      state: secretHitlerRebalanced.state.encode(first),
+      head: null,
+      deadline: null,
+    };
+    const decoded = decodeSnapshot(
+      secretHitlerRebalanced,
+      encodeSnapshot(secretHitlerRebalanced, snapshot),
+    );
+    expect(decoded.gameId).toBe(secretHitlerRebalanced.id);
+    expect(decoded.frame).toBe(frameIndex(0));
+    expect(stateDigest(decoded.state)).toBe(digest(first));
+    expect(stateDigest(decoded.state)).toBe(digest(second));
+  }
 });
