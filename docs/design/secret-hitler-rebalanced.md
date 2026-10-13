@@ -51,7 +51,8 @@ only differences are the deck built with the reduced Fascist count and the start
 `isTerminal`, and `project` straight from the base modules, and reuses the base
 `actionCodec`. `variant.test.ts` asserts those members by identity
 (`toBe`), not just behavior: a copy would pass a behavior check and still drift
-the first time either game changes. Only `id`, `state`, and `genesis` differ.
+the first time either game changes. Only `id`, `state` (the base codec plus the
+pre-enactment floor), and `genesis` differ.
 
 ## The seam this variant needed in the base
 
@@ -72,6 +73,15 @@ against 6 Liberal / 10 Fascist and a 5-player state against the base 6 / 11. The
 conservation invariant stays strong — it is the check that catches a phase
 stranding a card — and `variant.test.ts` proves it still fires by feeding the
 variant codec a state whose supply is off by one.
+
+Conservation alone is not enough at 6 players, where the supply is the base 11: the
+pre-enacted policy and a deck tile are arithmetically identical, so a base-shaped
+frame-0 state (track 0, 11 Fascist in the deck) would conserve and decode. The
+variant therefore wraps the codec with a floor: `variantStateCodec` in
+`variant.ts` runs the conserving codec and then rejects a track below
+`preEnactedFascist`. Genesis is the track's only writer and the fold only
+increments it, so the track is never below the floor in any legal state. The base
+codec is unchanged, so the floor costs the base nothing.
 
 **Rejected: duplicating the codec.** A copy of the base `stateCodec` in the variant
 would be drift-prone and would silently diverge the first time either side changed.
@@ -110,10 +120,14 @@ The research text does not say where the 6-player pre-enacted Fascist Policy com
 from: is it drawn from the 11-tile supply (so the deck holds 10), or is it an extra
 twelfth tile (so the deck holds 11)? The two readings differ. Decision: it is drawn
 from the supply, so a 6-player game has 11 Fascist tiles in total — 1 on the track
-and 10 in the deck — which is the reading of the [SHIO] implementation
-(`secrethitler.io`, `routes/socket/game/start-game.js` sets the track to 1 and
-then builds the deck as `deckState.fas - trackState.fascistPolicyCount`). The
-variant table encodes this as `fascistSupply: 11, preEnactedFascist: 1`.
+and 10 in the deck. This is the reading of the [SHIO] implementation, verified
+against its source this session: at 6 players under `rebalance6p` the track is set
+to 1 (`routes/socket/game/start-game.js`, fetched 2026-10-13,
+https://github.com/cozuya/secret-hitler/blob/master/routes/socket/game/start-game.js),
+and `shufflePolicies` builds the deck as `deckState.fas - trackState.fascistPolicyCount`
+— 11 − 1 = 10 (`routes/socket/game/common.js`, fetched 2026-10-13,
+https://github.com/cozuya/secret-hitler/blob/master/routes/socket/game/common.js).
+The variant table encodes this as `fascistSupply: 11, preEnactedFascist: 1`.
 `variant.test.ts` pins the resulting deck at 6 Liberal / 10 Fascist with track 1.
 
 ## Decisions a maintainer inherits
