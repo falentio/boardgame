@@ -160,7 +160,6 @@ test("the deck and discard order never crosses the boundary; only their sizes do
         // Only the sizes leak.
         expect(view.drawCount).toBe(state.drawPile.length);
         expect(view.discardCount).toBe(state.discardPile.length);
-        // The exact pile arrays never appear in the serialized view.
         const text = serialized(view);
         if (state.drawPile.length > 0) expect(text).not.toContain(JSON.stringify(state.drawPile));
         if (state.discardPile.length > 0) {

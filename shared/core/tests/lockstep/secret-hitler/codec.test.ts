@@ -113,7 +113,6 @@ test("a collapsed table returns the open payload, so decode(encode(x)) holds", (
   expect(policiesConserved(afterPresident)).toBe(true);
   expect(stateCodec.decode(stateCodec.encode(afterPresident))).toEqual(afterPresident);
 
-  // The same collapse with the two offered cards held by the chancellor.
   const offered = stepState(passed, [[ANN, { t: "discard", index: 0 }]]);
   expect(offered.phase.kind).toBe("chancellor-enact");
   const afterChancellor = stepResign(offered, CARA);
@@ -152,7 +151,6 @@ test("checkInvariants rejects a snapshot whose seats are not in the roster", () 
 test("checkInvariants rejects a policy-conservation break", () => {
   const state = rawGenesis(5, "codec-invariant-deck").state;
   const json = stateCodec.encode(state) as { [key: string]: unknown };
-  // Duplicate the draw pile: 34 cards total, way past the 17-tile mix.
   const doubled = [...state.drawPile, ...state.drawPile];
   expect(() => stateCodec.decode({ ...json, drawPile: doubled } as never)).toThrow(
     SecretHitlerError,

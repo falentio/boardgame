@@ -285,7 +285,6 @@ test("an accepted veto discards all three tiles and advances the tracker", () =>
   const accepted = stepState(proposed, [[ANN, { t: "accept-veto" }]]);
   expect(accepted.electionTracker).toBe(1);
   expect(accepted.fascistPolicies).toBe(5);
-  // The president's discard and the two offered tiles are all discarded now.
   expect(accepted.discardPile.length).toBe(3);
   expect(policiesConserved(accepted)).toBe(true);
 });

@@ -66,7 +66,6 @@ export interface SecretHitlerView {
   readonly drawCount: number;
   readonly discardCount: number;
   readonly eligibleChancellors: readonly SeatId[];
-  /** The seats the open power may name; empty outside a power phase. */
   readonly powerTargets: readonly SeatId[];
   readonly owedSeats: readonly SeatId[];
   readonly legalActions: readonly SecretHitlerAction[];

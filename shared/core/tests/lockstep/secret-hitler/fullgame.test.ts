@@ -149,7 +149,6 @@ test("the mid-game reshuffle is deterministic and consumes rng only from frame.s
   // the same seed and require the same new pile.
   const base = withTracks(rawGenesis(6, "full-reshuffle"), 0, 0);
   const start = withStackedPile(base, ["liberal", "fascist", "fascist"]);
-  // Drive to a legislative session, then empty the deck and refill the discard.
   let checkpoint = start;
   let steps = 0;
   let sawReshuffle = false;
@@ -220,7 +219,6 @@ test("the four stated endings are all reachable across the sweep", () => {
       ]).toContain(outcome.kind);
     }
   }
-  // The sweep reaches all four win/loss endings the rules define.
   expect(seen.has("liberal-policies")).toBe(true);
   expect(seen.has("fascist-policies")).toBe(true);
   expect(seen.has("hitler-chancellor")).toBe(true);

@@ -77,7 +77,6 @@ export const boardSlot = (count: PlayerCount, fascistCount: number): BoardSlot =
   return slot;
 };
 
-/** The power the `fascistCount`-th Fascist Policy grants, or null. */
 export const powerFor = (count: PlayerCount, fascistCount: number): PowerId | null => {
   const slot = boardSlot(count, fascistCount);
   return slot.kind === "power" ? slot.power : null;

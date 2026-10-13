@@ -77,19 +77,15 @@ export type Phase =
   | { readonly kind: "over"; readonly outcome: Outcome };
 
 export interface SecretHitlerState {
-  /** Canonical roster order. */
   readonly players: readonly PlayerState[];
   /** Hidden; the LAST element is the top. */
   readonly drawPile: PolicyPile;
   /** Hidden; the reshuffle order is secret. */
   readonly discardPile: PolicyPile;
-  /** Public track, 0..5. */
   readonly liberalPolicies: number;
-  /** Public track, 0..boardLimit(count). */
   readonly fascistPolicies: number;
   /** Public; three advances force the chaos draw. */
   readonly electionTracker: 0 | 1 | 2;
-  /** Public: the current Presidential Candidate, and the rotation pointer. */
   readonly president: SeatId;
   /** Public; the last elected government, which the term limits bar. Null before the first election. */
   readonly lastElectedPresident: SeatId | null;
@@ -340,7 +336,6 @@ const decodePeek = (json: Json): PolicyPeek => {
   };
 };
 
-/** The cards the open phase is holding outside the two piles. */
 export const phasePayload = (phase: Phase): readonly Policy[] => {
   switch (phase.kind) {
     case "president-discard":

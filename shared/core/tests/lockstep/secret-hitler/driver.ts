@@ -209,7 +209,6 @@ export const hitlerSeat = (state: SecretHitlerState): SeatId => {
 export const liberalSeats = (state: SecretHitlerState): readonly SeatId[] =>
   state.players.filter((player) => player.role === "liberal").map((player) => player.seat);
 
-/** A seat that is a Liberal, or null. */
 export const someLiberal = (state: SecretHitlerState): SeatId | null =>
   state.players.find((player) => player.role === "liberal")?.seat ?? null;
 
@@ -281,7 +280,6 @@ const mapState = (
   fn: (state: SecretHitlerState) => SecretHitlerState,
 ): Checkpoint<SecretHitlerState> => ({ ...checkpoint, state: fn(checkpoint.state) });
 
-/** Force a phase, the way a test wants to set up a scenario. */
 export const withPhase = (
   checkpoint: Checkpoint<SecretHitlerState>,
   phase: Phase,
@@ -384,7 +382,6 @@ export const withInvestigations = (
 ): Checkpoint<SecretHitlerState> =>
   mapState(checkpoint, (state) => ({ ...state, investigations: [...investigations] }));
 
-/** Every policy tile in play, across the two piles, the tracks, and the open payload. */
 export const policiesInPlay = (state: SecretHitlerState): readonly Policy[] => [
   ...state.drawPile,
   ...state.discardPile,
@@ -402,8 +399,6 @@ export const currentPhase = (state: SecretHitlerState): Phase => state.phase;
 
 export const boardOf = (count: PlayerCount): readonly BoardSlot[] => boardFor(count);
 
-/** Drive a 5-player table to an open veto phase: five Fascist Policies on the board,
- *  a unanimous yes, then the chancellor proposes the veto. */
 export const driveToVeto = (entropy: string): Checkpoint<SecretHitlerState> => {
   let checkpoint = withRoles(rawGenesis(5, entropy), [
     [ANN, "fascist"],

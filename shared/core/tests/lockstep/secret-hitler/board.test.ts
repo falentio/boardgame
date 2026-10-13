@@ -54,7 +54,6 @@ test("powerFor and boardSlot read the same row: the power at each fascist count 
       const slot = boardSlot(count, n);
       expect(slot.kind === "power" ? slot.power : null).toBe(expected[count][n - 1]);
     }
-    // The sixth fascist policy is the win slot, not a power.
     expect(boardSlot(count, 6)).toEqual({ kind: "fascist-win" });
     expect(powerFor(count, 6)).toBeNull();
   }

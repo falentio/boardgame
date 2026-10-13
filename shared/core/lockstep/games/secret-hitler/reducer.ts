@@ -65,7 +65,6 @@ const reshuffleIfNeeded = (state: SecretHitlerState, rng: Random): SecretHitlerS
 const withDiscard = (state: SecretHitlerState, cards: readonly Policy[]): SecretHitlerState =>
   cards.length === 0 ? state : { ...state, discardPile: [...state.discardPile, ...cards] };
 
-/** The next active seat strictly after \`from\`, wrapping; null when no active seat exists. */
 const nextActiveAfter = (state: SecretHitlerState, from: SeatId): SeatId | null => {
   const active = activeSeats(state);
   if (active.length === 0) return null;
@@ -91,7 +90,6 @@ const beginNomination = (state: SecretHitlerState, president: SeatId): SecretHit
   phase: { kind: "nominate", president },
 });
 
-/** End the round: advance the presidency, clear the special-election anchor, open a nomination. */
 const beginNextRound = (state: SecretHitlerState): SecretHitlerState => {
   if (activeSeats(state).length < MIN_ACTIVE_SEATS) return endAbandoned(state);
   const president = nextPresident(state);
@@ -105,7 +103,6 @@ const drawThree = (state: SecretHitlerState, rng: Random): readonly [readonly Po
   return [drawn, { ...ready, drawPile: rest }];
 };
 
-/** Force a reshuffle of the deck with the discard, regardless of the threshold. */
 const reshuffleAll = (state: SecretHitlerState, rng: Random): SecretHitlerState => ({
   ...state,
   drawPile: rng.shuffle([...state.discardPile, ...state.drawPile]),
@@ -466,7 +463,6 @@ export const seatsOwedNow = (state: SecretHitlerState): readonly SeatId[] => {
 export const seatsOwed = (state: SecretHitlerState, _index: FrameIndex): readonly SeatId[] =>
   seatsOwedNow(state);
 
-/** Terminal once the game is over or the table has shrunk below the active floor. */
 export const isTerminal = (state: SecretHitlerState): boolean =>
   state.phase.kind === "over" || activeSeats(state).length < MIN_ACTIVE_SEATS;
 

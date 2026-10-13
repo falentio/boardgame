@@ -36,7 +36,6 @@ export const drawFrom = (pile: PolicyPile, count: number): Draw => {
   return { drawn, rest };
 };
 
-/** The top `count` tiles without removing them, top-first. */
 export const peekFrom = (pile: PolicyPile, count: number): readonly Policy[] => {
   const top: Policy[] = [];
   for (let i = 0; i < count && i < pile.length; i += 1) top.push(pile[pile.length - 1 - i]!);
