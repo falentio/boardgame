@@ -1,0 +1,153 @@
+diff --git a/shared/core/lockstep/games/citadels/helpers.ts b/shared/core/lockstep/games/citadels/helpers.ts
+index bc91164..d1f1fae 100644
+--- a/shared/core/lockstep/games/citadels/helpers.ts
++++ b/shared/core/lockstep/games/citadels/helpers.ts
+@@ -716,18 +716,31 @@ const isThreatWindow = (step: Step): boolean =>
+   step.kind === "window" && step.window.purpose === "blackmailer-threat";
+ 
+ /**
+- * After a threatened character's effect runs, relocate the ability windows it
+- * pushed above its gather turn window to sit below the Blackmailer threat
+- * window, so the resolved stack reads [turn(gather), threat, effectWindows...,
+- * END_TURN, ...] - the order rules.json (blackmailer) requires: "they must gather
+- * resources, then resolve the threat ... A threatened player must resolve the
+- * threat before using abilities or building". The engine runs the effect at the
+- * resolve seam and the effect prepends its windows above the turn window, so they
+- * would otherwise drain before the threat opens and the ability lands with the
+- * marker still standing (D13-1..11). The Witch's held turn is exempt: her naming
+- * window drives her whole resume/takeover pairing, which resolveTurn sequences
+- * off the pending she clears, so relocating it would double-count her gather; her
+- * turn keeps the shape resolveTurn already established (Witch markers ride).
++ * After a character's effect runs, relocate the ability windows it pushed above
++ * its gather turn window so they drain AFTER the gather, exactly where a refused
++ * threat's relocated ability runs.
++ *
++ * A threatened turn: the windows sit below the Blackmailer threat window, so the
++ * resolved stack reads [turn(gather), threat, effectWindows..., END_TURN, ...] -
++ * the order rules.json (blackmailer) requires: "they must gather resources, then
++ * resolve the threat ... A threatened player must resolve the threat before using
++ * abilities or building". Without the move they drain before the threat opens and
++ * the ability lands with the marker still standing (D13-1..11).
++ *
++ * A plain turn: the windows sit below the gather turn window itself, so the stack
++ * reads [turn(gather), arm, effectWindows..., END_TURN, ...]. rules of record
++ * (docs/design/citadels-full-game.md): "A turn: gather (2 gold, or draw 2 keep 1),
++ * then optionally build one district." The threat is spliced INTO the seat's own
++ * turn, so the plain turn must be the same order with no threat standing - gather
++ * -> abilities -> build - or a purse-gated ability (the Warlord's destroy, the
++ * Marshal's seize, the Diplomat's exchange, the Abbot's richest clause) reads a
++ * different purse on a refused turn than on a plain one and the refused seat no
++ * longer ends where its plain turn ends (D15).
++ *
++ * The Witch's held turn is exempt: her naming window drives her whole
++ * resume/takeover pairing, which resolveTurn sequences off the pending she clears,
++ * so relocating it would double-count her gather; her turn keeps the shape
++ * resolveTurn already established (Witch markers ride).
+  */
+ export const relocateEffectBelowThreat = (
+   steps: readonly Step[],
+@@ -739,21 +752,38 @@ export const relocateEffectBelowThreat = (
+   const turnAt = steps.findIndex(
+     (step) => step.kind === "window" && step.window.purpose === "turn" && step.window.seats.includes(seat),
+   );
++  if (turnAt < 0) return steps;
+   const threatAt = steps.findIndex(isThreatWindow);
+-  if (turnAt < 0 || threatAt < 0 || turnAt >= threatAt) return steps;
+   const head = steps.slice(0, turnAt);
+-  const mid = steps.slice(turnAt, threatAt);
+-  const threat = steps[threatAt] as Step;
++  const turn = steps[turnAt] as Step;
+   // The ability windows read the payload the effect armed (the Warlord's pick,
+   // the Scholar's drawn pool, the Thief's named victim). The turn window's gather
+-  // and the threat both overwrite pending before those windows drain, so the
+-  // payload rides an arm step instead, re-armed exactly where the relocated
+-  // windows need it. An effect that pushed no window above the turn window (the
+-  // Alchemist's settle resolve already sits below it) needs no arm.
++  // (and the threat, when one stands) overwrites pending before those windows
++  // drain, so the payload rides an arm step instead, re-armed exactly where the
++  // relocated windows need it. An effect that pushed no window above the turn
++  // window (the Alchemist's settle resolve already sits below it) needs no arm.
+   const carried: readonly Step[] =
+     head.length === 0 || pending === null || pending.character !== character
+       ? head
+       : [{ kind: "arm", pending } as Step, ...head];
++  // Only a first pass has an ability window above the gather turn window; an
++  // effect's own later pass (the assassin's commit, the thief's naming commit)
++  // runs with the turn window already at its front and only an arm step above it,
++  // so relocating there would hoist a build window over the step that arms its
++  // gather marker. An effect that pushed no window (the Alchemist's settle
++  // resolve, the income-only characters) has nothing to relocate.
++  const hasWindowAbove = head.some((step) => step.kind === "window");
++  if (!hasWindowAbove) return steps;
++  if (threatAt < 0) {
++    // The plain turn: the ability drains after the gather, so the stack reads
++    // [turn(gather), arm, ...abilityWindows, END_TURN, ...]. resolveTurn's gather
++    // branch then plants the build window above END_TURN, giving the rule's
++    // gather -> abilities -> build order.
++    return [turn, ...carried, ...steps.slice(turnAt + 1)];
++  }
++  if (turnAt >= threatAt) return steps;
++  const mid = steps.slice(turnAt, threatAt);
++  const threat = steps[threatAt] as Step;
+   return [...mid, threat, ...carried, ...steps.slice(threatAt + 1)];
+ };
+ 
+@@ -969,20 +999,51 @@ export const resolveTurn: WindowResolver = (ctx) => {
+   }
+ 
+   // The gather window: land the gather, then leave the turn's build window below.
++  // The character's relocated ability windows drain between the gather and the
++  // build, so the turn reads gather -> abilities -> build - the same order a
++  // refused threat's relocated ability reaches below its threat. A plain turn's
++  // continuation therefore holds [arm, ...abilityWindows, END_TURN, ...] and the
++  // build window goes after those windows and above the turn's own END_TURN,
++  // exactly as the threatened branch places it. An effect whose resolve must run
++  // after the build (the Alchemist's settle refund) leads the continuation
++  // instead, and a hand-built stack with no END_TURN keeps its build window
++  // directly below the gather, where endTurnThen supplies the close.
++  const afterGather = (below: readonly Step[]): readonly Step[] => {
++    const leadsWithResolve = below[0]?.kind === "resolve";
++    const endAt = below.findIndex((step) => step.kind === "end-turn");
++    if (leadsWithResolve || endAt < 0) return [buildWindow, ...endTurnThen(below)];
++    const ability = below.slice(0, endAt);
++    const close = below.slice(endAt);
++    // With no ability window between the gather and the close the build window
++    // keeps its old place directly below the gather; only a real ability needs
++    // its payload re-armed below the build window.
++    if (ability.length === 0) return [buildWindow, ...close];
++    const rearm: Step = { kind: "arm", pending: turnGatheredPending(seat) };
++    return [...ability, rearm, buildWindow, ...close];
++  };
++
+   if (action?.t === "draw") {
+     const gathered = drawGather(state, seat, rest, ctx.rng);
+     return withSteps(gathered, [
+       winStep("keep", [seat]),
+-      buildWindow,
+-      ...endTurnThen(withoutTurnWindows(rest, seat)),
++      ...afterGather(withoutTurnWindows(rest, seat)),
+     ]);
+   }
+   const gathered = gatherGold(state, seat, rest, ctx.rng);
+-  if (action?.t === "build") return applyBuild(gathered, action.card, rest);
+-  return withSteps(markGathered(gathered), [
+-    buildWindow,
+-    ...endTurnThen(withoutTurnWindows(rest, seat)),
+-  ]);
++  const below = withoutTurnWindows(rest, seat);
++  const endAt = below.findIndex((step) => step.kind === "end-turn");
++  // The ability windows an effect pushed below the gather must drain before the
++  // build (gather -> abilities -> build). When one stands there, a build reported
++  // at the gather window is deferred to the build window those abilities hand the
++  // turn, so the build cannot land ahead of the ability that must precede it -
++  // exactly the order the threatened branch reaches below its threat. A turn with
++  // no such ability window (a hand-built stack, or an income-only character) keeps
++  // the immediate build so its fixtures are unchanged.
++  const hasAbility = below
++    .slice(0, endAt < 0 ? below.length : endAt)
++    .some((step) => step.kind === "window");
++  if (action?.t === "build" && !hasAbility) return applyBuild(gathered, action.card, rest);
++  return withSteps(markGathered(gathered), afterGather(below));
+ };
+ 
+ export const resolveKeep: WindowResolver = (ctx) => {
