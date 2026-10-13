@@ -1,1 +1,0 @@
-2026-10-11T09:45:41.334Z	verify-3	verify-3	completed	commit 52571ca (verification-3.md + verification3.test.ts, 10 tests: 8 defect counterexamples red, 2 positive probes green); verdict FAIL; 7 new defects D3-1..D3-7; teeth audit: P1-P5 red on revert (guards real), P6 Keep and P7 Trader rows weak (call-count / catalog-type only)

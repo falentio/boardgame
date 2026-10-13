@@ -1,1 +1,0 @@
-2026-10-11T11:48:43.342Z	fix3-rules	fix3-rules	completed	commit b470dfd; D3-5 draft keeps the catalog spare character (measured 4p base 2 faceup, 4p rank-9 3, matching the catalog line for line); D3-6 winnerOf ties break on highest revealed rank per the catalog; flagged 3 stale integration.test.ts assertions encoding the scaffold invented tie-break

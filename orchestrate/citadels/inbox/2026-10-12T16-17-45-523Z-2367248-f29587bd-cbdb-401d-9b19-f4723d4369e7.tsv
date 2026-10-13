@@ -1,1 +1,0 @@
-2026-10-12T16:17:45.523Z	fix10-threat-seam-r5	fix10-threat-seam-r5	completed	commits e9b075d (threat seated so the gather/gain lands first, D10-1/2/3), 266090c (post-threat mark reads the incoming pending — fixed the one prior-pass probe it reddened), cd506d5 (refuse-path guard rows with /tmp-proven teeth); suite 83 files 666/666 green

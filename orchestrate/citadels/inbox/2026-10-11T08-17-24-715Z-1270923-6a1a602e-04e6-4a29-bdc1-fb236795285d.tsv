@@ -1,1 +1,0 @@
-2026-10-11T08:17:24.715Z	fix2-regression	fix2-regression	failed	provider finish_reason error (504-class) mid-write; no commit; salvage = +263 lines of folded-game helpers in driver.ts (uncommitted), imports verified real (charactersOfRank/specOfCharacter/Rank/UNIQUE_EFFECTS/DistrictCtx all exist); no engine-coverage.test.ts written

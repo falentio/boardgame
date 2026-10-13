@@ -1,1 +1,0 @@
-2026-10-11T13:21:06.745Z	fix4-ivory-tests	fix4-ivory-tests	completed	commit 5af9fab; both stale fixtures corrected to the catalog rule (undeclared HQ blocks the tower, declared non-unique does not); teeth preserved (old carve-out reverts them); suite red set now exactly the 6 sibling engine counterexamples

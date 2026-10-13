@@ -1,1 +1,0 @@
-2026-10-11T13:42:38.834Z	fix4-guards	fix4-guards	completed	commit 20474d2; Navigator/Spy/Thief rows now assert the move (card gather +4, spy gold delta 4, thief loot 9) with quoted revert-red messages; test-only; guard file 59 green

@@ -1,1 +1,0 @@
-2026-10-11T09:02:57.566Z	fix2-regression-r2	fix2-regression	failed	second provider 504 death; salvage = driver.ts committed at 49dc0d4, +3 driver lines and a 734-line engine-coverage.test.ts uncommitted and red (20/58 pass; failures look like the units own policy/answer setups, batch corrections were identified but not applied)

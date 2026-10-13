@@ -1,1 +1,0 @@
-2026-10-11T07:18:29.806Z	fix2-engine-tail	fix2-engine-tail	completed	commit d649c7f (alchemist.ts + helpers.ts only; armory.ts needed no change); V2-4/V2-7/V2-8 counterexamples green; suite 1 red = stale district-seams assertion

@@ -1,1 +1,0 @@
-2026-10-11T09:26:04.068Z	fix2-regression-r3	fix2-regression	completed	commits 001c8cf + e0ab5a4; engine-coverage.test.ts 59/59 green (27 character reachability, 5 naming-window, district hooks incl armory-destroy, once-per-turn); full suite 75 files 606/606 green; teeth assertions confirmed over fold.steps
