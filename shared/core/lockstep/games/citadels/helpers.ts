@@ -1149,6 +1149,25 @@ const withThreat = (
   ];
 };
 
+/**
+ * The steps from the resolve that runs a character's ability through the turn
+ * window to the turn's END_TURN, followed by the continuation `rest`. The
+ * Navigator's turn window IS its gain choice, so it opens above the resolve that
+ * reads the choice from pending.note; every other character opens its ability
+ * windows above the gather turn window and resolves below it. `applyCall` arms
+ * an ordinary turn as this shape plus a trailing CALL; the Witch's resume arms
+ * the bewitched character's turn with the SAME shape, so a resumed turn is that
+ * character's own turn, not a generic template.
+ */
+export const armCharacterTurn = (
+  character: CharacterId | null,
+  seat: SeatId,
+  rest: readonly Step[],
+): readonly Step[] =>
+  character === "navigator"
+    ? [winStep("turn", [seat]), RESOLVE, END_TURN, ...rest]
+    : [RESOLVE, winStep("turn", [seat]), END_TURN, ...rest];
+
 /** Advance the rank cursor: call the next cast character, or close the round. */
 export const applyCall = (state: CitadelsState): CitadelsState => {
   const rest = state.steps.slice(1);
@@ -1163,12 +1182,10 @@ export const applyCall = (state: CitadelsState): CitadelsState => {
   const witchOwner = seatHolding(state, "witch");
   if (state.bewitched === character && witchOwner !== null) {
     // The Witch plays this slot; the bewitched character's own turn is suppressed.
-    const takeover: readonly Step[] = [
-      winStep("witch-takeover", [witchOwner]),
-      END_TURN,
-      CALL,
-      ...rest,
-    ];
+    // The resume supplies the bewitched turn's END_TURN (armCharacterTurn), so
+    // the takeover carries no END_TURN of its own: the witch-takeover window
+    // gathers for the bewitched owner, then witch-resume arms that turn.
+    const takeover: readonly Step[] = [winStep("witch-takeover", [witchOwner]), CALL, ...rest];
     return withSteps(
       { ...state, active: seat, callRank: rank + 1 },
       withThreat(state, character, seat, takeover),
@@ -1185,13 +1202,9 @@ export const applyCall = (state: CitadelsState): CitadelsState => {
   const declared = declareSchoolOfMagic(state, seat, character);
   const armed = withPending(declared, emptyPending(seat, character));
   const thiefOwner = seatHolding(state, "thief");
-  // Every other character opens its windows above the resolve step and gathers
-  // below it. The Navigator's turn window is its gain choice, so it must resolve
-  // before the resolve step that reads the choice from pending.note.
-  const turn: readonly Step[] =
-    character === "navigator"
-      ? [winStep("turn", [seat]), RESOLVE, END_TURN, CALL, ...rest]
-      : [RESOLVE, winStep("turn", [seat]), END_TURN, CALL, ...rest];
+  // The Navigator's turn window is its gain choice, so it must resolve before
+  // the resolve step that reads the choice from pending.note.
+  const turn: readonly Step[] = armCharacterTurn(character, seat, [CALL, ...rest]);
   const called: readonly Step[] =
     state.robbed === character && thiefOwner !== null
       ? [winStep("thief-rob", [thiefOwner]), ...turn]

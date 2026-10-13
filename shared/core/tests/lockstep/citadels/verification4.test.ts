@@ -135,8 +135,8 @@ test("D4-1 the Witch builds once, at the resume, and never on her held turn", ()
   );
   const startCity = cityOf(armed, ANN).length;
   // The held turn is ANN's turn window before the bewitch resolves; the resume is
-  // the later ANN turn window carrying the witch-resume marker. The policy answers
-  // both with a build.
+  // the later ANN turn window carrying the owned resume record (state.resume). The
+  // policy answers both with a build.
   const heldTurn = steps.findIndex(
     (state) => openPurpose(state) === "turn" && state.active === ANN,
   );
@@ -144,7 +144,7 @@ test("D4-1 the Witch builds once, at the resume, and never on her held turn", ()
     (state) =>
       openPurpose(state) === "turn" &&
       state.active === ANN &&
-      state.pending?.note === "witch-resume",
+      state.resume != null,
   );
   expect(heldTurn, "the held turn opens a window").toBeGreaterThan(-1);
   expect(resumeTurn, "the resume turn opens a window").toBeGreaterThan(heldTurn);

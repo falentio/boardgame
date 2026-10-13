@@ -1,11 +1,13 @@
 import type { SeatId } from "../../../index.ts";
 import type { CharacterCtx, CharacterEffect } from "../characters/index.ts";
+import type { CharacterId } from "../characters.ts";
 import type { CitadelsState, Step } from "../state.ts";
 import {
   addGold,
   emptyPending,
   popWindow,
   RESOLVE,
+  armCharacterTurn,
   resolveChooseCharacter,
   seatHolding,
   winStep,
@@ -57,23 +59,19 @@ export const witch: CharacterEffect = (ctx: CharacterCtx) => {
 };
 
 /**
- * The stack the Witch's resume runs: a `resolve` step above the turn window,
- * exactly as `applyCall` arms an ordinary character turn. The engine's resolve
- * step runs `CHARACTER_EFFECTS[bewitched]` with the Witch's seat, and
- * `seatHolding` (keyed on the owned `resume` record) points the bewitched
- * character's owner lookup at the Witch, so its ability lands on her hand, gold,
- * and city.
+ * The stack the Witch's resume runs: the bewitched character's OWN armed turn,
+ * built by the same `armCharacterTurn` `applyCall` uses, so the Navigator's
+ * choice window opens above the resolve and every other character's ability
+ * resolves below the gather turn window. The engine's resolve step runs
+ * `CHARACTER_EFFECTS[bewitched]` with the Witch's seat, and `seatHolding`
+ * (keyed on the owned `resume` record) points the bewitched character's owner
+ * lookup at the Witch, so its ability lands on her hand, gold, and city.
  */
 const resumeStack = (
   witchSeat: SeatId,
-  resumePending: ReturnType<typeof emptyPending>,
+  bewitched: CharacterId | null,
   rest: readonly Step[],
-): readonly Step[] => [
-  RESOLVE,
-  { kind: "arm", pending: { ...resumePending, note: RESUME_WINDOW_TAG } },
-  winStep("turn", [witchSeat]),
-  ...rest,
-];
+): readonly Step[] => armCharacterTurn(bewitched, witchSeat, rest);
 
 /**
  * `witch-takeover` (opened by `applyCall` when the bewitched character is called)
@@ -110,7 +108,7 @@ export const witchResolve: WindowResolver = (ctx) => {
     // income above the turn window counts it, exactly as applyCall declares for
     // an ordinary character.
     const declared = bewitched === null ? resumed : declareSchoolOfMagic(resumed, witchSeat, bewitched);
-    return withSteps(declared, resumeStack(witchSeat, resumePending, rest));
+    return withSteps(declared, resumeStack(witchSeat, bewitched, rest));
   }
   const bewitched = ctx.state.bewitched ?? null;
   const bewitchedSeat = bewitched === null ? null : seatHolding(ctx.state, bewitched);
