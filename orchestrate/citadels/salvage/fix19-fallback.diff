@@ -1,0 +1,69 @@
+--- /home/kevin/.t3/worktrees/boardgame/t3-a32da114/shared/core/lockstep/games/citadels/helpers.ts	2026-10-14 02:13:50.998422080 +0700
++++ shared/core/lockstep/games/citadels/helpers.ts	2026-10-14 04:35:45.103721996 +0700
+@@ -739,8 +739,10 @@
+   pending: Pending | null,
+   seat: SeatId,
+   character: CharacterId | null,
++  resumed = false,
+ ): readonly Step[] => {
+   if (character === "witch") return steps;
++  if (resumed) return steps;
+   const turnAt = steps.findIndex(
+     (step) => step.kind === "window" && step.window.purpose === "turn" && step.window.seats.includes(seat),
+   );
+--- /home/kevin/.t3/worktrees/boardgame/t3-a32da114/shared/core/lockstep/games/citadels/windows.ts	2026-10-13 15:36:08.022875850 +0700
++++ shared/core/lockstep/games/citadels/windows.ts	2026-10-14 04:35:45.103930718 +0700
+@@ -53,6 +53,7 @@
+           produced.pending,
+           pending.actor,
+           pending.character,
++          state.resume != null,
+         ),
+       );
+     }
+--- /home/kevin/.t3/worktrees/boardgame/t3-a32da114/shared/core/lockstep/games/citadels/characters/witch.ts	2026-10-14 02:06:59.179732546 +0700
++++ shared/core/lockstep/games/citadels/characters/witch.ts	2026-10-14 04:36:00.921435434 +0700
+@@ -1,5 +1,6 @@
+ import type { SeatId } from "../../../index.ts";
+ import type { CharacterCtx, CharacterEffect } from "../characters/index.ts";
++import type { CharacterId } from "../characters.ts";
+ import type { CitadelsState, Step } from "../state.ts";
+ import {
+   addGold,
+@@ -30,7 +31,6 @@
+  * resolve pass, so the bewitched effect still opens on a clean pending and the
+  * locator survives whatever the effect prepends.
+  */
+-const RESUME_WINDOW_TAG = "witch-resume";
+ 
+ /**
+  * Gather resources (the fixed +2), then call the name of another character to
+@@ -66,14 +66,12 @@
+  */
+ const resumeStack = (
+   witchSeat: SeatId,
+-  resumePending: ReturnType<typeof emptyPending>,
++  bewitched: CharacterId | null,
+   rest: readonly Step[],
+-): readonly Step[] => [
+-  RESOLVE,
+-  { kind: "arm", pending: { ...resumePending, note: RESUME_WINDOW_TAG } },
+-  winStep("turn", [witchSeat]),
+-  ...rest,
+-];
++): readonly Step[] =>
++  bewitched === "navigator"
++    ? [winStep("turn", [witchSeat]), RESOLVE, ...rest]
++    : [RESOLVE, winStep("turn", [witchSeat]), ...rest];
+ 
+ /**
+  * `witch-takeover` (opened by `applyCall` when the bewitched character is called)
+@@ -110,7 +108,7 @@
+     // income above the turn window counts it, exactly as applyCall declares for
+     // an ordinary character.
+     const declared = bewitched === null ? resumed : declareSchoolOfMagic(resumed, witchSeat, bewitched);
+-    return withSteps(declared, resumeStack(witchSeat, resumePending, rest));
++    return withSteps(declared, resumeStack(witchSeat, bewitched, rest));
+   }
+   const bewitched = ctx.state.bewitched ?? null;
+   const bewitchedSeat = bewitched === null ? null : seatHolding(ctx.state, bewitched);
