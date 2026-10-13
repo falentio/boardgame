@@ -1,4 +1,4 @@
-# Unit: verify-19 (NINETEENTH adversarial pass, head <FIX19_SHA>)
+# Unit: verify-19 (NINETEENTH adversarial pass, head 511a50a)
 
 ## GOAL
 Re-verify the citadels game definition at the head fix19-resume-turn-shape lands.
@@ -7,7 +7,7 @@ to find what is STILL wrong, including anything the D18 fix (the resume turn-sha
 reuse) introduced or papered over.
 
 ## HEAD
-`<FIX19_SHA>` on `feat/citadels-game-definitions`, worktree
+`511a50a` on `feat/citadels-game-definitions`, worktree
 `/home/kevin/.t3/worktrees/boardgame/t3-a32da114`. Confirm the full citadels suite is
 green before you start. Do not trust the green suite.
 
