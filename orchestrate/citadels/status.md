@@ -1,10 +1,10 @@
 # Orchestrate status
 
-Generated: 2026-10-13T19:20:58.482Z
+Generated: 2026-10-13T20:11:29.569Z
 
 ## Units
 
-States: abandoned=10, done=80, failed=5, partial=3
+States: abandoned=10, done=81, failed=5, partial=3
 
 | ID | Track | State | Branch | PR | SHA | Brief |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -106,10 +106,11 @@ States: abandoned=10, done=80, failed=5, partial=3
 | fix16-witch-resume | verify | done |  |  |  | D16-1: the Witch resume turn double-gathers; resumeStack carries the resume pending on an arm step so the D15 relocation keeps the resume turn window; owns characters/witch.ts + the guard-gap tests |
 | verify-17 | verify | done |  |  |  | seventeenth independent adversarial pass at 1f892a1 (post fix16 Witch resume): found D17-1..5, the resume identity rides the clobberable pending slot; a fourth family in the turn-ordering seam |
 | fix17-resume-token | verify | done | feat/citadels-game-definitions |  |  | D17-1..5: own the Witch resume identity in a dedicated non-clobberable state field (codec round-tripped), read by seatHolding/buildLimit/resolveTurn; recognize the resume turn window by position; delete the dead pending-marker plumbing; owns state.ts + helpers.ts + characters/witch.ts (+ scholar/architect if the withBuildLimit exemption needs it) |
+| verify-18 | verify | done |  |  |  | eighteenth independent adversarial pass at 5e86a02 (post fix17 resume identity): found D18-1/D18-2, the resume arms a generic turn shape instead of the bewitched character's own |
 
 ## Verification ledger
 
-Verdicts: unit-test-verified=53, verifier-failed=18
+Verdicts: unit-test-verified=53, verifier-failed=19
 
 | PR | SHA | Verdict | Evidence | Verifier | Timestamp |
 | --- | --- | --- | --- | --- | --- |
@@ -184,6 +185,7 @@ Verdicts: unit-test-verified=53, verifier-failed=18
 | 20 | 1f892a1 | unit-test-verified | coordinator re-ran at 1f892a1: full citadels suite 89 files / 721 tests green, tsc -p tsconfig.citadels.json clean; independent teeth probe (git archive HEAD \| tar -x to /tmp, remove the resume arm step) reddens D16-1 + D16-1b; fix confined to characters/witch.ts (helpers.ts untouched, no shared-file change); D16-1 fixed (gold trail 4->2), both verify-16 guard gaps closed (new parameterized P4 one-gather guard for Spy/Assassin/Magistrate/Thief/Blackmailer, D14-1 now reddens when the plain gather moves); commits 73a5258 (fix) + 959cc03 (P4) + 6e6e977 (D14-1) + 1f892a1 (report note) | coordinator-01a13566 | 2026-10-13T16:10:46.233Z |
 | 20 | 15649c3 | verifier-failed | verify-17 at 15649c3: verification17.test.ts 6 failed / 4 passed; D17-1 (Scholar resume double-gathers, gold trail 0,2,...,4; same D16-1 defect for a character fix16 did not cover - the Scholar's withBuildLimit re-seats two turn windows above the fix16 arm step) + D17-2 (Abbot resume pays income to the holder, its abbot-split note clobbers the resume marker) + D17-3 (Spy resume runs no naming/loot) + D17-4 (Blackmailer resume assigns no markers) + D17-5 (Emperor resume pays the crown reward to the holder); ALL FIVE in the turn-ordering seam - the resume identity rides the shared mutable pending slot and any effect that writes pending.note or re-seats its turn windows breaks it; under-specified rule: the resume must be a step-carried token only witchResolve writes and resolveTurn/seatHolding read; teeth audit 8/8 red, both verify-16 guard gaps now closed | verify-17-subagent | 2026-10-13T17:29:19.098Z |
 | 20 | 5e86a02 | unit-test-verified | coordinator re-ran at 5e86a02: full citadels suite 90 files / 734 tests green, tsc -p tsconfig.citadels.json clean; independent teeth probe (git archive HEAD \| tar -x to /tmp, force resumedWitch=false) reddens 4 (D17-1, D17-1b, D17-3, P1); fix confined to state.ts + helpers.ts + characters/witch.ts (no scholar/architect edit needed); D17-1..5 all green (Scholar resume 4->2 gold, Abbot holder 4->2, Spy naming+loot restored, Blackmailer markers restored, Emperor reward 3->2); state.resume is a codec-round-tripped owned record; the dead WITCH_RESUME_NOTE export and gatherThenBuild deleted; commits 33b9165 (fix) + 5e86a02 (guards). Deviation: an inert locator tag RESUME_WINDOW_TAG kept because verification4 D4-1 (out of scope) locates the resume turn by pending.note; no engine decision reads it | coordinator-01a13566 | 2026-10-13T19:20:58.451Z |
+| 20 | 4329155 | verifier-failed | verify-18 at 4329155: verification18.test.ts 2 failed / 5 passed; D18-1 (the Alchemist's Witch resume loses its end-of-turn build refund - fix16's arm step sits at ctx.rest[0], defeating atTurnTop, so the effect refunds 0; resume purse 5 vs plain 7) + D18-2 (the Navigator's Witch resume never offers the four-gold-or-four-cards choice - the effect runs above the turn window and reads the wrong note; no window opens after witch-resume); under-specified rule: the resume must arm the bewitched character's own turn shape ([turn, RESOLVE, ...] for the Navigator, [RESOLVE, turn, ...] for the rest), not a hard-coded template; 7 neuters all teeth-proven incl T1 (deleting the arm step makes D18-1 pass); prior passes 15/16/17 green | verify-18-subagent | 2026-10-13T20:11:29.553Z |
 
 ## Frontier
 
@@ -196,4 +198,4 @@ Lowest unmerged: none
 
 (none)
 
-<!-- orch-summary {"unitStates":{"abandoned":10,"done":80,"failed":5,"partial":3},"ledgerVerdicts":{"unit-test-verified":53,"verifier-failed":18},"frontierGeneration":0,"openGateIds":[]} -->
+<!-- orch-summary {"unitStates":{"abandoned":10,"done":81,"failed":5,"partial":3},"ledgerVerdicts":{"unit-test-verified":53,"verifier-failed":19},"frontierGeneration":0,"openGateIds":[]} -->
