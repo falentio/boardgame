@@ -3,16 +3,22 @@ import { SecretHitlerError } from "./error.ts";
 /** A Policy tile. Distinct from a `Party` even though the two share spelling. */
 export type Policy = "liberal" | "fascist";
 
+/** The policy supply for a game: the total Liberal and Fascist tiles in play. */
+export type PolicyMix = Readonly<Record<Policy, number>>;
+
 /** 6 Liberal and 11 Fascist Policy tiles [RB p2]. */
-export const POLICY_MIX: Readonly<Record<Policy, number>> = { liberal: 6, fascist: 11 };
+export const POLICY_MIX: PolicyMix = { liberal: 6, fascist: 11 };
 
 /** Top of the pile is the LAST element, so a draw pops from the end. */
 export type PolicyPile = readonly Policy[];
 
-export const fullDeck = (): PolicyPile => [
-  ...Array<Policy>(POLICY_MIX.liberal).fill("liberal"),
-  ...Array<Policy>(POLICY_MIX.fascist).fill("fascist"),
+/** Build one supply's tiles. A variant supplies a smaller Fascist count at some counts. */
+export const deckFor = (mix: PolicyMix): PolicyPile => [
+  ...Array<Policy>(mix.liberal).fill("liberal"),
+  ...Array<Policy>(mix.fascist).fill("fascist"),
 ];
+
+export const fullDeck = (): PolicyPile => deckFor(POLICY_MIX);
 
 export interface Draw {
   readonly drawn: readonly Policy[];

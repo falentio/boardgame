@@ -11,8 +11,8 @@ import {
 } from "../../index.ts";
 import { boardLimit, LIBERAL_LIMIT, powerFor, type PowerId } from "./board.ts";
 import { SecretHitlerError } from "./error.ts";
-import { countPolicies, POLICY_MIX, type Policy, type PolicyPile } from "./policies.ts";
-import { playerCountOf, rolesFor, type Party, type Role } from "./roles.ts";
+import { countPolicies, POLICY_MIX, type Policy, type PolicyMix, type PolicyPile } from "./policies.ts";
+import { playerCountOf, rolesFor, type Party, type PlayerCount, type Role } from "./roles.ts";
 
 export interface PlayerState {
   readonly seat: SeatId;
@@ -354,7 +354,7 @@ const sortedRoles = (roles: readonly Role[]): readonly string[] => [...roles].so
  * snapshot therefore chains cleanly, so the invariants live here, at the one
  * boundary untrusted state crosses.
  */
-const checkInvariants = (state: SecretHitlerState): void => {
+const checkInvariants = (state: SecretHitlerState, mix: PolicyMix): void => {
   const count = playerCountOf(state.players.length);
   const seats = new Set(state.players.map((player) => player.seat));
   if (seats.size !== state.players.length) throw new SecretHitlerError("duplicate seat in players");
@@ -443,11 +443,15 @@ const checkInvariants = (state: SecretHitlerState): void => {
     countPolicies(state.discardPile).fascist +
     state.fascistPolicies +
     payload.filter((card) => card === "fascist").length;
-  if (liberal !== POLICY_MIX.liberal) {
-    throw new SecretHitlerError(`liberal policies do not conserve: ${String(liberal)} of 6`);
+  if (liberal !== mix.liberal) {
+    throw new SecretHitlerError(
+      `liberal policies do not conserve: ${String(liberal)} of ${String(mix.liberal)}`,
+    );
   }
-  if (fascist !== POLICY_MIX.fascist) {
-    throw new SecretHitlerError(`fascist policies do not conserve: ${String(fascist)} of 11`);
+  if (fascist !== mix.fascist) {
+    throw new SecretHitlerError(
+      `fascist policies do not conserve: ${String(fascist)} of ${String(mix.fascist)}`,
+    );
   }
   const active = activeSeats(state).length;
   if (phase.kind !== "over" && active < MIN_ACTIVE_SEATS) {
@@ -462,7 +466,18 @@ const checkInvariants = (state: SecretHitlerState): void => {
   }
 };
 
-export const stateCodec: Codec<SecretHitlerState> = {
+/**
+ * The supply a state conserves against: one mix for every count, or a resolver
+ * for a variant whose supply changes with the table size.
+ */
+export type PolicySupply = PolicyMix | ((count: PlayerCount) => PolicyMix);
+
+/**
+ * The codec for a game whose supply is `supply`. Decode conserves against the
+ * mix for the state's own count, so the invariant stays strong for a variant
+ * that shrinks the Fascist supply at some counts.
+ */
+export const stateCodecFor = (supply: PolicySupply): Codec<SecretHitlerState> => ({
   encode: (state): Json => ({
     players: state.players.map(encodePlayer),
     drawPile: [...state.drawPile],
@@ -510,8 +525,11 @@ export const stateCodec: Codec<SecretHitlerState> = {
         decodeSeat(entry, "resigned seat"),
       ),
     };
-    checkInvariants(state);
+    const count = playerCountOf(state.players.length);
+    checkInvariants(state, typeof supply === "function" ? supply(count) : supply);
     return state;
   },
-};
+});
+
+export const stateCodec: Codec<SecretHitlerState> = stateCodecFor(POLICY_MIX);
 
