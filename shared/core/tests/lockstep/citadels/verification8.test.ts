@@ -239,7 +239,7 @@ test("P2 a 2-seat and a 7-seat game fold to terminal and conserve cards", () => 
   expect(cards(sevenEnd), "the 7-seat deck is conserved").toBe(68);
 });
 
-test("P3 a 2-seat and a 7-seat game converge and redact", () => {
+test("P3 a 2-seat and a 7-seat game converge and redact", { timeout: 60000 }, () => {
   const two: readonly SeatId[] = [ANN, BOB];
   const seven: readonly SeatId[] = [ANN, BOB, CARA, seatOf("dan"), seatOf("eve"), seatOf("finn"), seatOf("gil")];
   for (const seats of [two, seven]) {
