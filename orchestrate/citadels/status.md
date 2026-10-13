@@ -1,10 +1,10 @@
 # Orchestrate status
 
-Generated: 2026-10-11T06:34:40.348Z
+Generated: 2026-10-13T08:39:46.922Z
 
 ## Units
 
-States: abandoned=7, done=34, partial=3, pending=1, running=2
+States: abandoned=10, done=73, failed=4, partial=3
 
 | ID | Track | State | Branch | PR | SHA | Brief |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -52,13 +52,56 @@ States: abandoned=7, done=34, partial=3, pending=1, running=2
 | fix2-engine-tests | verify | abandoned |  |  |  | folded-game per-character tests so no window can silently die again |
 | fix2-engine | verify | abandoned |  |  |  | orchestrate/citadels/briefs/fix2-engine.md |
 | fix2-characters | verify | done |  |  |  | orchestrate/citadels/briefs/fix2-characters.md |
-| fix2-regression | verify | pending |  |  |  | orchestrate/citadels/briefs/fix2-regression.md |
-| fix2-engine-tail | verify | running |  |  |  | finish V2-7 alchemist refund (verify+complete the zombie salvage in helpers.ts/alchemist.ts) and V2-8 armory onDestroy |
-| fix2-verification-tests | verify | running |  |  |  | correct the 3 flawed counterexamples (folded-game policy, trader/emperor turn-phase setup, stale D10 keep) keeping their teeth |
+| fix2-regression | verify | done |  |  |  | orchestrate/citadels/briefs/fix2-regression.md |
+| fix2-engine-tail | verify | done |  |  |  | finish V2-7 alchemist refund (verify+complete the zombie salvage in helpers.ts/alchemist.ts) and V2-8 armory onDestroy |
+| fix2-verification-tests | verify | done |  |  |  | correct the 3 flawed counterexamples (folded-game policy, trader/emperor turn-phase setup, stale D10 keep) keeping their teeth |
+| fix2-den-test | verify | done |  |  |  | correct the stale district-seams.test.ts card-payment assertion to the V2-4 rule (cards + gold share) |
+| verify-3 | verify | done |  |  |  | third independent adversarial pass at e0ab5a4: predicate audit, teeth audit of engine-coverage guards via /tmp-copy revert probes, verification3.test.ts counterexamples |
+| fix3-engine | verify | done |  |  |  | D3-1 navigator four-card branch reachable; D3-7 haunted-quarter type choice; owns helpers.ts + navigator.ts + haunted-quarter.ts |
+| fix3-scoring | verify | done |  |  |  | D3-2 capitol declared type; D3-3 basilica beautify; D3-4 wishing-well + ivory-tower unique flag; owns the four district files |
+| fix3-rules | verify | done |  |  |  | D3-5 draft over-removal; D3-6 winnerOf tie-break; owns setup.ts + scoring.ts (serialized shared) |
+| fix3-guards | verify | done |  |  |  | harden engine-coverage guard rows the teeth audit found weak: Keep/GreatWall call-count rows, Trader declared-type row; owns engine-coverage.test.ts |
+| fix3-tie-tests | verify | done |  |  |  | correct the 3 stale integration.test.ts tie-break assertions to the catalog revealed-rank rule + reconcile the Navigator summary string |
+| verify-4 | verify | done |  |  |  | fourth independent adversarial pass at 69aae2e: predicate audit, teeth audit of the strengthened guards, verification4.test.ts counterexamples |
+| fix4-engine | verify | done |  |  |  | D4-1/D4-1b witch held-turn build + triple gather; D4-2 tax-collector per-seat exemption; D4-3 destroyed museum cards; D4-4 blackmailer threat order; D4-7 card-paid den confiscate; owns helpers.ts + witch + blackmailer + warlord + museum + armory + thieves-den + magistrate |
+| fix4-clauses | verify | done |  |  |  | D4-5 bishop shield read by marshal/diplomat; D4-6 ivory tower vs undeclared haunted quarter; owns marshal.ts + diplomat.ts + ivory-tower.ts |
+| fix4-ivory-tests | verify | done |  |  |  | correct the 2 stale ivory-tower fixtures (fix-scoring D12, districts/ivory-tower.test.ts) to the catalog rule: undeclared HQ blocks the tower, declared non-unique HQ does not |
+| fix4-guards | verify | done |  |  |  | strengthen the Navigator/Spy/Thief engine-coverage rows from wiring assertions to behavioral teeth |
+| fix4-test-corrections | verify | done |  |  |  | correct the 10 stale fixtures the fix4 source fixes invalidated: hooks x2 + blackmailer.test.ts x6 (threat after gather), thieves-den.test.ts card-paid den, verification4.test.ts D4-1 re-aim |
+| verify-5 | verify | done |  |  |  | fifth independent adversarial pass at a59355b: predicate audit, teeth audit incl the newly strengthened rows and the re-aimed D4-1, verification5.test.ts counterexamples |
+| fix5-engine | verify | done |  |  |  | D5-1..4 witch resume runs the bewitched character ability + build limit; D5-5 threat after gather before build; D5-6 cardinal shortfall reachable; D5-7 school-of-magic declaration before income; owns helpers.ts + witch + cardinal + school-of-magic + king/emperor/trader |
+| fix5-data | verify | done |  |  |  | D5-8 four stale character summaries (bishop, tax-collector, blackmailer, magician) reconciled to the implemented effects; owns characters.ts |
+| fix5-last-fixture | verify | done |  |  |  | correct the coordinator-ruled stale D4-1b fixture in verification4.test.ts (the resume now pays the bewitched ability, so the fold totals +3) |
+| verify-6 | verify | done |  |  |  | sixth independent adversarial pass at 32b9c1d (fully green head): predicate audit, teeth audit, verification6.test.ts counterexamples |
+| fix6-turn-model | verify | done |  |  |  | D6-1 cardinal shortfall gift card conservation with duplicates; D6-2 turn model gather-then-build per spec citadels-full-game.md:107; owns helpers.ts + cardinal.ts |
+| fix6-fixtures-districts | verify | done |  |  |  | re-frame the 22 red district fixtures (necropolis x4, framework x4, factory x4, park x3, poor-house x2, smithy, secret-vault, quarry, monument, laboratory) to the gather-then-build turn model |
+| fix6-fixtures-guards | verify | done |  |  |  | re-frame engine-coverage x3 (alchemist, factory, poor-house), verification2 alchemist V2-7, fix-den-test split build; strengthen the T1-T4 guard gaps (school-of-magic turn-open, cardinal shortfall, blackmailer deferral, witch resume RESOLVE) |
+| verify-7 | verify | done |  |  |  | seventh independent adversarial pass at fbf19a6 (post turn-model): predicate audit, teeth audit incl T1-T4 strengthened rows, verification7.test.ts counterexamples |
+| fix7-acting-character | verify | done |  |  |  | D7-1..D7-6: seven per-character clauses read claimOf (seat first claim) instead of the acting character; sweep every claimOf reader; owns helpers.ts + blackmailer.ts + school-of-magic.ts |
+| verify-8 | verify | done |  |  |  | eighth independent adversarial pass at 0ab24e2 (post acting-character fix): predicate audit, teeth audit, verification8.test.ts counterexamples |
+| fix8-two-character | verify | done |  |  |  | D8-1 witch resume declares the School of Magic; D8-2 theatre lets a two-claim owner choose which character to give (+ fix the pinned fixture); add two-character-seat guard rows; owns helpers.ts + witch.ts + theatre.ts + theatre.test.ts + engine-coverage.test.ts |
+| verify-9 | verify | done |  |  |  | ninth independent adversarial pass at 773ad39 (post two-character wave): predicate audit, teeth audit incl the new two-character rows, verification9.test.ts counterexamples |
+| fix9-museum-offer | verify | done |  |  |  | D9-1 museum offer must not overwrite the alchemist settle pending (tagged routing); D9-2 the navigator branch reaches the museum offer; owns helpers.ts + engine-coverage.test.ts |
+| verify-10 | verify | done |  |  |  | tenth independent adversarial pass at c867b2a (post museum-offer routing): predicate audit, teeth audit, verification10.test.ts counterexamples |
+| fix10-threat-seam | verify | abandoned |  |  |  | D10-1/D10-3 threat resolves after the threatened seat gather/gain (splice above the resolve step); D10-2 the reveal must not wipe a pending a later step needs; owns helpers.ts + engine-coverage.test.ts |
+| fix10-threat-seam-r2 | verify | failed |  |  |  | retry of fix10-threat-seam (predecessor died to a provider error mid-analysis, no commits): D10-1/D10-3 threat resolves after gather/gain, D10-2 reveal preserves the pending |
+| fix10-threat-seam-r3 | verify | abandoned |  |  |  | fix10 retry #3 on pi/9Router-step-5 (user model switch): D10-1/D10-3 threat after gather/gain, D10-2 reveal preserves the pending, refuse-path guard; owns helpers.ts + engine-coverage.test.ts |
+| fix10-threat-seam-r4 | verify | abandoned |  |  |  | fix10 retry #4 on pi/9Router-step-5 (user model switch; r3 interrupted by an aborted wait, probe file cleaned): D10-1/D10-3 threat after gather/gain, D10-2 reveal preserves the pending, refuse-path guard |
+| fix10-threat-seam-r5 | verify | done |  |  |  | fix10 retry #5 on pi/9Router-step-5 (r4 interrupted by an aborted wait after isolating the root cause, no commits): implement the coordinator ruling immediately; owns helpers.ts + engine-coverage.test.ts |
+| verify-11 | verify | done |  |  |  | eleventh independent adversarial pass at cd506d5 (post threat-seam fix): predicate audit, teeth audit incl the refuse-path rows, verification11.test.ts counterexamples |
+| fix11-two-markers | verify | done |  |  |  | D11-1 record the flowered-lace identity at placement so a refused decoy is never looted; D11-2 the museum offer must not precede a threatened Navigator threat; owns blackmailer.ts + helpers.ts + engine-coverage.test.ts (state.ts only if reported and granted) |
+| verify-12 | verify | done |  |  |  | twelfth independent adversarial pass at 262836a (post two-marker fix): predicate audit, teeth audit incl the both-marker rows, verification12.test.ts counterexamples |
+| fix12-stack-reshapers | verify | failed |  |  |  | D12-1 Architect, D12-2 Alchemist, D12-3 Scholar build before the threat (stack reshaping moves the threat out of the rest[0] slot); owns helpers.ts + architect.ts + alchemist.ts + scholar.ts + engine-coverage.test.ts |
+| fix12b-trader | verify | done |  |  |  | sweep the Trader case (D12-4): verify whether a threatened Trader still builds before its threat at 0fd4226; if real, fix in the same shape-independent seam |
+| verify-13 | verify | done |  |  |  | thirteenth independent adversarial pass at f6cf5c9 (post the trader threat fix): predicate audit, full threatenable sweep, teeth audit, verification13.test.ts counterexamples |
+| fix13-threat-above-abilities | verify | done |  |  |  | D13-1..D13-11: the threat window must sit above every window the character effect opens (gather -> threat -> abilities/build); owns helpers.ts + engine-coverage.test.ts |
+| fix13b-p1-fixture | verify | failed |  |  |  | correct verification11.test.ts P1 emperor/museum bribe arithmetic to the post-relocation order (bribe on post-gather pre-ability gold); owns verification11.test.ts only |
+| fix13b-p1-r2 | verify | failed |  |  |  | P1 correction retry: derive the bribe arithmetic from the purse measured at the threat frame, not from the plain end; owns verification11.test.ts only |
+| fix13c-refuse-regression | verify | done |  |  | aa6f553 | D13 seam regression: a refused threatened seat loses its relocated ability windows (scholar draw); owns helpers.ts + windows.ts + verification11.test.ts |
 
 ## Verification ledger
 
-Verdicts: unit-test-verified=30, verifier-failed=3
+Verdicts: unit-test-verified=49, verifier-failed=14
 
 | PR | SHA | Verdict | Evidence | Verifier | Timestamp |
 | --- | --- | --- | --- | --- | --- |
@@ -95,6 +138,36 @@ Verdicts: unit-test-verified=30, verifier-failed=3
 | 1 | 91a57df | unit-test-verified | all 14 verifier counterexamples pass; suite 531 passed; my own probe confirms character abilities now run and the crown moves |  | 2026-10-11T03:16:19.176Z |
 | 1 | 12f3aaf | verifier-failed | orchestrate/citadels/verification-2.md + verification2.test.ts: 15 counterexamples; V2-1 blocking (any-windows dropped by drain) |  | 2026-10-11T04:05:56.435Z |
 | 1 | 9c28701 | verifier-failed | 3 real defects remain (V2-4 den gold, V2-7 alchemist, V2-8 armory) + 3 flawed counterexamples; see orchestrate/citadels/HANDOFF.md |  | 2026-10-11T06:04:03.500Z |
+| 20 | dcce09b | unit-test-verified | coordinator re-ran verification2.test.ts 15/15 and verification-report.test.ts 14/14 at dcce09b; git show confirms only the two owned test files changed and assertions were added, not weakened | coordinator-2fe386ea | 2026-10-11T07:01:23.140Z |
+| 20 | d649c7f | unit-test-verified | coordinator re-ran at d649c7f: verification2.test.ts 15/15 (V2-7 alchemist refund, V2-8 armory onDestroy, V2-4 den gold share all pass), verification-report.test.ts 14/14; commit touches only owned alchemist.ts+helpers.ts | coordinator-2fe386ea | 2026-10-11T07:18:29.816Z |
+| 20 | 857f556 | unit-test-verified | coordinator re-ran at 857f556: district-seams.test.ts 18/18; full citadels suite 74 files 547/547 passed | coordinator-2fe386ea | 2026-10-11T07:32:05.017Z |
+| 20 | e0ab5a4 | verifier-failed | independent pass 3 at e0ab5a4: verification3.test.ts 8 failed / 2 passed; defects D3-1 navigator branch unreachable, D3-2 capitol catalog type, D3-3 basilica beautify, D3-4 wishing-well/ivory-tower unique flag, D3-5 draft over-removal, D3-6 winnerOf tie-break, D3-7 haunted-quarter type choice; guard weaknesses on Keep/GreatWall call-count rows and Trader declared-type row | verify-3-subagent | 2026-10-11T09:45:41.346Z |
+| 20 | cc7d376 | unit-test-verified | coordinator re-ran at cc7d376: verification3.test.ts 6/10 (D3-2/3/4 green; remaining 4 are sibling D3-1/5/6/7); commit touches only capitol/basilica/wishing-well/ivory-tower | coordinator-2fe386ea | 2026-10-11T09:56:23.406Z |
+| 20 | ba3aa44 | unit-test-verified | coordinator re-ran at ba3aa44: verification3.test.ts 10/10 (D3-1..D3-7 all green); commit touches only helpers.ts, characters/navigator.ts, districts/haunted-quarter.ts | coordinator-2fe386ea | 2026-10-11T11:48:43.337Z |
+| 20 | b470dfd | unit-test-verified | coordinator re-ran at b470dfd: verification3.test.ts 10/10; suite 613/616 with the only reds the 3 stale integration tie-break assertions the unit flagged; commit touches only setup.ts + scoring.ts | coordinator-2fe386ea | 2026-10-11T11:48:43.350Z |
+| 20 | 7274d0f | unit-test-verified | coordinator re-ran at 7274d0f: full citadels suite 76 files / 616 tests all green; commit touches only integration.test.ts + the Navigator summary string in characters.ts | coordinator-2fe386ea | 2026-10-11T11:58:27.296Z |
+| 20 | 69aae2e | verifier-failed | independent pass 4 at 69aae2e: verification4.test.ts 9 failed / 0 passed (all counterexamples); 39 prior counterexamples all green; defects D4-1..D4-7 plus theater guards Navigator/Spy/Thief | verify-4-subagent | 2026-10-11T12:42:25.571Z |
+| 20 | 5428f3d | unit-test-verified | coordinator re-ran at 5428f3d: verification4.test.ts 3/9 with only the 6 sibling engine counterexamples red; commits touch only marshal.ts + diplomat.ts + ivory-tower.ts; suite reds beyond siblings are exactly the 2 stale ivory-tower fixtures the unit flagged | coordinator-2fe386ea | 2026-10-11T13:14:44.492Z |
+| 20 | 5af9fab | unit-test-verified | coordinator re-ran at 5af9fab: fix-scoring.test.ts + districts/ivory-tower.test.ts 9/9 green; suite red set exactly the 6 fix4-engine counterexamples; commit touches only the two owned fixture files | coordinator-2fe386ea | 2026-10-11T13:21:06.753Z |
+| 20 | 20474d2 | unit-test-verified | coordinator re-ran at 20474d2: engine-coverage.test.ts 59/59; commit touches only engine-coverage.test.ts; each strengthened row quotes the red message its behavior-revert produces | coordinator-2fe386ea | 2026-10-11T13:42:38.844Z |
+| 20 | b6150fa | unit-test-verified | coordinator re-ran at b6150fa: verification4.test.ts 8/9 (only the ruled-flawed D4-1 red); its six source defects fixed across owned files only; 9 stale fixtures enumerated and handed to the correction unit | coordinator-2fe386ea | 2026-10-11T14:37:05.593Z |
+| 20 | a59355b | verifier-failed | independent pass 5 at a59355b: verification5.test.ts 8 failed / 0 passed; all 48 prior counterexamples green; defects D5-1..D5-8; teeth audit confirms every sampled guard (13 probes) turns red — the guard suite has no theater left | verify-5-subagent | 2026-10-11T15:45:18.812Z |
+| 20 | 1d74da0 | unit-test-verified | coordinator re-ran at 1d74da0: verification5.test.ts shows only the 7 sibling engine counterexamples red (D5-8 green); commit touches only summary strings in characters.ts | coordinator-2fe386ea | 2026-10-11T16:02:22.638Z |
+| 20 | c6cfee0 | unit-test-verified | coordinator re-ran at c6cfee0: verification5.test.ts 8/8 green; full citadels suite 633/634 with the only red the coordinator-ruled stale D4-1b fixture; commits touch only the four owned source files | coordinator-2fe386ea | 2026-10-11T17:24:49.385Z |
+| 20 | 32b9c1d | verifier-failed | independent pass 6 at 32b9c1d: verification6.test.ts 2 failed / 3 passed; defects D6-1 (cardinal duplicate-card drop) and D6-2 (gather XOR build vs spec citadels-full-game.md:107); four guard-strength gaps T1-T4 reported | verify-6-subagent | 2026-10-11T18:19:39.241Z |
+| 20 | 64420ca | unit-test-verified | coordinator re-ran at 64420ca: verification6.test.ts 5/5 green; all 27 character test files green (185 tests); the 27 remaining reds are the surveyed fixture-causation set the unit enumerated | coordinator-2fe386ea | 2026-10-11T19:30:20.806Z |
+| 20 | c66a3bd | unit-test-verified | coordinator re-ran: all 22 district fixture reds green; diff from 64420ca touches only the ten owned district test files | coordinator-2fe386ea | 2026-10-11T19:41:51.118Z |
+| 20 | fbf19a6 | verifier-failed | independent pass 7 at fbf19a6: verification7.test.ts 7 failed / 0 passed; defects D7-1..D7-6 all the claimOf-vs-acting-character family; teeth audit clean (19 probes all red) | verify-7-subagent | 2026-10-11T20:26:34.189Z |
+| 20 | 0ab24e2 | verifier-failed | independent pass 8 at 0ab24e2: verification8.test.ts 2 failed / 3 passed; the seventh-pass family holds (differential across all 27 characters); defects D8-1 (witch resume school-of-magic declaration) and D8-2 (theatre owner choice with two claims); guard gap: no two-character-seat guard | verify-8-subagent | 2026-10-11T21:16:31.038Z |
+| 20 | 773ad39 | unit-test-verified | coordinator re-ran: full citadels suite 81 files / 651 tests all green; verification8.test.ts green; commit list touches only the five owned files | coordinator-2fe386ea | 2026-10-11T21:50:45.615Z |
+| 20 | f0b5725 | verifier-failed | independent pass 9 at f0b5725: verification9.test.ts 2 failed / 3 passed; defects D9-1 (alchemist refund lost under the Museum offer) and D9-2 (navigator never offered the Museum placement); 18 teeth probes all red; guard gap confirmed for Museum-owning turns | verify-9-subagent | 2026-10-11T22:18:23.954Z |
+| 20 | c867b2a | verifier-failed | independent pass 10 at c867b2a: verification10.test.ts 3 failed / 3 passed; defects D10-1..D10-3 all in the threat-refuse seam; teeth audit 15 probes all red | verify-10-subagent | 2026-10-11T23:05:28.988Z |
+| 20 | cd506d5 | verifier-failed | independent pass 11 at cd506d5: verification11.test.ts 2 failed / 2 passed; defects D11-1 (second marker inherits the lace) and D11-2 (museum offer precedes the threat for a threatened Navigator); both one clause beside the fix10 seam | verify-11-subagent | 2026-10-12T17:10:16.435Z |
+| 20 | 262836a | verifier-failed | independent pass 12 at 262836a: verification12.test.ts 3 failed / 3 passed; defects D12-1..D12-3 (Architect/Alchemist/Scholar build before the threat via stack reshaping) | verify-12-subagent | 2026-10-12T18:00:32.492Z |
+| 20 | 0fd4226 | unit-test-verified | coordinator re-ran at 0fd4226: verification12.test.ts 6/6; full citadels suite 85 files / 679 tests green except the P3 vitest 5000ms timeout (harness, routed separately); commits touch only helpers.ts + engine-coverage.test.ts | coordinator-2fe386ea | 2026-10-13T01:59:23.068Z |
+| 20 | f6cf5c9 | verifier-failed | independent pass 13 at f6cf5c9: verification13.test.ts 11 failed; the D13 family (ability windows drain before the threat); teeth audit 13/15 red with 2 findings | verify-13-subagent | 2026-10-13T04:52:49.188Z |
+| 20 | 2b6727c | unit-test-verified | coordinator re-ran at 2b6727c: verification13.test.ts 14/14; full citadels suite 86 files / 699 tests green except the coordinator-ruled stale P1 fixture; commits touch helpers.ts + windows.ts + engine-coverage.test.ts | coordinator-2fe386ea | 2026-10-13T05:30:11.578Z |
+| 20 | aa6f553 | unit-test-verified | coordinator re-ran at aa6f553: verification11 5/5 (P1 green, new P3 single-close guard green) and verification13 14/14 (D13-9 corrected); full citadels suite 86 files / 700 tests green; commits touch helpers.ts + state.ts + windows.ts + verification11.test.ts + verification13.test.ts; teeth proven (revert the arm carry -> P1+D13-7+D13-9 red; revert endTurnThen -> P3 red, refused Smithy pays 4 for 6 instead of 2 for 3) | coordinator-85bd98d5 | 2026-10-13T08:39:39.088Z |
 
 ## Frontier
 
@@ -107,4 +180,4 @@ Lowest unmerged: none
 
 (none)
 
-<!-- orch-summary {"unitStates":{"abandoned":7,"done":34,"partial":3,"pending":1,"running":2},"ledgerVerdicts":{"unit-test-verified":30,"verifier-failed":3},"frontierGeneration":0,"openGateIds":[]} -->
+<!-- orch-summary {"unitStates":{"abandoned":10,"done":73,"failed":4,"partial":3},"ledgerVerdicts":{"unit-test-verified":49,"verifier-failed":14},"frontierGeneration":0,"openGateIds":[]} -->
