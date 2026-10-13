@@ -1,4 +1,4 @@
-# Unit: verify-16 (SIXTEENTH adversarial pass, head <FIX15_SHA>)
+# Unit: verify-16 (SIXTEENTH adversarial pass, head e12a21c)
 
 ## GOAL
 Re-verify the citadels game definition at the head fix15-plain-order lands. Passes
@@ -7,7 +7,7 @@ find what is STILL wrong, including anything the D15 fix (the plain-turn relocat
 introduced or papered over.
 
 ## HEAD
-`<FIX15_SHA>` on `feat/citadels-game-definitions`, worktree
+`e12a21c` on `feat/citadels-game-definitions`, worktree
 `/home/kevin/.t3/worktrees/boardgame/t3-a32da114`. Confirm the full citadels suite is
 green before you start. Do not trust the green suite.
 
@@ -25,6 +25,14 @@ purse while the plain turn ran it PRE-gather, so refused != plain. The ruling (s
   effect's windows below the **gather turn window** when no threat stands (it used to
   return early), and `resolveTurn`'s gather path places the build window AFTER the
   relocated windows, above the turn's own END_TURN, mirroring the threatened branch.
+
+- The fix (commit `3a3c85d`) relocated only the effect's FIRST pass. A later pass runs
+  with the turn's BUILD window already placed and a turn-gathered `arm` step directly
+  above it, so `relocateEffectBelowThreat` skips when an `arm` step sits in the segment
+  above the turn window (`hasArmAbove || !hasWindowAbove`). r1 (the first attempt) ran
+  the relocation on every pass and the enclosing build window was hoisted over the arm
+  step, so the turn gathered twice (the spy measured three gathers, `goldDelta` 6 where 4
+  is correct). Verify that guard holds for EVERY multi-pass effect, not just the spy.
 
 ## READ FIRST
 - `orchestrate/citadels/verification-15.md` (the last pass) and the D15 ruling in
