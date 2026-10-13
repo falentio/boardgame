@@ -3,16 +3,6 @@ import type { PowerId } from "./board.ts";
 import { partyOf, type Party } from "./roles.ts";
 import { activeSeats, roleOf, type SecretHitlerState } from "./state.ts";
 
-/** The four Executive Actions, in board order [RB p5]. */
-export const POWER_IDS: readonly PowerId[] = [
-  "investigate-loyalty",
-  "special-election",
-  "policy-peek",
-  "execution",
-];
-
-export const powerNeedsTarget = (power: PowerId): boolean => power !== "policy-peek";
-
 /**
  * The seats a power may name, given the current state. One owner for the target
  * rules, read by both the reducer (to coerce an illegal target) and the view (to

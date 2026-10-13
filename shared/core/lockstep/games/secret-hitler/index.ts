@@ -59,7 +59,6 @@ export {
 } from "./roles.ts";
 export {
   POLICY_MIX,
-  TOTAL_POLICIES,
   RESHUFFLE_BELOW,
   countPolicies,
   drawFrom,
@@ -70,7 +69,7 @@ export {
   type Policy,
   type PolicyPile,
 } from "./policies.ts";
-export { POWER_IDS, investigateParty, legalPowerTargets, powerNeedsTarget } from "./powers.ts";
+export { investigateParty, legalPowerTargets } from "./powers.ts";
 export {
   MIN_ACTIVE_SEATS,
   phasePayload,

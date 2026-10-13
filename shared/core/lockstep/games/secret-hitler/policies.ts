@@ -5,7 +5,6 @@ export type Policy = "liberal" | "fascist";
 
 /** 6 Liberal and 11 Fascist Policy tiles [RB p2]. */
 export const POLICY_MIX: Readonly<Record<Policy, number>> = { liberal: 6, fascist: 11 };
-export const TOTAL_POLICIES = POLICY_MIX.liberal + POLICY_MIX.fascist;
 
 /** Top of the pile is the LAST element, so a draw pops from the end. */
 export type PolicyPile = readonly Policy[];
