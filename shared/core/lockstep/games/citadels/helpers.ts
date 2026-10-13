@@ -728,6 +728,37 @@ const isThreatWindow = (step: Step): boolean =>
   step.kind === "window" && step.window.purpose === "blackmailer-threat";
 
 /**
+ * After a threatened character's effect runs, relocate the ability windows it
+ * pushed above its gather turn window to sit below the Blackmailer threat
+ * window, so the resolved stack reads [turn(gather), threat, effectWindows...,
+ * END_TURN, ...] - the order rules.json (blackmailer) requires: "they must gather
+ * resources, then resolve the threat ... A threatened player must resolve the
+ * threat before using abilities or building". The engine runs the effect at the
+ * resolve seam and the effect prepends its windows above the turn window, so they
+ * would otherwise drain before the threat opens and the ability lands with the
+ * marker still standing (D13-1..11). The Witch's held turn is exempt: her naming
+ * window drives her whole resume/takeover pairing, which resolveTurn sequences
+ * off the pending she clears, so relocating it would double-count her gather; her
+ * turn keeps the shape resolveTurn already established (Witch markers ride).
+ */
+export const relocateEffectBelowThreat = (
+  steps: readonly Step[],
+  seat: SeatId,
+  character: CharacterId | null,
+): readonly Step[] => {
+  if (character === "witch") return steps;
+  const turnAt = steps.findIndex(
+    (step) => step.kind === "window" && step.window.purpose === "turn" && step.window.seats.includes(seat),
+  );
+  const threatAt = steps.findIndex(isThreatWindow);
+  if (turnAt < 0 || threatAt < 0 || turnAt >= threatAt) return steps;
+  const head = steps.slice(0, turnAt);
+  const mid = steps.slice(turnAt, threatAt);
+  const threat = steps[threatAt] as Step;
+  return [...mid, threat, ...head, ...steps.slice(threatAt + 1)];
+};
+
+/**
  * The continuation a gather hands the turn: one build-capable window, then the
  * turn's close. Any build window a character pre-seeded is dropped so the gather
  * is followed by exactly one build opportunity.

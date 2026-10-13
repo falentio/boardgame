@@ -12,6 +12,7 @@ import {
   isResigned,
   isTerminal,
   liveSeats,
+  relocateEffectBelowThreat,
   resolveGeneric,
   withSteps,
   type WindowCtx,
@@ -38,12 +39,16 @@ const applyImmediate = (state: CitadelsState, step: Step, rng: Random): Citadels
       const pending = state.pending;
       if (pending === null || pending.character === null) return withSteps(state, state.steps.slice(1));
       const effect = CHARACTER_EFFECTS[pending.character];
-      return effect({
+      const produced = effect({
         state,
         seat: pending.actor,
         rest: state.steps.slice(1),
         rng,
       });
+      return withSteps(
+        produced,
+        relocateEffectBelowThreat(produced.steps, pending.actor, pending.character),
+      );
     }
     case "window":
       return state;
