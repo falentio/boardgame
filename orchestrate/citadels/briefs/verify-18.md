@@ -1,4 +1,4 @@
-# Unit: verify-18 (EIGHTEENTH adversarial pass, head <FIX17_SHA>)
+# Unit: verify-18 (EIGHTEENTH adversarial pass, head 5e86a02)
 
 ## GOAL
 Re-verify the citadels game definition at the head fix17-resume-token lands. Passes
@@ -7,7 +7,7 @@ what is STILL wrong, including anything the D17 seam redesign introduced or pape
 over.
 
 ## HEAD
-`<FIX17_SHA>` on `feat/citadels-game-definitions`, worktree
+`5e86a02` on `feat/citadels-game-definitions`, worktree
 `/home/kevin/.t3/worktrees/boardgame/t3-a32da114`. Confirm the full citadels suite is
 green before you start. Do not trust the green suite.
 
