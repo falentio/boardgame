@@ -95,3 +95,4 @@ fix15-plain-order	verify	failed	feat/citadels-game-definitions			D15: the plain 
 fix15-plain-order-r2	verify	done				D15: plain turn is gather -> abilities -> build; relocate the effect windows below the gather on the first pass only (arm-step guard), build window after them; r1 salvage + double-gather fix; owns helpers.ts + re-framed fixtures
 verify-16	verify	done				sixteenth independent adversarial pass at e12a21c (post D15 plain-turn relocation): found D16-1, the Witch resume double-gather
 fix16-witch-resume	verify	done				D16-1: the Witch resume turn double-gathers; resumeStack carries the resume pending on an arm step so the D15 relocation keeps the resume turn window; owns characters/witch.ts + the guard-gap tests
+verify-17	verify	done				seventeenth independent adversarial pass at 1f892a1 (post fix16 Witch resume): found D17-1..5, the resume identity rides the clobberable pending slot; a fourth family in the turn-ordering seam

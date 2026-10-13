@@ -1,10 +1,10 @@
 # Orchestrate status
 
-Generated: 2026-10-13T16:10:46.250Z
+Generated: 2026-10-13T17:29:19.115Z
 
 ## Units
 
-States: abandoned=10, done=78, failed=5, partial=3
+States: abandoned=10, done=79, failed=5, partial=3
 
 | ID | Track | State | Branch | PR | SHA | Brief |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -104,10 +104,11 @@ States: abandoned=10, done=78, failed=5, partial=3
 | fix15-plain-order-r2 | verify | done |  |  |  | D15: plain turn is gather -> abilities -> build; relocate the effect windows below the gather on the first pass only (arm-step guard), build window after them; r1 salvage + double-gather fix; owns helpers.ts + re-framed fixtures |
 | verify-16 | verify | done |  |  |  | sixteenth independent adversarial pass at e12a21c (post D15 plain-turn relocation): found D16-1, the Witch resume double-gather |
 | fix16-witch-resume | verify | done |  |  |  | D16-1: the Witch resume turn double-gathers; resumeStack carries the resume pending on an arm step so the D15 relocation keeps the resume turn window; owns characters/witch.ts + the guard-gap tests |
+| verify-17 | verify | done |  |  |  | seventeenth independent adversarial pass at 1f892a1 (post fix16 Witch resume): found D17-1..5, the resume identity rides the clobberable pending slot; a fourth family in the turn-ordering seam |
 
 ## Verification ledger
 
-Verdicts: unit-test-verified=52, verifier-failed=17
+Verdicts: unit-test-verified=52, verifier-failed=18
 
 | PR | SHA | Verdict | Evidence | Verifier | Timestamp |
 | --- | --- | --- | --- | --- | --- |
@@ -180,6 +181,7 @@ Verdicts: unit-test-verified=52, verifier-failed=17
 | 20 | e12a21c | unit-test-verified | coordinator re-ran at e12a21c: full citadels suite 88 files / 715 tests green, tsc -p tsconfig.citadels.json clean; independent teeth probe (git archive HEAD \| tar -x to /tmp, neuter the plain-turn relocation in relocateEffectBelowThreat) reddens 9 tests across verification15/14/2; fix confined to helpers.ts (windows.ts unchanged); D15-1/2/3 green, the r1 double-gather fixed (engine-coverage spy goldDelta 6->4, one gather), D14-1 re-framed to the gather->keep->build order; commits 3a3c85d (fix + fixtures) + e12a21c (report note) | coordinator-01a13566 | 2026-10-13T15:01:25.998Z |
 | 20 | b1382df | verifier-failed | verify-16 at b1382df: verification16.test.ts 2 failed / 3 passed; D16-1 (real, NEW at the D15 fix 3a3c85d) the Witch's resume turn gathers a second time - the plain-turn relocation moves the bewitched effect's window below the resume turn window, so its pending survives to that window and resolveTurn no longer reads the WITCH_RESUME_NOTE marker, taking the gather path instead; measured gold trail 0,2,2,2,2,2,2,2,4 (rule caps at 2), and 0,0,0,2,...,4 through a real deal; clean at aa6f553/5305109/536f78d (all 2), appears at e12a21c (4); blast radius Thief/Magician/Wizard/Seer/Emperor/Abbot/Cardinal/Scholar/Warlord/Diplomat/Marshal/Tax Collector/Navigator/Merchant; teeth audit: all prior passes 125 tests green, D15 P1-P3 red under the relocation neuter, 500-seed random sweep 0 divergences; two findings - verification14 D14-1 stays green under the D15 revert (blind to gather position), and the first-pass guard is load-bearing for 5 multi-pass effects but only the Spy has an absolute-gold guard | verify-16-subagent | 2026-10-13T15:55:19.454Z |
 | 20 | 1f892a1 | unit-test-verified | coordinator re-ran at 1f892a1: full citadels suite 89 files / 721 tests green, tsc -p tsconfig.citadels.json clean; independent teeth probe (git archive HEAD \| tar -x to /tmp, remove the resume arm step) reddens D16-1 + D16-1b; fix confined to characters/witch.ts (helpers.ts untouched, no shared-file change); D16-1 fixed (gold trail 4->2), both verify-16 guard gaps closed (new parameterized P4 one-gather guard for Spy/Assassin/Magistrate/Thief/Blackmailer, D14-1 now reddens when the plain gather moves); commits 73a5258 (fix) + 959cc03 (P4) + 6e6e977 (D14-1) + 1f892a1 (report note) | coordinator-01a13566 | 2026-10-13T16:10:46.233Z |
+| 20 | 15649c3 | verifier-failed | verify-17 at 15649c3: verification17.test.ts 6 failed / 4 passed; D17-1 (Scholar resume double-gathers, gold trail 0,2,...,4; same D16-1 defect for a character fix16 did not cover - the Scholar's withBuildLimit re-seats two turn windows above the fix16 arm step) + D17-2 (Abbot resume pays income to the holder, its abbot-split note clobbers the resume marker) + D17-3 (Spy resume runs no naming/loot) + D17-4 (Blackmailer resume assigns no markers) + D17-5 (Emperor resume pays the crown reward to the holder); ALL FIVE in the turn-ordering seam - the resume identity rides the shared mutable pending slot and any effect that writes pending.note or re-seats its turn windows breaks it; under-specified rule: the resume must be a step-carried token only witchResolve writes and resolveTurn/seatHolding read; teeth audit 8/8 red, both verify-16 guard gaps now closed | verify-17-subagent | 2026-10-13T17:29:19.098Z |
 
 ## Frontier
 
@@ -192,4 +194,4 @@ Lowest unmerged: none
 
 (none)
 
-<!-- orch-summary {"unitStates":{"abandoned":10,"done":78,"failed":5,"partial":3},"ledgerVerdicts":{"unit-test-verified":52,"verifier-failed":17},"frontierGeneration":0,"openGateIds":[]} -->
+<!-- orch-summary {"unitStates":{"abandoned":10,"done":79,"failed":5,"partial":3},"ledgerVerdicts":{"unit-test-verified":52,"verifier-failed":18},"frontierGeneration":0,"openGateIds":[]} -->
