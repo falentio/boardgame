@@ -1,10 +1,10 @@
 # Orchestrate status
 
-Generated: 2026-10-13T23:10:48.941Z
+Generated: 2026-10-13T23:45:13.230Z
 
 ## Units
 
-States: abandoned=10, done=83, failed=5, partial=3
+States: abandoned=10, done=84, failed=5, partial=3
 
 | ID | Track | State | Branch | PR | SHA | Brief |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -109,10 +109,11 @@ States: abandoned=10, done=83, failed=5, partial=3
 | verify-18 | verify | done |  |  |  | eighteenth independent adversarial pass at 5e86a02 (post fix17 resume identity): found D18-1/D18-2, the resume arms a generic turn shape instead of the bewitched character's own |
 | fix19-resume-turn-shape | verify | done |  |  |  | D18-1..2: the resume arms the bewitched character's own turn (extract applyCall's arming into armCharacterTurn, both call it); salvaged from the dead fix19-r2 worker's /tmp scratch and completed by the coordinator; also re-aimed verification4 D4-1 to state.resume and deleted the dead RESUME_WINDOW_TAG |
 | verify-19 | verify | done |  |  |  | nineteenth independent adversarial pass at 511a50a (post fix19 turn-shape): found D19-1/D19-2, the resume arms the character's shape but resolves it as a gather (build before ability) |
+| verify-20 | verify | done |  |  |  | twentieth independent adversarial pass at 446e106 (post D19): found D20-1, the Cardinal's shortfall clause unreachable on the resume; SEAM OPEN verdict (7th family); the D19 fix holds for all characters |
 
 ## Verification ledger
 
-Verdicts: unit-test-verified=54, verifier-failed=20
+Verdicts: unit-test-verified=54, verifier-failed=21
 
 | PR | SHA | Verdict | Evidence | Verifier | Timestamp |
 | --- | --- | --- | --- | --- | --- |
@@ -190,6 +191,7 @@ Verdicts: unit-test-verified=54, verifier-failed=20
 | 20 | 4329155 | verifier-failed | verify-18 at 4329155: verification18.test.ts 2 failed / 5 passed; D18-1 (the Alchemist's Witch resume loses its end-of-turn build refund - fix16's arm step sits at ctx.rest[0], defeating atTurnTop, so the effect refunds 0; resume purse 5 vs plain 7) + D18-2 (the Navigator's Witch resume never offers the four-gold-or-four-cards choice - the effect runs above the turn window and reads the wrong note; no window opens after witch-resume); under-specified rule: the resume must arm the bewitched character's own turn shape ([turn, RESOLVE, ...] for the Navigator, [RESOLVE, turn, ...] for the rest), not a hard-coded template; 7 neuters all teeth-proven incl T1 (deleting the arm step makes D18-1 pass); prior passes 15/16/17 green | verify-18-subagent | 2026-10-13T20:11:29.553Z |
 | 20 | 511a50a | unit-test-verified | coordinator completed the fix at 29d31dd + 511a50a: full citadels suite 91 files / 741 tests green, tsc clean; D18-1 (Alchemist resume refund, purse 5->7) and D18-2 (Navigator resume four-cards choice) green; prior passes green; teeth proven (neuter armCharacterTurn's navigator branch -> D18-2 red; remove the arming reuse -> D18-1/D18-2 red); the fix extracts applyCall's arming into armCharacterTurn and both call it, so a resumed turn IS the bewitched character's turn; the fix16 arm step and the interim RESUME_WINDOW_TAG deleted entirely; verification4 D4-1 re-aimed to state.resume. Provenance: both fix19 worker attempts died to provider errors with no commits; the r2 worker's /tmp/f19 scratch held a complete prototype (extracted helper, takeover END_TURN handled) needing only a CharacterId import; the coordinator finished it, caught and reverted a neutered copy it had staged, re-aimed D4-1, and deleted the dead tag. NOTE: the coordinator hit a self-inflicted 8-test Navigator regression by copying a teeth-neutered file into the shared worktree, caught it on the full-suite run, and restored the branch | coordinator-01a13566 | 2026-10-13T22:12:23.426Z |
 | 20 | 488be9e | verifier-failed | verify-19 at 488be9e: verification19.test.ts 4 failed / 4 passed; D19-1 (the Scholar's Witch resume cannot build the card it kept - resume builds 0 keeps 1, plain builds 1 keeps 0; present at 33b9165 fix17, clean at 73a5258 fix16) + D19-2 (for all 13 window-opening characters the resume opens its build window before the ability window); under-specified rule: a resumed turn has no gather, so it must drain abilities -> build, but the engine resolves its turn window as the gather/build; the D18 fix armed the plain GATHER shape and resolveTurn took the alreadyGathered branch; 7 neuters all red; no defect outside the seam | verify-19-subagent | 2026-10-13T23:10:48.927Z |
+| 20 | 90b7187 | verifier-failed | verify-20 at 90b7187: verification20.test.ts 2 failed / 7 passed; D20-1 (the Cardinal's Witch resume cannot use its shortfall clause - resolveTurn's applyBuild carried a !resumedWitch conjunct, so a resume build the Witch could not afford was silently dropped; resume builds 0 keeps the Palace gold 4 vs plain builds 1 gold 0 donor -1) - the SEVENTH family and the first non-ordering (reachability) case; SEAM OPEN verdict; the D19 fix holds for all characters (16 window-opening resumes read abilities->build, flag keys on the acting seat, D15 plain order untouched); every cited guard reddens, none stayed green. FIXED by the coordinator at 2165a8a (drop the conjunct): verification20 9/9, suite 91 files / 758 tests green, teeth proven | verify-20-subagent | 2026-10-13T23:45:13.216Z |
 
 ## Frontier
 
@@ -202,4 +204,4 @@ Lowest unmerged: none
 
 (none)
 
-<!-- orch-summary {"unitStates":{"abandoned":10,"done":83,"failed":5,"partial":3},"ledgerVerdicts":{"unit-test-verified":54,"verifier-failed":20},"frontierGeneration":0,"openGateIds":[]} -->
+<!-- orch-summary {"unitStates":{"abandoned":10,"done":84,"failed":5,"partial":3},"ledgerVerdicts":{"unit-test-verified":54,"verifier-failed":21},"frontierGeneration":0,"openGateIds":[]} -->
