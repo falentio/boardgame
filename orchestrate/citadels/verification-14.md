@@ -211,7 +211,7 @@ than attempted here.
   (new), `orchestrate/citadels/verification-14.md` (this report).
 - **Verify command:** `scripts/citadels-verify.sh shared/core/tests/lockstep/citadels/verification14.test.ts --own shared/core/tests/lockstep/citadels/verification14.test.ts`
 - **Raw result:** `Tests 1 failed | 4 passed (5)`; `VERIFY FAILED: vitest`.
-- **Commit SHA:** <pending commit>
+- **Commit SHA:** fbce10b (this report and the test file)
 - **Shared-file change needed:** `helpers.ts` — the threatened branch of
   `resolveTurn` must place the post-threat build window below the relocated ability
   windows (and above the turn's `END_TURN`, keeping `POST_THREAT` beneath the build
