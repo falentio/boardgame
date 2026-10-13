@@ -12,7 +12,7 @@ import {
 import { boardLimit, LIBERAL_LIMIT, powerFor, type PowerId } from "./board.ts";
 import { SecretHitlerError } from "./error.ts";
 import { countPolicies, POLICY_MIX, type Policy, type PolicyPile } from "./policies.ts";
-import { playerCountOf, rolesFor, type Party, type PlayerCount, type Role } from "./roles.ts";
+import { playerCountOf, rolesFor, type Party, type Role } from "./roles.ts";
 
 export interface PlayerState {
   readonly seat: SeatId;
@@ -109,9 +109,6 @@ export interface SecretHitlerState {
  * to an empty owed set.
  */
 export const MIN_ACTIVE_SEATS = 3;
-
-export const playerCountOfState = (state: SecretHitlerState): PlayerCount =>
-  playerCountOf(state.players.length);
 
 export const activeSeats = (state: SecretHitlerState): readonly SeatId[] =>
   state.players

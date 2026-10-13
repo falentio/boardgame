@@ -1,10 +1,10 @@
 import type { Frame, FrameIndex, Random, SeatId } from "../../index.ts";
 import type { SecretHitlerAction } from "./actions.ts";
-import { boardLimit, HITLER_CHANCELLOR_FASCIST, LIBERAL_LIMIT, powerFor, vetoUnlocked, votePasses, type PowerId } from "./board.ts";
+import { boardLimit, HITLER_CHANCELLOR_FASCIST, LIBERAL_LIMIT, powerFor, vetoUnlocked, votePasses } from "./board.ts";
 import { SecretHitlerError } from "./error.ts";
-import { drawFrom, needsReshuffle, peekFrom, type Policy, type PolicyPile } from "./policies.ts";
+import { drawFrom, needsReshuffle, peekFrom, type Policy } from "./policies.ts";
 import { investigateParty, legalPowerTargets } from "./powers.ts";
-import { isFascistTeam, partyOf, playerCountOf, type PlayerCount } from "./roles.ts";
+import { playerCountOf, type PlayerCount } from "./roles.ts";
 import {
   activeSeats,
   MIN_ACTIVE_SEATS,
@@ -355,7 +355,7 @@ const stepPower = (
       if (target === null) return beginNextRound(state);
       // The anchor is the enactor: the rotation resumes from their left afterwards.
       return beginNomination(
-        { ...state, specialElectionResume: phase.president, electionTracker: state.electionTracker },
+        { ...state, specialElectionResume: phase.president },
         target,
       );
     }
@@ -473,4 +473,3 @@ export const outcomeOf = (state: SecretHitlerState): Outcome | null => {
   return null;
 };
 
-export { partyOf, isFascistTeam, type PowerId, type PolicyPile };
