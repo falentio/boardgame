@@ -140,6 +140,7 @@ export interface Pending {
 export type Step =
   | { readonly kind: "window"; readonly window: Window }
   | { readonly kind: "resolve" }
+  | { readonly kind: "arm"; readonly pending: Pending }
   | { readonly kind: "call" }
   | { readonly kind: "end-turn" }
   | { readonly kind: "end-round" };
@@ -397,6 +398,11 @@ const decodeStep = (json: Json): Step => {
   switch (kind) {
     case "resolve":
       return { kind: "resolve" };
+    case "arm": {
+      const pending = decodePending(field(object, "pending"));
+      if (pending === null) throw new CitadelsError("arm step requires a pending record");
+      return { kind: "arm", pending };
+    }
     case "call":
       return { kind: "call" };
     case "end-turn":
@@ -438,6 +444,8 @@ const encodeStep = (step: Step): Json => {
   switch (step.kind) {
     case "resolve":
       return { kind: "resolve" };
+    case "arm":
+      return { kind: "arm", pending: encodePending(step.pending) };
     case "call":
       return { kind: "call" };
     case "end-turn":

@@ -687,16 +687,14 @@ const withMuseumOffer = (
  * there, else supply one, so end-of-turn districts fire exactly once per turn.
  */
 const endTurnThen = (rest: readonly Step[]): readonly Step[] => {
-  // The Alchemist's end-of-turn resolve, or the engine's post-threat marker, sits
-  // directly above the turn's END_TURN, so step past it to find the turn's own
-  // END_TURN. A Blackmailer's threat window is spliced directly below the turn
-  // window (the gather must land before the threat), so step past it too.
-  const head = rest[0]?.kind === "resolve" ? rest.slice(1) : rest;
-  const past =
-    head[0]?.kind === "window" && head[0].window.purpose === "blackmailer-threat"
-      ? head.slice(1)
-      : head;
-  return past[0]?.kind === "end-turn" ? rest : [END_TURN, ...rest];
+  // The turn's own END_TURN can sit below steps the turn still owes: a bare
+  // post-threat resolve marker, an arm step re-arming a deferred ability payload,
+  // or the relocated ability windows themselves (D13) all land between the
+  // post-threat build window and that END_TURN. Reuse the turn's own END_TURN
+  // wherever it sits rather than prepending a second one. A duplicate END_TURN
+  // closes the turn before those steps drain, so the relocated abilities run with
+  // no payload and re-offer forever, and the end-of-turn hooks fire twice.
+  return rest.some((step) => step.kind === "end-turn") ? rest : [END_TURN, ...rest];
 };
 
 /** The gather: 2 gold, then any `onIncome` district hooks (the School of Magic). */
@@ -743,6 +741,7 @@ const isThreatWindow = (step: Step): boolean =>
  */
 export const relocateEffectBelowThreat = (
   steps: readonly Step[],
+  pending: Pending | null,
   seat: SeatId,
   character: CharacterId | null,
 ): readonly Step[] => {
@@ -755,7 +754,17 @@ export const relocateEffectBelowThreat = (
   const head = steps.slice(0, turnAt);
   const mid = steps.slice(turnAt, threatAt);
   const threat = steps[threatAt] as Step;
-  return [...mid, threat, ...head, ...steps.slice(threatAt + 1)];
+  // The ability windows read the payload the effect armed (the Warlord's pick,
+  // the Scholar's drawn pool, the Thief's named victim). The turn window's gather
+  // and the threat both overwrite pending before those windows drain, so the
+  // payload rides an arm step instead, re-armed exactly where the relocated
+  // windows need it. An effect that pushed no window above the turn window (the
+  // Alchemist's settle resolve already sits below it) needs no arm.
+  const carried: readonly Step[] =
+    head.length === 0 || pending === null || pending.character !== character
+      ? head
+      : [{ kind: "arm", pending } as Step, ...head];
+  return [...mid, threat, ...carried, ...steps.slice(threatAt + 1)];
 };
 
 /**

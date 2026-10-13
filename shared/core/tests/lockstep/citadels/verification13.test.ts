@@ -224,8 +224,23 @@ test("D13-8 a threatened Spy resolves its threat before it peeks and takes", () 
 test("D13-9 a threatened Thief resolves its threat before it names its victim", () => {
   const r = threatFold("thief", "v13-d9");
   assertAbilityWaited(r, "thief", "named the character it robs");
-  const robbedAfter = partsOf(r).indexOf("thief-rob") > partsOf(r).indexOf("blackmailer-threat");
-  expect(robbedAfter, "the robbery was decided before the threat; purposes " + r.purposes).toBe(false);
+  // The ability is the NAMING (choose-character), so the clause "resolve the
+  // threat before using abilities" pins the naming window below the threat. The
+  // robbery itself (thief-rob) is a consequence that lands when the named
+  // character is called, later in the round, so its position is not the test:
+  // the earlier form asserted thief-rob above the threat, which is false even
+  // while the defect stands (the naming ran early, the robbery still followed the
+  // threat) and passed vacuously once the naming window moved but its payload was
+  // dropped. Pin the naming, and pin that the robbery still lands.
+  const parts = partsOf(r);
+  const naming = parts.indexOf("choose-character");
+  const threatAt = parts.indexOf("blackmailer-threat");
+  expect(threatAt, "the fold reached a threat window; purposes " + r.purposes).toBeGreaterThanOrEqual(0);
+  expect(naming, "the naming window drained before the threat; purposes " + r.purposes).toBeGreaterThan(threatAt);
+  expect(
+    parts.indexOf("thief-rob"),
+    "the robbery still lands once the named character is called; purposes " + r.purposes,
+  ).toBeGreaterThan(-1);
 });
 
 test("D13-10 a threatened Artist resolves its threat before it beautifies", () => {

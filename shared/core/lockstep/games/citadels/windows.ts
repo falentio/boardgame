@@ -14,6 +14,7 @@ import {
   liveSeats,
   relocateEffectBelowThreat,
   resolveGeneric,
+  withPending,
   withSteps,
   type WindowCtx,
 } from "./helpers.ts";
@@ -47,9 +48,17 @@ const applyImmediate = (state: CitadelsState, step: Step, rng: Random): Citadels
       });
       return withSteps(
         produced,
-        relocateEffectBelowThreat(produced.steps, pending.actor, pending.character),
+        relocateEffectBelowThreat(
+          produced.steps,
+          produced.pending,
+          pending.actor,
+          pending.character,
+        ),
       );
     }
+    case "arm":
+      // A deferred ability's payload, re-armed where its windows drain.
+      return withSteps(withPending(state, step.pending), state.steps.slice(1));
     case "window":
       return state;
   }

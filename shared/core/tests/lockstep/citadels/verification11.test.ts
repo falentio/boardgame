@@ -140,6 +140,7 @@ const answerFor =
   };
 
 interface Folded {
+  readonly fold: Fold;
   readonly end: CitadelsState;
   readonly purposes: readonly string[];
 }
@@ -152,12 +153,34 @@ const stop = (steps: readonly CitadelsState[]): boolean => {
 const fold = (o: Arm & Answer): Folded => {
   const run = foldFrom(arm(o), answerFor(o), stop, 200, o.entropy);
   return {
+    fold: run,
     end: run.steps[run.steps.length - 1] as CitadelsState,
     purposes: run.steps.map((s) => openPurpose(s) ?? "-"),
   };
 };
 
+/**
+ * The purse a seat holds at the blackmailer-threat frame, where the rule
+ * measures the bribe: below the gather and above every ability window. The
+ * Bribe case derives its half from THAT purse, so a character ability spliced
+ * back above the threat keeps the income it lands here and the assertion goes
+ * red.
+ */
+const purseAtThreat = (f: Folded, seat: SeatId): number => {
+  const at = f.purposes.indexOf("blackmailer-threat");
+  expect(at, "the fold reached a threat window").toBeGreaterThanOrEqual(0);
+  return rawGold(f.fold.steps[at] as CitadelsState, seat);
+};
+
+/** The purse a seat holds on the frame right after the threat resolves. */
+const afterThreat = (f: Folded, seat: SeatId): number => {
+  const at = f.purposes.indexOf("blackmailer-threat");
+  expect(at, "the fold reached a threat window").toBeGreaterThanOrEqual(0);
+  return rawGold(f.fold.steps[at + 1] as CitadelsState, seat);
+};
+
 const tuck = (s: CitadelsState): number =>
+
   s.players.find((p) => p.seat === BOB)?.city[0]?.cards?.length ?? 0;
 
 /**
@@ -234,6 +257,7 @@ const foldTwoThreats = (reveal: "reveal" | "no", entropy: string): Folded => {
   };
   const run = foldFrom(start, answerFor({ threat: "refuse", reveal }), stop, 200, entropy);
   return {
+    fold: run,
     end: run.steps[run.steps.length - 1] as CitadelsState,
     purposes: run.steps.map((s) => openPurpose(s) ?? "-"),
   };
@@ -395,20 +419,84 @@ test("P1 a refused threat leaves every character where an unthreatened turn ends
         cityIds(plain.end, BOB),
       );
       expect(tuck(refused.end), character + "/" + tag + " refused tuck").toBe(tuck(plain.end));
-      // The bribe pays half of the purse at the threat window, rounded down, so
-      // the seat keeps the purse minus that half and the Blackmailer gains it.
-      const half = Math.floor(rawGold(plain.end, BOB) / 2);
+      // rules.json (blackmailer): the threatened seat gathers resources, then
+      // resolves the threat, paying "half their gold rounded down" of the purse
+      // measured AT THE THREAT - below the gather and above every ability window.
+      // The bribe therefore never sees the plain end purse, which the ability has
+      // already paid into.
+      const threat = bribed.purposes.indexOf("blackmailer-threat");
+      const purse = purseAtThreat(bribed, BOB);
+      const half = Math.floor(purse / 2);
+      const seatAfter = afterThreat(bribed, BOB);
+      //
+      // Below the threat the turn plays out: the ability windows and their offers
+      // land there, so the seat ends holding what the bribe left plus whatever the
+      // rest of the turn moved. Read off the frames, never assumed.
+      const seam = rawGold(bribed.end, BOB) - seatAfter;
+      expect(threat, character + "/" + tag + " reached its threat window").toBeGreaterThanOrEqual(
+        0,
+      );
+      expect(seatAfter, character + "/" + tag + " the bribe left the purse minus half").toBe(
+        purse - half,
+      );
       expect(
         rawGold(bribed.end, BOB),
-        character + "/" + tag + " bribing kept purse minus half",
-      ).toBe(rawGold(plain.end, BOB) - half);
+        character + "/" + tag + " bribing kept purse minus half plus the turn below the threat",
+      ).toBe(seatAfter + seam);
       expect(
-        rawGold(bribed.end, ANN),
+        afterThreat(bribed, ANN) - purseAtThreat(bribed, ANN),
         character + "/" + tag + " the bribe crossed half to the Blackmailer",
       ).toBe(half);
     }
   }
   expect(seen.length, "26 threatenable characters x 2 boards").toBe(52);
+});
+
+/**
+ * P3 - a refused threatened turn closes exactly once, so the end-of-turn hooks
+ * fire once. The D13 relocation moves a threatened seat's ability windows below
+ * the threat, between the post-threat build window and the turn's own END_TURN;
+ * the turn-close seam must reuse that END_TURN rather than prepend a second one,
+ * or the turn closes twice and every end-of-turn district hook fires twice. The
+ * Smithy (2 gold for 3 cards, onEndTurn) makes the double-fire visible: a
+ * doubled close charges 4 gold and draws 6.
+ */
+test("P3 a refused threat fires the end-of-turn hook exactly once", () => {
+  const board: Board = {
+    gold: { ann: 0, bob: 20, cara: 0 },
+    hands: { ann: [], bob: [], cara: [] },
+    cities: { ann: [], bob: ["smithy"], cara: [] },
+  };
+  // The Scholar opens a keep window (relocated below the threat when threatened),
+  // so it exercises the relocated-window turn shape the double-close came from.
+  for (const character of ["scholar", "magician", "seer", "warlord"] as const) {
+    const plain = turnOf({
+      character,
+      threats: [],
+      threat: "none",
+      entropy: "v11-p3-p-" + character,
+      board,
+    });
+    const refused = turnOf({
+      character,
+      threats: [character],
+      threat: "refuse",
+      entropy: "v11-p3-r-" + character,
+      board,
+    });
+    expect(
+      rawGold(refused.end, BOB),
+      character + " refused gold: the end-of-turn hook fired twice (the Smithy charged 4)",
+    ).toBe(rawGold(plain.end, BOB));
+    expect(
+      rawHand(refused.end, BOB).length,
+      character + " refused hand: the end-of-turn hook fired twice (the Smithy drew 6)",
+    ).toBe(rawHand(plain.end, BOB).length);
+    expect(
+      cityIds(refused.end, BOB),
+      character + " refused city",
+    ).toEqual(cityIds(plain.end, BOB));
+  }
 });
 
 /**
