@@ -1,3 +1,5 @@
+> **SUPERSEDED (D19 fix).** This unit is moot: the D18 fix (fix19, commit 29d31dd) deleted the fix16 arm step the RESUME_WINDOW_TAG rode, and the D19 fix (8c62749) removed the last reason to keep it. The tag is gone from the module and verification4 D4-1 was re-aimed to state.resume. Kept for the record only; do not spawn.
+
 # Unit: fix18-drop-locator-tag (retire the inert resume locator tag)
 
 ## GOAL
