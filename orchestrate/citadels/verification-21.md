@@ -9,6 +9,12 @@ Source head under review: `feat/citadels-game-definitions`, worktree
 `/home/kevin/.t3/worktrees/boardgame/t3-a32da114`, head `3efc7cb`. Suite 94 files /
 760 tests green; `tsc -p tsconfig.citadels.json` clean.
 
+> Superseded by the 2026-10-14 regroup: the suite is 93 files / 760 tests and
+> `districts/` holds 30 test files, because the British-spelled
+> `districts/theatre.test.ts` merged into `districts/theater.test.ts`. The 94/760 and the
+> 31 district tests above are what this audit measured at `4a6d287` and stay as written.
+> See `test-layout.md` for the shipped layout.
+
 ## Verdict: CLOSED
 
 No predicate-blocking defect remains. Every clause of the definition of done
