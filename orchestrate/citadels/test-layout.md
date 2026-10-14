@@ -68,6 +68,14 @@ Old name -> new name, relative to `shared/core/tests/lockstep/citadels/`.
 
 `catalog.test.ts` and `driver.ts` keep their names and their place at the root.
 
+## What was deliberately not rewritten
+
+The store records that cite the old names -- `units.tsv`, `ledger.tsv`, `decisions.tsv`, the
+briefs, and `HANDOFF.md` -- keep them. They describe what was asked and found at the time,
+and this directory's convention is that history stays as written. This file and the decision
+row for the regroup are the translation layer; `overview.md`'s open items are the only
+live text repointed.
+
 ## Finding a test after a rename
 
 `git log --follow --name-status` on the new path carries the old name; this table is

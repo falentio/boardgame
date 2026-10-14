@@ -46,4 +46,4 @@ These do not block the D15 frontier; they are recorded so they are not lost.
   fixed. Left in place as history; the live resume point is `units.tsv`.
 
 - **No CI in this repo.** There is no `.github/workflows`, so PR 20 reports "no checks reported" and a CLEAN/MERGEABLE state with no automated gate. The verification gate is the local citadels suite (`scripts/citadels-verify.sh` + `vp test`), which is why every ledger verdict is local. Do not wait on a CI check; it will never appear.
-- **Duplicate Theater test file.** `shared/core/tests/lockstep/citadels/districts/theatre.test.ts` (British spelling, 6 tests, older) tests the same `districts/theater.ts` source as `theater.test.ts` (14 tests). Both pass; the British-spelling file looks subsumed. Candidate for deletion in a future refactor unit (deletion is a change, so it is parked, not done mid-flight).
+- **Duplicate Theater test file — RESOLVED in the 2026-10-14 regroup.** The British-spelling `districts/theatre.test.ts` is gone; its 6 scoring tests now live in `districts/theater.test.ts`, which holds all 20. See `test-layout.md`.
