@@ -851,6 +851,8 @@ const DEN_UNIQUES: readonly DistrictId[] = [
 
 interface DistrictGuard {
   readonly id: DistrictId;
+  /** Test-row label; defaults to `id`, and differs when one district has two guards. */
+  readonly label?: string;
   readonly board?: Board;
   readonly uniques?: readonly DistrictId[];
   readonly answer?: (seat: SeatId, state: CitadelsState) => CitadelsAction | null;
@@ -877,12 +879,14 @@ const DEFAULT_DEN: readonly DistrictId[] = DEN_UNIQUES;
 const DISTRICT_GUARDS: readonly DistrictGuard[] = [
   {
     id: "gold-mine",
+    label: "gold-mine-hook",
     board: { cities: { ann: ["gold-mine"] } },
     answer: takeGold,
     check: (_f, calls) => expect(calls, "the Gold Mine is called").toBe(1),
   },
   {
     id: "gold-mine",
+    label: "gold-mine-gold",
     board: { cities: { ann: ["gold-mine"] } },
     answer: takeGold,
     check: (fold) =>
@@ -1094,7 +1098,7 @@ const DISTRICT_GUARDS: readonly DistrictGuard[] = [
 
 describe("engine coverage: every hook-bearing district is reached by the engine", () => {
   const rows: readonly (readonly [string, DistrictGuard])[] = DISTRICT_GUARDS.map((guard) => [
-    guard.id,
+    guard.label ?? guard.id,
     guard,
   ]);
   test.each(rows)(
