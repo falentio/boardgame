@@ -19,8 +19,9 @@ def deepen(path):
         stripped = spec[2:] if spec.startswith("./") else spec
         return m.group(1) + m.group(2) + "../" + stripped + m.group(2)
     out, n = SPEC.subn(bump, src)
-    out, u = URL.subn(lambda m: m.group(1) + m.group(2) + "../" + m.group(3) + m.group(4), out)
-    open(path, "w").write(out)
+    out, u = URL.subn(bump, out)
+    if n or u:
+        open(path, "w").write(out)
     return n + u
 
 os.makedirs(os.path.join(C, "rules/cross-cutting"), exist_ok=True)
