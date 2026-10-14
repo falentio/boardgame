@@ -53,12 +53,15 @@ test("D12: an undeclared Haunted Quarter is still unique and blocks the Ivory To
   ];
   // Undeclared, the Haunted Quarter reports its catalog type unique, so the tower
   // is not the city's only unique district and scores nothing.
-  expect(ivoryTowerScoring(IVORY, undeclared, ANN)).toBe(0);
-  expect(annScore(withCity(base, ANN, undeclared))?.unique).toBe(0);
+  const undeclaredState = withCity(base, ANN, undeclared);
+  expect(ivoryTowerScoring(IVORY, undeclared, ANN, undeclaredState)).toBe(0);
+  expect(annScore(undeclaredState)?.unique).toBe(0);
   // Declared a non-unique type, it no longer counts as unique and the tower scores.
-  expect(ivoryTowerScoring(IVORY, declaredNoble, ANN)).toBe(5);
-  expect(annScore(withCity(base, ANN, declaredNoble))?.unique).toBe(5);
+  const nobleState = withCity(base, ANN, declaredNoble);
+  expect(ivoryTowerScoring(IVORY, declaredNoble, ANN, nobleState)).toBe(5);
+  expect(annScore(nobleState)?.unique).toBe(5);
   // Declared unique, it is a second unique and the tower scores nothing.
-  expect(ivoryTowerScoring(IVORY, declaredUnique, ANN)).toBe(0);
-  expect(annScore(withCity(base, ANN, declaredUnique))?.unique).toBe(0);
+  const uniqueState = withCity(base, ANN, declaredUnique);
+  expect(ivoryTowerScoring(IVORY, declaredUnique, ANN, uniqueState)).toBe(0);
+  expect(annScore(uniqueState)?.unique).toBe(0);
 });
