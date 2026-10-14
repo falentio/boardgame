@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import type { SeatId } from "../../../../../index.ts";
 import { warlord } from "../../../../../lockstep/games/citadels/characters/warlord.ts";
-import type { CitadelsState } from "../../../../../lockstep/games/citadels/index.ts";
+import type { CitadelsState, PlacedDistrict } from "../../../../../lockstep/games/citadels/index.ts";
 import {
   ANN,
   BASE_CAST_IDS,
@@ -14,7 +14,7 @@ import {
 const withCity = (
   state: CitadelsState,
   seat: SeatId,
-  city: readonly { readonly id: string; readonly gold: number; readonly declaredType?: string }[],
+  city: readonly PlacedDistrict[],
 ): CitadelsState => ({
   ...state,
   players: state.players.map((player) => (player.seat === seat ? { ...player, city } : player)),

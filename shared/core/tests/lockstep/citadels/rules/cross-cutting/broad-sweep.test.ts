@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { citadels, scoreGame, type CitadelsState } from "../../../../../lockstep/games/citadels/index.ts";
+import { citadels, scoreGame, type CitadelsState, type PlacedDistrict } from "../../../../../lockstep/games/citadels/index.ts";
 import { warlord } from "../../../../../lockstep/games/citadels/characters/warlord.ts";
 import { king } from "../../../../../lockstep/games/citadels/characters/king.ts";
 import { specOfDistrict } from "../../../../../lockstep/games/citadels/districts.ts";
@@ -31,12 +31,12 @@ import { frameIndex } from "../../../../../lockstep/index.ts";
  * encodes.
  */
 
-const placed = (id: string, gold = 0) => ({ id, gold });
+const placed = (id: string, gold = 0): PlacedDistrict => ({ id, gold });
 
 const withCity = (
   state: CitadelsState,
   seat: string,
-  city: readonly { readonly id: string; readonly gold: number }[],
+  city: readonly PlacedDistrict[],
 ): CitadelsState => ({
   ...state,
   players: state.players.map((p) => (p.seat === seat ? { ...p, city } : p)),
