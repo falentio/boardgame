@@ -20,12 +20,13 @@ import type { Pending, Step } from "../../../../../lockstep/games/citadels/state
  * ability windows ABOVE the resume turn window (which resolves as the build): the turn
  * reads abilities -> build, the plain order with no gather (standing order 13).
  *
- * This pass re-confirms that fix (P1, P4) and attacks the resume end to end. It finds
- * D20-1: the Cardinal's Witch resume cannot use its shortfall clause, because
- * `resolveTurn`'s shortfall branch carries a `!resumedWitch` guard that suppresses it on
- * the resume. rules.json (witch): the resume "use[s] that character's abilities and build
- * limit, with YOUR hand, YOUR gold, and YOUR city." rules.json (cardinal): "When you build
- * a district and lack the gold, you may take the shortfall from one player."
+ * This pass re-confirmed that fix (P1, P4) and attacked the resume end to end. It found
+ * D20-1: the Cardinal's Witch resume could not use its shortfall clause, because
+ * `resolveTurn`'s shortfall branch carried a `!resumedWitch` guard that suppressed it on
+ * the resume. 2165a8a dropped the guard, so the resume now offers the shortfall.
+ * rules.json (witch): the resume "use[s] that character's abilities and build limit, with
+ * YOUR hand, YOUR gold, and YOUR city." rules.json (cardinal): "When you build a district
+ * and lack the gold, you may take the shortfall from one player."
  */
 
 // A legal cast holding the Witch at rank 1 and `target` at its own rank.
@@ -166,19 +167,20 @@ const afterResume = (f: Fold): readonly string[] => {
 };
 
 // ---------------------------------------------------------------------------
-// D20-1: the Cardinal's Witch resume cannot use its shortfall clause.
+// D20-1: the Cardinal's Witch resume could not use its shortfall clause.
 //
 // rules.json (witch): the resume "use[s] that character's abilities and build limit,
 // with YOUR hand, YOUR gold, and YOUR city." rules.json (cardinal): "When you build a
 // district and lack the gold, you may take the shortfall from one player, giving that
 // player one card from your hand per gold taken." The plain Cardinal turn offers the
-// shortfall (cardinal-gold) and retries the build; the resume never opens that offer, so
-// a build the Cardinal could not afford is silently dropped and the resume diverges from
-// the plain turn. Mechanism: resolveTurn's shortfall branch carries a `!resumedWitch`
-// guard (helpers.ts:891), so `applyBuild` skips the offer whenever state.resume is set.
+// shortfall (cardinal-gold) and retries the build; the resume never opened that offer, so
+// a build the Cardinal could not afford was silently dropped and the resume diverged from
+// the plain turn. Mechanism: resolveTurn's shortfall branch carried a `!resumedWitch`
+// guard (helpers.ts:891); 2165a8a dropped that guard, so `applyBuild` now opens the offer
+// on the resume.
 // ---------------------------------------------------------------------------
 
-test("D20-1 the Cardinal's Witch resume cannot use its shortfall clause", () => {
+test("D20-1 the Cardinal's Witch resume could not use its shortfall clause", () => {
   // ANN (the Witch) enters the resume on 4 gold (2 + her held +2) with a Palace (cost 5)
   // in hand; CARA holds the gold to cover the 1-gold shortfall.
   const opts = {
@@ -204,7 +206,7 @@ test("D20-1 the Cardinal's Witch resume cannot use its shortfall clause", () => 
   ).toEqual(city(plain.end));
 });
 
-test("D20-1b the Cardinal resume diverges from the plain turn across seeds and hands", () => {
+test("D20-1b the Cardinal resume diverged from the plain turn across seeds and hands", () => {
   const cases: readonly (readonly [string, Readonly<Record<string, number>>, readonly DistrictId[]])[] = [
     ["a", { [ANN]: 2, [CARA]: 5, [BOB]: 0 }, ["palace"]],
     ["b", { [ANN]: 1, [CARA]: 6, [BOB]: 0 }, ["palace"]],

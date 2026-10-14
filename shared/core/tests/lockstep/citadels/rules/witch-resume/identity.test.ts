@@ -12,9 +12,10 @@ import { buildLimit } from "../../../../../lockstep/games/citadels/helpers.ts";
  * Seventeenth pass. fix16 (73a5258) made the Witch's resume stack carry the
  * resume marker on an arm step above the resume turn window, so the D15
  * relocation's first-pass guard skips it and resolveTurn still recognizes the
- * resume. This pass attacks what the fix left behind: the resume marker still
- * rides the single pending slot, and the bewitched character's own effect
- * writes that same slot.
+ * resume. This pass attacked what the fix left behind: the resume marker still
+ * rode the single pending slot, and the bewitched character's own effect wrote
+ * that same slot. The D17 redesign moved the marker into the owned `state.resume`
+ * field, and D17-1 to D17-5 pin the fixed resume.
  *
  * rules.json (witch): "You then resume your turn as if you were playing the
  * bewitched character: you use that character's abilities and build limit, with
@@ -147,7 +148,7 @@ const idleTurn = (seat: SeatId, s: CitadelsState): CitadelsAction | null => {
 };
 
 // ---------------------------------------------------------------------------
-// D17-1: the Scholar's resume gathers a second time
+// D17-1: the Scholar's resume gathered a second time
 // ---------------------------------------------------------------------------
 
 /**
@@ -158,12 +159,12 @@ const idleTurn = (seat: SeatId, s: CitadelsState): CitadelsAction | null => {
  * turn). fix16 kept the resume turn window from gathering for the Warlord, whose
  * effect opens its window above the resume turn window. The Scholar's effect
  * instead calls withBuildLimit, which re-seats its two turn windows ABOVE the
- * fix16 arm step, and it writes its own pending record (note null) at the
- * resolve step. The resume turn window therefore reads a null note and takes the
- * GATHER branch: the Witch's gold reaches 4 on an empty board where the rule
+ * fix16 arm step, and it wrote its own pending record (note null) at the
+ * resolve step. The resume turn window therefore read a null note and took the
+ * GATHER branch: the Witch's gold reached 4 on an empty board where the rule
  * caps it at 2.
  */
-test("D17-1 the Scholar's Witch resume gathers a second time", () => {
+test("D17-1 the Scholar's Witch resume gathered a second time", () => {
   const r = foldResume(resumeBoard("scholar"), "scholar", idleTurn);
   expect(
     Math.max(...r.annGold),
@@ -177,7 +178,7 @@ test("D17-1 the Scholar's Witch resume gathers a second time", () => {
  * and BOB the Scholar. ANN's only gold is her held-turn gather, so her purse must
  * never exceed 2.
  */
-test("D17-1b the Scholar resume double-gather reproduces through a real deal", () => {
+test("D17-1b the Scholar resume double-gather reproduced through a real deal", () => {
   const dealt = dealFor(castFor(["witch", "scholar"]), SEATS3, { ann: "witch", bob: "scholar" }, undefined, "v17-scholar-deal");
   let s: CitadelsState = { ...dealt, players: dealt.players.map((p) => ({ ...p, gold: 0, hand: [], city: [] })) };
   const golds: number[] = [gold(s, ANN)];
@@ -204,21 +205,21 @@ test("D17-1b the Scholar resume double-gather reproduces through a real deal", (
 });
 
 // ---------------------------------------------------------------------------
-// D17-2: the Abbot's resume computes its income on the holder's city
+// D17-2: the Abbot's resume computed its income on the holder's city
 // ---------------------------------------------------------------------------
 
 /**
  * rules.json (abbot): "Gain either 1 gold or 1 card per religious district in
  * your city". On the resume the acting player is the Witch, so the count is HER
- * city's religious districts. The Abbot's split window writes
- * pending.note = "abbot-split", which clobbers the resume marker; seatHolding
- * (helpers.ts) keys the Witch lookup off pending.note === WITCH_RESUME_NOTE, so
- * it falls back to the real Abbot holder and pays the income to that seat, counted
+ * city's religious districts. The Abbot's split window wrote
+ * pending.note = "abbot-split", which clobbered the resume marker; seatHolding
+ * (helpers.ts) keyed the Witch lookup off pending.note === WITCH_RESUME_NOTE, so
+ * it fell back to the real Abbot holder and paid the income to that seat, counted
  * on that seat's city. Board: the Witch's city is empty, the Abbot holder's city
  * holds two religious districts. The holder must end on its takeover gather alone
- * (2 gold); it ends on 4.
+ * (2 gold); it ended on 4.
  */
-test("D17-2 the Abbot's resume pays income to the bewitched holder, not the Witch", () => {
+test("D17-2 the Abbot's resume paid income to the bewitched holder, not the Witch", () => {
   const policy = (_seat: SeatId, s: CitadelsState): CitadelsAction | null => {
     const p = openPurpose(s);
     if (p === "abbot-split") return { t: "choose", value: "0" };
@@ -233,7 +234,7 @@ test("D17-2 the Abbot's resume pays income to the bewitched holder, not the Witc
 });
 
 // ---------------------------------------------------------------------------
-// D17-3: the Spy's resume never runs the Spy's ability
+// D17-3: the Spy's resume never ran the Spy's ability
 // ---------------------------------------------------------------------------
 
 /**
@@ -241,13 +242,13 @@ test("D17-2 the Abbot's resume pays income to the bewitched holder, not the Witc
  * that player's hand: for each card of the named type, take 1 gold from the player
  * and gain 1 card from the deck." The Spy's effect dispatches on pending.note
  * (null -> seat, spy-seat -> type, spy-type -> peek, spy-peek -> apply). The resume
- * arms pending.character = "spy" with note "witch-resume", which the effect
- * mistakes for its own in-flight state: it falls through to the apply branch with
- * no target and runs nothing. The Witch's resume must offer the Spy's naming
+ * armed pending.character = "spy" with note "witch-resume", which the effect
+ * mistook for its own in-flight state: it fell through to the apply branch with
+ * no target and ran nothing. The Witch's resume must offer the Spy's naming
  * windows and loot the target. Board: CARA holds two trade cards and 4 gold; the
  * resume must take 2 gold from CARA and draw 2 cards to the Witch.
  */
-test("D17-3 the Spy's resume runs no naming or loot", () => {
+test("D17-3 the Spy's resume ran no naming or loot", () => {
   const policy = (_seat: SeatId, s: CitadelsState): CitadelsAction | null => {
     const p = openPurpose(s);
     if (p === "choose-seat") return { t: "target", seat: CARA };
@@ -261,18 +262,18 @@ test("D17-3 the Spy's resume runs no naming or loot", () => {
 });
 
 // ---------------------------------------------------------------------------
-// D17-4: the Blackmailer's resume never assigns its threats
+// D17-4: the Blackmailer's resume never assigned its threats
 // ---------------------------------------------------------------------------
 
 /**
  * rules.json (blackmailer): "Assign two threat markers facedown to two different
  * characters". The Blackmailer's effect dispatches on pending.note (null ->
- * arm threat-1, threat-1 -> arm threat-2, threat-2 -> commit). The resume arms
+ * arm threat-1, threat-1 -> arm threat-2, threat-2 -> commit). The resume armed
  * pending.character = "blackmailer" with note "witch-resume", so the effect
- * mistakes it for its own in-flight state and commits an empty namedCharacter,
+ * mistook it for its own in-flight state and committed an empty namedCharacter,
  * assigning no threats. The Witch's resume must record two threats.
  */
-test("D17-4 the Blackmailer's resume assigns no threat markers", () => {
+test("D17-4 the Blackmailer's resume assigned no threat markers", () => {
   const policy = (_seat: SeatId, s: CitadelsState): CitadelsAction | null => {
     const p = openPurpose(s);
     if (p === "blackmailer-resolve") return { t: "name-character", character: "king" };
@@ -287,7 +288,7 @@ test("D17-4 the Blackmailer's resume assigns no threat markers", () => {
 });
 
 // ---------------------------------------------------------------------------
-// D17-5: the Emperor's resume pays the crown reward to the wrong seat
+// D17-5: the Emperor's resume paid the crown reward to the wrong seat
 // ---------------------------------------------------------------------------
 
 /**
@@ -295,12 +296,12 @@ test("D17-4 the Blackmailer's resume assigns no threat markers", () => {
  * different player, not yourself, then take either 1 gold or 1 random card from
  * that player's stash or hand." On the resume the acting player is the Witch, so
  * the crown must leave her and the reward must come to her. The Emperor's window
- * writes pending.note = "emperor-target", clobbering the resume marker, so
- * seatHolding reports the real Emperor holder and the reward lands on that seat.
+ * wrote pending.note = "emperor-target", clobbering the resume marker, so
+ * seatHolding reported the real Emperor holder and the reward landed on that seat.
  * Board: the Witch has 0 gold and the recipient has 3; the reward must raise the
  * Witch, not the holder.
  */
-test("D17-5 the Emperor's resume pays the crown reward to the bewitched holder", () => {
+test("D17-5 the Emperor's resume paid the crown reward to the bewitched holder", () => {
   const policy = (_seat: SeatId, s: CitadelsState): CitadelsAction | null => {
     const p = openPurpose(s);
     if (p === "emperor-crown") {

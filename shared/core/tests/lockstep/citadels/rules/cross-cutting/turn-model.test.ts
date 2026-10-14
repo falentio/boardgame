@@ -21,10 +21,10 @@ import {
 
 /**
  * Sixth-pass verifier artifacts. The two "D6" blocks are counterexamples that
- * fail against the head under review; the "P6" blocks are positive probes whose
- * teeth I measured in a /tmp copy (each reddens when the behaviour behind it is
- * removed). See orchestrate/citadels/verification-6.md for the finding each one
- * encodes. These are not fixes.
+ * failed against the head under review and pass at head, so they pin the fixed
+ * behaviour; the "P6" blocks are positive probes whose teeth I measured in a
+ * /tmp copy (each reddens when the behaviour behind it is removed). See
+ * orchestrate/citadels/verification-6.md for the finding each one encodes.
  */
 
 const cityOf = (state: CitadelsState, seat: SeatId): readonly string[] =>

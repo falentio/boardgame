@@ -19,26 +19,27 @@ import { specOfDistrict, type DistrictId } from "../../../../../lockstep/games/c
 import type { Claim } from "../../../../../lockstep/games/citadels/state.ts";
 
 /**
- * Ninth-pass verifier artifacts. Two counterexamples that fail against the head
- * under review, plus positive probes a regression of the held clauses would
- * break. These are counterexamples, not fixes.
+ * Ninth-pass verifier artifacts. Two counterexamples that failed against the
+ * head under review, plus positive probes a regression of the held clauses would
+ * break. They pass at head and pin the fixed behaviour; the fix is c7ff41b, which
+ * gave the placement offer its own tag (D9-1, D9-2).
  *
- * Both defects live in the Museum's once-per-turn placement offer (helpers.ts
+ * Both defects lived in the Museum's once-per-turn placement offer (helpers.ts
  * withMuseumOffer / resolveKeep), the clause the sixth-pass turn-model rewrite
  * (gather-then-build, D6-2) reshaped. The offer rides a `keep` window and tells
- * it apart from the gather keep by a *bare* pending; two turn shapes break that
+ * it apart from the gather keep by a *bare* pending; two turn shapes broke that
  * contract:
  *
  *   D9-1  The Alchemist's two-pass settle (V2-7) deliberately leaves a NON-null
  *         pending (its build spend) standing when the turn closes. The Museum's
- *         offer then opens a `keep` window on top of that pending, and
- *         resolveKeep routes it to the gather-keep branch: the Alchemist's spend
- *         pending is overwritten with the turn-gathered marker, so the refund
- *         never lands AND the card is never tucked.
+ *         offer then opened a `keep` window on top of that pending, and
+ *         resolveKeep routed it to the gather-keep branch: the Alchemist's spend
+ *         pending was overwritten with the turn-gathered marker, so the refund
+ *         never landed AND the card was never tucked.
  *
- *   D9-2  The Navigator's turn returns early from resolveTurn (its gain choice,
+ *   D9-2  The Navigator's turn returned early from resolveTurn (its gain choice,
  *         no build) without ever reaching closeTurn/withMuseumOffer, so its
- *         Museum never opens a placement window on its own turn at all.
+ *         Museum never opened a placement window on its own turn at all.
  */
 
 const sorted = (pairs: readonly (readonly [SeatId, CharacterId])[]): readonly Claim[] =>

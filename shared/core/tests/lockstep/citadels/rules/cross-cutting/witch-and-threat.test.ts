@@ -21,19 +21,19 @@ import {
 } from "../../driver.ts";
 
 /**
- * Fifth-pass verifier counterexamples. Every test in the "D5" blocks fails
+ * Fifth-pass verifier counterexamples. Every test in the "D5" blocks failed
  * against the head under review and names one defect a fifth independent pass
- * found. See orchestrate/citadels/verification-5.md for the finding each one
- * encodes. These are not fixes.
+ * found. The defects are fixed at head, so those tests pin the fixed behaviour.
+ * See orchestrate/citadels/verification-5.md for the finding each one encodes.
  *
- * The defects sit one clause beside a fix that just landed: the Witch's resumed
- * turn runs a bare turn window (the D4-1 fix closed her held turn but never gave
- * the resume the bewitched character's ability or build limit); the Blackmailer's
- * threat was moved below the turn window (the D4-4 fix), which is also the build
- * window, so a threatened player's build now lands ahead of the threat; the
- * Cardinal's shortfall rides a pending field no engine path writes; the School of
- * Magic declares its type after the character income that should read it; and
- * several character catalog summaries describe abilities the module does not
+ * The defects sat one clause beside a fix that had just landed: the Witch's
+ * resumed turn ran a bare turn window (the D4-1 fix closed her held turn but
+ * never gave the resume the bewitched character's ability or build limit); the
+ * Blackmailer's threat was moved below the turn window (the D4-4 fix), which is
+ * also the build window, so a threatened player's build landed ahead of the
+ * threat; the Cardinal's shortfall rode a pending field no engine path wrote; the
+ * School of Magic declared its type after the character income that should read
+ * it; and several character catalog summaries described abilities the module did not
  * implement.
  */
 

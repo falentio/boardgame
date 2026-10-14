@@ -17,10 +17,10 @@ import {
 } from "../../driver.ts";
 
 /**
- * Second-pass verifier counterexamples. Every test below fails against the head
+ * Second-pass verifier counterexamples. Every test below failed against the head
  * under review and names one defect that survived the first fix wave (D1..D14).
- * See orchestrate/citadels/verification-2.md for the finding each one encodes.
- * These are not fixes.
+ * The defects are fixed at head, so these tests pin the fixed behaviour. See
+ * orchestrate/citadels/verification-2.md for the finding each one encodes.
  */
 
 const withCity = (

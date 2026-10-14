@@ -11,11 +11,12 @@ import type { DistrictId } from "../../../../../lockstep/games/citadels/district
 import type { Claim, Step } from "../../../../../lockstep/games/citadels/state.ts";
 
 /**
- * Eighth-pass verifier artifacts. Two counterexamples that fail against the head
- * under review, plus positive probes that a regression of the seventh-pass fix
- * would break. These are counterexamples, not fixes.
+ * Eighth-pass verifier artifacts. Two counterexamples that failed against the
+ * head under review, plus positive probes that a regression of the seventh-pass
+ * fix would break. They pass at head and pin the fixed behaviour; the fixes are
+ * 38091d3 for D8-1 and 115c0a3 for D8-2.
  *
- * Both defects live in the two-character dimension the seventh pass opened: a
+ * Both defects lived in the two-character dimension the seventh pass opened: a
  * seat drafts two characters in a 2- or 3-player game, and the Witch plays a
  * second, resumed turn. The seventh pass keyed seven per-character clauses on the
  * acting character but left the Witch resume path and the Theater's own

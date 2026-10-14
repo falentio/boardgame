@@ -16,15 +16,15 @@ import {
 import type { CitadelsAction, CitadelsState, SeatId } from "../../driver.ts";
 
 /**
- * Fourth-pass verifier counterexamples. Every test in the "D4" blocks fails
+ * Fourth-pass verifier counterexamples. Every test in the "D4" blocks failed
  * against the head under review and names one defect a fourth independent pass
- * found. See orchestrate/citadels/verification-4.md for the finding each one
- * encodes. These are not fixes.
+ * found. The defects are fixed at head, so those tests pin the fixed behaviour.
+ * See orchestrate/citadels/verification-4.md for the finding each one encodes.
  *
- * The defects cluster where the three prior passes did not look: the Witch's
- * held turn still carries a build window; the Tax Collector's per-seat (not
+ * The defects clustered where the three prior passes did not look: the Witch's
+ * held turn carried a build window; the Tax Collector's per-seat (not
  * per-character) tax exemption; the Museum's tucked cards lost on destroy; the
- * Blackmailer's threat resolving before the threatened player gathers; the
+ * Blackmailer's threat resolving before the threatened player gathered; the
  * Bishop's rank-8 shield consulted only by the Warlord; the Ivory Tower's
  * over-broad Haunted Quarter exception; and the Magistrate's refusal to
  * confiscate a card-paid Thieves' Den.

@@ -11,10 +11,11 @@ import { buildLimit, seatHolding } from "../../../../../lockstep/games/citadels/
 /**
  * Eighteenth pass. The D17 redesign (33b9165 + 5e86a02) moved the Witch's resume
  * identity out of the clobberable `pending` slot into an owned `state.resume`
- * field. This pass attacks what that redesign left: the resume stack is still a
- * generic [RESOLVE, arm, turn, ...] that does not match every bewitched
- * character's own turn shape, so two abilities whose first pass keys off the
- * stack around the turn window mis-run on the resume.
+ * field. This pass attacked what that redesign left: the resume stack was still a
+ * generic [RESOLVE, arm, turn, ...] that did not match every bewitched
+ * character's own turn shape, so two abilities whose first pass keyed off the
+ * stack around the turn window mis-ran on the resume. Both defects are fixed at
+ * head, and D18-1 and D18-2 pin the fixed shape.
  *
  * rules.json (witch): "You then resume your turn as if you were playing the
  * bewitched character: you use that character's abilities and build limit, with
@@ -143,22 +144,22 @@ const gold = (s: CitadelsState, seat: SeatId) => rawGold(s, seat);
 const handSize = (s: CitadelsState, seat: SeatId) => rawHand(s, seat).length;
 
 // ---------------------------------------------------------------------------
-// D18-1: the Alchemist's Witch resume loses its end-of-turn build refund
+// D18-1: the Alchemist's Witch resume lost its end-of-turn build refund
 //
 // rules.json (alchemist): "At the end of your turn, take back the gold you paid
 // to build districts this turn." rules.json (witch): the resume "uses that
 // character's abilities ... with YOUR gold". The Alchemist's effect runs twice:
 // a turn-open pass (detected by `atTurnTop`, which reads `ctx.rest[0]`) that arms
 // the settle step below the turn window, and an end pass that refunds. The
-// resume stack is [RESOLVE, arm, turn, ...]: the `arm` step fix16 planted
-// directly above the resume turn window (kept by the D17 redesign) sits at
-// `rest[0]`, so `atTurnTop` is false and the effect takes the END pass
-// immediately: it refunds 0 and clears the pending, and the build then lands
-// with no settle step below it. Measured: the resume ends on 5 gold where the
+// resume stack was [RESOLVE, arm, turn, ...]: the `arm` step fix16 planted
+// directly above the resume turn window (kept by the D17 redesign) sat at
+// `rest[0]`, so `atTurnTop` was false and the effect took the END pass
+// immediately: it refunded 0 and cleared the pending, and the build then landed
+// with no settle step below it. Measured: the resume ended on 5 gold where the
 // plain turn ends on 7. Present at 73a5258 (fix16); clean at 536f78d.
 // ---------------------------------------------------------------------------
 
-test("D18-1 the Alchemist's Witch resume loses its end-of-turn build refund", () => {
+test("D18-1 the Alchemist's Witch resume lost its end-of-turn build refund", () => {
   const whole = foldWhole("alchemist", "build", "v18-alchemist");
   const plain = foldPlain(resumeMid("alchemist", "build", "v18-alchemist"), "alchemist", "build");
   expect(cityIds(whole.end, ANN), "the resume built the same district the plain turn built")
@@ -173,21 +174,21 @@ test("D18-1 the Alchemist's Witch resume loses its end-of-turn build refund", ()
 });
 
 // ---------------------------------------------------------------------------
-// D18-2: the Navigator's Witch resume never offers the gain choice
+// D18-2: the Navigator's Witch resume never offered the gain choice
 //
 // rules.json (navigator): "Gain either four gold or four cards." rules.json
 // (witch): the resume "uses that character's abilities". The Navigator's turn
 // window IS its gain choice, so an ordinary Navigator turn arms
 // [turn(choice), RESOLVE, ...] and resolveTurn writes the chosen branch onto
-// pending.note for the effect below it to read. The resume stack is the generic
-// [RESOLVE, arm, turn, ...], so the Navigator effect runs BEFORE the turn window,
-// reads the resume tag as its note (not the cards marker), takes the four-gold
-// branch, and strips the turn window it never reached. The Witch can never take
-// four cards on the resume: measured, no window opens after `witch-resume` and
-// her hand does not grow.
+// pending.note for the effect below it to read. The resume stack was the generic
+// [RESOLVE, arm, turn, ...], so the Navigator effect ran BEFORE the turn window,
+// read the resume tag as its note (not the cards marker), took the four-gold
+// branch, and stripped the turn window it never reached. The Witch could never
+// take four cards on the resume: measured, no window opened after `witch-resume`
+// and her hand did not grow.
 // ---------------------------------------------------------------------------
 
-test("D18-2 the Navigator's Witch resume never offers the four-cards choice", () => {
+test("D18-2 the Navigator's Witch resume never offered the four-cards choice", () => {
   const whole = foldWhole("navigator", "draw", "v18-navigator");
   const after = windowsAfterResume(whole.purposes);
   expect(

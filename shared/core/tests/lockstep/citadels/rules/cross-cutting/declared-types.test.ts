@@ -24,9 +24,10 @@ import {
 
 /**
  * Third-pass verifier counterexamples. Every test in the "defects" blocks below
- * fails against the head under review and names one defect a third independent
- * pass found. See orchestrate/citadels/verification-3.md for the finding each
- * one encodes. These are not fixes.
+ * failed against the head under review and names one defect a third independent
+ * pass found. The defects are fixed at head, so those tests pin the fixed
+ * behaviour. See orchestrate/citadels/verification-3.md for the finding each one
+ * encodes.
  *
  * The two tests in the last block pass on the head: they are the positive probes
  * that expose a blind spot in engine-coverage.test.ts, where the Keep guard and

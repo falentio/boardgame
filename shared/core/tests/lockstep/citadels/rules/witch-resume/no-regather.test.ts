@@ -12,13 +12,14 @@ import type { DistrictId } from "../../../../../lockstep/games/citadels/district
  * plain turn (guard: skip a pass with an arm step above the turn window), so the
  * plain turn reads gather -> abilities -> build and refused == plain.
  *
- * This pass attacks what that relocation did to the Witch's resume. Her resume
+ * This pass attacked what that relocation did to the Witch's resume. Her resume
  * turn is the bewitched character's turn played with the Witch's hand, gold, and
  * city: it uses the character's abilities and build limit, but gathers NOTHING
- * (her fixed +2 was the gather on her held turn). fix15's relocation moves the
+ * (her fixed +2 was the gather on her held turn). fix15's relocation moved the
  * bewitched ability's window BELOW the resume turn window, so the ability's own
- * pending now survives to that window; resolveTurn keys its "resume" marker off
- * the pending, so it no longer recognizes the resumed turn and gathers again.
+ * pending survived to that window; resolveTurn keyed its "resume" marker off the
+ * pending, so it stopped recognizing the resumed turn and gathered again. The
+ * double gather is fixed at head, and D16-1 and D16-1b pin the single gather.
  */
 
 const DEFAULTS: readonly CharacterId[] = ["assassin","thief","magician","king","bishop","merchant","architect","warlord"];
@@ -119,7 +120,7 @@ const advanceTurn = (state: CitadelsState, bewitched: CharacterId): CitadelsStat
   });
 
 // ---------------------------------------------------------------------------
-// D16: the D15 relocation makes the Witch's resume turn gather a second time
+// D16: the D15 relocation made the Witch's resume turn gather a second time
 // ---------------------------------------------------------------------------
 
 /**
@@ -131,16 +132,16 @@ const advanceTurn = (state: CitadelsState, bewitched: CharacterId): CitadelsStat
  * bewitched character's turn with NO gather of its own (threat-and-gather.test.ts D4-1b pins
  * this for an income-only character).
  *
- * fix15's plain-turn relocation moves the bewitched ability's window below the
+ * fix15's plain-turn relocation moved the bewitched ability's window below the
  * resume turn window, so the ability's own pending (here the Warlord's
- * warlord-pick) survives to that window. resolveTurn reads the resume marker off
- * the pending, so it no longer recognizes the resumed turn: neither the
- * WITCH_RESUME_NOTE branch nor the held-turn branch fires and it takes the GATHER
- * path. Measured on an empty-city board: the Witch's held turn gathers +2 and her
- * resume gathers a second +2, so her gold reaches 4 where the rule caps it at 2.
+ * warlord-pick) survived to that window. resolveTurn keyed the resume marker off
+ * the pending, so it stopped recognizing the resumed turn: neither the
+ * WITCH_RESUME_NOTE branch nor the held-turn branch fired and it took the GATHER
+ * path. Measured on an empty-city board: the Witch's held turn gathered +2 and her
+ * resume gathered a second +2, so her gold reached 4 where the rule caps it at 2.
  * Before fix15 the same board ended at 2.
  */
-test("D16-1 the Witch resume turn must not gather a second time", () => {
+test("D16-1 the Witch resume turn gathered a second time", () => {
   const base = rawGenesis(SEATS3, castFor(["witch", "warlord"]), "v16-d1");
   let s: CitadelsState = {
     ...base, phase: "turn", draft: null,
@@ -171,7 +172,7 @@ test("D16-1 the Witch resume turn must not gather a second time", () => {
  * where ANN drafts the Witch and BOB the Warlord. ANN's empty city means her only
  * gold is the held-turn gather, so her purse must never exceed 2.
  */
-test("D16-1b the Witch resume double-gather reproduces through a real deal", () => {
+test("D16-1b the Witch resume double-gather reproduced through a real deal", () => {
   const cast: readonly CharacterId[] = ["witch", "warlord", "magician", "king", "bishop", "merchant", "architect", "spy"];
   const dealt = dealFor(cast, SEATS3, { ann: "witch", bob: "warlord" }, undefined, "v16-d1b");
   let s: CitadelsState = {

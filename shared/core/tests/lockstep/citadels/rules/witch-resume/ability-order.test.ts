@@ -15,15 +15,16 @@ import type { Step } from "../../../../../lockstep/games/citadels/state.ts";
  * resumed turn is the bewitched character's own armed turn. That closed D18-1 (the
  * Alchemist's lost refund) and D18-2 (the Navigator's missing choice).
  *
- * This pass attacks what the shared shape leaves open for every OTHER window-opening
+ * This pass attacked what the shared shape left open for every OTHER window-opening
  * character. `armCharacterTurn` produces the plain gather-turn shape `[RESOLVE, turn,
  * END_TURN]`, which `relocateEffectBelowThreat` then reorders into `[turn, arm,
- * ...abilityWindows, END_TURN]`. But `resolveTurn` visits that leading turn window with
- * `resumedWitch` true, so it takes the `alreadyGathered` (BUILD) branch: the resume's
- * build window lands ABOVE the bewitched ability window, the reverse of the plain turn's
- * gather -> abilities -> build (standing order 13). When the Witch does not build at that
- * leading window the turn closes and the post-ability build window is dropped, so a
- * Scholar cannot build the card it just kept.
+ * ...abilityWindows, END_TURN]`. But `resolveTurn` visited that leading turn window with
+ * `resumedWitch` true, so it took the `alreadyGathered` (BUILD) branch: the resume's
+ * build window landed ABOVE the bewitched ability window, the reverse of the plain turn's
+ * gather -> abilities -> build (standing order 13). When the Witch did not build at that
+ * leading window the turn closed and the post-ability build window was dropped, so a
+ * Scholar could not build the card it just kept. Both defects are fixed at head, and
+ * D19-1 and D19-2 pin the fixed order.
  *
  * rules.json (witch): the resume "use[s] that character's abilities and build limit,
  * with YOUR hand, YOUR gold, and YOUR city."
@@ -144,20 +145,20 @@ const city = (s: CitadelsState, seat: SeatId) => cityIds(s, seat);
 const afterResume = (fold: Fold) => fold.purposes.slice(fold.purposes.indexOf("witch-resume") + 1);
 
 // ---------------------------------------------------------------------------
-// D19-1: the Scholar's Witch resume cannot build the card it kept.
+// D19-1: the Scholar's Witch resume could not build the card it kept.
 //
 // rules.json (witch): the resume "use[s] that character's abilities and build
 // limit, with YOUR hand, YOUR gold, and YOUR city". rules.json (scholar): "Draw
 // seven cards ... choose one to add to your hand ... Your building limit this turn
 // is two." The plain turn is gather -> keep -> build, so the kept card is
-// buildable. On the resume the turn window is the build window and the keep window
-// sits BELOW it; closing the turn after the keep drops the post-ability build
-// window, so the kept card can never be built and the resume does not reach the
-// plain turn's end state. Measured: resume builds 0 and keeps 1; the plain turn
+// buildable. On the resume the turn window was the build window and the keep window
+// sat BELOW it; closing the turn after the keep dropped the post-ability build
+// window, so the kept card could never be built and the resume did not reach the
+// plain turn's end state. Measured: the resume built 0 and kept 1; the plain turn
 // builds the kept card.
 // ---------------------------------------------------------------------------
 
-test("D19-1 the Scholar's Witch resume cannot build the card it kept", () => {
+test("D19-1 the Scholar's Witch resume could not build the card it kept", () => {
   const seed = "v19-scholar";
   const whole = foldResume("scholar", seed, [], "build");
   const plain = foldPlain("scholar", seed, [], "build");
@@ -171,7 +172,7 @@ test("D19-1 the Scholar's Witch resume cannot build the card it kept", () => {
   ).toBe(city(plain.end, ANN).length);
 });
 
-test("D19-1b the Scholar resume diverges from the plain turn across seeds", () => {
+test("D19-1b the Scholar resume diverged from the plain turn across seeds", () => {
   // The rule is that the resume reaches the plain turn's end state; this asserts
   // the rule (not the defect's literal counts) over several deals.
   const bad: string[] = [];
@@ -189,17 +190,17 @@ test("D19-1b the Scholar resume diverges from the plain turn across seeds", () =
 });
 
 // ---------------------------------------------------------------------------
-// D19-2: the resume's build window leads the bewitched ability window.
+// D19-2: the resume's build window led the bewitched ability window.
 //
 // Standing order 13: the plain turn order is gather -> abilities -> build. The
-// resume has no gather, so it must be abilities -> build. The engine instead opens
-// the resume turn window as the build window and drains the bewitched ability's
-// windows BELOW it, so the build precedes the ability - the reverse of the plain
-// turn. Measured for the Magician: the resume opens turn, magician-swap; the plain
+// resume has no gather, so it must be abilities -> build. The engine instead opened
+// the resume turn window as the build window and drained the bewitched ability's
+// windows BELOW it, so the build preceded the ability - the reverse of the plain
+// turn. Measured for the Magician: the resume opened turn, magician-swap; the plain
 // turn opens turn(gather), magician-swap, then a turn(build) window.
 // ---------------------------------------------------------------------------
 
-test("D19-2 the resume builds before the bewitched ability, not after", () => {
+test("D19-2 the resume built before the bewitched ability, not after", () => {
   const seed = "v19-magician";
   const whole = foldResume("magician", seed, ["tavern","temple"], "build");
   const after = afterResume(whole);

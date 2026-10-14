@@ -19,16 +19,17 @@ import {
 } from "../../driver.ts";
 
 /**
- * Seventh-pass verifier artifacts. These are counterexamples that fail against
- * the head under review. They are not fixes.
+ * Seventh-pass verifier artifacts. The counterexamples below failed against the
+ * head under review; fix 0ab24e2 keyed seven per-character clauses on the acting
+ * character (D7-1..6), so they pass at head and pin the fixed behaviour.
  *
  * The defect family: in a 2- or 3-player game each seat drafts TWO characters
  * (catalog "Setup numbers"; setup.ts buildDraft perSeat = 2 for <=3 seats). The
- * engine's rank cursor calls the right character (applyCall -> characterAtRank),
+ * engine's rank cursor called the right character (applyCall -> characterAtRank),
  * but several per-character clauses read the seat's FIRST claim instead of the
  * character actually in play (helpers.ts claimOf), so whenever the acting
- * character is not the seat's lowest-rank claim the clause misfires. The engine
- * already computes the correct value as activeCharacterOf; the clauses below do
+ * character was not the seat's lowest-rank claim the clause misfired. The engine
+ * already computes the correct value as activeCharacterOf; the clauses below did
  * not use it.
  */
 

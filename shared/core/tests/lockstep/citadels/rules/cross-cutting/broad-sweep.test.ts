@@ -21,9 +21,10 @@ import {
 } from "../../driver.ts";
 
 /**
- * Independent verifier counterexamples. Every test below fails against the head
- * under review; each names one defect in the citadels game definition. They are
- * not fixes. See orchestrate/citadels/verification.md for the finding each one
+ * Independent verifier counterexamples. Every test below failed against the head
+ * under review, and each names one defect in the citadels game definition. The
+ * defects are fixed at head, so these tests pin the fixed behaviour. See
+ * orchestrate/citadels/verification.md for the finding each one
  * encodes.
  */
 
