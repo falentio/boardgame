@@ -71,7 +71,7 @@ test("a killed Merchant takes no income", () => {
   expect(rawGold(merchant(ctxFor(state)), ANN)).toBe(rawGold(state, ANN));
 });
 
-test("a bewitched Merchant's income belongs to the Witch, not the Merchant", () => {
+test("a bewitched Merchant's own purse does not grow", () => {
   const state = {
     ...withCity(merchantState(), ANN, ["tavern", "market"]),
     bewitched: "merchant",

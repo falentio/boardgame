@@ -42,9 +42,8 @@ test("if bewitched, rank 8 cannot target the Witch's districts but can target th
     { seat: BOB, character: "witch" },
   ];
   const state = { ...bishopState(), claimed, bewitched: "bishop" };
-  // The Witch's districts are shielded, so the Bishop's own are not.
+  // The shield names the Witch's seat, so it leaves the Bishop's own districts open.
   expect(bishopShield(state)).toBe(BOB);
-  expect(bishopShield(state)).not.toBe(ANN);
 });
 
 test("the ability is not a no-op: it raises the Bishop's gold", () => {
