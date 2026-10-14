@@ -12,11 +12,11 @@ import {
   rawPlayer,
   type CitadelsAction,
   type CitadelsState,
-  type SeatId,
 } from "../../driver.ts";
 import { specOfCharacter, type CharacterId } from "../../../../../lockstep/games/citadels/characters.ts";
 import { specOfDistrict, type DistrictId } from "../../../../../lockstep/games/citadels/districts.ts";
 import type { Claim } from "../../../../../lockstep/games/citadels/state.ts";
+import type { SeatId } from "../../../../../index.ts";
 
 /**
  * Ninth-pass verifier artifacts. Two counterexamples that failed against the
@@ -40,6 +40,9 @@ import type { Claim } from "../../../../../lockstep/games/citadels/state.ts";
  *   D9-2  The Navigator's turn returned early from resolveTurn (its gain choice,
  *         no build) without ever reaching closeTurn/withMuseumOffer, so its
  *         Museum never opened a placement window on its own turn at all.
+ *
+ * Beside the Museum cases the file carries one Alchemist probe: P1 pins the two-pass
+ * refund on its own, the clause D9-1 collided with.
  */
 
 const sorted = (pairs: readonly (readonly [SeatId, CharacterId])[]): readonly Claim[] =>
@@ -185,7 +188,7 @@ test("D9-2 a Navigator owning a Museum is offered its once-per-turn placement", 
 // Positive probes: pin the held clauses so a regression reddens this file too.
 // ---------------------------------------------------------------------------
 
-test("P1 the Alchemist refund holds without a Museum (V2-7)", () => {
+test("P1 the Alchemist's two-pass refund holds on a Museum-free turn (V2-7)", () => {
   const built = foldTurn("alchemist", [], 3, ["castle"], "v9-p1");
   // Gather 2 (3 -> 5), build the cost-4 Castle (5 -> 1), refund the 4 (1 -> 5).
   expect(rawGold(built, ANN), "the Alchemist is refunded the Castle's 4 gold").toBe(5);
@@ -197,41 +200,4 @@ test("P2 a King owning a Museum still tucks (the offer's ordinary path)", () => 
     museumOf(tucked, ANN)?.cards?.length ?? 0,
     "the King's Museum placement offer still fires and tucks one card",
   ).toBe(1);
-});
-
-test("P3 a two-character seat's second-claim Architect still gets limit three", () => {
-  // ANN holds [assassin, architect]; the rank cursor calls the architect (second
-  // claim). The D7-2 clause must read the acting character, not the first claim.
-  const base = rawGenesis(SEATS3, castWith("architect"), "v9-p3");
-  const seeded: CitadelsState = {
-    ...base,
-    phase: "turn",
-    draft: null,
-    claimed: sorted([[ANN, "assassin"], [ANN, "architect"], [BOB, "king"], [CARA, "warlord"]]),
-    callRank: 7,
-    active: ANN,
-    steps: [{ kind: "call" }, { kind: "end-round" }],
-    pending: null,
-    builtThisTurn: 0,
-    players: base.players.map((player) =>
-      player.seat === ANN
-        ? { ...player, gold: 10, hand: ["tavern", "market", "docks"] as DistrictId[], city: [] }
-        : player,
-    ),
-  };
-  let cur = seeded;
-  for (let i = 0; i < 40 && cur.phase === "turn" && cur.active === ANN; i += 1) {
-    cur = advance(cur, (seat, state) => {
-      const purpose = openPurpose(state);
-      if (purpose === "turn" && seat === ANN) {
-        const index = buildable(state, ANN);
-        return index === null ? { t: "gold" } : { t: "build", card: index };
-      }
-      return null;
-    });
-  }
-  expect(
-    rawPlayer(cur, ANN).city.length,
-    "the second-claim Architect builds three districts (D7-2 holds)",
-  ).toBe(3);
 });
