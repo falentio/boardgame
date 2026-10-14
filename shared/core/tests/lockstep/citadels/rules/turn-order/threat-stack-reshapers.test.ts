@@ -7,6 +7,12 @@ import { specOfCharacter, type CharacterId, type Rank } from "../../../../../loc
 import type { DistrictId } from "../../../../../lockstep/games/citadels/districts.ts";
 import { stateCodec } from "../../../../../lockstep/games/citadels/state.ts";
 
+/**
+ * Twelfth-pass verifier artifacts on the threat stack. The reshaper cases pin how a
+ * refused seat's marker stack is rebuilt; the last case is codec-only: the doubled
+ * lace-spent marker must survive encode/decode though no fold is involved.
+ */
+
 const DEFAULTS: readonly CharacterId[] = [
   "assassin", "thief", "magician", "king", "bishop", "merchant", "architect", "warlord",
 ];
@@ -174,7 +180,7 @@ test("P2 two refused markers, both revealed, loot exactly one (the lace)", () =>
   expect(loud.ann, "one lace, one looting: 8, not 15").toBe(8);
 });
 
-test("P3 the lace-spent marker shape survives the codec round-trip", () => {
+test("P3 the doubled lace-spent marker survives a codec round-trip", () => {
   const base = rawGenesis(SEATS3, castFor(["merchant", "architect"]), "v12-p3");
   const doubled: CitadelsState = {
     ...base, phase: "turn", draft: null, threats: ["architect", "architect"],
