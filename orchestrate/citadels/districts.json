@@ -261,10 +261,10 @@
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
   },
   {
-    "id": "theatre",
-    "name": "Theatre",
-    "file": "theatre",
-    "camel": "theatre",
+    "id": "theater",
+    "name": "Theater",
+    "file": "theater",
+    "camel": "theater",
     "hook": "Scoring only: implement `<camel>Scoring` and leave `<camel>Triggers` empty.",
     "rule": "At the start of the round you may exchange your character card for a random character card from another player. You choose the player blindly. In 2-3 player games you choose which of your two characters to give and randomly take one of your opponent's.",
     "tests": "- one test per clause above.\n- for a scoring district, a test asserting the exact extra points on a crafted city.\n- at least one test that would FAIL if the effect were a no-op."
