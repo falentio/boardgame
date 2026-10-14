@@ -327,7 +327,7 @@ test("P2b the Alchemist's resume still refunds its build spend (D18-1 holds)", (
 // P3: the resume identity round-trips the codec and clears at the resume end.
 // ---------------------------------------------------------------------------
 
-test("P3 the resume record round-trips the codec and clears at the resume end", () => {
+test("P3 the resume identity holds across the fold and the codec, and clears at the end", () => {
   let mid: CitadelsState | null = null;
   let s: CitadelsState = {
     ...board(

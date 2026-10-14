@@ -237,7 +237,7 @@ test("P1 the owned resume record opens and clears with the resumed turn", () => 
  * restored on a peer keeps the resume identity. The Scholar re-seats turn
  * windows and the Spy writes pending.note; both must round-trip.
  */
-test("P2 the resume identity survives a mid-resume codec round-trip", () => {
+test("P2 the codec alone preserves the owned resume record on a peer", () => {
   for (const name of ["scholar", "spy"] as CharacterId[]) {
     const mid = resumeWindow(name);
     const round = stateCodec.decode(stateCodec.encode(mid));
