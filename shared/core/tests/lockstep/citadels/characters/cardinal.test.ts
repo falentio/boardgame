@@ -6,7 +6,8 @@ import {
   cardinalShortfall,
   coverShortfall,
 } from "../../../../lockstep/games/citadels/characters/cardinal.ts";
-import type { CitadelsAction, CitadelsState, Window } from "../../../../lockstep/games/citadels/state.ts";
+import type { CitadelsState, Window } from "../../../../lockstep/games/citadels/state.ts";
+import type { CitadelsAction } from "../../../../lockstep/games/citadels/index.ts";
 import {
   ANN,
   BASE_CAST_IDS,

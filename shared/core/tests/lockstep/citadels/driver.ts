@@ -33,7 +33,7 @@ import {
 import { at, fakeClock, makeTable, type Table } from "../harness.ts";
 
 export { citadels };
-export type { CitadelsAction, CitadelsView, CitadelsState, CharacterId, DistrictId };
+export type { CitadelsAction, CitadelsView, CitadelsState, CharacterId, DistrictId, SeatId };
 
 export const ANN = seatId("ann");
 export const BOB = seatId("bob");

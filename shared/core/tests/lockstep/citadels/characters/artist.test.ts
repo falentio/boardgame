@@ -3,10 +3,10 @@ import { act, idle, type SeatId } from "../../../../index.ts";
 import { artist, artistResolve } from "../../../../lockstep/games/citadels/characters/artist.ts";
 import type { CharacterId } from "../../../../lockstep/games/citadels/characters.ts";
 import type {
-  CitadelsAction,
   CitadelsState,
   Window,
 } from "../../../../lockstep/games/citadels/state.ts";
+import type { CitadelsAction } from "../../../../lockstep/games/citadels/index.ts";
 import {
   ANN,
   BASE_CAST_IDS,

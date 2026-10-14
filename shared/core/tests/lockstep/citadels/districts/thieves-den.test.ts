@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
-import type { CharacterId, SeatId } from "../../../../index.ts";
+import type { SeatId } from "../../../../index.ts";
+import type { CharacterId } from "../../../../lockstep/games/citadels/index.ts";
 import { specOfDistrict } from "../../../../lockstep/games/citadels/districts.ts";
 import {
   thievesDen,

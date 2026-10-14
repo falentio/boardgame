@@ -1,7 +1,8 @@
 import { expect, test } from "vitest";
 import { act, idle, type SeatId } from "../../../../index.ts";
 import { emperor, emperorResolve } from "../../../../lockstep/games/citadels/characters/emperor.ts";
-import type { CitadelsAction, CitadelsState, Window } from "../../../../lockstep/games/citadels/state.ts";
+import type { CitadelsState, Window } from "../../../../lockstep/games/citadels/state.ts";
+import type { CitadelsAction } from "../../../../lockstep/games/citadels/index.ts";
 import {
   ANN,
   BOB,

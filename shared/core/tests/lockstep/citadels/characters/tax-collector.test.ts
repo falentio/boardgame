@@ -8,11 +8,11 @@ import {
 import { specOfDistrict } from "../../../../lockstep/games/citadels/districts.ts";
 import { applyEndRound, tryBuild } from "../../../../lockstep/games/citadels/helpers.ts";
 import type {
-  CitadelsAction,
   CitadelsState,
   Claim,
   Window,
 } from "../../../../lockstep/games/citadels/state.ts";
+import type { CitadelsAction } from "../../../../lockstep/games/citadels/index.ts";
 import {
   ANN,
   BASE_CAST_IDS,
