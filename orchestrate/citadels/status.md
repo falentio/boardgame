@@ -1,10 +1,10 @@
 # Orchestrate status
 
-Generated: 2026-10-13T23:45:13.230Z
+Generated: 2026-10-14T00:21:28.376Z
 
 ## Units
 
-States: abandoned=10, done=84, failed=5, partial=3
+States: abandoned=10, done=89, failed=5
 
 | ID | Track | State | Branch | PR | SHA | Brief |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -23,10 +23,10 @@ States: abandoned=10, done=84, failed=5, partial=3
 | chars-rank7 | characters | done |  |  | d56296e | orchestrate/citadels/briefs/unit-chars-rank7.md |
 | chars-rank8 | characters | done |  |  | d8e84df | orchestrate/citadels/briefs/unit-chars-rank8.md |
 | chars-rank9 | characters | done |  |  | 8c3db12 | orchestrate/citadels/briefs/unit-chars-rank9.md |
-| dist-income | districts | partial |  |  | adde28f | orchestrate/citadels/briefs/unit-dist-income.md |
-| dist-build | districts | partial |  |  | ae23e55 | orchestrate/citadels/briefs/unit-dist-build.md |
+| dist-income | districts | done |  |  | adde28f | orchestrate/citadels/briefs/unit-dist-income.md |
+| dist-build | districts | done |  |  | ae23e55 | orchestrate/citadels/briefs/unit-dist-build.md |
 | dist-guard | districts | done |  |  | 01ed8ad | orchestrate/citadels/briefs/unit-dist-guard.md |
-| dist-scoring | districts | partial |  |  | 2acbdaf | orchestrate/citadels/briefs/unit-dist-scoring.md |
+| dist-scoring | districts | done |  |  | 2acbdaf | orchestrate/citadels/briefs/unit-dist-scoring.md |
 | dist-actions | districts | done |  |  | 659236c | orchestrate/citadels/briefs/unit-dist-actions.md |
 | dist-build-remainder | districts | abandoned |  |  |  | 1/8 done (factory); 7 blocked on the build seam |
 | dist-scoring-remainder | districts | abandoned |  |  |  | 5/10 done; 5 blocked on the scoring seam |
@@ -110,10 +110,12 @@ States: abandoned=10, done=84, failed=5, partial=3
 | fix19-resume-turn-shape | verify | done |  |  |  | D18-1..2: the resume arms the bewitched character's own turn (extract applyCall's arming into armCharacterTurn, both call it); salvaged from the dead fix19-r2 worker's /tmp scratch and completed by the coordinator; also re-aimed verification4 D4-1 to state.resume and deleted the dead RESUME_WINDOW_TAG |
 | verify-19 | verify | done |  |  |  | nineteenth independent adversarial pass at 511a50a (post fix19 turn-shape): found D19-1/D19-2, the resume arms the character's shape but resolves it as a gather (build before ability) |
 | verify-20 | verify | done |  |  |  | twentieth independent adversarial pass at 446e106 (post D19): found D20-1, the Cardinal's shortfall clause unreachable on the resume; SEAM OPEN verdict (7th family); the D19 fix holds for all characters |
+| fix20-cardinal-shortfall | verify | done |  |  |  | D20-1: drop the !resumedWitch conjunct on the Cardinal's shortfall clause so the resume reaches it; plus the all-character resume-vs-plain sweep (verification20sweep.test.ts) |
+| verify-21 | verify | done |  |  |  | closure audit (coordinator-run after the delegated pass died to infra): every done-predicate clause checked on the artifact; verdict CLOSED |
 
 ## Verification ledger
 
-Verdicts: unit-test-verified=54, verifier-failed=21
+Verdicts: unit-test-verified=56, verifier-failed=21
 
 | PR | SHA | Verdict | Evidence | Verifier | Timestamp |
 | --- | --- | --- | --- | --- | --- |
@@ -192,6 +194,8 @@ Verdicts: unit-test-verified=54, verifier-failed=21
 | 20 | 511a50a | unit-test-verified | coordinator completed the fix at 29d31dd + 511a50a: full citadels suite 91 files / 741 tests green, tsc clean; D18-1 (Alchemist resume refund, purse 5->7) and D18-2 (Navigator resume four-cards choice) green; prior passes green; teeth proven (neuter armCharacterTurn's navigator branch -> D18-2 red; remove the arming reuse -> D18-1/D18-2 red); the fix extracts applyCall's arming into armCharacterTurn and both call it, so a resumed turn IS the bewitched character's turn; the fix16 arm step and the interim RESUME_WINDOW_TAG deleted entirely; verification4 D4-1 re-aimed to state.resume. Provenance: both fix19 worker attempts died to provider errors with no commits; the r2 worker's /tmp/f19 scratch held a complete prototype (extracted helper, takeover END_TURN handled) needing only a CharacterId import; the coordinator finished it, caught and reverted a neutered copy it had staged, re-aimed D4-1, and deleted the dead tag. NOTE: the coordinator hit a self-inflicted 8-test Navigator regression by copying a teeth-neutered file into the shared worktree, caught it on the full-suite run, and restored the branch | coordinator-01a13566 | 2026-10-13T22:12:23.426Z |
 | 20 | 488be9e | verifier-failed | verify-19 at 488be9e: verification19.test.ts 4 failed / 4 passed; D19-1 (the Scholar's Witch resume cannot build the card it kept - resume builds 0 keeps 1, plain builds 1 keeps 0; present at 33b9165 fix17, clean at 73a5258 fix16) + D19-2 (for all 13 window-opening characters the resume opens its build window before the ability window); under-specified rule: a resumed turn has no gather, so it must drain abilities -> build, but the engine resolves its turn window as the gather/build; the D18 fix armed the plain GATHER shape and resolveTurn took the alreadyGathered branch; 7 neuters all red; no defect outside the seam | verify-19-subagent | 2026-10-13T23:10:48.927Z |
 | 20 | 90b7187 | verifier-failed | verify-20 at 90b7187: verification20.test.ts 2 failed / 7 passed; D20-1 (the Cardinal's Witch resume cannot use its shortfall clause - resolveTurn's applyBuild carried a !resumedWitch conjunct, so a resume build the Witch could not afford was silently dropped; resume builds 0 keeps the Palace gold 4 vs plain builds 1 gold 0 donor -1) - the SEVENTH family and the first non-ordering (reachability) case; SEAM OPEN verdict; the D19 fix holds for all characters (16 window-opening resumes read abilities->build, flag keys on the acting seat, D15 plain order untouched); every cited guard reddens, none stayed green. FIXED by the coordinator at 2165a8a (drop the conjunct): verification20 9/9, suite 91 files / 758 tests green, teeth proven | verify-20-subagent | 2026-10-13T23:45:13.216Z |
+| 20 | 6467636 | unit-test-verified | coordinator fixed and verified at 2165a8a + 6467636: full citadels suite 92 files / 760 tests green, tsc clean; D20-1 green (the Cardinal's resume reaches its shortfall clause; resume builds the Palace, gold 0, donor -1, matching the plain turn); teeth proven (neutering the shortfall branch reddens D20-1; re-introducing a resume guard reddens the all-character sweep on the Cardinal alone); the 24-character resume-vs-plain sweep (verification20sweep.test.ts) passes on rich and poor boards; escalation trigger overridden on evidence (the seam is bounded at 5 resume-conditioned branches, all in resolveTurn) | coordinator-01a13566 | 2026-10-13T23:49:53.983Z |
+| 20 | 4a6d287 | unit-test-verified | closure audit (coordinator-run; the delegated verify-21 died to a provider error with no salvage, the 6th infra death this session): every done-predicate clause checked on the artifact - (1) full game terminal 3-6 seats x 3 casts (integration.test.ts L101/111/120), (2) 27 characters each with a named test (0 unmatched), (3) 31 district tests + catalog.test.ts, (4) exact scoring incl tie-breaks (integration L265/284, fix-scoring), (5) redaction + two-peer convergence (codec-redaction L109/144/190/236), (6) suite 94 files / 760 tests green + tsc clean. VERDICT CLOSED: no predicate-blocking defect. The D13-D20 seam is bounded (5 resume-conditioned branches, all in resolveTurn) and guarded by verification20sweep (24 characters x 2 boards). Follow-ups (non-blocking): summaries-vs-rules.json drift guard, unverified surfaces, the duplicate theatre.test.ts, five early batch-verified heads, stale HANDOFF.md | coordinator-01a13566 | 2026-10-14T00:21:06.311Z |
 
 ## Frontier
 
@@ -204,4 +208,4 @@ Lowest unmerged: none
 
 (none)
 
-<!-- orch-summary {"unitStates":{"abandoned":10,"done":84,"failed":5,"partial":3},"ledgerVerdicts":{"unit-test-verified":54,"verifier-failed":21},"frontierGeneration":0,"openGateIds":[]} -->
+<!-- orch-summary {"unitStates":{"abandoned":10,"done":89,"failed":5},"ledgerVerdicts":{"unit-test-verified":56,"verifier-failed":21},"frontierGeneration":0,"openGateIds":[]} -->

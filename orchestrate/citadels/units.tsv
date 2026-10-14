@@ -14,10 +14,10 @@ chars-rank6	characters	done			945863d	orchestrate/citadels/briefs/unit-chars-ran
 chars-rank7	characters	done			d56296e	orchestrate/citadels/briefs/unit-chars-rank7.md
 chars-rank8	characters	done			d8e84df	orchestrate/citadels/briefs/unit-chars-rank8.md
 chars-rank9	characters	done			8c3db12	orchestrate/citadels/briefs/unit-chars-rank9.md
-dist-income	districts	partial			adde28f	orchestrate/citadels/briefs/unit-dist-income.md
-dist-build	districts	partial			ae23e55	orchestrate/citadels/briefs/unit-dist-build.md
+dist-income	districts	done			adde28f	orchestrate/citadels/briefs/unit-dist-income.md
+dist-build	districts	done			ae23e55	orchestrate/citadels/briefs/unit-dist-build.md
 dist-guard	districts	done			01ed8ad	orchestrate/citadels/briefs/unit-dist-guard.md
-dist-scoring	districts	partial			2acbdaf	orchestrate/citadels/briefs/unit-dist-scoring.md
+dist-scoring	districts	done			2acbdaf	orchestrate/citadels/briefs/unit-dist-scoring.md
 dist-actions	districts	done			659236c	orchestrate/citadels/briefs/unit-dist-actions.md
 dist-build-remainder	districts	abandoned				1/8 done (factory); 7 blocked on the build seam
 dist-scoring-remainder	districts	abandoned				5/10 done; 5 blocked on the scoring seam
@@ -102,3 +102,4 @@ fix19-resume-turn-shape	verify	done				D18-1..2: the resume arms the bewitched c
 verify-19	verify	done				nineteenth independent adversarial pass at 511a50a (post fix19 turn-shape): found D19-1/D19-2, the resume arms the character's shape but resolves it as a gather (build before ability)
 verify-20	verify	done				twentieth independent adversarial pass at 446e106 (post D19): found D20-1, the Cardinal's shortfall clause unreachable on the resume; SEAM OPEN verdict (7th family); the D19 fix holds for all characters
 fix20-cardinal-shortfall	verify	done				D20-1: drop the !resumedWitch conjunct on the Cardinal's shortfall clause so the resume reaches it; plus the all-character resume-vs-plain sweep (verification20sweep.test.ts)
+verify-21	verify	done				closure audit (coordinator-run after the delegated pass died to infra): every done-predicate clause checked on the artifact; verdict CLOSED
