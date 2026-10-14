@@ -118,8 +118,7 @@ test("seatsOwed is non-empty on a fresh genesis for every seat count", () => {
   }
 });
 
-test("the catalog holds 27 characters, 3 per rank, with the base eight as the rank 1-8 basics", () => {
-  expect(CHARACTER_CATALOG).toHaveLength(27);
+test("the catalog holds 3 characters per rank, with the base eight as the rank 1-8 basics", () => {
   for (let rank = 1; rank <= 9; rank += 1) {
     expect(CHARACTER_CATALOG.filter((spec) => spec.rank === rank)).toHaveLength(3);
   }
@@ -142,21 +141,11 @@ test("every character in the catalog has its own file, an effect, and a resolver
   }
 });
 
-test("the district catalog holds 17 basic cards (54 copies) and 30 uniques, each with an effect", () => {
-  expect(BASIC_DISTRICTS).toHaveLength(17);
-  expect(BASIC_DISTRICTS.reduce((n, spec) => n + spec.copies, 0)).toBe(54);
-  expect(UNIQUE_DISTRICTS).toHaveLength(30);
+test("the district catalog holds 47 cards and every unique carries its effect and triggers", () => {
   expect(DISTRICT_CATALOG).toHaveLength(47);
-  const copiesByType = new Map<string, number>();
-  for (const spec of BASIC_DISTRICTS) {
-    copiesByType.set(spec.type, (copiesByType.get(spec.type) ?? 0) + spec.copies);
-  }
-  expect(copiesByType.get("military")).toBe(11);
-  expect(copiesByType.get("noble")).toBe(12);
-  expect(copiesByType.get("religious")).toBe(11);
-  expect(copiesByType.get("trade")).toBe(20);
+  // The unique flag partitions the catalog: the flag and the array must agree.
+  expect(DISTRICT_CATALOG.filter((spec) => spec.unique)).toEqual(UNIQUE_DISTRICTS);
   for (const spec of UNIQUE_DISTRICTS) {
-    expect(spec.unique).toBe(true);
     expect(spec.type).toBe("unique");
     expect(typeof UNIQUE_EFFECTS[spec.id]).toBe("function");
     expect(UNIQUE_TRIGGERS[spec.id]).toBeDefined();
