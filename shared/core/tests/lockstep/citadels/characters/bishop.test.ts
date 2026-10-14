@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import type { SeatId } from "../../../../index.ts";
 import { bishop, bishopShield } from "../../../../lockstep/games/citadels/characters/bishop.ts";
-import type { CitadelsState } from "../../../../lockstep/games/citadels/state.ts";
+import type { CitadelsState, Claim } from "../../../../lockstep/games/citadels/state.ts";
 import { ANN, BASE_CAST_IDS, BOB, CARA, SEATS3, rawGenesis, rawGold, rawRandom } from "../driver.ts";
 
 const BISHOP_CAST = BASE_CAST_IDS;
@@ -37,7 +37,7 @@ test("if killed, rank 8 may target you", () => {
 });
 
 test("if bewitched, rank 8 cannot target the Witch's districts but can target the Bishop's", () => {
-  const claimed = [
+  const claimed: readonly Claim[] = [
     { seat: ANN, character: "bishop" },
     { seat: BOB, character: "witch" },
   ];

@@ -12,6 +12,7 @@ import {
   rawHand,
   type CitadelsAction,
   type CitadelsState,
+  type Fold,
   type SeatId,
 } from "../../driver.ts";
 import {
