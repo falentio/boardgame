@@ -4,7 +4,7 @@ rewrite every relative import specifier by the file's new depth.
 
 Idempotent: a move whose target already exists and whose source is gone is skipped.
 """
-import json, os, re, subprocess, sys
+import json, os, re, subprocess
 
 ROOT = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True, check=True).stdout.strip()
 BASE = os.path.join(ROOT, "shared/core/tests/lockstep/citadels")
