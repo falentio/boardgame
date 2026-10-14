@@ -32,7 +32,7 @@ test("during this round the rank 8 character cannot use its ability on your dist
 });
 
 test("if killed, rank 8 may target you", () => {
-  const state = { ...bishopState(), skipped: ["bishop"] };
+  const state: CitadelsState = { ...bishopState(), skipped: ["bishop"] };
   expect(bishopShield(state)).toBeNull();
 });
 
@@ -41,7 +41,7 @@ test("if bewitched, rank 8 cannot target the Witch's districts but can target th
     { seat: ANN, character: "bishop" },
     { seat: BOB, character: "witch" },
   ];
-  const state = { ...bishopState(), claimed, bewitched: "bishop" };
+  const state: CitadelsState = { ...bishopState(), claimed, bewitched: "bishop" };
   // The shield names the Witch's seat, so it leaves the Bishop's own districts open.
   expect(bishopShield(state)).toBe(BOB);
 });
@@ -53,7 +53,7 @@ test("the ability is not a no-op: it raises the Bishop's gold", () => {
 });
 
 test("a killed Bishop shields no one and collects no income", () => {
-  const state = { ...withCity(bishopState(), ANN, ["temple", "church"]), skipped: ["bishop"] };
+  const state: CitadelsState = { ...withCity(bishopState(), ANN, ["temple", "church"]), skipped: ["bishop"] };
   expect(bishopShield(state)).toBeNull();
   expect(rawGold(bishop(ctxFor(state)), ANN)).toBe(rawGold(state, ANN));
 });

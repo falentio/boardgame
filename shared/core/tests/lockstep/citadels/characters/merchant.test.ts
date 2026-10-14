@@ -64,7 +64,7 @@ test("usable regardless of which resource you gathered this turn", () => {
 });
 
 test("a killed Merchant takes no income", () => {
-  const state = {
+  const state: CitadelsState = {
     ...withCity(merchantState(), ANN, ["tavern", "market"]),
     skipped: ["merchant"],
   };
@@ -72,7 +72,7 @@ test("a killed Merchant takes no income", () => {
 });
 
 test("a bewitched Merchant's own purse does not grow", () => {
-  const state = {
+  const state: CitadelsState = {
     ...withCity(merchantState(), ANN, ["tavern", "market"]),
     bewitched: "merchant",
   };

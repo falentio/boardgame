@@ -29,20 +29,20 @@ test("gain 1 card per noble district in your city", () => {
 });
 
 test("at some point during your turn you must take the crown", () => {
-  const state = { ...patricianState(), crown: BOB };
+  const state: CitadelsState = { ...patricianState(), crown: BOB };
   const next = patrician(ctxFor(state));
   expect(next.crown).toBe(ANN);
 });
 
 test("if killed, at end of round reveal the Patrician and take the crown as heir", () => {
-  const state = { ...withCity(patricianState(), ANN, ["manor", "castle"]), skipped: ["patrician"] };
+  const state: CitadelsState = { ...withCity(patricianState(), ANN, ["manor", "castle"]), skipped: ["patrician"] };
   const next = patrician(ctxFor(state));
   expect(next.crown).toBe(ANN);
   expect(rawHand(next, ANN)).toHaveLength(rawHand(state, ANN).length);
 });
 
 test("if bewitched, you still take the crown", () => {
-  const state = { ...patricianState(), bewitched: "patrician" };
+  const state: CitadelsState = { ...patricianState(), bewitched: "patrician" };
   const next = patrician(ctxFor(state));
   expect(next.crown).toBe(ANN);
 });

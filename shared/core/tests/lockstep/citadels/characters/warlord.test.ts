@@ -126,7 +126,7 @@ test("declining the destroy leaves every city untouched", () => {
 });
 
 test("a killed warlord takes no income and opens no window", () => {
-  const state = { ...withCity(turnState(), ANN, ["watchtower"]), skipped: ["warlord"] };
+  const state: CitadelsState = { ...withCity(turnState(), ANN, ["watchtower"]), skipped: ["warlord"] };
   const next = openWarlord(state);
   expect(rawGold(next, ANN)).toBe(rawGold(state, ANN));
   expect(openPurpose(next)).toBeNull();

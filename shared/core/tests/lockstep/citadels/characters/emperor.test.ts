@@ -93,7 +93,7 @@ test("taking a card moves one random card from that player hand into yours", () 
 });
 
 test("if killed, take the crown and pass it to a different player, taking nothing", () => {
-  const state = { ...withCity(emperorState(), ANN, ["manor", "castle"]), skipped: ["emperor"] };
+  const state: CitadelsState = { ...withCity(emperorState(), ANN, ["manor", "castle"]), skipped: ["emperor"] };
   const next = emperor(ctxFor(state));
   expect(next.crown).not.toBe(ANN);
   expect([BOB, CARA]).toContain(next.crown);
@@ -102,7 +102,7 @@ test("if killed, take the crown and pass it to a different player, taking nothin
 });
 
 test("not usable in 2-player games", () => {
-  const two = {
+  const two: CitadelsState = {
     ...rawGenesis([ANN, BOB], EMPEROR_CAST),
     claimed: [{ seat: ANN, character: "emperor" }],
     crown: BOB,

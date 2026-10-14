@@ -27,20 +27,20 @@ test("gain 1 gold per noble district in your city", () => {
 });
 
 test("at some point during your turn you must take the crown", () => {
-  const state = { ...kingState(), crown: BOB };
+  const state: CitadelsState = { ...kingState(), crown: BOB };
   const next = king(ctxFor(state));
   expect(next.crown).toBe(ANN);
 });
 
 test("if killed, at end of round reveal the King and take the crown as heir", () => {
-  const state = { ...withCity(kingState(), ANN, ["manor", "castle"]), crown: BOB, skipped: ["king"] };
+  const state: CitadelsState = { ...withCity(kingState(), ANN, ["manor", "castle"]), crown: BOB, skipped: ["king"] };
   const next = king(ctxFor(state));
   expect(next.crown).toBe(ANN);
   expect(rawGold(next, ANN)).toBe(rawGold(state, ANN));
 });
 
 test("if bewitched, you still take the crown", () => {
-  const state = { ...kingState(), crown: BOB, bewitched: "king" };
+  const state: CitadelsState = { ...kingState(), crown: BOB, bewitched: "king" };
   const next = king(ctxFor(state));
   expect(next.crown).toBe(ANN);
 });

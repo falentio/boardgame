@@ -93,7 +93,7 @@ test("a trade district you cannot afford is not built and closes the window", ()
 });
 
 test("a killed Trader takes no income and opens no window", () => {
-  const state = { ...withCity(traderState(), ["tavern", "market"]), skipped: ["trader"] };
+  const state: CitadelsState = { ...withCity(traderState(), ["tavern", "market"]), skipped: ["trader"] };
   const next = openTrader(state);
   expect(rawGold(next, ANN)).toBe(rawGold(state, ANN));
   expect(openPurpose(next)).toBeNull();
