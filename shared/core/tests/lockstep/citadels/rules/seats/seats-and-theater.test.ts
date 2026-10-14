@@ -1,14 +1,16 @@
 import { expect, test } from "vitest";
-import { ANN, BOB, CARA, SEATS3, advance, openPurpose, rawGenesis, rawGold, rawPlayer, rawRandom, type CitadelsAction, type CitadelsState, type SeatId } from "../../driver.ts";
-import { seatId } from "../../../../../index.ts";
-import { autoAction, framesToEnd, replayFrames, sealedFrames, tableOf } from "../../driver.ts";
+import {
+  ANN, BOB, CARA, SEATS3, advance, autoAction, framesToEnd, openPurpose, rawFrame, rawGenesis,
+  rawGold, rawPlayer, rawRandom, replayFrames, sealedFrames, tableOf,
+  type CitadelsAction, type CitadelsState,
+} from "../../driver.ts";
+import { act, seatId, type SeatId } from "../../../../../index.ts";
 import { at } from "../../../harness.ts";
-import { stateCodec } from "../../../../../lockstep/games/citadels/state.ts";
+import { stateCodec, type Claim, type Step } from "../../../../../lockstep/games/citadels/state.ts";
 import { citadels } from "../../../../../lockstep/games/citadels/index.ts";
 import { charactersOfRank, specOfCharacter, type CharacterId, type Rank } from "../../../../../lockstep/games/citadels/characters.ts";
 import { theaterResolve } from "../../../../../lockstep/games/citadels/districts/theater.ts";
 import type { DistrictId } from "../../../../../lockstep/games/citadels/districts.ts";
-import type { Claim, Step } from "../../../../../lockstep/games/citadels/state.ts";
 
 /**
  * Eighth-pass verifier artifacts. Two counterexamples that failed against the
@@ -104,7 +106,7 @@ const witchResume = (name: CharacterId, entropy: string): CitadelsState => {
   return cur;
 };
 
-test("D8-1 the Witch resuming as a bewitched Bishop declares her School of Magic", () => {
+test("D8-1 the Witch's resumed Bishop turn declares her School of Magic", () => {
   const end = witchResume("bishop", "v8-d8-1");
   expect(
     schoolOf(end, ANN)?.declaredType,
@@ -126,10 +128,10 @@ test("D8-1 the Witch resuming as a bewitched Bishop declares her School of Magic
 // characters cannot hand over the higher-rank one.
 // ---------------------------------------------------------------------------
 
-const SWAP_WINDOW: Step = {
+const SWAP_WINDOW = {
   kind: "window",
   window: { kind: "oneOf", purpose: "theatre-swap", seats: [ANN] },
-};
+} as const satisfies Step;
 
 /** ANN holds assassin (rank 1) and merchant (rank 6); BOB holds king and bishop. */
 const twoEachState = (): CitadelsState => ({
@@ -152,16 +154,12 @@ const twoEachState = (): CitadelsState => ({
 const swap = (action: CitadelsAction): CitadelsState =>
   theaterResolve({
     state: twoEachState(),
-    window: SWAP_WINDOW.kind === "window" ? SWAP_WINDOW.window : (undefined as never),
-    frame: {
-      index: 0 as never,
-      seed: "0000000000000000" as never,
-      inputs: [[ANN, { kind: "act", action }]] as never,
-    },
+    window: SWAP_WINDOW.window,
+    frame: rawFrame(0, [[ANN, act(action)]]),
     rng: rawRandom(),
   });
 
-test("D8-2 a 2-3 player Theater lets its owner give its higher-rank character", () => {
+test("D8-2 the Theater's give-choice runs for a seat holding two claims", () => {
   const gaveHigher = swap({ t: "keep", index: 1 });
   const annAfter = gaveHigher.claimed
     .filter((claim) => claim.seat === ANN)
