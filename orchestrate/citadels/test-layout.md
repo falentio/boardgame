@@ -2,9 +2,15 @@
 
 The lockstep citadels suite at `shared/core/tests/lockstep/citadels/`, regrouped on
 2026-10-14 by subject. Every move is a `git mv` plus a relative-import rewrite; no
-test body, title, or assertion changed. Pinned by the pre-move capture:
-94 files / 760 tests green, 722 titles identical after (93 files / 760 tests: the
-`theatre`/`theater` spelling duplicate collapsed into one district file).
+test body, title, or assertion changed. Before: 94 files / 760 tests green (vitest).
+After: 93 files / 760 tests, the `theatre`/`theater` spelling duplicate collapsed into
+one district file.
+
+The 722 titles the pin compares are what a source-level grep sees (712 lines with
+`test(` plus 10 with `describe(`). It counts no `test.each` line, so the 48 rows the
+two `test.each` calls expand in `engine/engine-coverage.test.ts` are invisible to it:
+that file's 23 grepped lines stand for 71 runtime cases. The vitest JSON capture covers
+all 760 rows, and the titles match before and after, per file and globally.
 
 ## What gates the suite
 
