@@ -33,6 +33,10 @@ import {
  * that expose a blind spot in engine-coverage.test.ts, where the Keep guard and
  * the Trader guard stay green when their behaviour is removed (audited in the
  * report's teeth section).
+ *
+ * Scope: declared-type reading is the dominant subject, not the only one. The file
+ * also carries this pass's setup, tie-break, Keep, and Trader cases, each titled with
+ * its own subject so a reader sees which family it belongs to.
  */
 
 const withCity = (
@@ -149,7 +153,7 @@ test("D3-4 the Ivory Tower scores when a re-typed unique stands beside it", () =
 // and the face-up discard pile is one larger than the catalog's setup numbers.
 // ---------------------------------------------------------------------------
 
-test("D3-5 the draft discards no more face-up characters than the catalog allows", () => {
+test("D3-5 the setup draft discards no more face-up characters than the catalog allows", () => {
   // catalog: 4 players => 2 face-up, 1 face-down; with a rank-9 character in
   // play, add 1 face-up => at most 3. Measured on head: 4 face-up.
   const rank9 = rawGenesis(SEATS4, CAST9, "v3-draft-rank9");
@@ -165,7 +169,7 @@ test("D3-5 the draft discards no more face-up characters than the catalog allows
 // ties by district points and then gold, and returns no winner on a full tie.
 // ---------------------------------------------------------------------------
 
-test("D3-6 winnerOf breaks a tie by the highest revealed rank, not gold", () => {
+test("D3-6 the winnerOf tie-break reads the highest revealed rank, not gold", () => {
   const base = rawGenesis(SEATS3, BASE_CAST_IDS, "v3-tiebreak");
   const tied: CitadelsState = {
     ...base,
@@ -228,7 +232,7 @@ test("D3-7 a seat owning the Haunted Quarter can choose its counted type", () =>
 // the guard. A regression in the module breaks these.
 // ---------------------------------------------------------------------------
 
-test("the Keep protects its owner's city from the Warlord's destroy", () => {
+test("the Keep's guard leaves its owner's city standing against the Warlord", () => {
   const fold = foldTurn({
     character: "warlord",
     cast: castWith("warlord"),
@@ -254,7 +258,7 @@ test("the Keep protects its owner's city from the Warlord's destroy", () => {
   expect(bob?.city.map((district) => district.id)).toContain("keep");
 });
 
-test("the Trader's income honours a School of Magic declared trade", () => {
+test("the Trader's income counts a School of Magic declared trade", () => {
   const cast = castWith("trader");
   const base = rawGenesis(SEATS3, cast, "v3-trader-declared");
   const state = withCity(base, ANN, [{ id: "school-of-magic", gold: 0, declaredType: "trade" }]);
