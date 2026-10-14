@@ -119,9 +119,18 @@ const POOR = { [ANN]: 1, [BOB]: 5, [CARA]: 5 };
 // call), then the resumed navigator window pays its 4-gold page (14 -> 18), while
 // the plain turn pays the same page off its own board (12 -> 16). Every other
 // character's plain turn takes a gather of 2, which the held turn's +2 stands in
-// for, so the navigator alone collects both. Suspected engine defect: the resume
-// carries the Witch's gather on top of a turn that never gathers. Pinned here so a
-// change on either side fails the sweep instead of being normalized away.
+// for. The resume pays no second gather (D16-1): zeroing characters/witch.ts's
+// GATHER drops the resumed key from 18 to 16, equal to the plain one, so its 6 is
+// the held turn's own 2 plus the page's 4. The navigator is the one character whose
+// two keys differ because its PLAIN turn never gathers at all. Suspected engine
+// defect, and the reason these keys stay unnormalized: rules.json gives the
+// navigator its four gold "regardless of which resource you gathered this turn",
+// and a turn gathers 2 first (docs/design/citadels-full-game.md:107), so a navigator
+// turn should land 6, as its resume does. The plain turn lands 4 because helpers.ts
+// answers the navigator's turn window as the gain choice and never gathers (the
+// Abbot's plain turn in engine-coverage.test.ts lands 3 + 1 + the gather). Fix the
+// plain turn, not the resume. Pinned here so a change on either side fails the
+// sweep instead of being normalized away.
 const NAVIGATOR_RESUME_RICH = "gold=18 hand=church,docks,harbor,market,palace,temple city= caraGold=5 caraHand=market,tavern";
 const NAVIGATOR_PLAIN_RICH = "gold=16 hand=church,docks,harbor,market,palace,temple city= caraGold=5 caraHand=market,tavern";
 const NAVIGATOR_RESUME_POOR = "gold=7 hand=harbor,palace city= caraGold=5 caraHand=market,tavern";
