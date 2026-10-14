@@ -94,9 +94,6 @@ test("UNIQUE_DISTRICTS is the 30-card set, one copy each, ids and costs from the
   expect(UNIQUE_DISTRICTS).toHaveLength(30);
   for (const spec of UNIQUE_DISTRICTS) expect(spec.copies).toBe(1);
   expect(UNIQUE_DISTRICTS.map((spec) => [spec.name, spec.id, spec.cost])).toEqual(UNIQUE);
-  expect(UNIQUE_DISTRICTS.map((spec) => spec.id).sort()).toEqual(
-    UNIQUE.map(([, id]) => id).sort(),
-  );
 });
 
 test("no district id or name is duplicated across basic and unique", () => {
