@@ -74,11 +74,11 @@ test("genesis populates every cross-turn field with its default", () => {
 test("no cross-turn field crosses project: the view is redacted", () => {
   const state = seeded();
   for (const seat of SEATS4) {
-    const view = citadels.project(state, seat) as { readonly [k: string]: unknown };
+    const view = citadels.project(state, seat);
     for (const key of CROSS_TURN_FIELDS) {
       expect(Object.hasOwn(view, key)).toBe(false);
     }
-    for (const player of view.players as readonly object[]) {
+    for (const player of view.players) {
       for (const key of CROSS_TURN_FIELDS) {
         expect(Object.hasOwn(player, key)).toBe(false);
       }

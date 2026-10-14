@@ -204,7 +204,8 @@ test("two independent tables folding the same frames reach an identical terminal
 
   // Non-vacuity: stateDigest commits to the whole state, so any perturbation of
   // a field a peer could have diverged on changes it.
-  const tampered: CitadelsState = { ...stateA, round: stateA.round + 1 };
+  const decoded = stateCodec.decode(stateA);
+  const tampered: CitadelsState = { ...decoded, round: decoded.round + 1 };
   expect(stateDigest(stateCodec.encode(tampered))).not.toBe(stateDigest(stateA));
 });
 

@@ -248,8 +248,8 @@ test("P3 a 2-seat and a 7-seat game converge and redact", { timeout: 60000 }, ()
     expect(at(a, ANN).terminal, "terminal at " + label).toBe(true);
     const b = tableOf(seats, castOf(), "v8-p3-" + label);
     replayFrames(b, sealedFrames(a));
-    const sa = at(a, ANN).snapshot().state;
-    const sb = at(b, ANN).snapshot().state;
+    const sa = stateCodec.decode(at(a, ANN).snapshot().state);
+    const sb = stateCodec.decode(at(b, ANN).snapshot().state);
     expect(stateCodec.encode(sb), "peers converge at " + label).toEqual(stateCodec.encode(sa));
     for (const seat of seats) {
       const view = citadels.project(sa, seat);
