@@ -55,7 +55,7 @@ test("D6-1 the Cardinal's shortfall gift conserves cards, duplicates included", 
     board: {
       cities: { ann: ["temple"] },
       hands: { ann: ["cathedral", "tavern", "tavern"] },
-      gold: { ann: 4, bob: 10 },
+      gold: { ann: 2, bob: 10 },
     },
     answer: (_seat, state) => {
       const purpose = openPurpose(state);
@@ -66,8 +66,9 @@ test("D6-1 the Cardinal's shortfall gift conserves cards, duplicates included", 
   });
   const start = foldStart(fold);
   const end = foldEnd(fold);
-  // The Cardinal covers a 1-gold shortfall from BOB and hands over one card, so
-  // every card is still in play. Measured on head: 68 -> 67.
+  // The turn gathers 2 first, so the purse enters the build at 4: the 5-cost
+  // cathedral takes 1 gold from BOB, handed over as one card. The hand holds two
+  // taverns, so a gift that drops every copy of a given id loses a card here.
   expect(totalCards(end), "the Cardinal's gift lost a card").toBe(totalCards(start));
 });
 
@@ -147,7 +148,9 @@ test("P6-1 a bribed threat still defers the build to after the threat window", (
     ),
   };
   let state = armed;
+  let cityAtThreat: readonly string[] | null = null;
   for (let i = 0; i < 40 && state.phase !== "draft"; i += 1) {
+    if (openPurpose(state) === "blackmailer-threat") cityAtThreat = cityOf(state, BOB);
     state = advance(state, (_seat, s) => {
       const purpose = openPurpose(s);
       if (purpose === "turn") return { t: "build", card: 0 };
@@ -155,8 +158,10 @@ test("P6-1 a bribed threat still defers the build to after the threat window", (
       return null;
     });
   }
-  // Removing the D5-5 deferral (helpers.ts resolveTurn) drops the threatened
-  // build entirely; this probe reddens.
+  // The threat window must open while no district stands in the seat's city: the
+  // D5-5 order is gather, then threat, then build.
+  expect(cityAtThreat, "the threat window opened").not.toBeNull();
+  expect(cityAtThreat, "the build landed ahead of the threat").toEqual([]);
   expect(cityOf(state, BOB), "the threatened build landed after the threat").toEqual([
     "tavern",
   ]);

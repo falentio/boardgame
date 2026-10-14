@@ -16,6 +16,7 @@ import {
   rawGold,
   rawPlayer,
   rawRandom,
+  totalCards,
   withGold,
   withHand,
 } from "../../driver.ts";
@@ -251,13 +252,18 @@ test("a card can be placed under the Museum during its owner's turn", () => {
 // D11: the Thieves' Den's mixed gold-and-cards payment is refused.
 test("D11 the Thieves' Den's mixed payment splits through a driven turn", () => {
   const base = rawGenesis(SEATS3, BASE_CAST_IDS, "verifier-d11");
+  // One gold, then the turn's gather 2: the cost-4 Den is short 1 gold and takes
+  // it as one card, the split the build query names.
   const state = withGold(
     withHand(withCity(turnState(base), ANN, []), ANN, ["thieves-den", "tavern", "market"]),
     ANN,
-    2,
+    1,
   );
   const next = stepAnn(state, { t: "build", card: 0 });
   expect(rawPlayer(next, ANN).city.map((d) => d.id)).toEqual(["thieves-den"]);
+  expect(next.discard, "the card share reached the discard").toEqual(["tavern"]);
+  expect(rawPlayer(next, ANN).hand, "the gold share was spent").toEqual(["market"]);
+  expect(totalCards(next), "the split kept every card").toBe(totalCards(state));
 });
 
 // D12: declaring the Haunted Quarter unique does not stop the Ivory Tower.
