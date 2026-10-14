@@ -10,7 +10,6 @@ import { marshal } from "../../../../../lockstep/games/citadels/characters/marsh
 import { merchant } from "../../../../../lockstep/games/citadels/characters/merchant.ts";
 import { patrician } from "../../../../../lockstep/games/citadels/characters/patrician.ts";
 import type {
-  CitadelsAction,
   CitadelsState,
   PlacedDistrict,
   Window,
@@ -25,6 +24,7 @@ import {
   rawHand,
   rawPlayer,
   rawRandom,
+  type CitadelsAction,
 } from "../../driver.ts";
 
 /**

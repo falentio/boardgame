@@ -1,6 +1,9 @@
 import { expect, test } from "vitest";
-import { charactersOfRank, specOfCharacter } from "../../../../../lockstep/games/citadels/characters.ts";
-import type { Rank } from "../../../../../lockstep/games/citadels/characters.ts";
+import {
+  charactersOfRank,
+  specOfCharacter,
+  type Rank,
+} from "../../../../../lockstep/games/citadels/characters.ts";
 import {
   ANN,
   BOB,

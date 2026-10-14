@@ -12,7 +12,6 @@ import {
   UNIQUE_DISTRICTS,
   buildDeck,
   specOfDistrict,
-  type DistrictId,
   type DistrictType,
 } from "../../../lockstep/games/citadels/districts.ts";
 
