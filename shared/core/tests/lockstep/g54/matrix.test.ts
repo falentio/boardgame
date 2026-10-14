@@ -9,6 +9,17 @@
 import { expect, test } from "vitest";
 import { asRoleId, ROLE_CATALOG, specOf } from "../../../lockstep/games/g54/roles.ts";
 
+
+declare global {
+  // vite/client is not a module and cannot be imported; augment the one helper used.
+  interface ImportMeta {
+    glob(
+      pattern: string,
+      options: { query: string; import: string; eager: true },
+    ): Record<string, string>;
+  }
+}
+
 const REACTIVE = new Set(["intellectual", "lawyer", "missionary"]);
 
 const modules = import.meta.glob("./roles/**/*.test.ts", {
