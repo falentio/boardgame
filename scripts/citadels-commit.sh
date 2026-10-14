@@ -19,7 +19,10 @@ GITDIR="$(git rev-parse --absolute-git-dir)"
 LOCK="$GITDIR/citadels-commit.lock"
 
 for p in "$@"; do
-  if [ ! -e "$p" ]; then
+  # A path may be absent from the working tree only when it is a deletion of a
+  # tracked file (still in the index). Anything else is a typo or a half-written
+  # file, which must not be committed.
+  if [ ! -e "$p" ] && ! git -C "$ROOT" ls-files --error-unmatch -- "$p" >/dev/null 2>&1; then
     echo "refusing to commit missing path: $p" >&2
     exit 2
   fi
