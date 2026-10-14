@@ -3,7 +3,7 @@ import { citadels, scoreGame, type CitadelsState, type PlacedDistrict } from "..
 import { warlord } from "../../../../../lockstep/games/citadels/characters/warlord.ts";
 import { king } from "../../../../../lockstep/games/citadels/characters/king.ts";
 import { specOfDistrict } from "../../../../../lockstep/games/citadels/districts.ts";
-import { WINDOW_PURPOSES } from "../../../../../lockstep/games/citadels/state.ts";
+import { WINDOW_PURPOSES, type WindowPurpose } from "../../../../../lockstep/games/citadels/state.ts";
 import {
   ANN,
   BOB,
@@ -64,7 +64,7 @@ const stepAnn = (state: CitadelsState, action: unknown): CitadelsState =>
 test("a full game exercises at least one character ability through the engine", () => {
   let state = rawGenesis(SEATS3, BASE_CAST_IDS, "verifier-d1");
   const crownHolders = new Set<string>([state.crown]);
-  const characterPurposes = new Set(
+  const characterPurposes = new Set<WindowPurpose>(
     WINDOW_PURPOSES.filter((p) => p !== "turn" && p !== "keep" && p !== "draft-pick"),
   );
   const openedCharacterWindows = new Set<string>();

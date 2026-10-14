@@ -426,7 +426,7 @@ test("a pass on the Museum's placement offer places no card", () => {
     claimed: [{ seat: ANN, character: "merchant" }],
     callRank: 6,
     steps: [
-      { kind: "window", window: { kind: "keep", purpose: "keep", seats: [ANN] } },
+      { kind: "window", window: { kind: "oneOf", purpose: "keep", seats: [ANN] } },
       { kind: "end-turn" },
       { kind: "call" },
       { kind: "end-round" },
