@@ -23,7 +23,7 @@ def rewrite(path, d):
         stripped = spec[2:] if spec.startswith("./") else spec
         return m.group(1) + m.group(2) + "../" * d + stripped + m.group(2)
     out, n = SPEC_RE.subn(sub, src)
-    out, u = URL_RE.subn(lambda m: m.group(1) + "../" * d + m.group(2) + m.group(3), out)
+    out, u = URL_RE.subn(lambda m: m.group(1) + m.group(2) + "../" * d + m.group(3) + m.group(4), out)
     if n or u:
         open(path, "w").write(out)
     return n + u

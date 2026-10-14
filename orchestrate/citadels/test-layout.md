@@ -89,3 +89,8 @@ The move is two scripts, kept beside this file so a reviewer can rerun or audit 
 against the tree: `regroup.py` (35 renames and relative-import rewrites) and
 `regroup2.py` (the cross-cutting grouping, the theatre/theater merge, and the prose
 repointing). Each is idempotent: a move whose target already exists is skipped.
+
+To rerun them, start a worktree at `32140e6` (the commit before the move), copy
+`orchestrate/citadels/regroup/` from the head into it, and run both scripts. Then
+`git diff 756876f -- shared/` is empty and the citadels suite runs 93 files / 760
+tests green.
