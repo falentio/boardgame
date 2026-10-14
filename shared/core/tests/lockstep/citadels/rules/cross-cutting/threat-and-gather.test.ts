@@ -71,18 +71,23 @@ const armedTurn = (
     steps: [{ kind: "call" }, { kind: "end-round" }],
     pending: null,
     builtThisTurn: 0,
-    players: base.players.map((player) => ({
-      ...player,
-      ...(cities[player.seat] === undefined
-        ? {}
-        : {
-            city: cities[player.seat].map((entry) =>
-              typeof entry === "string" ? { id: entry, gold: 0 } : entry,
-            ),
-          }),
-      ...(gold[player.seat] === undefined ? {} : { gold: gold[player.seat] }),
-      ...(hands[player.seat] === undefined ? {} : { hand: [...hands[player.seat]] }),
-    })),
+    players: base.players.map((player) => {
+      const city = cities[player.seat];
+      const purse = gold[player.seat];
+      const hand = hands[player.seat];
+      return {
+        ...player,
+        ...(city === undefined
+          ? {}
+          : {
+              city: city.map((entry) =>
+                typeof entry === "string" ? { id: entry, gold: 0 } : entry,
+              ),
+            }),
+        ...(purse === undefined ? {} : { gold: purse }),
+        ...(hand === undefined ? {} : { hand: [...hand] }),
+      };
+    }),
     ...extra,
   };
 };

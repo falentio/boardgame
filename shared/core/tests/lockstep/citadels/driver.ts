@@ -29,6 +29,7 @@ import {
 import {
   UNIQUE_EFFECTS,
   type DistrictCtx,
+  type DistrictEffect,
 } from "../../../lockstep/games/citadels/districts/effects.ts";
 import { at, fakeClock, makeTable, type Table } from "../harness.ts";
 
@@ -355,7 +356,9 @@ export const castWith = (target: CharacterId): readonly CharacterId[] => {
   const cast: CharacterId[] = [];
   for (let rank = 1 as Rank; rank <= 8; rank = (rank + 1) as Rank) {
     const at = charactersOfRank(rank);
-    cast.push(at.includes(target) ? target : at[0]);
+    const fallback = at[0];
+    if (fallback === undefined) throw new Error(`no character at rank ${String(rank)}`);
+    cast.push(at.includes(target) ? target : fallback);
   }
   if (specOfCharacter(target).rank === 9) cast.push(target);
   return cast;
@@ -398,14 +401,17 @@ const seedBoard = (state: CitadelsState, board: Board): CitadelsState => ({
   ...state,
   ...(board.crown === undefined ? {} : { crown: board.crown }),
   ...(board.pot === undefined ? {} : { taxPot: board.pot }),
-  players: state.players.map((player) => ({
-    ...player,
-    ...(board.cities?.[player.seat] === undefined
-      ? {}
-      : { city: board.cities[player.seat].map((id) => ({ id, gold: 0 })) }),
-    ...(board.hands?.[player.seat] === undefined ? {} : { hand: [...board.hands[player.seat]] }),
-    ...(board.gold?.[player.seat] === undefined ? {} : { gold: board.gold[player.seat] }),
-  })),
+  players: state.players.map((player) => {
+    const cities = board.cities?.[player.seat];
+    const hands = board.hands?.[player.seat];
+    const gold = board.gold?.[player.seat];
+    return {
+      ...player,
+      ...(cities === undefined ? {} : { city: cities.map((id) => ({ id, gold: 0 })) }),
+      ...(hands === undefined ? {} : { hand: [...hands] }),
+      ...(gold === undefined ? {} : { gold }),
+    };
+  }),
 });
 
 /** The draft policy: take the wanted character when the pool offers it, else let the engine pick. */
@@ -554,7 +560,7 @@ export interface SpiedEffects {
 }
 
 export const spyEffects = (): SpiedEffects => {
-  const originals = new Map<DistrictId, ReturnType<typeof UNIQUE_EFFECTS[keyof typeof UNIQUE_EFFECTS]>>();
+  const originals = new Map<DistrictId, DistrictEffect>();
   const calls: DistrictId[] = [];
   for (const [id, effect] of Object.entries(UNIQUE_EFFECTS)) {
     originals.set(id, effect);
