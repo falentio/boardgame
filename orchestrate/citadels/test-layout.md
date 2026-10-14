@@ -6,6 +6,13 @@ test body, title, or assertion changed. Pinned by the pre-move capture:
 94 files / 760 tests green, 722 titles identical after (93 files / 760 tests: the
 `theatre`/`theater` spelling duplicate collapsed into one district file).
 
+## What gates the suite
+
+`vitest run shared/core/tests/lockstep/citadels` runs the 760 tests; vitest transpiles
+each test without type-checking it. `tsc -p tsconfig.citadels.json` includes only
+`shared/core/lockstep/games/citadels/**/*.ts`, so it never reads a test file.
+`shared/tsconfig.json`, the only config that includes the test tree, is red at baseline.
+
 ## Groups
 
 | Directory | Holds |
