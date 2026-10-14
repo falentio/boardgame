@@ -249,7 +249,7 @@ test("a card can be placed under the Museum during its owner's turn", () => {
 });
 
 // D11: the Thieves' Den's mixed gold-and-cards payment is refused.
-test("the Thieves' Den may be paid partly in gold and partly in cards", () => {
+test("D11 the Thieves' Den's mixed payment splits through a driven turn", () => {
   const base = rawGenesis(SEATS3, BASE_CAST_IDS, "verifier-d11");
   const state = withGold(
     withHand(withCity(turnState(base), ANN, []), ANN, ["thieves-den", "tavern", "market"]),
