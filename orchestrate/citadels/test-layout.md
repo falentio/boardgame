@@ -68,6 +68,10 @@ Old name -> new name, relative to `shared/core/tests/lockstep/citadels/`.
 
 `catalog.test.ts` and `driver.ts` keep their names and their place at the root.
 
+`regroup/rename-map.json` carries the same mapping for a script to read: its `moves`
+list is pass 1, and its `second_pass` object is pass 2, the six cross-cutting moves
+and the theatre merge.
+
 ## What was deliberately not rewritten
 
 The store records that cite the old names -- `units.tsv`, `ledger.tsv`, `decisions.tsv`, the

@@ -1,5 +1,5 @@
 {
-  "note": "citadels test-suite regroup: source path -> target path, relative to shared/core/tests/lockstep/citadels/. Behavior-preserving: files move and rename only; no test body changes.",
+  "note": "citadels test-suite regroup: source path -> target path, relative to shared/core/tests/lockstep/citadels/. Behavior-preserving: files move and rename only; no test body, title, or assertion changed. moves is pass 1 (regroup.py). second_pass is pass 2 (regroup2.py); apply both and every source below has a final path that exists at 756876f.",
   "root": [
     "catalog.test.ts",
     "driver.ts"
@@ -145,5 +145,40 @@
       "verification8.test.ts",
       "rules/seats/seats-and-theater.test.ts"
     ]
-  ]
+  ],
+  "second_pass": {
+    "moves": [
+      [
+        "rules/broad-sweep.test.ts",
+        "rules/cross-cutting/broad-sweep.test.ts"
+      ],
+      [
+        "rules/naming-windows.test.ts",
+        "rules/cross-cutting/naming-windows.test.ts"
+      ],
+      [
+        "rules/declared-types.test.ts",
+        "rules/cross-cutting/declared-types.test.ts"
+      ],
+      [
+        "rules/threat-and-gather.test.ts",
+        "rules/cross-cutting/threat-and-gather.test.ts"
+      ],
+      [
+        "rules/witch-and-threat.test.ts",
+        "rules/cross-cutting/witch-and-threat.test.ts"
+      ],
+      [
+        "rules/turn-model.test.ts",
+        "rules/cross-cutting/turn-model.test.ts"
+      ]
+    ],
+    "merge": [
+      {
+        "src": "districts/theatre.test.ts",
+        "dst": "districts/theater.test.ts",
+        "tests": 6
+      }
+    ]
+  }
 }
