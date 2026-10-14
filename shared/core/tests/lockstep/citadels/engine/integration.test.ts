@@ -138,15 +138,11 @@ test("the rank-9 cast and the catalog-ranks cast each carry exactly one rank-9 c
   }
 });
 
-test("project exposes the viewer's own hand and never the deck order or another seat's hand", () => {
+test("project gives every other seat's entry exactly the public fields", () => {
   const state = rawGenesis(SEATS4, BASE_CAST_IDS, "citadels-redaction");
   const view: CitadelsView = citadels.project(state, ANN);
-  expect(Object.keys(view)).not.toContain("deck");
-  expect(Object.keys(view)).not.toContain("draft");
-  expect(Object.keys(view)).not.toContain("pool");
-  expect(Object.keys(view)).not.toContain("facedown");
-  expect(Object.keys(view)).toContain("myHand");
-  expect(Object.keys(view)).toContain("deckCount");
+  // The project-wide key, hand, deck-count, and pick pins are owned by
+  // engine/codec-redaction.test.ts; this file pins the end-to-end field shape.
   for (const player of view.players) {
     expect(Object.keys(player).sort()).toEqual(["city", "gold", "handCount", "seat"]);
   }
@@ -156,18 +152,12 @@ test("project exposes the viewer's own hand and never the deck order or another 
   expect(Object.keys(state.players[0] ?? {})).toContain("hand");
 });
 
-test("for every seat, project redacts the deck order and every other seat's hand", () => {
+test("no view field carries the deck order, at every seat of a driven turn", () => {
   let state = rawGenesis(SEATS5, BASE_CAST_IDS, "citadels-redaction-seats");
   while (state.phase !== "turn") state = autoStep(state);
 
   for (const seat of SEATS5) {
     const view = citadels.project(state, seat);
-    const mine = state.players.find((player) => player.seat === seat);
-    if (mine === undefined) throw new Error("missing player");
-
-    expect(Object.keys(view)).not.toContain("deck");
-    expect(view.myHand).toEqual([...mine.hand]);
-    expect(view.deckCount).toBe(state.deck.length);
     expect(
       Object.values(view).some(
         (value) =>
@@ -177,16 +167,10 @@ test("for every seat, project redacts the deck order and every other seat's hand
       ),
       "no view field carries the deck order",
     ).toBe(false);
-
-    for (const player of view.players) {
-      expect(Object.keys(player)).not.toContain("hand");
-      const raw = state.players.find((candidate) => candidate.seat === player.seat);
-      expect(player.handCount).toBe(raw?.hand.length);
-    }
   }
 });
 
-test("project reveals the viewer's own draft pick and hides every other seat's", () => {
+test("project reveals the picker's own draft pick and hides every other seat's", () => {
   let state = rawGenesis(SEATS4, BASE_CAST_IDS, "citadels-redaction-draft");
   const picker = state.draft?.picker;
   if (picker === undefined) throw new Error("genesis must be in the draft");
@@ -196,8 +180,6 @@ test("project reveals the viewer's own draft pick and hides every other seat's",
 
   const view = citadels.project(state, picker);
   expect(view.myPick).toBe(picked.character);
-  expect(Object.keys(view)).not.toContain("draft");
-  expect(view.myHand).toEqual(state.players.find((player) => player.seat === picker)?.hand);
 
   for (const seat of SEATS4) {
     if (seat === picker) continue;
