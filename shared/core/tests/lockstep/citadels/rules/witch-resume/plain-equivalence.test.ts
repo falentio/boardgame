@@ -113,6 +113,20 @@ const key = (s: CitadelsState) =>
 const RICH = { [ANN]: 12, [BOB]: 5, [CARA]: 5 };
 const POOR = { [ANN]: 1, [BOB]: 5, [CARA]: 5 };
 
+// The navigator is the one character whose resume does not land on its plain turn's
+// key, and the keys below are its measured end states, not a normalized pair. The rich-board
+// fold: the Witch's held turn takes her fixed +2 as her gather (ann 12 -> 14 on the
+// call), then the resumed navigator window pays its 4-gold page (14 -> 18), while
+// the plain turn pays the same page off its own board (12 -> 16). Every other
+// character's plain turn takes a gather of 2, which the held turn's +2 stands in
+// for, so the navigator alone collects both. Suspected engine defect: the resume
+// carries the Witch's gather on top of a turn that never gathers. Pinned here so a
+// change on either side fails the sweep instead of being normalized away.
+const NAVIGATOR_RESUME_RICH = "gold=18 hand=church,docks,harbor,market,palace,temple city= caraGold=5 caraHand=market,tavern";
+const NAVIGATOR_PLAIN_RICH = "gold=16 hand=church,docks,harbor,market,palace,temple city= caraGold=5 caraHand=market,tavern";
+const NAVIGATOR_RESUME_POOR = "gold=7 hand=harbor,palace city= caraGold=5 caraHand=market,tavern";
+const NAVIGATOR_PLAIN_POOR = "gold=5 hand=harbor,palace city= caraGold=5 caraHand=market,tavern";
+
 test("the resume reaches the plain turn's end state for every character (rich board)", () => {
   const bad: string[] = [];
   for (const spec of CHARACTER_CATALOG) {
@@ -121,9 +135,15 @@ test("the resume reaches the plain turn's end state for every character (rich bo
     if (spec.rank < 2) continue; // rank 1 cannot share a cast with the Witch
     const g = foldResume(name, "sweep-rich-" + name, RICH, { [ANN]: [...HAND], [CARA]: ["tavern", "market"] });
     const p = foldPlain(name, "sweep-rich-" + name, RICH, { [ANN]: [...HAND], [CARA]: ["tavern", "market"] });
-    const heldGather = name === "navigator" ? 2 : 0;
-    const gk = key(g.end).replace("gold=" + rawGold(g.end, ANN), "gold=" + (rawGold(g.end, ANN) - heldGather));
-    if (gk !== key(p.end)) bad.push(name + ": resume [" + gk + "] windows " + g.purposes.join(",") + " vs plain [" + key(p.end) + "] windows " + p.purposes.join(","));
+    if (name === "navigator") {
+      expect([key(g.end), key(p.end)], "navigator resume/plain, unnormalized")
+        .toEqual([NAVIGATOR_RESUME_RICH, NAVIGATOR_PLAIN_RICH]);
+      continue;
+    }
+    if (key(g.end) !== key(p.end)) {
+      bad.push(name + ": resume [" + key(g.end) + "] windows " + g.purposes.join(",") +
+        " vs plain [" + key(p.end) + "] windows " + p.purposes.join(","));
+    }
   }
   expect(bad, "resume/plain divergences:\n" + bad.join("\n")).toEqual([]);
 });
@@ -136,9 +156,15 @@ test("the resume reaches the plain turn's end state for every character (poor bo
     if (spec.rank < 2) continue; // rank 1 cannot share a cast with the Witch
     const g = foldResume(name, "sweep-poor-" + name, POOR, { [ANN]: ["palace", "harbor"], [CARA]: ["tavern", "market"] });
     const p = foldPlain(name, "sweep-poor-" + name, POOR, { [ANN]: ["palace", "harbor"], [CARA]: ["tavern", "market"] });
-    const heldGather = name === "navigator" ? 2 : 0;
-    const gk = key(g.end).replace("gold=" + rawGold(g.end, ANN), "gold=" + (rawGold(g.end, ANN) - heldGather));
-    if (gk !== key(p.end)) bad.push(name + ": resume [" + gk + "] windows " + g.purposes.join(",") + " vs plain [" + key(p.end) + "] windows " + p.purposes.join(","));
+    if (name === "navigator") {
+      expect([key(g.end), key(p.end)], "navigator resume/plain, unnormalized")
+        .toEqual([NAVIGATOR_RESUME_POOR, NAVIGATOR_PLAIN_POOR]);
+      continue;
+    }
+    if (key(g.end) !== key(p.end)) {
+      bad.push(name + ": resume [" + key(g.end) + "] windows " + g.purposes.join(",") +
+        " vs plain [" + key(p.end) + "] windows " + p.purposes.join(","));
+    }
   }
   expect(bad, "resume/plain divergences:\n" + bad.join("\n")).toEqual([]);
 });
