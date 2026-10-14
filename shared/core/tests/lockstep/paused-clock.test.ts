@@ -2,9 +2,9 @@ import { expect, test } from "vitest";
 import {
   act,
   deadline,
+  frameIndex,
   genesisSeed,
   seatId,
-  type FrameIndex,
   type SeatId,
 } from "../../index.ts";
 import {
@@ -43,7 +43,7 @@ test("REPRO: a paused tab's first tick forks its chain instead of waiting", () =
   const ann = at(table, ANN);
 
   ann.report(act<CoinflipAction>({ t: "call", side: "heads" }));
-  expect(ann.frame).toBe<FrameIndex>(1);
+  expect(ann.frame).toBe(frameIndex(1));
 
   // The tab is backgrounded. Its JS stops, so neither the frame reports the
   // peers exchange nor their own ticks reach this session, and wall time runs
@@ -55,8 +55,8 @@ test("REPRO: a paused tab's first tick forks its chain instead of waiting", () =
   // it writes is not the one the table agreed at index 1. Every frame the table
   // broadcasts from here on is then rejected and this client is stranded on its
   // own fork, while the turn clock still reads as a race this client is in.
-  expect(ann.frame).toBe<FrameIndex>(1);
-  expect(ann.snapshot().head?.index).toBe<FrameIndex>(0);
+  expect(ann.frame).toBe(frameIndex(1));
+  expect(ann.snapshot().head?.index).toBe(frameIndex(0));
   expect(ann.remainingMs()).toBeNull();
 });
 
@@ -76,7 +76,7 @@ test("a running peer still carries a silent owed seat after the deadline", () =>
     clock.advance(16);
   }
 
-  expect(ann.frame).toBeGreaterThan<FrameIndex>(1);
+  expect(ann.frame).toBeGreaterThan(1);
 });
 
 /** Once a frame the table agreed on is folded, the session is live again. */
@@ -96,12 +96,12 @@ test("folding an agreed frame ends the pause", () => {
 
   clock.advance(4 * BUDGET);
   ann.tick();
-  expect(ann.frame).toBe<FrameIndex>(1);
+  expect(ann.frame).toBe(frameIndex(1));
 
   const agreed = [...liveTable.sealed.values()].find((frame) => frame.index === 1);
   if (agreed === undefined) throw new Error("the live peer never sealed frame 1");
   ann.receive({ kind: "frame", frame: agreed });
 
-  expect(ann.frame).toBe<FrameIndex>(2);
+  expect(ann.frame).toBe(frameIndex(2));
   expect(ann.paused).toBe(false);
 });

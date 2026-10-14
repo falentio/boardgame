@@ -1,7 +1,7 @@
 import { readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
-import { genesisSeed, makeRandom, makeRoster } from "../../../../index.ts";
+import { frameIndex, genesisSeed, makeRandom, makeRoster } from "../../../../index.ts";
 import {
   BASE_CAST,
   CHARACTER_CATALOG,
@@ -114,7 +114,7 @@ test("seatsOwed is non-empty on a fresh genesis for every seat count", () => {
   for (const seats of [SEATS3, SEATS4, SEATS5, SEATS6]) {
     const state = rawGenesis(seats);
     expect(citadels.isTerminal(state)).toBe(false);
-    expect(citadels.seatsOwed(state, 0).length).toBeGreaterThan(0);
+    expect(citadels.seatsOwed(state, frameIndex(0)).length).toBeGreaterThan(0);
   }
 });
 

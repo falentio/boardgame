@@ -19,7 +19,9 @@ import {
   totalCards,
   withGold,
   withHand,
+  type CitadelsAction,
 } from "../../driver.ts";
+import { frameIndex } from "../../../../../lockstep/index.ts";
 
 /**
  * Independent verifier counterexamples. Every test below failed against the head
@@ -282,7 +284,7 @@ test("an Ivory Tower beside a Haunted Quarter declared unique scores nothing", (
 test("step coerces a non-terminal state whose stack has no window", () => {
   const base = rawGenesis(SEATS3, BASE_CAST_IDS, "verifier-d13");
   const bare: CitadelsState = { ...base, phase: "turn", draft: null, steps: [{ kind: "call" }] };
-  expect(citadels.seatsOwed(bare, 0).length).toBeGreaterThan(0);
+  expect(citadels.seatsOwed(bare, frameIndex(0)).length).toBeGreaterThan(0);
   expect(() => citadels.step(bare, rawFrame(0, []), rawRandom())).not.toThrow();
 });
 
