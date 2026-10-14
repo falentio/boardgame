@@ -32,12 +32,14 @@ These do not block the D15 frontier; they are recorded so they are not lost.
 - **Character summaries vs rules.json.** Passes 10-15 each flagged the same gap: no
   data-driven test compares the 27 character `summary` strings to `rules.json`. fix5-data
   reconciled 14 by hand; nothing guards against a future drift.
-- **Close-once guard gap (verify-15 T5b).** `verification15.test.ts` has no probe that
-  reddens on a symmetric double close of the turn; `verification11` P3 and
-  `engine-coverage.test.ts` own it. verify-16 should consider adding one.
+- **Close-once guard gap (verify-15 T5b).** `rules/turn-order/purse-timing.test.ts` has no
+  probe that reddens on a symmetric double close of the turn;
+  `rules/turn-order/threat-markers.test.ts` P3 and `engine/engine-coverage.test.ts` own it.
+  verify-16 should consider adding one.
 - **Pre-fix `endTurnThen` form (verify-15 T10).** The pre-fix13c form is green on
-  verification11 P3 and verification14 P4 at the current head. Not a defect; recorded so
-  no future pass mistakes it for a live regression.
+  `rules/turn-order/threat-markers.test.ts` P3 and
+  `rules/turn-order/threatened-build-order.test.ts` P4 at the current head. Not a defect;
+  recorded so no future pass mistakes it for a live regression.
 - **Unverified surfaces.** The six preset casts; scoring under two claims; terminal and
   winner resolution under every stack shape; determinism and convergence at 2-7 seats.
   None has been re-derived since the D10-D15 seams landed.

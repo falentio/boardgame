@@ -17,7 +17,10 @@ all 760 rows, and the titles match before and after, per file and globally.
 `vitest run shared/core/tests/lockstep/citadels` runs the 760 tests; vitest transpiles
 each test without type-checking it. `tsc -p tsconfig.citadels.json` includes only
 `shared/core/lockstep/games/citadels/**/*.ts`, so it never reads a test file.
-`shared/tsconfig.json`, the only config that includes the test tree, is red at baseline.
+`shared/tsconfig.json`, the config the repo's `typecheck` script runs over the test tree, is
+red at baseline. The generated `.nuxt` configs list `shared/**` too, tests included, so it is
+not the only config that includes them; nothing in this repo runs those, and vitest
+transpiles each test without type-checking it.
 
 ## Groups
 
@@ -101,8 +104,10 @@ live text repointed.
 
 `git log --follow --name-status` on the new path carries the old name; this table is
 the same mapping in one place. The verification reports in this directory
-(`verification*.md`) keep their own names — they are the pass records, and each
-renamed file's header still cites the report its counterexamples came from.
+(`verification*.md`) keep their own names; they are the pass records. Six moved files
+name the report their counterexamples came from in their header, the six under
+`rules/cross-cutting/` (`grep -rl orchestrate/citadels/verification shared/core/tests/lockstep/citadels`
+prints exactly those six). The other moved files cite no report.
 
 ## Reproducing the move
 
