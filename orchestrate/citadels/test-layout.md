@@ -19,8 +19,10 @@ each test without type-checking it. `tsc -p tsconfig.citadels.json` includes onl
 `shared/core/lockstep/games/citadels/**/*.ts`, so it never reads a test file.
 `shared/tsconfig.json`, the config the repo's `typecheck` script runs over the test tree, is
 red at baseline. The generated `.nuxt` configs list `shared/**` too, tests included, so it is
-not the only config that includes them; nothing in this repo runs those, and vitest
-transpiles each test without type-checking it.
+not the only config that includes them, and no script type-checks those:
+`typecheck:server` reads `.nuxt/tsconfig.server.json`, which takes only
+`../shared/**/*.d.ts` from `shared/`, and `typecheck:client` reads `tsconfig.client.json`, which
+takes none of it.
 
 ## Groups
 
@@ -99,6 +101,22 @@ briefs, and `HANDOFF.md` -- keep them. They describe what was asked and found at
 and this directory's convention is that history stays as written. This file and the decision
 row for the regroup are the translation layer; `overview.md`'s open items are the only
 live text repointed.
+
+## Left as designed
+
+The 2026-10-14 verification swarm over this regrouped suite raised five rows that the
+coordinator left alone. A later pass should not re-open them as defects.
+
+- Character-topic tests under `rules/`: the six `rules/witch-resume/` files and the
+  per-character titles in `rules/income-scoring/declared-type-income.test.ts` are the
+  documented grouping (F05). Moving them rewrites pass-record grouping for no coverage
+  change.
+- District docblocks: 10 of the 30 district files carry no header docblock while the other
+  20 do (F08). Cosmetic; the file name and its tests state the contract.
+- Duplicated coverage across pass files: the six `rules/cross-cutting/` files are one file
+  per pass by design (F25, F39, F40), so a subject pinned in its own card file and again in
+  the pass record that found it stays pinned twice. No deletion, and neither copy is
+  wrong.
 
 ## Finding a test after a rename
 
