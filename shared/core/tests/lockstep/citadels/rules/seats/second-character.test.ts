@@ -18,8 +18,8 @@ import {
   type CharacterId,
   type CitadelsAction,
   type CitadelsState,
-  type SeatId,
 } from "../../driver.ts";
+import type { SeatId } from "../../../../../index.ts";
 
 /**
  * Seventh-pass verifier artifacts. The counterexamples below failed against the
