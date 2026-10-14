@@ -2,9 +2,9 @@
 # Verify one citadels unit: its own test file(s) plus a scoped typecheck.
 #
 # Why this script exists rather than a bare \`vp check\`:
-#   - The repo-wide \`vp check\` and \`shared/tsconfig.json\` are red at baseline
-#     (unrelated formatting plus 5 pre-existing failures), so they cannot gate.
-#   - \`tsc -p tsconfig.citadels.json\` type-checks the whole module, and
+#   - The repo-wide \`vp check\` is red at baseline (unrelated formatting), so it
+#     cannot gate.
+#   - \`tsc -p shared/tsconfig.json\` type-checks the whole repo, and
 #     characters/index.ts imports every character file, so one worker's in-flight
 #     type error would fail every sibling's verify.
 # The script fails only on errors in the source files this unit owns, and reports
@@ -61,7 +61,7 @@ fi
 
 echo "== tsc (whole module; only your own paths gate) =="
 TSC_LOG="$(mktemp)"
-npx tsc -p tsconfig.citadels.json > "$TSC_LOG" 2>&1
+npx tsc -p shared/tsconfig.json > "$TSC_LOG" 2>&1
 TSC_RC=$?
 if [ "$TSC_RC" -eq 0 ]; then
   echo "tsc OK"
