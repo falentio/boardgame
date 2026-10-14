@@ -849,17 +849,21 @@ const DEN_UNIQUES: readonly DistrictId[] = [
   "school-of-magic",
 ];
 
-interface DistrictGuard {
+/** The fold inputs `districtFold` reads. A table row adds `check` on top of these. */
+interface DistrictFoldInput {
   readonly id: DistrictId;
-  /** Test-row label; defaults to `id`, and differs when one district has two guards. */
-  readonly label?: string;
   readonly board?: Board;
   readonly uniques?: readonly DistrictId[];
   readonly answer?: (seat: SeatId, state: CitadelsState) => CitadelsAction | null;
+}
+
+interface DistrictGuard extends DistrictFoldInput {
+  /** Test-row label; defaults to `id`, and differs when one district has two guards. */
+  readonly label?: string;
   readonly check: (fold: Fold, calls: number) => void;
 }
 
-const districtFold = (guard: DistrictGuard): { readonly fold: Fold; readonly calls: number } => {
+const districtFold = (guard: DistrictFoldInput): { readonly fold: Fold; readonly calls: number } => {
   const spy = spyEffects();
   try {
     const fold = foldTurn({
@@ -1126,7 +1130,7 @@ describe("engine coverage: every hook-bearing district is reached by the engine"
 
 describe("engine coverage: an end-of-turn district fires once per turn", () => {
   test("the Laboratory discards one card for two gold, once", () => {
-    const { fold, calls } = districtFold<DistrictGuard>({
+    const { fold, calls } = districtFold({
       id: "laboratory",
       board: { cities: { ann: ["laboratory"] }, hands: { ann: ["tavern", "market", "docks"] } },
       answer: takeGold,
@@ -1137,7 +1141,7 @@ describe("engine coverage: an end-of-turn district fires once per turn", () => {
   });
 
   test("the Smithy pays two gold for three cards, once", () => {
-    const { fold, calls } = districtFold<DistrictGuard>({
+    const { fold, calls } = districtFold({
       id: "smithy",
       board: {
         cities: { ann: ["smithy"] },
@@ -1151,7 +1155,7 @@ describe("engine coverage: an end-of-turn district fires once per turn", () => {
   });
 
   test("the Park draws two cards for an empty hand, once", () => {
-    const { fold, calls } = districtFold<DistrictGuard>({
+    const { fold, calls } = districtFold({
       id: "park",
       board: { cities: { ann: ["park"] }, hands: { ann: [] } },
       answer: takeGold,
@@ -1162,7 +1166,7 @@ describe("engine coverage: an end-of-turn district fires once per turn", () => {
   });
 
   test("the Poor House pays one gold to an empty purse, once", () => {
-    const { fold, calls } = districtFold<DistrictGuard>({
+    const { fold, calls } = districtFold({
       id: "poor-house",
       // An empty purse: the gather (0 + 2) funds a 2-gold market that empties it,
       // and the Poor House refills it to 1. Without the refill the turn ends at 0.
@@ -1615,7 +1619,7 @@ describe("engine coverage: the Blackmailer's two threat markers", () => {
         ),
       };
       const purposes: (string | null)[] = [];
-      const cities: readonly DistrictId[][] = [];
+      const cities: (readonly DistrictId[])[] = [];
       const tucks: number[] = [];
       for (let i = 0; i < 60 && cur.phase === "turn"; i += 1) {
         purposes.push(openPurpose(cur));
