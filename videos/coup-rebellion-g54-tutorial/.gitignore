@@ -1,0 +1,18 @@
+# HyperFrames project — keep authored source, drop regenerable artifacts
+
+# Local dependencies
+node_modules/
+
+# Render output (regenerable from index.html)
+renders/
+
+# Studio / CLI caches
+.thumbnails/
+.waveform-cache/
+.hyperframes/preview/
+.hyperframes/backup/
+.hyperframes/hf-ids-stamped.json
+.hyperframes/history-id
+
+# Local media scratch
+.media/index.md

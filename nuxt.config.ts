@@ -1,7 +1,14 @@
 import tailwindcss from '@tailwindcss/vite'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
+const videoJsElements = new Set(['video-player', 'video-skin'])
+
 export default defineNuxtConfig({
+  vue: {
+    compilerOptions: {
+      isCustomElement: (tag: string) => videoJsElements.has(tag),
+    },
+  },
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   css: ['~/assets/css/app.css'],

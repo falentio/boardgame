@@ -1,0 +1,474 @@
+<template>
+  <style>
+    /* ── fonts (local, shipped in assets/fonts) ─────────────────────────── */
+    @font-face { font-family: "Barlow"; font-style: normal; font-weight: 900; font-display: block; src: url("../../assets/fonts/Barlow-900.woff2") format("woff2"); }
+    @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 500; font-display: block; src: url("../../assets/fonts/IBMPlexMono-500.woff2") format("woff2"); }
+    @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 600; font-display: block; src: url("../../assets/fonts/IBMPlexMono-600.woff2") format("woff2"); }
+
+    /* ── root — styled via #root, never a class on the composition element ─ */
+    #root {
+      position: relative;
+      width: 1080px;
+      height: 1920px;
+      overflow: hidden;
+      container-type: size;             /* 1cqw = 10.8px */
+      font-family: "Barlow", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: geometricPrecision;
+    }
+    #root *,
+    #root *::before,
+    #root *::after { box-sizing: border-box; }
+
+    /* ── full-bleed ground (on its own clip layer, never on #root) ──────── */
+    .f11-bg {
+      position: absolute;
+      inset: 0;
+      background: #273136;                 /* ink-black */
+    }
+    .f11-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        repeating-linear-gradient(0deg, rgba(139, 151, 152, 0.06) 0 1px, transparent 1px 120px),
+        repeating-linear-gradient(90deg, rgba(139, 151, 152, 0.06) 0 1px, transparent 1px 120px);
+      will-change: opacity;
+    }
+    /* ambient ghost of the card back's emblem — the returned object, enlarged.
+       Sits on the ground layer, dimmed, framing the pair. */
+    .f11-emblem-wrap {
+      position: absolute;
+      left: 190px;
+      top: 456px;
+      width: 700px;
+      height: 700px;
+      transform-origin: 50% 50%;
+      will-change: transform, opacity;
+    }
+    .f11-emblem {
+      position: absolute;
+      inset: 0;
+      border: 1px solid #414b50;
+      transform: rotate(45deg);
+      opacity: 0.55;
+    }
+    .f11-emblem-inner {
+      position: absolute;
+      inset: 96px;
+      border: 1px solid #414b50;
+      transform: rotate(45deg);
+      opacity: 0.4;
+    }
+
+    /* ── content layer ─────────────────────────────────────────────────── */
+    .f11-scene {
+      position: absolute;
+      inset: 0;
+      perspective: 1400px;                 /* split-tilt-cards: REQUIRED */
+      perspective-origin: 50% 42%;         /* the pair's own centre (y 806) */
+    }
+
+    /* chrome — fire-orange rule stub + mono kicker + catalogue numeral */
+    .f11-rule-stub {
+      position: absolute;
+      left: 59px;
+      top: 112px;
+      width: 36px;
+      height: 2px;
+      background: #ffed72;
+      transform-origin: left center;
+      will-change: transform;
+    }
+    .f11-kicker,
+    .f11-num {
+      position: absolute;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: 1.3cqw;
+      line-height: 1;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      will-change: transform;
+    }
+    .f11-kicker { left: 59px; top: 134px; font-weight: 600; color: #ffed72; }
+    .f11-num { right: 59px; top: 112px; font-weight: 500; color: #B4BABB; }
+
+    /* ── the hero object: Frame 1's exact card pair, returned ───────────── */
+    .f11-pair {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 590px;                          /* pair centre y = 806 (0.42H) */
+      height: 432px;
+      transform-style: preserve-3d;        /* REQUIRED */
+      transform-origin: 50% 50%;
+      will-change: transform;
+    }
+    .f11-card {
+      position: absolute;
+      top: 0;
+      width: 300px;
+      height: 432px;
+      transform-style: preserve-3d;        /* REQUIRED */
+      will-change: transform;
+    }
+    #f11-cardA { left: 216px; }
+    #f11-cardB { left: 564px; }
+
+    /* each card carries two faces — back at 0deg, revealed face at 180deg */
+    .f11-face {
+      position: absolute;
+      inset: 0;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+    }
+    .f11-back {
+      background: #212b30;
+      border: 1px solid #414b50;
+    }
+    .f11-front {
+      transform: rotateY(180deg);          /* static — GSAP never tweens it */
+      background: #ff6d7e;                 /* mk-red — Force: one life spent */
+      border: 1px solid #273136;
+    }
+
+    /* the back's invented typography — identical to Frame 1's card back */
+    .f11-card-frame {
+      position: absolute;
+      inset: 14px;
+      border: 1px solid #414b50;
+      opacity: 0.55;
+    }
+    .f11-card-lattice {
+      position: absolute;
+      inset: 14px;
+      opacity: 0.5;
+      background-image:
+        repeating-linear-gradient(45deg, rgba(65, 75, 80, 0.55) 0 1px, transparent 1px 26px),
+        repeating-linear-gradient(-45deg, rgba(65, 75, 80, 0.55) 0 1px, transparent 1px 26px);
+    }
+    .f11-card-emblem {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 78px;
+      height: 78px;
+      margin: -39px 0 0 -39px;
+      border: 1px solid #8b9798;
+      transform: rotate(45deg);
+    }
+    .f11-card-emblem::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 12px;
+      height: 12px;
+      margin: -6px 0 0 -6px;
+      background: #8b9798;
+    }
+
+    /* the revealed face — the SAME emblem, now struck through: a spent life.
+       Ink chrome only; the frame's one display moment is the lockup below. */
+    .f11-face-inner {
+      position: absolute;
+      inset: 0;
+      will-change: transform, opacity, filter;
+    }
+    .f11-face-frame {
+      position: absolute;
+      inset: 14px;
+      border: 1px solid #273136;
+      opacity: 0.5;
+    }
+    .f11-face-tag {
+      position: absolute;
+      left: 28px;
+      top: 28px;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-weight: 600;
+      font-size: 1.3cqw;
+      line-height: 1;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(39, 49, 54, 0.75);
+    }
+    .f11-face-emblem {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 78px;
+      height: 78px;
+      margin: -39px 0 0 -39px;
+      border: 1px solid rgba(39, 49, 54, 0.55);
+      transform: rotate(45deg);
+    }
+    /* the cancellation strike — bbox stays inside the card, so no overflow */
+    .f11-face-strike {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 2px;
+      margin-top: -1px;
+      background: rgba(39, 49, 54, 0.6);
+      transform: rotate(-22deg);
+      transform-origin: center;
+    }
+
+    /* hairline seam between the returned object and the new lockup */
+    .f11-divider {
+      position: absolute;
+      left: 59px;
+      top: 1140px;
+      width: 962px;
+      height: 1px;
+      background: #414b50;
+      transform-origin: left center;
+      will-change: transform;
+    }
+
+    /* ── the title lockup — the frame's ONE display moment ──────────────── */
+    .f11-title-wrap {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 1176px;
+      text-align: center;
+    }
+    .f11-title-line {
+      font-family: "Barlow", system-ui, sans-serif;
+      font-weight: 900;
+      font-size: 13.5cqw;
+      line-height: 0.88;
+      letter-spacing: -0.04em;
+      text-transform: lowercase;
+      will-change: transform, opacity, filter;
+    }
+    #f11-title-line1 {
+      color: #f2fffc;
+      /* the slam grows UPWARD from the baseline, so the bottom edge (and the
+         caption keep-out) stays fixed however large the start scale is */
+      transform-origin: 50% 100%;
+    }
+    #f11-title-line2 {
+      color: #ffed72;                      /* the one inked clause */
+    }
+
+    /* finale dressing — an accent underline sweep */
+    .f11-underline {
+      position: absolute;
+      left: 50%;
+      top: 1490px;
+      width: 260px;
+      height: 3px;
+      margin-left: -130px;
+      background: #ffed72;
+      transform-origin: center;
+      will-change: transform;
+    }
+  </style>
+
+  <div data-hf-id="hf-ao60" id="root" data-composition-id="11-know-when-not-to" data-start="0" data-duration="4.053" data-width="1080" data-height="1920">
+    <div data-hf-id="hf-967s" class="clip f11-bg" data-start="0" data-duration="4.053" data-track-index="0">
+      <div data-hf-id="hf-ikv6" class="f11-grid" id="f11-grid"></div>
+      <div data-hf-id="hf-i1hu" class="f11-emblem-wrap" id="f11-emblem-wrap">
+        <div data-hf-id="hf-jhiz" class="f11-emblem"></div>
+        <div data-hf-id="hf-xcoc" class="f11-emblem-inner"></div>
+      </div>
+    </div>
+
+    <div data-hf-id="hf-7e1q" class="clip f11-scene" data-start="0" data-duration="4.053" data-track-index="1">
+      <div data-hf-id="hf-vqh6" class="f11-rule-stub" id="f11-rule-stub"></div>
+      <div data-hf-id="hf-pkvy" class="f11-kicker" id="f11-kicker">g54</div>
+      <div data-hf-id="hf-4lt3" class="f11-num" id="f11-num">no. 11</div>
+
+      <div data-hf-id="hf-0tfy" class="f11-pair" id="f11-pair">
+        <div data-hf-id="hf-579b" class="f11-card" id="f11-cardA">
+          <div data-hf-id="hf-x986" class="f11-face f11-back">
+            <div data-hf-id="hf-hqkz" class="f11-card-frame"></div>
+            <div data-hf-id="hf-axsa" class="f11-card-lattice"></div>
+            <div data-hf-id="hf-n3b2" class="f11-card-emblem"></div>
+          </div>
+          <div data-hf-id="hf-gh40" class="f11-face f11-front">
+            <div data-hf-id="hf-7lhm" class="f11-face-inner" id="f11-face-inner">
+              <div data-hf-id="hf-w03q" class="f11-face-frame"></div>
+              <div data-hf-id="hf-wkwb" class="f11-face-tag">life spent</div>
+              <div data-hf-id="hf-9kjx" class="f11-face-emblem"></div>
+              <div data-hf-id="hf-ygw1" class="f11-face-strike"></div>
+            </div>
+          </div>
+        </div>
+
+        <div data-hf-id="hf-ubro" class="f11-card" id="f11-cardB">
+          <div data-hf-id="hf-zbru" class="f11-face f11-back">
+            <div data-hf-id="hf-ztwz" class="f11-card-frame"></div>
+            <div data-hf-id="hf-8qq6" class="f11-card-lattice"></div>
+            <div data-hf-id="hf-k0gy" class="f11-card-emblem"></div>
+          </div>
+          <div data-hf-id="hf-mq3c" class="f11-face f11-front">
+            <div data-hf-id="hf-gwt5" class="f11-face-inner">
+              <div data-hf-id="hf-vq8a" class="f11-face-frame"></div>
+              <div data-hf-id="hf-1vsb" class="f11-face-tag">life spent</div>
+              <div data-hf-id="hf-10u9" class="f11-face-emblem"></div>
+              <div data-hf-id="hf-3llh" class="f11-face-strike"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div data-hf-id="hf-zgum" class="f11-divider" id="f11-divider"></div>
+
+      <div data-hf-id="hf-pjgi" class="f11-title-wrap" id="f11-title-wrap">
+        <div data-hf-id="hf-ot4o" class="f11-title-line" id="f11-title-line1">know when</div>
+        <div data-hf-id="hf-e6ae" class="f11-title-line" id="f11-title-line2">not to</div>
+      </div>
+
+      <div data-hf-id="hf-t2fw" class="f11-underline" id="f11-underline"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+  <script>
+    (function () {
+      var DURATION = 4.053;
+
+      /* ONE tempo grid — every onset below reads from it (kinetic-beat-slam).
+         The onsets are the real VO cues: "Know when" ~1.5, "and when" ~3.2. */
+      var PULSE = 0.06;
+      var BEAT_PAIR_A = PULSE * 2;     /* 0.12 — the pair returns */
+      var BEAT_PAIR_B = PULSE * 7;     /* 0.42 */
+      var BEAT_FLIP   = PULSE * 25;    /* 1.50 — "Know when to tell the truth" */
+      var BEAT_FACE   = PULSE * 34;    /* 2.04 — the revealed face lands */
+      var BEAT_DRIFT  = PULSE * 45;    /* 2.70 — the one slow camera drift */
+      var BEAT_SEAM   = PULSE * 47;    /* 2.82 — the hairline seam draws */
+      var BEAT_TITLE1 = PULSE * 53;    /* 3.18 — "and when" — slam hit 1 */
+      var BEAT_TITLE2 = PULSE * 58;    /* 3.48 — "not to" — slam hit 2 */
+      var BEAT_UNDER  = PULSE * 62;    /* 3.72 — the finale underline sweep */
+
+      var TILT = 12;                   /* split-tilt-cards: opposing rotateY */
+
+      window.__timelines = window.__timelines || {};
+      var tl = gsap.timeline({ paused: true });
+
+      /* collapsed start states pinned at t=0 — seek-safe, so a delayed
+         entrance never flashes its CSS-default (visible) state beforehand */
+      tl.set(["#f11-cardA", "#f11-cardB"], { opacity: 0 }, 0);
+      tl.set(["#f11-rule-stub", "#f11-divider", "#f11-underline"], { scaleX: 0 }, 0);
+      tl.set(["#f11-kicker", "#f11-num"], { opacity: 0, y: -10 }, 0);
+      tl.set("#f11-grid", { opacity: 0 }, 0);
+      tl.set("#f11-emblem-wrap", { opacity: 0, scale: 0.9 }, 0);
+      tl.set("#f11-face-inner", { opacity: 0, scale: 1.12, filter: "blur(8px)" }, 0);
+      tl.set("#f11-title-line1", { opacity: 0, scale: 1.5, filter: "blur(16px)" }, 0);
+      tl.set("#f11-title-line2", { opacity: 0, y: 70, rotation: 6 }, 0);
+
+      /* ── Scene 1 (0.0–1.4) : ink field, chrome, and Frame 1's exact pair
+         returning to its exact centred slot — the same slide-up settle,
+         the same place, mirrored 1:1 onto the tall canvas. ───────────── */
+      tl.fromTo("#f11-grid", { opacity: 0 }, { opacity: 1, duration: 0.9, ease: "power2.out" }, 0);
+      tl.fromTo(
+        "#f11-emblem-wrap",
+        { opacity: 0, scale: 0.9 },
+        { opacity: 1, scale: 1, duration: 1.1, ease: "power3.out" },
+        PULSE
+      );
+      tl.fromTo(
+        "#f11-rule-stub",
+        { scaleX: 0, opacity: 0 },
+        { scaleX: 1, opacity: 1, duration: 0.5, ease: "power3.out" },
+        PULSE * 1.5
+      );
+      tl.fromTo(
+        "#f11-kicker",
+        { opacity: 0, y: -10 },
+        { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" },
+        PULSE * 3
+      );
+      tl.fromTo(
+        "#f11-num",
+        { opacity: 0, y: -10 },
+        { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" },
+        PULSE * 5
+      );
+
+      /* the pair returns — spring-pop-entrance: the same slide-up settle
+         Frame 1 used (scale 0.62 -> 1, power3.out, no overshoot) */
+      tl.fromTo(
+        "#f11-cardA",
+        { y: 132, scale: 0.62, opacity: 0 },
+        { y: 0, scale: 1, opacity: 1, duration: 0.75, ease: "power3.out" },
+        BEAT_PAIR_A
+      );
+      tl.fromTo(
+        "#f11-cardB",
+        { y: 132, scale: 0.62, opacity: 0 },
+        { y: 0, scale: 1, opacity: 1, duration: 0.75, ease: "power3.out" },
+        BEAT_PAIR_B
+      );
+
+      /* ── Scene 2 (1.4–3.2) : on "Know when to tell the truth" the left
+         card flips face-up in mk-red — one life spent — while the pair
+         pivots into the opposing-tilt book-open (split-tilt-cards). ──── */
+      tl.fromTo(
+        "#f11-cardA",
+        { rotationY: 0 },
+        { rotationY: 180 + TILT, duration: 0.9, ease: "power3.inOut" },
+        BEAT_FLIP
+      );
+      tl.fromTo(
+        "#f11-cardB",
+        { rotationY: 0 },
+        { rotationY: -TILT, duration: 0.9, ease: "power3.out" },
+        BEAT_FLIP
+      );
+
+      /* the revealed face lands as the card finishes turning */
+      tl.fromTo(
+        "#f11-face-inner",
+        { opacity: 0, scale: 1.12, filter: "blur(8px)" },
+        { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.5, ease: "power3.out" },
+        BEAT_FACE
+      );
+
+      /* the camera modifier — ONE barely-perceptible slow push under the
+         hold (blueprint: multi-phase-camera micro-drift, static default) */
+      tl.fromTo(
+        "#f11-pair",
+        { scale: 1 },
+        { scale: 1.035, duration: DURATION - BEAT_DRIFT, ease: "none" },
+        BEAT_DRIFT
+      );
+
+      /* the hairline seam draws just before the lockup arrives */
+      tl.fromTo(
+        "#f11-divider",
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.34, ease: "power2.inOut" },
+        BEAT_SEAM
+      );
+
+      /* ── Scene 3 (3.2–end) : on "and when not to" the title locks up
+         BENEATH the pair — kinetic-beat-slam, two phrases on the one grid,
+         each with its own entrance, then the frame holds still. ──────── */
+      tl.fromTo(
+        "#f11-title-line1",
+        { opacity: 0, scale: 1.5, filter: "blur(16px)" },
+        { opacity: 1, scale: 1, filter: "blur(0px)", duration: 0.55, ease: "power4.out" },
+        BEAT_TITLE1
+      );
+      tl.fromTo(
+        "#f11-title-line2",
+        { opacity: 0, y: 70, rotation: 6 },
+        { opacity: 1, y: 0, rotation: 0, duration: 0.5, ease: "circ.out" },
+        BEAT_TITLE2
+      );
+      tl.fromTo(
+        "#f11-underline",
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.28, ease: "power2.inOut" },
+        BEAT_UNDER
+      );
+
+      window.__timelines["11-know-when-not-to"] = tl;
+    })();
+  </script>
+</template>
