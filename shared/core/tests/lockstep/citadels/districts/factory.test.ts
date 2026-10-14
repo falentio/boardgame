@@ -13,6 +13,10 @@ import {
   withGold,
   withHand,
 } from "../driver.ts";
+// After ../driver.ts: it loads districts/effects.ts, the module that captures each
+// district's triggers. factory.ts is inside that cycle (it imports helpers.ts at
+// runtime), so evaluating it first would leave UNIQUE_TRIGGERS.factory unset.
+import { factoryTriggers } from "../../../../lockstep/games/citadels/districts/factory.ts";
 
 const withCity = (state: CitadelsState, seat: SeatId, ids: readonly string[]): CitadelsState => ({
   ...state,
@@ -104,6 +108,10 @@ test("the discount is not a no-op: a Factory in the city saves exactly one gold"
   const withoutFactory = turnState([], ["keep"], 20);
   const saved = rawGold(build(withFactory), ANN) - rawGold(build(withoutFactory), ANN);
   expect(saved).toBe(1);
+});
+
+test("the Factory declares the onBuild trigger", () => {
+  expect(factoryTriggers).toEqual(["onBuild"]);
 });
 
 test("the Factory scores no extra points on a crafted city", () => {
