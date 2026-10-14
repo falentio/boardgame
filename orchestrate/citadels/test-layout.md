@@ -136,6 +136,9 @@ repointing). Each is idempotent: a move whose target already exists is skipped.
 
 To rerun them, start a worktree at `32140e6` (the commit before the move), copy
 `orchestrate/citadels/regroup/` from the head into it, and run both scripts. Then
-the replayed tree equals head's `shared/` (`git diff <head-sha> -- shared/` is empty),
-`git diff 756876f -- shared/` shows exactly the three rename pairs the fix round added
-to the map, and the citadels suite runs 93 files / 760 tests green.
+`git diff 756876f -- shared/` is rename-only: exactly the three rename pairs the
+2026-10-14 fix round later added to the map, with no line changed, and the citadels
+suite in the replayed tree runs 93 files / 760 tests green. The replay reproduces the
+move as it landed at `756876f`, not the head's `shared/`: at `929f5e2` the same
+comparison reports 33 files changed, 294 insertions and 315 deletions, the fix round's
+own test edits.
