@@ -1,5 +1,5 @@
 {
-  "note": "citadels test-suite regroup: source path -> target path, relative to shared/core/tests/lockstep/citadels/. Behavior-preserving: files move and rename only; no test body, title, or assertion changed. moves is pass 1 (regroup.py). second_pass is pass 2 (regroup2.py); apply both and every source below has a final path that exists at 756876f.",
+  "note": "citadels test-suite regroup: source path -> target path, relative to shared/core/tests/lockstep/citadels/. Behavior-preserving: files move and rename only; no test body, title, or assertion changed. moves is pass 1 (regroup.py). second_pass is pass 2 (regroup2.py); apply both and every source below has a final path that exists at head. Three of those final paths were renamed again by the 2026-10-14 fix round so the name states the subject: engine/cross-turn-hooks.test.ts (was engine/district-hooks.test.ts), engine/cross-turn-fields.test.ts (was engine/seams.test.ts), rules/cards/naming-window-fold.test.ts (was rules/cards/drain-window.test.ts).",
   "root": [
     "catalog.test.ts",
     "driver.ts"
@@ -11,7 +11,7 @@
     ],
     [
       "seams.test.ts",
-      "engine/seams.test.ts"
+      "engine/cross-turn-fields.test.ts"
     ],
     [
       "integration.test.ts",
@@ -27,7 +27,7 @@
     ],
     [
       "hooks.test.ts",
-      "engine/district-hooks.test.ts"
+      "engine/cross-turn-hooks.test.ts"
     ],
     [
       "district-triggers.test.ts",
@@ -131,7 +131,7 @@
     ],
     [
       "fix2-drain.test.ts",
-      "rules/cards/drain-window.test.ts"
+      "rules/cards/naming-window-fold.test.ts"
     ],
     [
       "verification9.test.ts",

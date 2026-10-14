@@ -65,7 +65,7 @@ else:
 
 # --- repoint prose at the new filenames ---
 EDITS = [
-    ("rules/cards/drain-window.test.ts", "counterexamples in verification2.test.ts pin",
+    ("rules/cards/naming-window-fold.test.ts", "counterexamples in verification2.test.ts pin",
      "counterexamples in naming-windows.test.ts pin"),
     ("rules/witch-resume/no-regather.test.ts", "(verification4 D4-1b pins",
      "(threat-and-gather.test.ts D4-1b pins"),

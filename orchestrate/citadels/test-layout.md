@@ -30,7 +30,7 @@ each test without type-checking it. `tsc -p tsconfig.citadels.json` includes onl
 | `rules/turn-order/` | The plain/threatened turn ordering: refusal, markers, stack reshaper, threat-before-ability, build order, purse timing. |
 | `rules/witch-resume/` | The Witch's resumed turn: no re-gather, resume identity, turn shape, ability order, build clauses, resume-vs-plain equivalence. |
 | `rules/income-scoring/` | Declared-type income, Warlord military income, and end-game scoring clauses. |
-| `rules/cards/` | Single-card mechanics: Thieves' Den payment split, naming-window drain, Museum interactions. |
+| `rules/cards/` | Single-card mechanics: Thieves' Den payment split, naming-window fold, Museum interactions. |
 | `rules/seats/` | Seat-count and second-character behaviour. |
 | `rules/cross-cutting/` | The six early broad verification passes, each spanning several families: one file per pass, named for its dominant subject. |
 | `catalog.test.ts` | The whole-card catalog data integrity check. |
@@ -43,11 +43,11 @@ Old name -> new name, relative to `shared/core/tests/lockstep/citadels/`.
 | Old | New |
 | --- | --- |
 | `scaffold.test.ts` | `engine/scaffold.test.ts` |
-| `seams.test.ts` | `engine/seams.test.ts` |
+| `seams.test.ts` | `engine/cross-turn-fields.test.ts` |
 | `integration.test.ts` | `engine/integration.test.ts` |
 | `codec-redaction.test.ts` | `engine/codec-redaction.test.ts` |
 | `engine-coverage.test.ts` | `engine/engine-coverage.test.ts` |
-| `hooks.test.ts` | `engine/district-hooks.test.ts` |
+| `hooks.test.ts` | `engine/cross-turn-hooks.test.ts` |
 | `district-triggers.test.ts` | `engine/district-triggers.test.ts` |
 | `district-seams.test.ts` | `engine/district-seams.test.ts` |
 | `district-windows.test.ts` | `engine/district-windows.test.ts` |
@@ -73,7 +73,7 @@ Old name -> new name, relative to `shared/core/tests/lockstep/citadels/`.
 | `fix-warlord.test.ts` | `rules/income-scoring/warlord-income.test.ts` |
 | `fix-scoring.test.ts` | `rules/income-scoring/scoring-clauses.test.ts` |
 | `fix-den.test.ts` | `rules/cards/thieves-den-payment.test.ts` |
-| `fix2-drain.test.ts` | `rules/cards/drain-window.test.ts` |
+| `fix2-drain.test.ts` | `rules/cards/naming-window-fold.test.ts` |
 | `verification9.test.ts` | `rules/cards/museum-interactions.test.ts` |
 | `verification7.test.ts` | `rules/seats/second-character.test.ts` |
 | `verification8.test.ts` | `rules/seats/seats-and-theater.test.ts` |
@@ -83,7 +83,11 @@ Old name -> new name, relative to `shared/core/tests/lockstep/citadels/`.
 
 `regroup/rename-map.json` carries the same mapping for a script to read: its `moves`
 list is pass 1, and its `second_pass` object is pass 2, the six cross-cutting moves
-and the theatre merge.
+and the theatre merge. Three destinations were renamed a second time by the 2026-10-14
+fix round so the name states the file's subject: `engine/cross-turn-hooks.test.ts`
+(was `engine/district-hooks.test.ts`), `engine/cross-turn-fields.test.ts`
+(was `engine/seams.test.ts`), `rules/cards/naming-window-fold.test.ts`
+(was `rules/cards/drain-window.test.ts`).
 
 ## What was deliberately not rewritten
 
@@ -109,5 +113,6 @@ repointing). Each is idempotent: a move whose target already exists is skipped.
 
 To rerun them, start a worktree at `32140e6` (the commit before the move), copy
 `orchestrate/citadels/regroup/` from the head into it, and run both scripts. Then
-`git diff 756876f -- shared/` is empty and the citadels suite runs 93 files / 760
-tests green.
+the replayed tree equals head's `shared/` (`git diff <head-sha> -- shared/` is empty),
+`git diff 756876f -- shared/` shows exactly the three rename pairs the fix round added
+to the map, and the citadels suite runs 93 files / 760 tests green.
