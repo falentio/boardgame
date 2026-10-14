@@ -109,6 +109,8 @@ test("the ability is not a no-op: it draws cards and moves gold from a donor", (
 
 test("coverShortfall never touches a self-donor", () => {
   const state = withCity(cardinalState(), ANN, ["temple"]);
-  const next = coverShortfall(state, ANN, ANN, 3);
+  const gifted = structuredClone(state);
+  const next = coverShortfall(gifted, ANN, ANN, 3);
   expect(next).toEqual(state);
+  expect(gifted).toEqual(state);
 });

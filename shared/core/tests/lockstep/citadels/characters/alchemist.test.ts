@@ -69,5 +69,6 @@ test("the ability is not a no-op: it raises the Alchemist's gold", () => {
 
 test("refunding no gold leaves the state untouched", () => {
   const state = withGold(alchemistState(), ANN, 3);
-  expect(alchemistRefund(state, ANN, 0)).toBe(state);
+  const refunded = alchemistRefund(structuredClone(state), ANN, 0);
+  expect(refunded).toEqual(state);
 });
