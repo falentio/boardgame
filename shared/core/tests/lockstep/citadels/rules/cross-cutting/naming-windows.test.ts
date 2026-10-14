@@ -14,6 +14,7 @@ import {
   rawHand,
   type CitadelsAction,
   type CitadelsState,
+  type SeatId,
 } from "../../driver.ts";
 
 /**
@@ -93,7 +94,7 @@ const callAndDrain = (
 
 test("the naming-fold game re-run: names land and the game reaches terminal", () => {
   let state = rawGenesis(SEATS3, BASE_CAST_IDS, "v2-naming-fold");
-  const namingPolicy = (seat: string, s: CitadelsState): CitadelsAction | null => {
+  const namingPolicy = (seat: SeatId, s: CitadelsState): CitadelsAction | null => {
     const view = citadels.project(s, seat);
     const w = view.window;
     if (w === null) return null;

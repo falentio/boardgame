@@ -8,6 +8,7 @@ import {
   rawGenesis,
   type CitadelsAction,
   type CitadelsState,
+  type SeatId,
 } from "../../driver.ts";
 
 /**
@@ -23,7 +24,7 @@ import {
  */
 test("a folded base-cast game opens a naming window and records a kill or rob", () => {
   let state = rawGenesis(SEATS3, BASE_CAST_IDS, "v2-naming-fold");
-  const namingPolicy = (seat: string, s: CitadelsState): CitadelsAction | null => {
+  const namingPolicy = (seat: SeatId, s: CitadelsState): CitadelsAction | null => {
     const view = citadels.project(s, seat);
     const w = view.window;
     if (w === null) return null;
