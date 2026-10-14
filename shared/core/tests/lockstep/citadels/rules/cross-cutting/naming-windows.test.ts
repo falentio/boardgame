@@ -91,7 +91,7 @@ const callAndDrain = (
 // because the Magician and Warlord open named-seat windows that do surface.
 // ---------------------------------------------------------------------------
 
-test("a folded game that names characters records at least one kill, rob, or bewitch", () => {
+test("the naming-fold game re-run: names land and the game reaches terminal", () => {
   let state = rawGenesis(SEATS3, BASE_CAST_IDS, "v2-naming-fold");
   const namingPolicy = (seat: string, s: CitadelsState): CitadelsAction | null => {
     const view = citadels.project(s, seat);
