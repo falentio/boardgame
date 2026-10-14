@@ -17,7 +17,7 @@ import {
   type G54State,
   type G54View,
 } from "../../core/lockstep/games/g54/index.ts";
-import type { GameChannel, GameChannelHandlers, SyncState } from "../session.ts";
+import type { GameChannel, GameChannelHandlers, GameSession, SyncState } from "../session.ts";
 import { openGameSession } from "../session.ts";
 import { decodeMessage, encodeMessage } from "../protocol.ts";
 import { fakeClock } from "../../core/tests/lockstep/harness.ts";
@@ -40,7 +40,7 @@ const TICK = 16;
 
 interface Client {
   readonly seat: SeatId;
-  readonly session: ReturnType<typeof openGameSession>;
+  readonly session: GameSession<G54Action, G54View>;
   /** Every envelope this client published, in order. */
   readonly published: unknown[];
   /** A frozen tab runs no JS: nothing is delivered to it and nothing ticks it. */
@@ -98,22 +98,19 @@ const makeRoom = (latencySteps = 0) => {
   };
 
   const join = (seat: SeatId): Client => {
-    const record: Client = {
-      seat,
-      published: [],
-      frozen: false,
-      inbox: [],
-      syncTimeline: [],
-      handlers: undefined as unknown as GameChannelHandlers,
-    } as Client;
+    let handlers: GameChannelHandlers | null = null;
+    let record: Client | null = null;
     const channel: GameChannel = {
-      subscribe: (handlers: GameChannelHandlers): (() => void) => {
-        record.handlers = handlers;
+      subscribe: (next: GameChannelHandlers): (() => void) => {
+        handlers = next;
         return () => {};
       },
-      publish: (envelope): void => publish(record, envelope),
-    } as GameChannel;
-    record.session = openGameSession<unknown, G54Action, G54Setup, G54View>({
+      publish: (envelope): void => {
+        if (record === null) throw new Error("publish before join completed");
+        publish(record, envelope);
+      },
+    };
+    const session = openGameSession<G54State, G54Action, G54Setup, G54View>({
       game: g54,
       channel,
       seat,
@@ -121,6 +118,8 @@ const makeRoom = (latencySteps = 0) => {
       clock: clock.clock,
       inputTimeoutMs: BUDGET,
     });
+    if (handlers === null) throw new Error("openGameSession did not subscribe");
+    record = { seat, session, published: [], frozen: false, inbox: [], syncTimeline: [], handlers };
     clients.set(seat, record);
     return record;
   };
