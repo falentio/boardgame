@@ -39,6 +39,12 @@ import {
   withHand,
 } from "../driver.ts";
 
+/**
+ * Engine-seam guards for the unique-district registries, plus the two character
+ * build-limit cases (the Trader's trade allowance and the Architect's three) that
+ * ride the same counter. The seam tests mutate a registry entry and read it back.
+ */
+
 const SNAPSHOT = {
   build: { ...UNIQUE_BUILD },
   triggers: { ...UNIQUE_TRIGGERS },
@@ -228,7 +234,7 @@ test("the colour count reads the declared type: a declared fifth colour drops th
   expect(fourColours?.colors).toBe(0);
 });
 
-test("the character's limit is enforced: the Trader is unlimited for trade, capped elsewhere", () => {
+test("the Trader's build limit: unlimited for trade districts, one otherwise", () => {
   const traderState: CitadelsState = {
     ...turnState(),
     claimed: [{ seat: ANN, character: "trader" }],
@@ -248,7 +254,7 @@ test("the character's limit is enforced: the Trader is unlimited for trade, capp
   expect(cityOf(two, ANN).map((d) => d.id)).toEqual(["manor"]);
 });
 
-test("the Architect's limit of three is enforced by the counter, not the window count", () => {
+test("the Architect's three-district limit comes from the build counter, not the window count", () => {
   const architectState: CitadelsState = {
     ...turnState(),
     claimed: [{ seat: ANN, character: "architect" }],
