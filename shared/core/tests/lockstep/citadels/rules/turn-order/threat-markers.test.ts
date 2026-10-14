@@ -45,6 +45,10 @@ import type { DistrictId } from "../../../../../lockstep/games/citadels/district
  *         so the seat tucks a card (an ability) before it resolves the threat.
  *         Measured: purposes run turn, keep, blackmailer-threat where the rule
  *         wants the threat first.
+ *
+ * Beside the marker regressions this file carries the post-threat build probes:
+ * P3 closes a refused turn once, and P2 retries the Cardinal's shortfall below a
+ * refused threat.
  */
 
 const DEFAULTS: readonly CharacterId[] = [
@@ -428,21 +432,12 @@ test("P1 a refused threat leaves every character where an unthreatened turn ends
       const purse = purseAtThreat(bribed, BOB);
       const half = Math.floor(purse / 2);
       const seatAfter = afterThreat(bribed, BOB);
-      //
-      // Below the threat the turn plays out: the ability windows and their offers
-      // land there, so the seat ends holding what the bribe left plus whatever the
-      // rest of the turn moved. Read off the frames, never assumed.
-      const seam = rawGold(bribed.end, BOB) - seatAfter;
       expect(threat, character + "/" + tag + " reached its threat window").toBeGreaterThanOrEqual(
         0,
       );
       expect(seatAfter, character + "/" + tag + " the bribe left the purse minus half").toBe(
         purse - half,
       );
-      expect(
-        rawGold(bribed.end, BOB),
-        character + "/" + tag + " bribing kept purse minus half plus the turn below the threat",
-      ).toBe(seatAfter + seam);
       expect(
         afterThreat(bribed, ANN) - purseAtThreat(bribed, ANN),
         character + "/" + tag + " the bribe crossed half to the Blackmailer",
@@ -461,7 +456,7 @@ test("P1 a refused threat leaves every character where an unthreatened turn ends
  * Smithy (2 gold for 3 cards, onEndTurn) makes the double-fire visible: a
  * doubled close charges 4 gold and draws 6.
  */
-test("P3 a refused threat fires the end-of-turn hook exactly once", () => {
+test("P3 a refused threat's Smithy fires its end-of-turn hook once, not twice", () => {
   const board: Board = {
     gold: { ann: 0, bob: 20, cara: 0 },
     hands: { ann: [], bob: [], cara: [] },
@@ -504,7 +499,7 @@ test("P3 a refused threat fires the end-of-turn hook exactly once", () => {
  * shortfall offer opens on the build window the threat was seated above, so the
  * retry must land the district exactly as the unthreatened path does.
  */
-test("P2 a threatened Cardinal still covers a shortfall and builds", () => {
+test("P2 the Cardinal's shortfall retry below a refused threat still builds", () => {
   const board: Board = {
     gold: { ann: 0, bob: 2, cara: 9 },
     hands: { ann: [], bob: ["palace"], cara: [] },
