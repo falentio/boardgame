@@ -6,6 +6,7 @@ import {
   keepScoring,
   keepTriggers,
 } from "../../../../lockstep/games/citadels/districts/keep.ts";
+import { specOfDistrict } from "../../../../lockstep/games/citadels/districts.ts";
 import type { PlacedDistrict } from "../../../../lockstep/games/citadels/state.ts";
 import { ANN, SEATS3, rawGenesis, rawPlayer, rawRandom } from "../driver.ts";
 
@@ -50,4 +51,5 @@ test("the Keep scores no extra points of its own on a crafted city", () => {
   const placed = city[0];
   if (placed === undefined) throw new Error("no keep placed");
   expect(keepScoring(placed, city, ANN)).toBe(0);
+  expect(specOfDistrict("keep").cost).toBe(3);
 });

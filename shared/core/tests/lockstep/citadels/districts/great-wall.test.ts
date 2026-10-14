@@ -8,6 +8,7 @@ import {
   greatWallToll,
   greatWallTriggers,
 } from "../../../../lockstep/games/citadels/districts/great-wall.ts";
+import { specOfDistrict } from "../../../../lockstep/games/citadels/districts.ts";
 import type { PlacedDistrict } from "../../../../lockstep/games/citadels/state.ts";
 import { ANN, SEATS3, rawGenesis, rawPlayer, rawRandom } from "../driver.ts";
 
@@ -65,4 +66,5 @@ test("the Great Wall scores no extra points of its own on a crafted city", () =>
   const placed = city[0];
   if (placed === undefined) throw new Error("no great-wall placed");
   expect(greatWallScoring(placed, city, ANN)).toBe(0);
+  expect(specOfDistrict("great-wall").cost).toBe(6);
 });

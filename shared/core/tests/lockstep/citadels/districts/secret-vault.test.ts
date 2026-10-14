@@ -103,6 +103,7 @@ test("the exact extra points reach the score through the engine's scoring pass",
   const spent = withHand(withCity(turnState(), ANN, city), ANN, ["tavern"]);
   const spentScore = scoreGame(spent).find((entry) => entry.seat === ANN);
   expect(spentScore?.unique).toBe(0);
+  expect(specOfDistrict("secret-vault").cost).toBe(4);
 });
 
 test("the Secret Vault declares the onBuild trigger and its build query is a real gate", () => {

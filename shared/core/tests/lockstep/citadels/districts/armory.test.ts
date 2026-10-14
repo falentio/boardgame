@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import type { SeatId } from "../../../../index.ts";
 import type { CharacterId } from "../../../../lockstep/games/citadels/characters.ts";
+import { specOfDistrict } from "../../../../lockstep/games/citadels/districts.ts";
 import {
   armory,
   armoryScoring,
@@ -147,4 +148,5 @@ test("the Armory scores no extra points of its own on a crafted city", () => {
   const placed = city[0];
   if (placed === undefined) throw new Error("no armory placed");
   expect(armoryScoring(placed, city, ANN)).toBe(0);
+  expect(specOfDistrict("armory").cost).toBe(3);
 });
