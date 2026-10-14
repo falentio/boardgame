@@ -21,6 +21,14 @@ import type { DistrictId } from "../../../../../lockstep/games/citadels/district
  * refused turn than on a plain one - so the refused turn no longer ends where the
  * plain turn ends. The D14-1 fix unified the build order but not the gather order.
  *
+ * The file's scope is wider than its name: besides the purse-sensitive family above
+ * (D15-1 to D15-3), it pins the post-threat build order the fix rounds left behind
+ * (P1 to P5: the Scholar's kept draw, the Alchemist's refund, the Trader's
+ * trade-build window, the Navigator's gain, the Museum offer), the gather-count
+ * guard for a multi-pass effect (the Spy), and the adaptive 26-character
+ * refused-vs-plain sweep (P6) that catches a regression in the general order. The
+ * name records the pass that found the first family, not the whole file.
+ *
  * Every fold below re-reads the hand at every build window (the adaptive policy
  * verify-14 proved necessary), folds plain and refused from the SAME entropy so
  * the deck is identical, and drives every window the character opens.
@@ -246,7 +254,7 @@ test("the Spy gathers exactly once per turn across its four passes", () => {
  * window leads its post-threat build window (the draw feeds the build), and the
  * refused turn reaches the plain turn's end state. Neuter the fix and this reddens.
  */
-test("P1 the D14-1 Scholar fix holds: the draw leads the post-threat build and the refused turn matches the plain", () => {
+test("P1 the D14-1 order holds: the Scholar's kept draw leads the post-threat build, and the refused turn matches the plain", () => {
   const board: Board = {
     gold: { ann: 0, bob: 12, cara: 0 },
     hands: { ann: [], bob: [], cara: [] },
