@@ -25,6 +25,10 @@ import {
  * behaviour; the "P6" blocks are positive probes whose teeth I measured in a
  * /tmp copy (each reddens when the behaviour behind it is removed). See
  * orchestrate/citadels/verification-6.md for the finding each one encodes.
+ *
+ * Scope: the turn's step order (D6-2, P6-1) plus the two clauses that same order
+ * decides -- the Cardinal's card-conserving gift (D6-1) and the timing of a declared
+ * colour against the income that reads it (P6-2, P6-3).
  */
 
 const cityOf = (state: CitadelsState, seat: SeatId): readonly string[] =>
@@ -43,7 +47,7 @@ const cityOf = (state: CitadelsState, seat: SeatId): readonly string[] =>
 // gold taken." One gold taken must cost the Cardinal exactly one card.
 // ---------------------------------------------------------------------------
 
-test("D6-1 the Cardinal's shortfall gift conserves cards when the hand holds duplicates", () => {
+test("D6-1 the Cardinal's shortfall gift conserves cards, duplicates included", () => {
   const fold = foldTurn({
     character: "cardinal",
     cast: castWith("cardinal"),
@@ -121,7 +125,7 @@ test("D6-2 a seat that gathers may then build in the same turn", () => {
 // teeth audit in verification-6.md).
 // ---------------------------------------------------------------------------
 
-test("P6-1 a threatened seat's build lands only after the threat resolves", () => {
+test("P6-1 a bribed threat still defers the build to after the threat window", () => {
   const base = rawGenesis(SEATS3, castWith("blackmailer"), "v6-threat-build");
   const armed: CitadelsState = {
     ...base,
@@ -158,7 +162,7 @@ test("P6-1 a threatened seat's build lands only after the threat resolves", () =
   ]);
 });
 
-test("P6-2 the School of Magic counts for the owner's income the turn it is declared", () => {
+test("P6-2 a Bishop's income counts the colour its School of Magic declared this turn", () => {
   const fold = foldTurn({
     character: "bishop",
     cast: castWith("bishop"),
@@ -174,7 +178,7 @@ test("P6-2 the School of Magic counts for the owner's income the turn it is decl
   ).toBe(3);
 });
 
-test("P6-3 the Cardinal's shortfall clause is reachable through the engine", () => {
+test("P6-3 a donor's gold lets the Cardinal build a card it could not afford", () => {
   const fold = foldTurn({
     character: "cardinal",
     cast: castWith("cardinal"),
