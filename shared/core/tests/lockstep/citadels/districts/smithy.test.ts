@@ -103,7 +103,7 @@ test("the Smithy scores no extra points on a crafted city", () => {
     { id: "smithy", gold: 0 },
     { id: "watchtower", gold: 0 },
   ];
-  expect(smithyScoring(city[0]!, city, ANN)).toBe(0);
+  expect(smithyScoring(city[0]!, city, ANN, rawGenesis(SEATS3))).toBe(0);
   const state = withCity(
     { ...rawGenesis(SEATS3, BASE_CAST_IDS), completed: [ANN] },
     ANN,

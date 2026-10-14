@@ -65,6 +65,6 @@ test("the Great Wall scores no extra points of its own on a crafted city", () =>
   const city = cityOf(["great-wall", "palace"]);
   const placed = city[0];
   if (placed === undefined) throw new Error("no great-wall placed");
-  expect(greatWallScoring(placed, city, ANN)).toBe(0);
+  expect(greatWallScoring(placed, city, ANN, rawGenesis(SEATS3))).toBe(0);
   expect(specOfDistrict("great-wall").cost).toBe(6);
 });

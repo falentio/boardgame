@@ -21,14 +21,14 @@ const uniqueOf = (state: CitadelsState, seat: SeatId): number =>
 
 test("the Dragon Gate scores exactly 2 extra points", () => {
   const city = [placed("watchtower"), placed("dragon-gate")];
-  expect(dragonGateScoring(placed("dragon-gate"), city, ANN)).toBe(2);
+  expect(dragonGateScoring(placed("dragon-gate"), city, ANN, rawGenesis(SEATS3))).toBe(2);
 });
 
 test("the flat bonus does not grow with the rest of the city", () => {
   const small = [placed("dragon-gate")];
   const large = [placed("dragon-gate"), placed("palace"), placed("fortress"), placed("cathedral")];
-  expect(dragonGateScoring(placed("dragon-gate"), small, ANN)).toBe(2);
-  expect(dragonGateScoring(placed("dragon-gate"), large, ANN)).toBe(2);
+  expect(dragonGateScoring(placed("dragon-gate"), small, ANN, rawGenesis(SEATS3))).toBe(2);
+  expect(dragonGateScoring(placed("dragon-gate"), large, ANN, rawGenesis(SEATS3))).toBe(2);
 });
 
 test("the exact extra points reach the score through the engine's scoring pass", () => {

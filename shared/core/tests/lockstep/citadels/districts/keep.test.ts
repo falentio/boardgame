@@ -50,6 +50,6 @@ test("the Keep scores no extra points of its own on a crafted city", () => {
   const city = cityOf(["keep", "palace", "tavern"]);
   const placed = city[0];
   if (placed === undefined) throw new Error("no keep placed");
-  expect(keepScoring(placed, city, ANN)).toBe(0);
+  expect(keepScoring(placed, city, ANN, rawGenesis(SEATS3))).toBe(0);
   expect(specOfDistrict("keep").cost).toBe(3);
 });

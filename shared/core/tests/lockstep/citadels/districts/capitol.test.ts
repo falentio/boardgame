@@ -19,12 +19,12 @@ const withCity = (
 test("the Capitol scores 3 when the city has at least three districts of one type", () => {
   // Three military districts alongside the Capitol.
   const city = [placed("watchtower"), placed("prison"), placed("barracks"), placed("capitol")];
-  expect(capitolScoring(placed("capitol"), city, ANN)).toBe(3);
+  expect(capitolScoring(placed("capitol"), city, ANN, rawGenesis(SEATS3))).toBe(3);
 });
 
 test("a city with no three districts of any one type scores nothing", () => {
   const city = [placed("watchtower"), placed("prison"), placed("temple"), placed("capitol")];
-  expect(capitolScoring(placed("capitol"), city, ANN)).toBe(0);
+  expect(capitolScoring(placed("capitol"), city, ANN, rawGenesis(SEATS3))).toBe(0);
 });
 
 test("the Capitol scores only once even with two qualifying types", () => {
@@ -37,7 +37,7 @@ test("the Capitol scores only once even with two qualifying types", () => {
     placed("monastery"),
     placed("capitol"),
   ];
-  expect(capitolScoring(placed("capitol"), city, ANN)).toBe(3);
+  expect(capitolScoring(placed("capitol"), city, ANN, rawGenesis(SEATS3))).toBe(3);
 });
 
 test("the exact extra points reach the score through the engine's scoring pass", () => {
@@ -56,5 +56,5 @@ test("the exact extra points reach the score through the engine's scoring pass",
 
 test("the ability is not a no-op: three of a type moves the score above zero", () => {
   const city = [placed("watchtower"), placed("prison"), placed("barracks"), placed("capitol")];
-  expect(capitolScoring(placed("capitol"), city, ANN)).toBeGreaterThan(0);
+  expect(capitolScoring(placed("capitol"), city, ANN, rawGenesis(SEATS3))).toBeGreaterThan(0);
 });

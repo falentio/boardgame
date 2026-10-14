@@ -104,7 +104,7 @@ test("the Laboratory scores no extra points on a crafted city", () => {
     { id: "laboratory", gold: 0 },
     { id: "watchtower", gold: 0 },
   ];
-  expect(laboratoryScoring(city[0]!, city, ANN)).toBe(0);
+  expect(laboratoryScoring(city[0]!, city, ANN, rawGenesis(SEATS3))).toBe(0);
   const state = withCity(
     { ...rawGenesis(SEATS3, BASE_CAST_IDS), completed: [ANN] },
     ANN,

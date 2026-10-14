@@ -18,12 +18,12 @@ const withCity = (
 
 test("the Wishing Well scores 1 for each unique district in the city, itself included", () => {
   const city = [placed("watchtower"), placed("wishing-well"), placed("park")];
-  expect(wishingWellScoring(placed("wishing-well"), city, ANN)).toBe(2);
+  expect(wishingWellScoring(placed("wishing-well"), city, ANN, rawGenesis(SEATS3))).toBe(2);
 });
 
 test("basic districts never add Wishing Well points", () => {
   const city = [placed("watchtower"), placed("prison"), placed("wishing-well")];
-  expect(wishingWellScoring(placed("wishing-well"), city, ANN)).toBe(1);
+  expect(wishingWellScoring(placed("wishing-well"), city, ANN, rawGenesis(SEATS3))).toBe(1);
 });
 
 test("the exact extra points reach the score through the engine's scoring pass", () => {
@@ -43,7 +43,7 @@ test("the exact extra points reach the score through the engine's scoring pass",
 test("the ability is not a no-op: adding a unique raises the Wishing Well's points", () => {
   const fewer = [placed("wishing-well")];
   const more = [placed("wishing-well"), placed("park")];
-  expect(wishingWellScoring(placed("wishing-well"), more, ANN)).toBeGreaterThan(
-    wishingWellScoring(placed("wishing-well"), fewer, ANN),
+  expect(wishingWellScoring(placed("wishing-well"), more, ANN, rawGenesis(SEATS3))).toBeGreaterThan(
+    wishingWellScoring(placed("wishing-well"), fewer, ANN, rawGenesis(SEATS3)),
   );
 });

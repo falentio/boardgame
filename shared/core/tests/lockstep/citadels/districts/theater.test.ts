@@ -156,7 +156,7 @@ test("the Theater declares the onRoundStart hook, a member of DISTRICT_HOOKS", (
 
 test("the Theater still scores no end-game points of its own", () => {
   const city = [{ id: "theater", gold: 0 }];
-  expect(theaterScoring(city[0]!, city, ANN)).toBe(0);
+  expect(theaterScoring(city[0]!, city, ANN, rawGenesis(SEATS3))).toBe(0);
 });
 
 test("the Theater's effect opens the theatre-swap window owed by its owner", () => {
@@ -268,7 +268,7 @@ test("the Theater adds no end-game points of its own", () => {
     { id: "theater", gold: 0 },
     { id: "manor", gold: 0 },
   ];
-  expect(theaterScoring(city[0]!, city, ANN)).toBe(0);
+  expect(theaterScoring(city[0]!, city, ANN, rawGenesis(SEATS3))).toBe(0);
 });
 
 test("a crafted city scores exactly its cost sum, colour bonus, and completion bonus", () => {

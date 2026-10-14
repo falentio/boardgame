@@ -88,7 +88,7 @@ test("the Poor House scores no extra points on a crafted city", () => {
     { id: "poor-house", gold: 0 },
     { id: "tavern", gold: 0 },
   ];
-  expect(poorHouseScoring(city[0]!, city, ANN)).toBe(0);
+  expect(poorHouseScoring(city[0]!, city, ANN, rawGenesis(SEATS3))).toBe(0);
   const state = withCity(
     { ...rawGenesis(SEATS3, BASE_CAST_IDS), completed: [ANN] },
     ANN,

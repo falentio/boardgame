@@ -26,12 +26,12 @@ test("the Basilica scores 1 point for each district of odd cost in the city", ()
     placed("manor"),
     placed("basilica"),
   ];
-  expect(basilicaScoring(placed("basilica"), city, ANN)).toBe(3);
+  expect(basilicaScoring(placed("basilica"), city, ANN, rawGenesis(SEATS3))).toBe(3);
 });
 
 test("a city of only even-cost districts scores no Basilica points", () => {
   const city = [placed("prison"), placed("church"), placed("basilica")];
-  expect(basilicaScoring(placed("basilica"), city, ANN)).toBe(0);
+  expect(basilicaScoring(placed("basilica"), city, ANN, rawGenesis(SEATS3))).toBe(0);
 });
 
 test("the exact extra points reach the score through the engine's scoring pass", () => {
@@ -51,7 +51,7 @@ test("the exact extra points reach the score through the engine's scoring pass",
 
 test("the ability is not a no-op: a city of odd-cost districts scores more than zero", () => {
   const city = [placed("watchtower"), placed("basilica")];
-  const points = basilicaScoring(placed("basilica"), city, ANN);
+  const points = basilicaScoring(placed("basilica"), city, ANN, rawGenesis(SEATS3));
   expect(points).toBeGreaterThan(0);
   expect(points).toBe(
     city.filter((district) => specOfDistrict(district.id).cost % 2 === 1).length,

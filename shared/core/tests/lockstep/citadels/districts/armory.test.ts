@@ -147,6 +147,6 @@ test("the Armory scores no extra points of its own on a crafted city", () => {
   const city = rawPlayer(state, ANN).city;
   const placed = city[0];
   if (placed === undefined) throw new Error("no armory placed");
-  expect(armoryScoring(placed, city, ANN)).toBe(0);
+  expect(armoryScoring(placed, city, ANN, state)).toBe(0);
   expect(specOfDistrict("armory").cost).toBe(3);
 });
