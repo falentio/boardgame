@@ -7,11 +7,7 @@ import RoleStrip from "../components/room/RoleStrip.vue";
 import G54GameScreen from "../components/games/G54GameScreen.vue";
 import CitadelsGameScreen from "../components/games/CitadelsGameScreen.vue";
 
-/**
- * The UI half of the game registry, keyed by the same `GameKind` as
- * `ROOM_GAMES`, so a third game is a compile error in every UI seam rather than
- * a silently blank picker or strip.
- */
+/** The UI half of the game registry, keyed by the same `GameKind` as `ROOM_GAMES`. */
 export interface GameUi {
   readonly label: string;
   readonly setupLabel: string;

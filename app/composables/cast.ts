@@ -8,10 +8,8 @@ import {
 } from "#shared/core/lockstep/games/citadels/index.ts";
 
 /**
- * One character per rank. The rank key is the invariant: a slot holds at most
- * one id, so two picks can never share a rank and `validateCast`'s
- * one-per-rank rule is unrepresentable to violate. Ranks 1..8 must be filled;
- * rank 9 is optional.
+ * One character per rank: the rank key is the invariant, so `validateCast`'s
+ * one-per-rank rule is unrepresentable to violate.
  */
 export type CastDraft = { readonly [rank in Rank]: CharacterId | null };
 
@@ -30,7 +28,6 @@ const emptyDraft = (): CastDraft => ({
   9: null,
 });
 
-/** Sets the character at its own rank; picking the same character again clears the slot. */
 export const pickCharacter = (draft: CastDraft, id: CharacterId): CastDraft => {
   const rank = specOfCharacter(id).rank;
   return { ...draft, [rank]: draft[rank] === id ? null : id };

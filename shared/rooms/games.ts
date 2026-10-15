@@ -14,10 +14,7 @@ export type GameKind = "g54" | "citadels";
 
 type SetupOf = { g54: G54Setup; citadels: CitadelsSetup };
 
-/**
- * A room's game kind is the `game` tag inside its setup, so the two cannot
- * disagree: `{ game: "citadels", roles: [...] }` is not constructible.
- */
+/** A room's game kind is the `game` tag inside its setup. */
 export type RoomSetup = { readonly [K in GameKind]: { readonly game: K } & SetupOf[K] }[GameKind];
 
 export interface SeatBounds {

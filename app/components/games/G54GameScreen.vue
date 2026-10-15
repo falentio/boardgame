@@ -24,8 +24,6 @@ const props = defineProps<{
   loadFailed?: string | null
 }>()
 
-// Narrowing `room.setup.game` narrows the property, not the parent object, so the
-// screen projects the room into a `RoomLike` the game's setup type accepts.
 const g54Room = computed<RoomLike<G54Setup> | null>(() => {
   const room = props.room
   if (room.setup.game !== "g54") return null
@@ -81,7 +79,6 @@ const forced = computed(() => {
   return menu === null || menu === undefined ? null : forcedAction(menu)
 })
 
-/** The local seat's clock, or null when it owes nothing and there is nothing to show. */
 const turnClock = computed<TurnClock | null>(() => {
   const remaining = remainingMs.value
   if (remaining === null || status.value !== "live" || winner.value !== null) return null

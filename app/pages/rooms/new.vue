@@ -16,7 +16,7 @@ import CreateRoomConfirmDialog from "@/components/room/CreateRoomConfirmDialog.v
 import { GAME_UI } from "@/composables/game-ui"
 import { createRoom } from "@/composables/rooms-api"
 import type { CreateRoomConfig } from "@/composables/room-config"
-import { boundsFor, defaultSetupFor, type GameKind, type RoomSetup } from "#shared/rooms/games.ts"
+import { boundsFor, defaultSetupFor, isGameKind, type GameKind, type RoomSetup } from "#shared/rooms/games.ts"
 
 definePageMeta({ layout: "shell" })
 
@@ -44,11 +44,12 @@ const onSetupChange = (next: RoomSetup | null, nextMissing: readonly string[]) =
   missing.value = nextMissing
 }
 
-const onGameChange = (next: GameKind) => {
-  kind.value = next
-  setup.value = defaultSetupFor(next)
+const onGameChange = (value: unknown) => {
+  if (!isGameKind(value)) return
+  kind.value = value
+  setup.value = defaultSetupFor(value)
   missing.value = []
-  const { min, max } = boundsFor(next)
+  const { min, max } = boundsFor(value)
   seats.value = Math.min(Math.max(seats.value, min), max)
 }
 
@@ -140,7 +141,7 @@ const onCancelCreate = async () => {
               <FieldLabel for="game">
                 Game
               </FieldLabel>
-              <Select :model-value="kind" @update:model-value="(value) => onGameChange(value as GameKind)">
+              <Select :model-value="kind" @update:model-value="onGameChange">
                 <SelectTrigger id="game" class="w-full">
                   <SelectValue />
                 </SelectTrigger>

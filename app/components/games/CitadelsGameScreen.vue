@@ -17,8 +17,6 @@ const props = defineProps<{
   loadFailed?: string | null
 }>()
 
-// Narrowing `room.setup.game` narrows the property, not the parent object, so the
-// screen projects the room into a `RoomLike` the game's setup type accepts.
 const citadelsRoom = computed<RoomLike<CitadelsSetup> | null>(() => {
   const room = props.room
   if (room.setup.game !== "citadels") return null
