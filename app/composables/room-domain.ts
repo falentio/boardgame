@@ -1,6 +1,6 @@
-import { isRoleId, type RoleId } from "#shared/core/lockstep/games/g54/roles.ts";
+import { boundsFor, parseRoomSetup, type RoomSetup } from "#shared/rooms/games.ts";
 import { isRoomCode, roomCode, userId, type RoomCode, type UserId } from "#shared/rooms/ids.ts";
-import { MIN_SEATS, type RoomError } from "#shared/rooms/room.ts";
+import type { RoomError } from "#shared/rooms/room.ts";
 import { resolveUserImage } from "#shared/users/avatar.ts";
 
 export interface Seat {
@@ -16,7 +16,7 @@ export interface Room {
   name: string;
   host: UserId;
   link: string;
-  roles: readonly RoleId[];
+  setup: RoomSetup;
   seats: readonly Seat[];
   startedAt: number | null;
   expiresAt: number | null;
@@ -110,9 +110,8 @@ export const parseRoom = (raw: unknown): Room | null => {
   const link = fieldOf(raw, "link");
   if (typeof link !== "string") return null;
 
-  const rawRoles = fieldOf(fieldOf(raw, "setup"), "roles");
-  if (!Array.isArray(rawRoles)) return null;
-  const roles = rawRoles.filter((role): role is RoleId => typeof role === "string" && isRoleId(role));
+  const setup = parseRoomSetup(fieldOf(raw, "setup"));
+  if (setup === null) return null;
 
   const rawSeats = fieldOf(raw, "seats");
   if (!Array.isArray(rawSeats)) return null;
@@ -131,7 +130,7 @@ export const parseRoom = (raw: unknown): Room | null => {
     name,
     host: userId(host),
     link,
-    roles,
+    setup,
     seats,
     startedAt: typeof startedAt === "number" ? startedAt : null,
     expiresAt: typeof expiresAt === "number" ? expiresAt : null,
@@ -181,7 +180,7 @@ export const lobbyOf = (load: RoomLoad, viewer: UserId | null): Lobby => {
     amIHost,
     amISeated,
     started,
-    canStart: amIHost && !started && filled >= MIN_SEATS,
+    canStart: amIHost && !started && filled >= boundsFor(room.setup.game).min,
     canLeave: amISeated && !started,
     canKick,
     gameRedirect: started && amISeated && !amIHost,

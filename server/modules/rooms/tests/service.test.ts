@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, test } from "vitest";
+import { BASE_CAST } from "../../../../shared/core/lockstep/games/citadels/characters.ts";
 import { STARTER_ROLES } from "../../../../shared/core/lockstep/games/g54/roles.ts";
 import { makeRandom } from "../../../../shared/core/lockstep/hash.ts";
 import { seed } from "../../../../shared/core/lockstep/ids.ts";
@@ -128,10 +129,27 @@ const loseNextDelete = (db: Db, count = 1): Db => {
 };
 
 test("createRoom persists a room the service reads back by code", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
   expect(created.value.name).toBe("Alpha");
   expect(created.value.host).toBe(HOST);
+
+  const fetched = await getRoom(deps(), created.value.code);
+  expect(fetched.ok && fetched.value).toEqual(created.value);
+});
+
+test("createRoom persists a citadels room with its cast", async () => {
+  const created = await createRoom(deps(), {
+    host: HOST,
+    name: "Cast",
+    seats: 8,
+    setup: { game: "citadels", cast: BASE_CAST },
+  });
+  if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
+  expect(created.value.seats).toHaveLength(8);
+  const setup = created.value.setup;
+  if (setup.game !== "citadels") throw new Error("expected a citadels setup");
+  expect(setup.cast).toEqual([...BASE_CAST]);
 
   const fetched = await getRoom(deps(), created.value.code);
   expect(fetched.ok && fetched.value).toEqual(created.value);
@@ -147,7 +165,7 @@ test("createRoom retries a code collision and lands on a free code", async () =>
     host: HOST,
     name: "Alpha",
     seats: 3,
-    roles: STARTER_ROLES,
+    setup: { game: "g54", roles: STARTER_ROLES },
   });
   if (!first.ok) throw new Error(`expected a room, got ${first.error.kind}`);
   expect(first.value.code).toBe("GAJUDIRU");
@@ -156,7 +174,7 @@ test("createRoom retries a code collision and lands on a free code", async () =>
     host: HOST,
     name: "Beta",
     seats: 3,
-    roles: STARTER_ROLES,
+    setup: { game: "g54", roles: STARTER_ROLES },
   });
   if (!second.ok) throw new Error(`expected a retry to succeed, got ${second.error.kind}`);
   expect(second.value.code).toBe("BAJUDIRU");
@@ -167,7 +185,7 @@ test("createRoom persists a 9-letter code and reads it back", async () => {
     host: HOST,
     name: "Alpha",
     seats: 3,
-    roles: STARTER_ROLES,
+    setup: { game: "g54", roles: STARTER_ROLES },
   });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
   expect(created.value.code).toBe("AGAJUDIRU");
@@ -177,7 +195,7 @@ test("createRoom persists a 9-letter code and reads it back", async () => {
 });
 
 test("joinRoom seats a second user in the first open seat", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
 
   const joined = await joinRoom(deps(), { code: created.value.code, user: GUEST });
@@ -194,7 +212,7 @@ test("joinRoom reports not-found for an unknown code", async () => {
 });
 
 test("joinRoom refuses a repeat join and a full room", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
 
   const repeat = await joinRoom(deps(), { code: created.value.code, user: HOST });
@@ -207,8 +225,8 @@ test("joinRoom refuses a repeat join and a full room", async () => {
   expect(third).toEqual({ ok: false, error: { kind: "room-full" } });
 });
 
-test("updateRoom renames and sets roles for the host", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+test("updateRoom renames and sets the setup for the host", async () => {
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
 
   const roles = ["capitalist", "newscaster", "general", "lawyer", "priest"] as const;
@@ -216,18 +234,20 @@ test("updateRoom renames and sets roles for the host", async () => {
     code: created.value.code,
     actor: HOST,
     name: "Beta",
-    roles,
+    setup: { game: "g54", roles },
   });
   if (!updated.ok) throw new Error(`expected an update, got ${updated.error.kind}`);
   expect(updated.value.name).toBe("Beta");
-  expect(updated.value.setup.roles).toEqual(roles);
+  const setup = updated.value.setup;
+  if (setup.game !== "g54") throw new Error("expected a g54 setup");
+  expect(setup.roles).toEqual(roles);
 
   const reloaded = await getRoom(deps(), created.value.code);
   expect(reloaded.ok && reloaded.value.name).toBe("Beta");
 });
 
 test("updateRoom refuses a non-host and an unknown code", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
 
   const denied = await updateRoom(deps(), { code: created.value.code, actor: GUEST, name: "Beta" });
@@ -238,7 +258,7 @@ test("updateRoom refuses a non-host and an unknown code", async () => {
 });
 
 test("deleteRoom removes the room for the host and refuses others", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
 
   const denied = await deleteRoom(deps(), { code: created.value.code, actor: GUEST });
@@ -252,7 +272,7 @@ test("deleteRoom removes the room for the host and refuses others", async () => 
 });
 
 test("joinRoom survives a lost compare-and-swap by reloading and retrying", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
 
   const joined = await joinRoom(deps({ db: loseNextCas(harness.db) }), {
@@ -267,7 +287,7 @@ test("joinRoom survives a lost compare-and-swap by reloading and retrying", asyn
 });
 
 test("joinRoom reports conflict when the compare-and-swap retries are exhausted", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
 
   const joined = await joinRoom(deps({ db: loseNextCas(harness.db, 5) }), {
@@ -278,7 +298,7 @@ test("joinRoom reports conflict when the compare-and-swap retries are exhausted"
 });
 
 test("createRoom emits one room-changed with reason created", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
 
   expect(recorder.changes).toHaveLength(1);
@@ -287,7 +307,7 @@ test("createRoom emits one room-changed with reason created", async () => {
 });
 
 test("joinRoom emits one room-changed with reason joined", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
   recorder.changes.length = 0;
 
@@ -300,7 +320,7 @@ test("joinRoom emits one room-changed with reason joined", async () => {
 });
 
 test("updateRoom emits one room-changed with reason updated", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
   recorder.changes.length = 0;
 
@@ -313,7 +333,7 @@ test("updateRoom emits one room-changed with reason updated", async () => {
 });
 
 test("deleteRoom emits one room-changed with reason deleted", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
   recorder.changes.length = 0;
 
@@ -326,7 +346,7 @@ test("deleteRoom emits one room-changed with reason deleted", async () => {
 });
 
 test("no emit fires on an error path: not-found, denied, already-seated, room-full", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
   const seated = await joinRoom(deps(), { code: created.value.code, user: GUEST });
   if (!seated.ok) throw new Error(`expected a join, got ${seated.error.kind}`);
@@ -342,7 +362,7 @@ test("no emit fires on an error path: not-found, denied, already-seated, room-fu
 });
 
 test("a lost compare-and-swap emits exactly once, after the retry lands", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
   recorder.changes.length = 0;
 
@@ -361,7 +381,7 @@ test("a thrown events.changed does not fail the mutation", async () => {
     host: HOST,
     name: "Alpha",
     seats: 3,
-    roles: STARTER_ROLES,
+    setup: { game: "g54", roles: STARTER_ROLES },
   });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
 
@@ -376,7 +396,7 @@ test("a thrown events.changed does not fail the mutation", async () => {
 });
 
 test("leaveRoom frees the seat and emits one updated", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
   await joinRoom(deps(), { code: created.value.code, user: GUEST });
   recorder.changes.length = 0;
@@ -393,7 +413,7 @@ test("leaveRoom frees the seat and emits one updated", async () => {
 });
 
 test("kickUser frees the target's seat and emits one updated", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
   await joinRoom(deps(), { code: created.value.code, user: GUEST });
   recorder.changes.length = 0;
@@ -411,7 +431,7 @@ test("kickUser frees the target's seat and emits one updated", async () => {
 });
 
 test("startRoom stamps startedAt, persists it, and emits one updated", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
   await joinRoom(deps(), { code: created.value.code, user: GUEST });
   recorder.changes.length = 0;
@@ -430,7 +450,7 @@ test("startRoom stamps startedAt, persists it, and emits one updated", async () 
 });
 
 test("startRoom refuses a non-host and an open room", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
 
   const open = await startRoom(deps(), { code: created.value.code, actor: HOST });
@@ -442,7 +462,7 @@ test("startRoom refuses a non-host and an open room", async () => {
 });
 
 test("a repeated start is idempotent: the first moment survives and nothing churns", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
   await joinRoom(deps(), { code: created.value.code, user: GUEST });
 
@@ -464,7 +484,7 @@ test("a repeated start is idempotent: the first moment survives and nothing chur
 });
 
 test("joinRoom refuses a room the host has started", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
   await joinRoom(deps(), { code: created.value.code, user: GUEST });
   await startRoom(deps(), { code: created.value.code, actor: HOST });
@@ -474,7 +494,7 @@ test("joinRoom refuses a room the host has started", async () => {
 });
 
 test("a started room refuses leave and kick, so its roster stays full", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
   await joinRoom(deps(), { code: created.value.code, user: GUEST });
   await startRoom(deps(), { code: created.value.code, actor: HOST });
@@ -495,7 +515,7 @@ test("a started room refuses leave and kick, so its roster stays full", async ()
 });
 
 test("a start that loses the compare-and-swap retries and keeps the first moment", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
   await joinRoom(deps(), { code: created.value.code, user: GUEST });
   const first = await startRoom(deps({ now: () => 5000 }), { code: created.value.code, actor: HOST });
@@ -510,7 +530,7 @@ test("a start that loses the compare-and-swap retries and keeps the first moment
 });
 
 test("updateRoom with no fields writes nothing and emits nothing", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
   recorder.changes.length = 0;
 
@@ -525,7 +545,7 @@ test("the last occupant leaving deletes the row, frees the code, and emits one d
     host: HOST,
     name: "Alpha",
     seats: 2,
-    roles: STARTER_ROLES,
+    setup: { game: "g54", roles: STARTER_ROLES },
   });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
   recorder.changes.length = 0;
@@ -540,14 +560,14 @@ test("the last occupant leaving deletes the row, frees the code, and emits one d
     host: HOST,
     name: "Beta",
     seats: 2,
-    roles: STARTER_ROLES,
+    setup: { game: "g54", roles: STARTER_ROLES },
   });
   if (!reclaimed.ok) throw new Error(`expected the code to be free, got ${reclaimed.error.kind}`);
   expect(reclaimed.value.code).toBe("GAJUDIRU");
 });
 
 test("leave reloads and retries when the delete loses the compare-and-swap", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 2, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
   recorder.changes.length = 0;
 
@@ -562,7 +582,7 @@ test("leave reloads and retries when the delete loses the compare-and-swap", asy
 });
 
 test("an expired room reads as not-found and refuses joins", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
   const expired = deps({ now: () => 1000 + ROOM_TTL_MS });
 
@@ -581,13 +601,13 @@ test("createRoom reclaims an expired code before it inserts", async () => {
     host: HOST,
     name: "Alpha",
     seats: 3,
-    roles: STARTER_ROLES,
+    setup: { game: "g54", roles: STARTER_ROLES },
   });
   if (!first.ok) throw new Error(`expected a room, got ${first.error.kind}`);
 
   const second = await createRoom(
     deps({ entropy: scriptedEntropy(["GAJUDIRU"]), now: () => 1000 + ROOM_TTL_MS }),
-    { host: HOST, name: "Beta", seats: 3, roles: STARTER_ROLES },
+    { host: HOST, name: "Beta", seats: 3, setup: { game: "g54", roles: STARTER_ROLES } },
   );
   if (!second.ok) throw new Error(`expected the code to be reclaimed, got ${second.error.kind}`);
   expect(second.value.code).toBe("GAJUDIRU");
@@ -596,7 +616,7 @@ test("createRoom reclaims an expired code before it inserts", async () => {
 });
 
 test("leave and kick emit nothing on their error paths", async () => {
-  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, roles: STARTER_ROLES });
+  const created = await createRoom(deps(), { host: HOST, name: "Alpha", seats: 3, setup: { game: "g54", roles: STARTER_ROLES } });
   if (!created.ok) throw new Error(`expected a room, got ${created.error.kind}`);
   recorder.changes.length = 0;
 

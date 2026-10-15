@@ -1,4 +1,4 @@
-import type { RoleId } from "#shared/core/lockstep/games/g54/roles.ts";
+import type { RoomSetup } from "#shared/rooms/games.ts";
 import type { RoomCode, UserId } from "#shared/rooms/ids.ts";
 import { parseRoom, roomErrorKind, type Room, type RoomLoad } from "./room-domain.ts";
 
@@ -81,12 +81,12 @@ export const fetchRoom = async (code: RoomCode): Promise<RoomLoad> => {
 export const createRoom = async (input: {
   name: string;
   seats: number;
-  roles: readonly RoleId[];
+  setup: RoomSetup;
 }): Promise<CreateOutcome> => {
   try {
     const data = await $fetch<unknown>("/api/rooms", {
       method: "POST",
-      body: { name: input.name, seats: input.seats, roles: [...input.roles] },
+      body: { name: input.name, seats: input.seats, setup: input.setup },
     });
     const room = roomFrom(data);
     return room === null

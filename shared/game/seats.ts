@@ -7,8 +7,6 @@ import {
   type Roster,
   type SeatId,
 } from "../core/lockstep/index.ts";
-import type { G54Setup } from "../core/lockstep/games/g54/setup.ts";
-import type { RoleId } from "../core/lockstep/games/g54/roles.ts";
 import type { RoomCode, UserId } from "../rooms/ids.ts";
 
 export interface RoomSeatLike {
@@ -29,17 +27,17 @@ export const occupantOf = (seats: readonly RoomSeatLike[], seat: SeatId): UserId
   return found === undefined ? null : found.occupant;
 };
 
-export interface RoomLike {
+export interface RoomLike<Setup> {
   readonly code: RoomCode;
-  readonly roles: readonly RoleId[];
+  readonly setup: Setup;
   readonly seats: readonly RoomSeatLike[];
   readonly startedAt: number | null;
 }
 
-export const genesisFor = (room: RoomLike): GenesisInput<G54Setup> => ({
+export const genesisFor = <Setup>(room: RoomLike<Setup>): GenesisInput<Setup> => ({
   seed: genesisSeed(room.code),
   roster: rosterFor(room.seats),
-  setup: { roles: [...room.roles] },
+  setup: room.setup,
   // A started room always has startedAt; 0 means no epoch, which the frame-0
   // guard turns into no deadline.
   startedAt: deadline(room.startedAt ?? 0),

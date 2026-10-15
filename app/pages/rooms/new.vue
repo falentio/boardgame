@@ -13,40 +13,53 @@ import {
 } from "@/components/ui/select"
 import { Spinner } from "@/components/ui/spinner"
 import CreateRoomConfirmDialog from "@/components/room/CreateRoomConfirmDialog.vue"
-import RolePicker from "@/components/room/RolePicker.vue"
-import { completeRoles, defaultDraft, missingLabels, pickRole, type RoleDraft } from "@/composables/roles"
+import { GAME_UI } from "@/composables/game-ui"
 import { createRoom } from "@/composables/rooms-api"
 import type { CreateRoomConfig } from "@/composables/room-config"
-import type { RoleId } from "#shared/core/lockstep/games/g54/roles.ts"
+import { boundsFor, defaultSetupFor, isGameKind, type GameKind, type RoomSetup } from "#shared/rooms/games.ts"
 
 definePageMeta({ layout: "shell" })
 
-const seatOptions = [2, 3, 4, 5, 6, 7]
-
 const name = ref("New room")
+const kind = ref<GameKind>("g54")
 const seats = ref(5)
-const draft = ref<RoleDraft>(defaultDraft())
+const setup = ref<RoomSetup | null>(defaultSetupFor("g54"))
+const missing = ref<readonly string[]>([])
 const submitting = ref(false)
 const error = ref("")
-const errorField = ref<"name" | "roles" | null>(null)
+const errorField = ref<"name" | "setup" | null>(null)
 const formEl = ref<HTMLFormElement | null>(null)
 const pendingCreate = ref<CreateRoomConfig | null>(null)
 const createError = ref("")
 
-const roles = computed(() => completeRoles(draft.value))
-const canSubmit = computed(() => roles.value !== null && !submitting.value)
+const seatOptions = computed(() => {
+  const { min, max } = boundsFor(kind.value)
+  return Array.from({ length: max - min + 1 }, (_, index) => min + index)
+})
 
-const onChange = (next: RoleDraft) => {
-  draft.value = next
+const canSubmit = computed(() => setup.value !== null && !submitting.value)
+
+const onSetupChange = (next: RoomSetup | null, nextMissing: readonly string[]) => {
+  setup.value = next
+  missing.value = nextMissing
 }
 
-const missing = computed(() => missingLabels(draft.value))
+const onGameChange = (value: unknown) => {
+  if (!isGameKind(value)) return
+  kind.value = value
+  setup.value = defaultSetupFor(value)
+  missing.value = []
+  const { min, max } = boundsFor(value)
+  seats.value = Math.min(Math.max(seats.value, min), max)
+}
 
 const focusFirstProblem = () => {
   const form = formEl.value
   if (form === null) return
-  if (errorField.value === "roles") {
-    form.querySelector<HTMLButtonElement>("[data-role-option]")?.focus()
+  if (errorField.value === "setup") {
+    form
+      .querySelector<HTMLButtonElement>("[data-setup-option], [data-role-option]")
+      ?.focus()
     return
   }
   form.querySelector<HTMLInputElement>("#room-name")?.focus()
@@ -64,16 +77,17 @@ const onSubmit = () => {
     return
   }
 
-  const selected = roles.value
+  const selected = setup.value
   if (selected === null) {
-    error.value = `Choose the remaining roles: ${missing.value.join(", ")}.`
-    errorField.value = "roles"
+    const label = GAME_UI[kind.value].setupLabel.toLowerCase()
+    error.value = `Choose the remaining ${label}: ${missing.value.join(", ")}.`
+    errorField.value = "setup"
     focusFirstProblem()
     return
   }
 
   createError.value = ""
-  pendingCreate.value = { name: trimmed, seats: seats.value, roles: selected }
+  pendingCreate.value = { name: trimmed, seats: seats.value, setup: selected }
 }
 
 const onConfirmCreate = async () => {
@@ -124,6 +138,21 @@ const onCancelCreate = async () => {
               />
             </Field>
             <Field>
+              <FieldLabel for="game">
+                Game
+              </FieldLabel>
+              <Select :model-value="kind" @update:model-value="onGameChange">
+                <SelectTrigger id="game" class="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="(game, key) in GAME_UI" :key="key" :value="key">
+                    {{ game.label }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field>
               <FieldLabel for="seats">
                 Seats
               </FieldLabel>
@@ -138,21 +167,26 @@ const onCancelCreate = async () => {
                 </SelectContent>
               </Select>
               <FieldDescription>
-                Choose 2 to 7 seats, including you as host.
+                Choose {{ seatOptions[0] }} to {{ seatOptions[seatOptions.length - 1] }} seats, including you as host.
               </FieldDescription>
             </Field>
             <Field>
               <div
                 role="group"
-                aria-labelledby="roles-label"
-                :aria-invalid="errorField === 'roles' ? true : undefined"
-                :aria-describedby="errorField === 'roles' ? 'create-error' : undefined"
+                aria-labelledby="setup-label"
+                :aria-invalid="errorField === 'setup' ? true : undefined"
+                :aria-describedby="errorField === 'setup' ? 'create-error' : undefined"
                 class="flex flex-col gap-3"
               >
-                <p id="roles-label" class="text-sm leading-none font-medium">
-                  Roles
+                <p id="setup-label" class="text-sm leading-none font-medium">
+                  {{ GAME_UI[kind].setupLabel }}
                 </p>
-                <RolePicker :draft="draft" @change="onChange" />
+                <component
+                  :is="GAME_UI[kind].createPicker"
+                  :key="kind"
+                  :setup="setup"
+                  @change="onSetupChange"
+                />
                 <p
                   v-if="missing.length > 0"
                   class="text-muted-foreground text-sm leading-normal"

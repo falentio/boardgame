@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { BASE_CAST } from "../../../../shared/core/lockstep/games/citadels/characters.ts";
 import { STARTER_ROLES } from "../../../../shared/core/lockstep/games/g54/roles.ts";
 import { makeRandom } from "../../../../shared/core/lockstep/hash.ts";
 import { seed } from "../../../../shared/core/lockstep/ids.ts";
@@ -70,8 +71,11 @@ const call = async (
   return app.fetch(new Request(`${ORIGIN}${path}`, { ...rest, headers }));
 };
 
+const g54Setup = { game: "g54", roles: STARTER_ROLES };
+const citadelsSetup = { game: "citadels", cast: BASE_CAST };
+
 const createBody = (overrides: Record<string, unknown> = {}): string =>
-  JSON.stringify({ seats: 3, roles: STARTER_ROLES, ...overrides });
+  JSON.stringify({ seats: 3, setup: g54Setup, ...overrides });
 
 test("POST /api/rooms creates a room for the signed-in host", async () => {
   const host = await signUp("host@example.com");
@@ -81,7 +85,7 @@ test("POST /api/rooms creates a room for the signed-in host", async () => {
   expect(body.room.name).toBe("Alpha");
   expect(body.room.host).toBe(host.id);
   expect(body.room.link).toBe(`${ORIGIN}/join/${String(body.room.code)}`);
-  expect((body.room.setup as { roles: readonly string[] }).roles).toEqual(STARTER_ROLES);
+  expect(body.room.setup).toEqual({ game: "g54", roles: STARTER_ROLES });
   const seats = body.room.seats as { occupant: string | null; name: string | null; image: string | null }[];
   expect(seats[0]).toMatchObject({ occupant: host.id, name: "host@example.com", image: null });
   expect(seats[0]).not.toHaveProperty("email");
@@ -100,10 +104,16 @@ test("POST /api/rooms defaults the name and requires a session", async () => {
 
 test("POST /api/rooms rejects a bad body with 400", async () => {
   const host = await signUp("host@example.com");
-  const noSeats = await call("/api/rooms", { method: "POST", cookie: host.cookie, body: JSON.stringify({ roles: STARTER_ROLES }) });
+  const noSeats = await call("/api/rooms", { method: "POST", cookie: host.cookie, body: JSON.stringify({ setup: g54Setup }) });
   expect(noSeats.status).toBe(400);
 
-  const badRoles = await call("/api/rooms", { method: "POST", cookie: host.cookie, body: JSON.stringify({ seats: 3, roles: ["banker"] }) });
+  const noSetup = await call("/api/rooms", { method: "POST", cookie: host.cookie, body: JSON.stringify({ seats: 3 }) });
+  expect(noSetup.status).toBe(400);
+
+  const tagless = await call("/api/rooms", { method: "POST", cookie: host.cookie, body: JSON.stringify({ seats: 3, setup: { roles: STARTER_ROLES } }) });
+  expect(tagless.status).toBe(400);
+
+  const badRoles = await call("/api/rooms", { method: "POST", cookie: host.cookie, body: JSON.stringify({ seats: 3, setup: { game: "g54", roles: ["banker"] } }) });
   expect(badRoles.status).toBe(400);
 
   const notJson = await call("/api/rooms", { method: "POST", cookie: host.cookie, body: "not json" });
@@ -111,6 +121,29 @@ test("POST /api/rooms rejects a bad body with 400", async () => {
 
   const tooFewSeats = await call("/api/rooms", { method: "POST", cookie: host.cookie, body: createBody({ seats: 1 }) });
   expect(tooFewSeats.status).toBe(400);
+});
+
+test("POST /api/rooms creates a citadels room with a cast", async () => {
+  const host = await signUp("host@example.com");
+  const response = await call("/api/rooms", {
+    method: "POST",
+    cookie: host.cookie,
+    body: JSON.stringify({ seats: 8, setup: citadelsSetup }),
+  });
+  expect(response.status).toBe(201);
+  const body = (await response.json()) as { room: { setup: unknown; seats: unknown[] } };
+  expect(body.room.setup).toEqual({ game: "citadels", cast: BASE_CAST });
+  expect(body.room.seats).toHaveLength(8);
+});
+
+test("POST /api/rooms rejects a citadels cast that is not a legal cast with 400", async () => {
+  const host = await signUp("host@example.com");
+  const response = await call("/api/rooms", {
+    method: "POST",
+    cookie: host.cookie,
+    body: JSON.stringify({ seats: 3, setup: { game: "citadels", cast: ["assassin", "thief"] } }),
+  });
+  expect(response.status).toBe(400);
 });
 
 test("GET /api/rooms/:code returns the room for a session and 404 for an unknown code", async () => {
@@ -339,6 +372,31 @@ test("PATCH /api/rooms/:code lets the host rename and set roles; others get 403"
     body: JSON.stringify({ name: "Beta" }),
   });
   expect(missing.status).toBe(404);
+});
+
+test("PATCH /api/rooms/:code sets a matching setup and rejects a game mismatch", async () => {
+  const host = await signUp("host@example.com");
+  const created = await call("/api/rooms", { method: "POST", cookie: host.cookie, body: createBody() });
+  const { room } = (await created.json()) as { room: { code: string } };
+
+  const roles = ["capitalist", "newscaster", "general", "lawyer", "priest"];
+  const updated = await call(`/api/rooms/${room.code}`, {
+    method: "PATCH",
+    cookie: host.cookie,
+    body: JSON.stringify({ setup: { game: "g54", roles } }),
+  });
+  expect(updated.status).toBe(200);
+  expect(((await updated.json()) as { room: { setup: unknown } }).room.setup).toEqual({
+    game: "g54",
+    roles,
+  });
+
+  const swapped = await call(`/api/rooms/${room.code}`, {
+    method: "PATCH",
+    cookie: host.cookie,
+    body: JSON.stringify({ setup: citadelsSetup }),
+  });
+  expect(swapped.status).toBe(400);
 });
 
 test("DELETE /api/rooms/:code removes the room for the host and 403 for others", async () => {

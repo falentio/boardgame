@@ -1,5 +1,5 @@
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import type { G54Setup } from "../../shared/core/lockstep/games/g54/setup.ts";
+import type { RoomSetup } from "../../shared/rooms/games.ts";
 import type { Seat } from "../../shared/rooms/room.ts";
 
 export const user = sqliteTable("user", {
@@ -65,7 +65,7 @@ export const room = sqliteTable("room", {
     .notNull()
     .references(() => user.id),
   name: text("name").notNull(),
-  setup: text("setup", { mode: "json" }).$type<G54Setup>().notNull(),
+  setup: text("setup", { mode: "json" }).$type<RoomSetup>().notNull(),
   seats: text("seats", { mode: "json" }).$type<Seat[]>().notNull(),
   revision: integer("revision").notNull().default(0),
   startedAt: integer("started_at", { mode: "timestamp_ms" }),

@@ -1,14 +1,9 @@
-import { G54Error } from "../core/lockstep/games/g54/error.ts";
-import { validateRoles } from "../core/lockstep/games/g54/setup.ts";
-import type { G54Setup } from "../core/lockstep/games/g54/setup.ts";
-import type { RoleId } from "../core/lockstep/games/g54/roles.ts";
+import { boundsFor, validateRoomSetup, type RoomSetup } from "./games.ts";
 import { seatId, type SeatId } from "./ids.ts";
 import { err, ok, type Result } from "./result.ts";
 import type { RoomCode, RoomId, UserId } from "./ids.ts";
 
 export const MAX_NAME_LENGTH = 60;
-export const MIN_SEATS = 2;
-export const MAX_SEATS = 7;
 export const ROOM_TTL_MS = 24 * 60 * 60 * 1000;
 
 export interface Seat {
@@ -22,7 +17,7 @@ export interface Room {
   readonly code: RoomCode;
   readonly host: UserId;
   readonly name: string;
-  readonly setup: G54Setup;
+  readonly setup: RoomSetup;
   readonly seats: readonly Seat[];
   readonly createdAt: number;
   readonly updatedAt: number;
@@ -33,7 +28,7 @@ export const isExpired = (room: Room, now: number): boolean =>
   now >= room.createdAt + ROOM_TTL_MS;
 
 export const hasEnoughPlayers = (room: Room): boolean =>
-  room.seats.filter((seat) => seat.occupant !== null).length >= MIN_SEATS;
+  room.seats.filter((seat) => seat.occupant !== null).length >= boundsFor(room.setup.game).min;
 
 export type RoomError =
   | { kind: "invalid-name"; reason: string }
@@ -55,7 +50,7 @@ export interface NewRoom {
   host: UserId;
   name: string;
   seats: number;
-  setup: G54Setup;
+  setup: RoomSetup;
   now: number;
 }
 
@@ -75,9 +70,9 @@ export interface RenameCommand {
   now: number;
 }
 
-export interface SetRolesCommand {
+export interface SetSetupCommand {
   actor: UserId;
-  roles: readonly RoleId[];
+  setup: RoomSetup;
   now: number;
 }
 
@@ -110,18 +105,15 @@ export const createRoom = (input: NewRoom): Result<Room, RoomError> => {
   if (name === null) {
     return err({ kind: "invalid-name", reason: `name must be 1..${MAX_NAME_LENGTH} chars` });
   }
-  if (!Number.isInteger(input.seats) || input.seats < MIN_SEATS || input.seats > MAX_SEATS) {
+  const { min, max } = boundsFor(input.setup.game);
+  if (!Number.isInteger(input.seats) || input.seats < min || input.seats > max) {
     return err({
       kind: "invalid-seat-count",
-      reason: `seats must be an integer in ${MIN_SEATS}..${MAX_SEATS}`,
+      reason: `seats must be an integer in ${min}..${max}`,
     });
   }
-  try {
-    validateRoles(input.setup.roles);
-  } catch (error) {
-    if (!(error instanceof G54Error)) throw error;
-    return err({ kind: "invalid-setup", reason: error.message });
-  }
+  const reason = validateRoomSetup(input.setup);
+  if (reason !== null) return err({ kind: "invalid-setup", reason });
   const seats: Seat[] = Array.from({ length: input.seats }, (_, index) =>
     index === 0
       ? { id: seatId(`${input.id}:seat:0`), occupant: input.host, joinedAt: input.now }
@@ -201,15 +193,14 @@ export const renameRoom = (room: Room, cmd: RenameCommand): Result<Room, RoomErr
   return ok({ ...room, name, updatedAt: cmd.now });
 };
 
-export const setRoles = (room: Room, cmd: SetRolesCommand): Result<Room, RoomError> => {
+export const setSetup = (room: Room, cmd: SetSetupCommand): Result<Room, RoomError> => {
   const denied = requireHost(room, cmd.actor);
   if (denied !== null) return err(denied);
   if (room.startedAt !== null) return err({ kind: "already-started" });
-  try {
-    validateRoles(cmd.roles);
-  } catch (error) {
-    if (!(error instanceof G54Error)) throw error;
-    return err({ kind: "invalid-setup", reason: error.message });
+  if (cmd.setup.game !== room.setup.game) {
+    return err({ kind: "invalid-setup", reason: "a room's game is fixed at creation" });
   }
-  return ok({ ...room, setup: { roles: [...cmd.roles] }, updatedAt: cmd.now });
+  const reason = validateRoomSetup(cmd.setup);
+  if (reason !== null) return err({ kind: "invalid-setup", reason });
+  return ok({ ...room, setup: cmd.setup, updatedAt: cmd.now });
 };

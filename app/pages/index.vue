@@ -42,7 +42,7 @@ const onJoin = async () => {
             </h2>
           </CardTitle>
           <CardDescription>
-            Pick the roles and open a lobby for your friends.
+            Pick the roles or cast and open a lobby for your friends.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -109,7 +109,7 @@ const onJoin = async () => {
         Project
       </h2>
       <p class="text-muted-foreground text-sm leading-normal">
-        Boardgame plays Coup: Rebellion G54 in the browser. Rooms and games are shared by code or QR link.
+        Boardgame plays Coup: Rebellion G54 and Citadels in the browser. Rooms and games are shared by code or QR link.
       </p>
       <a
         href="https://github.com/falentio/boardgame"

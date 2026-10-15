@@ -1,5 +1,5 @@
-import type { RoleId } from "../../../shared/core/lockstep/games/g54/roles.ts";
 import { generateCode, type RoomEntropy } from "../../../shared/rooms/code.ts";
+import type { RoomSetup } from "../../../shared/rooms/games.ts";
 import type { ChangeReason, RoomEvents } from "../../../shared/rooms/events.ts";
 import type { RoomCode, RoomId, UserId } from "../../../shared/rooms/ids.ts";
 import { err, ok, type Result } from "../../../shared/rooms/result.ts";
@@ -11,7 +11,7 @@ import {
   leaveRoom as applyLeave,
   renameRoom,
   requireHost,
-  setRoles,
+  setSetup,
   startRoom as applyStart,
   type Departure,
   type Room,
@@ -43,7 +43,7 @@ export interface CreateRoomInput {
   host: UserId;
   name?: string;
   seats: number;
-  roles: readonly RoleId[];
+  setup: RoomSetup;
 }
 
 export interface JoinRoomInput {
@@ -55,7 +55,7 @@ export interface UpdateRoomInput {
   code: RoomCode;
   actor: UserId;
   name?: string;
-  roles?: readonly RoleId[];
+  setup?: RoomSetup;
 }
 
 export interface DeleteRoomInput {
@@ -108,7 +108,7 @@ export const createRoom = async (
       host: input.host,
       name: input.name ?? "",
       seats: input.seats,
-      setup: { roles: [...input.roles] },
+      setup: input.setup,
       now,
     });
     if (!built.ok) return built;
@@ -165,8 +165,8 @@ export const updateRoom = (
       next = renameRoom(room, { actor: input.actor, name: input.name, now: deps.now() });
       if (!next.ok) return next;
     }
-    if (input.roles !== undefined) {
-      next = setRoles(next.value, { actor: input.actor, roles: input.roles, now: deps.now() });
+    if (input.setup !== undefined) {
+      next = setSetup(next.value, { actor: input.actor, setup: input.setup, now: deps.now() });
       if (!next.ok) return next;
     }
     return next;

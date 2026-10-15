@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { roomCode, userId, type RoomCode, type UserId } from "../../../shared/rooms/ids.ts";
+import type { RoomSetup } from "../../../shared/rooms/games.ts";
 import {
   keepLastGood,
   lobbyOf,
@@ -13,13 +14,32 @@ const CODE: RoomCode = roomCode("BAWOLUTI");
 const HOST: UserId = userId("user-host");
 const GUEST: UserId = userId("user-guest");
 
+const G54_SETUP: RoomSetup = {
+  game: "g54",
+  roles: ["banker", "director", "guerrilla", "politician", "peacekeeper"],
+};
+
+const CITADELS_SETUP: RoomSetup = {
+  game: "citadels",
+  cast: [
+    "assassin",
+    "thief",
+    "magician",
+    "king",
+    "bishop",
+    "merchant",
+    "architect",
+    "warlord",
+  ],
+};
+
 const wireRoom = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
   id: "room-1",
   code: "BAWOLUTI",
   link: "https://example.test/join/BAWOLUTI",
   host: "user-host",
   name: "New room",
-  setup: { roles: ["banker", "director", "guerrilla", "politician", "peacekeeper"] },
+  setup: { ...G54_SETUP },
   seats: [
     { id: "seat-0", occupant: "user-host", name: "Host Person", image: null, joinedAt: 1 },
     { id: "seat-1", occupant: null, name: null, image: null, joinedAt: null },
@@ -37,12 +57,16 @@ interface LoadedSeat {
   joinedAt: number | null;
 }
 
-const loadedRoom = (seats: readonly LoadedSeat[], startedAt: number | null = null): Room => ({
+const loadedRoom = (
+  seats: readonly LoadedSeat[],
+  startedAt: number | null = null,
+  setup: RoomSetup = G54_SETUP,
+): Room => ({
   code: CODE,
   name: "New room",
   host: HOST,
   link: "https://example.test/join/BAWOLUTI",
-  roles: ["banker", "director", "guerrilla", "politician", "peacekeeper"],
+  setup,
   startedAt,
   expiresAt: 86_400_001,
   seats: seats.map((seat) => ({
@@ -59,11 +83,16 @@ test("parseRoom reads a valid wire object", () => {
   expect(room).not.toBeNull();
   expect(room?.code).toBe("BAWOLUTI");
   expect(room?.host).toBe("user-host");
-  expect(room?.roles).toEqual(["banker", "director", "guerrilla", "politician", "peacekeeper"]);
+  expect(room?.setup).toEqual(G54_SETUP);
   expect(room?.seats).toEqual([
     { id: "seat-0", occupant: "user-host", name: "Host Person", image: null, joinedAt: 1 },
     { id: "seat-1", occupant: null, name: null, image: null, joinedAt: null },
   ]);
+});
+
+test("parseRoom reads a citadels setup", () => {
+  const room = parseRoom(wireRoom({ setup: { ...CITADELS_SETUP } }));
+  expect(room?.setup).toEqual(CITADELS_SETUP);
 });
 
 test("parseRoom degrades a malformed identity field to null without failing the load", () => {
@@ -98,9 +127,11 @@ test("parseRoom degrades an absent identity field to null", () => {
   });
 });
 
-test("parseRoom drops unknown role ids and keeps the known ones", () => {
-  const room = parseRoom(wireRoom({ setup: { roles: ["banker", "not-a-role", "director"] } }));
-  expect(room?.roles).toEqual(["banker", "director"]);
+test("a malformed setup fails the load", () => {
+  expect(parseRoom(wireRoom({ setup: { roles: ["banker", "not-a-role", "director"] } }))).toBeNull();
+  expect(parseRoom(wireRoom({ setup: { game: "g54", roles: ["banker", "not-a-role"] } }))).toBeNull();
+  expect(parseRoom(wireRoom({ setup: { game: "citadels", cast: ["assassin", "not-a-character"] } }))).toBeNull();
+  expect(parseRoom(wireRoom({ setup: { game: "chess", cast: [] } }))).toBeNull();
 });
 
 test("parseRoom returns null on a missing or malformed code", () => {
@@ -115,11 +146,12 @@ test("parseRoom returns null when seats is not an array or a seat is malformed",
   expect(parseRoom(wireRoom({ seats: [{ id: "", occupant: null, joinedAt: null }] }))).toBeNull();
 });
 
-test("parseRoom returns null on a malformed host, name, link, or roles container", () => {
+test("parseRoom returns null on a malformed host, name, link, or setup container", () => {
   expect(parseRoom(wireRoom({ host: "" }))).toBeNull();
   expect(parseRoom(wireRoom({ name: 1 }))).toBeNull();
   expect(parseRoom(wireRoom({ link: null }))).toBeNull();
   expect(parseRoom(wireRoom({ setup: { roles: "roles" } }))).toBeNull();
+  expect(parseRoom(wireRoom({ setup: null }))).toBeNull();
   expect(parseRoom(null)).toBeNull();
   expect(parseRoom("room")).toBeNull();
 });
@@ -243,6 +275,30 @@ test("lobbyOf lets the host start a sparse room once the minimum is seated", () 
   if (lobby.kind !== "room") throw new Error("expected room");
   expect(lobby.status).toEqual({ kind: "waiting", filled: 2, total: 5 });
   expect(lobby.canStart).toBe(true);
+});
+
+test("lobbyOf respects the citadels minimum of two seats", () => {
+  const oneSeated = lobbyOf(
+    { kind: "loaded", room: loadedRoom(
+      [{ id: "seat-0", occupant: "user-host", joinedAt: 1 }, { id: "seat-1", occupant: null, joinedAt: null }],
+      null,
+      CITADELS_SETUP,
+    ) },
+    HOST,
+  );
+  if (oneSeated.kind !== "room") throw new Error("expected room");
+  expect(oneSeated.canStart).toBe(false);
+
+  const twoSeated = lobbyOf(
+    { kind: "loaded", room: loadedRoom(
+      [{ id: "seat-0", occupant: "user-host", joinedAt: 1 }, { id: "seat-1", occupant: "user-guest", joinedAt: 2 }],
+      null,
+      CITADELS_SETUP,
+    ) },
+    HOST,
+  );
+  if (twoSeated.kind !== "room") throw new Error("expected room");
+  expect(twoSeated.canStart).toBe(true);
 });
 
 test("lobbyOf detects the host by occupant equality, not by seat index", () => {

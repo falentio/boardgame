@@ -21,9 +21,20 @@ export {
 } from "./code.ts";
 export { err, ok, type Result } from "./result.ts";
 export {
+  ROOM_GAMES,
+  assertNever,
+  boundsFor,
+  defaultSetupFor,
+  isGameKind,
+  parseRoomSetup,
+  validateRoomSetup,
+  type GameKind,
+  type RoomGame,
+  type RoomSetup,
+  type SeatBounds,
+} from "./games.ts";
+export {
   MAX_NAME_LENGTH,
-  MAX_SEATS,
-  MIN_SEATS,
   ROOM_TTL_MS,
   createRoom,
   hasEnoughPlayers,
@@ -33,7 +44,7 @@ export {
   leaveRoom,
   renameRoom,
   requireHost,
-  setRoles,
+  setSetup,
   startRoom,
   type Departure,
   type JoinCommand,
@@ -44,6 +55,6 @@ export {
   type Room,
   type RoomError,
   type Seat,
-  type SetRolesCommand,
+  type SetSetupCommand,
   type StartRoomCommand,
 } from "./room.ts";

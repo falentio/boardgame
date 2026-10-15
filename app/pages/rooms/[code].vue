@@ -12,12 +12,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import RoleStrip from "@/components/room/RoleStrip.vue"
+import SetupStrip from "@/components/room/SetupStrip.vue"
 import SeatList from "@/components/room/SeatList.vue"
 import ShareLink from "@/components/room/ShareLink.vue"
 import HowToPlayDialog from "@/components/room/HowToPlayDialog.vue"
 import { parseRoomCode } from "#shared/rooms/code.ts"
 import { userId, type UserId } from "#shared/rooms/ids.ts"
+import { GAME_UI } from "@/composables/game-ui"
 import { useAuthSession } from "@/composables/useAuthSession"
 import { useLobby } from "@/composables/useLobby"
 import { formatRemaining } from "@/composables/room-time.ts"
@@ -331,9 +332,9 @@ const onJoin = async () => {
 
           <div class="flex flex-col gap-3">
             <p class="text-sm leading-none font-medium">
-              Roles
+              {{ GAME_UI[lobby.room.setup.game].setupLabel }}
             </p>
-            <RoleStrip :roles="lobby.room.roles" />
+            <SetupStrip :setup="lobby.room.setup" />
           </div>
 
           <div class="flex flex-col gap-3">

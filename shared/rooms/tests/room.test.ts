@@ -1,7 +1,8 @@
 import { expect, test } from "vitest";
 import { makeRoster } from "../../core/lockstep/frame.ts";
-import type { G54Setup } from "../../core/lockstep/games/g54/setup.ts";
+import { BASE_CAST } from "../../core/lockstep/games/citadels/characters.ts";
 import { STARTER_ROLES } from "../../core/lockstep/games/g54/roles.ts";
+import type { RoomSetup } from "../games.ts";
 import { roomCode, roomId, userId, type UserId } from "../ids.ts";
 import {
   MAX_NAME_LENGTH,
@@ -14,7 +15,7 @@ import {
   leaveRoom,
   renameRoom,
   requireHost,
-  setRoles,
+  setSetup,
   startRoom,
   type NewRoom,
   type Room,
@@ -24,7 +25,8 @@ import {
 const HOST = userId("user-host");
 const GUEST = userId("user-guest");
 const THIRD = userId("user-third");
-const SETUP: G54Setup = { roles: STARTER_ROLES };
+const SETUP: RoomSetup = { game: "g54", roles: STARTER_ROLES };
+const CITADELS: RoomSetup = { game: "citadels", cast: BASE_CAST };
 
 const newRoom = (overrides: Partial<NewRoom> = {}): NewRoom => ({
   id: roomId("room-1"),
@@ -87,18 +89,31 @@ test("createRoom trims the name and rejects empty or over-long names", () => {
   expect(created({ name: "x".repeat(MAX_NAME_LENGTH) }).name).toHaveLength(MAX_NAME_LENGTH);
 });
 
-test("createRoom rejects seat counts outside 2..7 and non-integers", () => {
+test("createRoom bounds the seat count by the setup's game", () => {
   for (const seats of [0, 1, 8, -1, 3.5]) {
     expect(failure(createRoom(newRoom({ seats }))).kind).toBe("invalid-seat-count");
   }
   expect(createRoom(newRoom({ seats: 2 })).ok).toBe(true);
   expect(createRoom(newRoom({ seats: 7 })).ok).toBe(true);
+
+  expect(failure(createRoom(newRoom({ setup: CITADELS, seats: 9 }))).kind).toBe(
+    "invalid-seat-count",
+  );
+  expect(createRoom(newRoom({ setup: CITADELS, seats: 8 })).ok).toBe(true);
 });
 
 test("createRoom rejects an invalid role selection as invalid-setup", () => {
-  const bad = { roles: ["banker", "director", "guerrilla", "politician"] } as unknown as G54Setup;
+  const bad = {
+    game: "g54",
+    roles: ["banker", "director", "guerrilla", "politician"],
+  } as unknown as RoomSetup;
   const result = createRoom(newRoom({ setup: bad }));
   expect(failure(result)).toEqual({ kind: "invalid-setup", reason: expect.any(String) });
+});
+
+test("createRoom rejects an invalid cast as invalid-setup", () => {
+  const bad = { game: "citadels", cast: ["assassin", "thief"] } as unknown as RoomSetup;
+  expect(failure(createRoom(newRoom({ setup: bad }))).kind).toBe("invalid-setup");
 });
 
 test("joinRoom fills the first open seat and stamps the join time", () => {
@@ -155,19 +170,55 @@ test("renameRoom refuses a non-host and an invalid name", () => {
   );
 });
 
-test("setRoles replaces the setup for the host and validates the selection", () => {
+test("setSetup replaces the setup for the host and validates the selection", () => {
   const room = created();
   const roles = ["capitalist", "newscaster", "general", "lawyer", "priest"] as const;
-  const updated = setRoles(room, { actor: HOST, roles, now: 6000 });
-  if (!updated.ok) throw new Error("expected a role update");
-  expect(updated.value.setup.roles).toEqual(roles);
+  const updated = setSetup(room, { actor: HOST, setup: { game: "g54", roles }, now: 6000 });
+  if (!updated.ok) throw new Error("expected a setup update");
+  const setup = updated.value.setup;
+  expect(setup.game).toBe("g54");
+  if (setup.game !== "g54") throw new Error("expected a g54 setup");
+  expect(setup.roles).toEqual(roles);
   expect(updated.value.updatedAt).toBe(6000);
 
-  expect(failure(setRoles(room, { actor: GUEST, roles, now: 6000 })).kind).toBe("not-host");
+  expect(failure(setSetup(room, { actor: GUEST, setup: { game: "g54", roles }, now: 6000 })).kind).toBe(
+    "not-host",
+  );
   const bad = ["banker", "director", "guerrilla", "politician"] as const;
-  expect(failure(setRoles(room, { actor: HOST, roles: bad, now: 6000 })).kind).toBe(
+  expect(failure(setSetup(room, { actor: HOST, setup: { game: "g54", roles: bad }, now: 6000 })).kind).toBe(
     "invalid-setup",
   );
+});
+
+test("setSetup refuses a setup for a different game, so a room's game is fixed", () => {
+  const room = created();
+  const swapped = setSetup(room, { actor: HOST, setup: CITADELS, now: 6000 });
+  expect(failure(swapped)).toEqual({ kind: "invalid-setup", reason: expect.any(String) });
+});
+
+test("setSetup replaces a citadels room's cast and validates it", () => {
+  const room = created({ setup: CITADELS });
+  const cast = [
+    "witch",
+    "spy",
+    "wizard",
+    "emperor",
+    "abbot",
+    "trader",
+    "scholar",
+    "marshal",
+  ] as const;
+  const updated = setSetup(room, { actor: HOST, setup: { game: "citadels", cast }, now: 6000 });
+  if (!updated.ok) throw new Error("expected a setup update");
+  const setup = updated.value.setup;
+  expect(setup.game).toBe("citadels");
+  if (setup.game !== "citadels") throw new Error("expected a citadels setup");
+  expect(setup.cast).toEqual(cast);
+
+  const bad = ["assassin", "thief"] as const;
+  expect(
+    failure(setSetup(room, { actor: HOST, setup: { game: "citadels", cast: bad }, now: 6000 })).kind,
+  ).toBe("invalid-setup");
 });
 
 test("hasEnoughPlayers is true once the occupant count reaches the minimum", () => {
@@ -219,7 +270,7 @@ test("startRoom is pure: the input room is untouched", () => {
   expect(room).toEqual(before);
 });
 
-test("a started room refuses leave, kick, and setRoles so its genesis stays fixed", () => {
+test("a started room refuses leave, kick, and setSetup so its genesis stays fixed", () => {
   const started = startRoom(withGuests([GUEST, THIRD]), { actor: HOST, now: 5000 });
   if (!started.ok) throw new Error("expected a start");
   const room = started.value;
@@ -230,7 +281,7 @@ test("a started room refuses leave, kick, and setRoles so its genesis stays fixe
     kind: "already-started",
   });
   const roles = ["capitalist", "newscaster", "general", "lawyer", "priest"] as const;
-  expect(failure(setRoles(room, { actor: HOST, roles, now: 6000 }))).toEqual({
+  expect(failure(setSetup(room, { actor: HOST, setup: { game: "g54", roles }, now: 6000 }))).toEqual({
     kind: "already-started",
   });
   expect(hasEnoughPlayers(room)).toBe(true);
