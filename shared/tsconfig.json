@@ -17,8 +17,7 @@
     "noImplicitOverride": true,
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
-    "skipLibCheck": true,
-    "types": ["vite/client"]
+    "skipLibCheck": true
   },
   "include": ["**/*.ts"]
 }

@@ -32,3 +32,6 @@ logs
 
 # Agent worktrees
 .worktrees
+
+# Agent orchestration notes (local working state, not source)
+orchestrate/
