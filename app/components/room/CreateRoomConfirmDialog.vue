@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
-import RoleStrip from "@/components/room/RoleStrip.vue"
+import { GAME_UI } from "@/composables/game-ui"
 
 const props = defineProps<{
   request: CreateRoomConfig | null
@@ -38,7 +38,7 @@ const onOpenChange = (open: boolean) => {
       <AlertDialogHeader>
         <AlertDialogTitle>Create this room?</AlertDialogTitle>
         <AlertDialogDescription>
-          {{ request?.name }} · {{ request?.seats }} seats. These are the roles every player picks from.
+          {{ request?.name }} · {{ request?.seats }} seats. These are the {{ GAME_UI[request?.setup.game ?? "g54"].setupLabel.toLowerCase() }} every player picks from.
         </AlertDialogDescription>
       </AlertDialogHeader>
 
@@ -51,9 +51,11 @@ const onOpenChange = (open: boolean) => {
           <dt class="text-muted-foreground">Seats</dt>
           <dd class="font-medium tabular-nums">{{ request?.seats }}</dd>
         </div>
-        <div class="flex flex-col gap-3">
-          <dt class="text-muted-foreground">Roles</dt>
-          <dd><RoleStrip v-if="request" :roles="request.roles" /></dd>
+        <div v-if="request" class="flex flex-col gap-3">
+          <dt class="text-muted-foreground">{{ GAME_UI[request.setup.game].setupLabel }}</dt>
+          <dd>
+            <component :is="GAME_UI[request.setup.game].lobbySetup" :setup="request.setup" />
+          </dd>
         </div>
       </dl>
 

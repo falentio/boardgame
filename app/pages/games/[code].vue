@@ -1,22 +1,10 @@
 <script setup lang="ts">
-import { computed, watch } from "vue"
-import { Spinner } from "@/components/ui/spinner"
-import GameBoard from "@/components/g54/board/GameBoard.vue"
-import TurnTimer from "@/components/g54/board/TurnTimer.vue"
-import WindowPicker from "@/components/g54/board/WindowPicker.vue"
-import WinnerCard, { type WinnerCardState } from "@/components/g54/WinnerCard.vue"
-import { boardOf, type SeatIdentity } from "@/composables/board-view.ts"
-import type { TurnClock } from "@/composables/turn-timer.ts"
-import { forcedAction } from "@/composables/window-menu.ts"
+import { computed } from "vue"
+import { GAME_UI } from "@/composables/game-ui"
 import { useAuthSession } from "@/composables/useAuthSession"
-import { useGame } from "@/composables/useGame"
-import { useGameToasts } from "@/composables/useGameToasts"
 import { useLobby } from "@/composables/useLobby"
-import { act } from "#shared/core/lockstep/index.ts"
-import { g54 } from "#shared/core/lockstep/games/g54/index.ts"
 import { parseRoomCode } from "#shared/rooms/code.ts"
-import { seatId, userId, type SeatId } from "#shared/rooms/ids.ts"
-import { resolveUserImage } from "#shared/users/avatar.ts"
+import { userId } from "#shared/rooms/ids.ts"
 
 definePageMeta({ layout: "shell" })
 
@@ -38,149 +26,37 @@ const loadFailed = computed(() => {
   if (current.kind === "failed") return current.reason
   return null
 })
-
-const identities = computed<ReadonlyMap<SeatId, SeatIdentity>>(() => {
-  const map = new Map<SeatId, SeatIdentity>()
-  const current = room.value
-  if (current === null) return map
-  for (const seat of current.seats) {
-    if (seat.occupant === null) continue
-    map.set(seatId(seat.id), {
-      name: seat.name ?? "Player",
-      image: resolveUserImage(seat.image, seat.occupant),
-    })
-  }
-  return map
-})
-
-const { view, status, report, acted, resign, remainingMs, inputTimeoutMs } = useGame({
-  game: g54,
-  room,
-  viewer,
-})
-
-useGameToasts({ view, identities })
-
-const board = computed(() => {
-  const current = view.value
-  if (current === null) return null
-  return boardOf(current, identities.value)
-})
-
-const winner = computed(() => {
-  const current = view.value
-  if (current === null || !current.terminal) return null
-  const seat = current.winner
-  if (seat === null) return "Game over"
-  return `${identities.value.get(seat)?.name ?? seat} wins`
-})
-
-const winnerCard = computed<WinnerCardState | null>(() => {
-  const current = view.value
-  if (current === null || !current.terminal) return null
-  const identity = current.winner === null ? undefined : identities.value.get(current.winner)
-  if (identity === undefined) return { kind: "over" }
-  return { kind: "winner", name: identity.name, image: identity.image }
-})
-
-const forced = computed(() => {
-  const menu = board.value?.menu
-  return menu === null || menu === undefined ? null : forcedAction(menu)
-})
-
-/** The local seat's clock, or null when it owes nothing and there is nothing to show. */
-const turnClock = computed<TurnClock | null>(() => {
-  const remaining = remainingMs.value
-  if (remaining === null || status.value !== "live" || winner.value !== null) return null
-  return { remainingMs: remaining, totalMs: inputTimeoutMs }
-})
-
-watch(
-  () => board.value?.menu ?? null,
-  (menu) => {
-    if (menu === null) return
-    const action = forcedAction(menu)
-    if (action !== null) report(act(action))
-  },
-  { immediate: true },
-)
 </script>
 
 <template>
   <div class="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 p-4 pt-0">
     <Transition name="status" mode="out-in">
-      <div v-if="loadFailed" key="failed" class="flex flex-col gap-3">
+      <div v-if="room" :key="room.setup.game" class="flex flex-col gap-4">
+        <component
+          :is="GAME_UI[room.setup.game].screen"
+          :room="room"
+          :viewer="viewer"
+          :load-failed="loadFailed"
+        />
+      </div>
+
+      <div v-else key="loading" class="flex flex-col gap-3">
         <h1 class="text-2xl leading-tight font-semibold">
           Game
         </h1>
-        <p class="text-destructive text-sm leading-normal">
+        <p v-if="loadFailed" class="text-destructive text-sm leading-normal">
           {{ loadFailed }}
         </p>
-        <NuxtLink to="/" class="text-primary text-sm underline-offset-4 hover:underline">
-          Back to the dashboard
-        </NuxtLink>
-      </div>
-
-      <div v-else-if="status === 'waiting'" key="waiting" class="flex items-center gap-3">
-        <h1 class="sr-only">
-          Game
-        </h1>
-        <Spinner />
-        <p role="status" class="text-muted-foreground text-sm leading-normal">
-          Waiting for the game to start…
+        <p v-else role="status" class="text-muted-foreground text-sm leading-normal">
+          Loading game…
         </p>
-      </div>
-
-      <div v-else-if="status === 'spectator'" key="spectator" class="flex flex-col gap-3">
-        <h1 class="text-2xl leading-tight font-semibold">
-          Game
-        </h1>
-        <p class="text-muted-foreground text-sm leading-normal">
-          You are not seated in this game, so you cannot see the board.
-        </p>
-        <NuxtLink to="/" class="text-primary text-sm underline-offset-4 hover:underline">
-          Back to the dashboard
-        </NuxtLink>
-      </div>
-
-      <div v-else-if="status === 'resyncing'" key="resyncing" class="flex flex-col gap-3">
-        <h1 class="text-2xl leading-tight font-semibold">
-          Game
-        </h1>
-        <div class="flex items-center gap-3">
-          <Spinner />
-          <p role="status" class="text-muted-foreground text-sm leading-normal">
-            This tab fell out of step with the other players. Resyncing…
-          </p>
-        </div>
-      </div>
-
-      <div v-else-if="board" key="board" class="flex flex-col gap-4">
-        <WinnerCard v-if="winnerCard" :state="winnerCard" />
-        <GameBoard :board="board" />
-        <TurnTimer :clock="turnClock" />
-        <p
-          v-if="forced"
-          role="status"
-          class="text-muted-foreground text-sm leading-normal"
+        <NuxtLink
+          v-if="loadFailed"
+          to="/"
+          class="text-primary text-sm underline-offset-4 hover:underline"
         >
-          Waiting for the other players…
-        </p>
-        <WindowPicker
-          v-else-if="board.menu"
-          :menu="board.menu"
-          :busy="acted"
-          @act="report(act($event))"
-        />
-        <div v-if="!winnerCard">
-          <button
-            type="button"
-            class="text-muted-foreground text-sm underline-offset-4 hover:underline transition-transform duration-150 ease-out active:scale-[0.97]"
-            @click="resign"
-          >
-            Resign
-          </button>
-        </div>
+          Back to the dashboard
+        </NuxtLink>
       </div>
     </Transition>
   </div>

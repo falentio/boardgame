@@ -12,7 +12,6 @@ import {
   type SeatInput,
 } from "#shared/core/lockstep/index.ts";
 import type { UserId } from "#shared/rooms/ids.ts";
-import type { G54Setup } from "#shared/core/lockstep/games/g54/setup.ts";
 import {
   genesisFor,
   openGameSession,
@@ -40,9 +39,9 @@ export interface UseGame<A, View> {
 /** The deadline-check cadence: tight, so peers carry an overdue frame within ~8ms of each other. */
 export const TICK_MS = 16;
 
-export const useGame = <S, A, View>(deps: {
-  readonly game: GameDefinition<S, A, G54Setup, View>;
-  readonly room: Ref<RoomLike | null>;
+export const useGame = <S, A, Setup, View>(deps: {
+  readonly game: GameDefinition<S, A, Setup, View>;
+  readonly room: Ref<RoomLike<Setup> | null>;
   readonly viewer: Ref<UserId | null>;
   readonly inputTimeoutMs?: number;
   readonly tickMs?: number;
