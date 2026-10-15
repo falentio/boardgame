@@ -1,8 +1,10 @@
+import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { roomCode, roomId, userId } from "../../../../shared/rooms/ids.ts";
 import { createRoom, type Room } from "../../../../shared/rooms/room.ts";
+import { BASE_CAST } from "../../../../shared/core/lockstep/games/citadels/characters.ts";
 import { STARTER_ROLES } from "../../../../shared/core/lockstep/games/g54/roles.ts";
-import type { G54Setup } from "../../../../shared/core/lockstep/games/g54/setup.ts";
+import type { RoomSetup } from "../../../../shared/rooms/games.ts";
 import { user } from "../../../db/schema.ts";
 import {
   deleteExpiredRooms,
@@ -13,8 +15,9 @@ import {
   saveRoom,
 } from "../store.ts";
 import { createTestDb, type TestDb } from "./d1-harness.ts";
+import { room } from "../../../db/schema.ts";
 
-const SETUP: G54Setup = { roles: STARTER_ROLES };
+const SETUP: RoomSetup = { game: "g54", roles: STARTER_ROLES };
 const HOST = userId("user-host");
 
 let harness: TestDb;
@@ -70,6 +73,62 @@ test("saveRoom round-trips a set startedAt", async () => {
 
   const after = await roomByCode(harness.db, room.code);
   expect(after!.room.startedAt).toBe(5000);
+});
+
+test("a citadels room round-trips its cast", async () => {
+  const room = aRoom({ setup: { game: "citadels", cast: BASE_CAST } });
+  expect(await insertRoom(harness.db, room)).toBe("ok");
+
+  const loaded = await roomByCode(harness.db, room.code);
+  expect(loaded!.room.setup).toEqual({ game: "citadels", cast: BASE_CAST });
+  expect(loaded!.room).toEqual(room);
+});
+
+const backfillStatements = (): readonly string[] => {
+  const files = import.meta.glob("../../../../drizzle/0003_*.sql", {
+    query: "?raw",
+    import: "default",
+    eager: true,
+  });
+  return Object.values(files)
+    .flatMap((sql) => sql.split("--> statement-breakpoint"))
+    .map((statement) => statement.trim())
+    .filter((statement) => statement.length > 0);
+};
+
+const legacyRow = (code: string, id: string) => ({
+  id: roomId(id),
+  code: roomCode(code),
+  hostId: HOST,
+  name: "Legacy",
+  setup: { roles: STARTER_ROLES } as unknown as RoomSetup,
+  seats: [],
+  revision: 0,
+  createdAt: new Date(1000),
+  updatedAt: new Date(1000),
+  startedAt: null,
+});
+
+test("the 0003 backfill tags a legacy tagless row as a g54 room", async () => {
+  await harness.db.insert(room).values(legacyRow("GAJUDIRU", "room-legacy"));
+  await harness.db.insert(room).values(legacyRow("BAJUDIRU", "room-tagged"));
+  await harness.db.update(room).set({ setup: SETUP }).where(eq(room.code, roomCode("BAJUDIRU")));
+
+  for (const statement of backfillStatements()) {
+    await harness.env.DB.prepare(statement).run();
+  }
+
+  const migrated = await roomByCode(harness.db, roomCode("GAJUDIRU"));
+  expect(migrated!.room.setup).toEqual({ game: "g54", roles: STARTER_ROLES });
+
+  const tagged = await roomByCode(harness.db, roomCode("BAJUDIRU"));
+  expect(tagged!.room.setup).toEqual(SETUP);
+
+  for (const statement of backfillStatements()) {
+    await harness.env.DB.prepare(statement).run();
+  }
+  const again = await roomByCode(harness.db, roomCode("GAJUDIRU"));
+  expect(again!.room.setup).toEqual({ game: "g54", roles: STARTER_ROLES });
 });
 
 test("roomByCode is an exact-match lookup and misses for an unknown code", async () => {

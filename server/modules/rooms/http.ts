@@ -1,11 +1,11 @@
 import { Hono, type Context } from "hono";
-import { isRoleId, type RoleId } from "../../../shared/core/lockstep/games/g54/roles.ts";
 import { encodeEnvelope, parseEnvelope, type GameEvents } from "../../../shared/game/events.ts";
 import type { RoomEvents } from "../../../shared/rooms/events.ts";
 import type { AppAuth } from "../../utils/auth.ts";
 import type { Db } from "../../utils/db.ts";
 import type { RoomEntropy } from "../../../shared/rooms/code.ts";
 import { parseRoomCode } from "../../../shared/rooms/code.ts";
+import { parseRoomSetup, type RoomSetup } from "../../../shared/rooms/games.ts";
 import { joinUrl } from "../../../shared/rooms/link.ts";
 import { userId, type RoomCode, type RoomId, type UserId } from "../../../shared/rooms/ids.ts";
 import type { Result } from "../../../shared/rooms/result.ts";
@@ -50,7 +50,7 @@ interface RoomView {
   link: string;
   host: string;
   name: string;
-  setup: { roles: readonly RoleId[] };
+  setup: RoomSetup;
   seats: readonly SeatView[];
   createdAt: number;
   updatedAt: number;
@@ -95,7 +95,7 @@ const toView = (room: Room, origin: string, occupants: OccupantDirectory): RoomV
   link: joinUrl(origin, room.code),
   host: room.host,
   name: room.name,
-  setup: { roles: room.setup.roles },
+  setup: room.setup,
   seats: room.seats.map((seat) => {
     const identity = seat.occupant === null ? null : occupants.get(seat.occupant) ?? null;
     return {
@@ -111,16 +111,6 @@ const toView = (room: Room, origin: string, occupants: OccupantDirectory): RoomV
   startedAt: room.startedAt,
   expiresAt: room.createdAt + ROOM_TTL_MS,
 });
-
-const parseRoles = (value: unknown): RoleId[] | null => {
-  if (!Array.isArray(value)) return null;
-  const roles: RoleId[] = [];
-  for (const item of value) {
-    if (typeof item !== "string" || !isRoleId(item)) return null;
-    roles.push(item);
-  }
-  return roles;
-};
 
 const readObject = async (c: Context): Promise<Record<string, unknown> | null> => {
   try {
@@ -169,8 +159,8 @@ export const createRoomApp = (deps: RoomAppDeps): Hono => {
     if (body === null) return badRequest(c, "body must be a JSON object");
     const seats = body.seats;
     if (typeof seats !== "number") return badRequest(c, "seats must be a number");
-    const roles = parseRoles(body.roles);
-    if (roles === null) return badRequest(c, "roles must be an array of role ids");
+    const setup = parseRoomSetup(body.setup);
+    if (setup === null) return badRequest(c, "setup must be a valid game setup");
     const name = body.name;
     if (name !== undefined && typeof name !== "string") return badRequest(c, "name must be a string");
 
@@ -178,7 +168,7 @@ export const createRoomApp = (deps: RoomAppDeps): Hono => {
       host: userId(auth.user.id),
       name: name ?? "New room",
       seats,
-      roles,
+      setup,
     });
     return respond(c, result, 201);
   });
@@ -260,15 +250,15 @@ export const createRoomApp = (deps: RoomAppDeps): Hono => {
     if (body === null) return badRequest(c, "body must be a JSON object");
     const name = body.name;
     if (name !== undefined && typeof name !== "string") return badRequest(c, "name must be a string");
-    let roles: RoleId[] | undefined;
-    if (body.roles !== undefined) {
-      const parsed = parseRoles(body.roles);
-      if (parsed === null) return badRequest(c, "roles must be an array of role ids");
-      roles = parsed;
+    let setup: RoomSetup | undefined;
+    if (body.setup !== undefined) {
+      const parsed = parseRoomSetup(body.setup);
+      if (parsed === null) return badRequest(c, "setup must be a valid game setup");
+      setup = parsed;
     }
     return respond(
       c,
-      await updateRoom(serviceDeps, { code, actor: userId(auth.user.id), name, roles }),
+      await updateRoom(serviceDeps, { code, actor: userId(auth.user.id), name, setup }),
     );
   });
 

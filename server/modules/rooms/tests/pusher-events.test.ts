@@ -32,7 +32,7 @@ const room = (code: string): Room => {
     host: userId("user-host"),
     name: "Alpha",
     seats: 3,
-    setup: { roles: STARTER_ROLES },
+    setup: { game: "g54", roles: STARTER_ROLES },
     now: 1000,
   });
   if (!built.ok) throw new Error(`expected a room, got ${built.error.kind}`);
