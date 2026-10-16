@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { Maximize } from "@lucide/vue";
+import FullscreenNotice from "@/components/citadels/FullscreenNotice.vue";
 import { buttonVariants } from "@/components/ui/button";
 import type { CitadelsBoard } from "@/composables/citadels-board.ts";
 
-defineProps<{ board: CitadelsBoard; canEnter: boolean; notice: string | null }>();
+defineProps<{
+  board: CitadelsBoard;
+  canEnter: boolean;
+  notice: string | null;
+  canRetry: boolean;
+}>();
 const emit = defineEmits<{ open: []; retry: [] }>();
 </script>
 
@@ -28,21 +34,11 @@ const emit = defineEmits<{ open: []; retry: [] }>();
       This browser cannot open fullscreen, so the game fills the window instead.
     </p>
 
-    <p
-      v-if="notice"
-      data-slot="citadels-notice"
-      role="status"
-      class="text-muted-foreground flex flex-wrap items-center gap-2 text-sm leading-normal"
-    >
-      {{ notice }}
-      <button
-        data-slot="citadels-retry"
-        type="button"
-        class="text-primary text-sm underline-offset-4 hover:underline"
-        @click="emit('retry')"
-      >
-        Try fullscreen again
-      </button>
-    </p>
+    <FullscreenNotice
+      :notice="notice"
+      :can-retry="canRetry"
+      class="text-sm"
+      @retry="emit('retry')"
+    />
   </div>
 </template>

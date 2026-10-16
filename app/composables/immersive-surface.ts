@@ -7,6 +7,8 @@ export const REFUSAL_NOTICE = "Fullscreen was refused — the game is running in
 
 export interface Surface {
   readonly canEnter: ComputedRef<boolean>;
+  /** True while a fullscreen request could still be made, whatever the last one did. */
+  readonly canRetry: ComputedRef<boolean>;
   enter(): void;
   leave(): void;
   readonly notice: Ref<string | null>;
@@ -44,8 +46,11 @@ export const openSurface = (input: {
     if (!active) phase.value = "gate";
   });
 
+  const canEnter = computed(() => fullscreen.support.value === "element");
+
   return {
-    canEnter: computed(() => fullscreen.support.value === "element"),
+    canEnter,
+    canRetry: computed(() => canEnter.value && !fullscreen.active.value),
     enter,
     leave,
     notice,

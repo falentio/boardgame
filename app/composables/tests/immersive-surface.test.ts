@@ -7,6 +7,7 @@ interface FakeFullscreen extends Fullscreen {
   readonly enters: () => number;
   readonly exits: () => number;
   answer(outcome: EnterOutcome): void;
+  hang(): void;
   grant(): void;
 }
 
@@ -16,6 +17,7 @@ const fakeFullscreen = (support: FullscreenSupport = "element"): FakeFullscreen 
   let enters = 0;
   let exits = 0;
   let answer: EnterOutcome = "entered";
+  let hangs = false;
   return {
     support: supportRef,
     element,
@@ -25,12 +27,15 @@ const fakeFullscreen = (support: FullscreenSupport = "element"): FakeFullscreen 
     answer: (outcome) => {
       answer = outcome;
     },
+    hang: () => {
+      hangs = true;
+    },
     grant: () => {
       element.value = {} as Element;
     },
     enter: () => {
       enters += 1;
-      return Promise.resolve(answer);
+      return hangs ? new Promise<EnterOutcome>(() => {}) : Promise.resolve(answer);
     },
     exit: () => {
       exits += 1;
@@ -108,6 +113,21 @@ test("retry tries again without touching the phase", async () => {
   expect(phase.value).toBe("gate");
   await settle();
   expect(surface.notice.value).toBeNull();
+});
+
+test("a hung request leaves the retry available", async () => {
+  const phase = ref<SurfacePhase>("gate");
+  const fullscreen = fakeFullscreen();
+  const surface = openSurface({ phase, fullscreen });
+  fullscreen.hang();
+  surface.enter();
+  await settle();
+  expect(phase.value).toBe("play");
+  expect(surface.notice.value).toBeNull();
+  expect(surface.canRetry.value).toBe(true);
+  fullscreen.grant();
+  await settle();
+  expect(surface.canRetry.value).toBe(false);
 });
 
 test("leave returns to the gate and exits only while we hold fullscreen", () => {

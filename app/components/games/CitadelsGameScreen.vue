@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { Minimize } from "@lucide/vue";
+import FullscreenNotice from "@/components/citadels/FullscreenNotice.vue";
 import CitadelsBoard from "@/components/games/citadels/CitadelsBoard.vue";
 import CitadelsGate from "@/components/games/citadels/CitadelsGate.vue";
 import GameStatusPanel from "@/components/games/GameStatusPanel.vue";
@@ -53,7 +54,7 @@ const immersive = ref<Element | null>(null);
 const phase = ref<SurfacePhase>("gate");
 const fullscreen = useFullscreen({ target: immersive });
 const { orientation } = useOrientation();
-const { canEnter, enter, leave, notice, retry } = openSurface({ phase, fullscreen });
+const { canEnter, canRetry, enter, leave, notice, retry } = openSurface({ phase, fullscreen });
 
 const inFullscreen = computed(() => fullscreen.active.value);
 
@@ -70,6 +71,7 @@ const winnerLine = computed(() => {
         v-if="board"
         :board="board"
         :can-enter="canEnter"
+        :can-retry="canRetry"
         :notice="notice"
         @open="enter"
         @retry="retry"
@@ -114,22 +116,12 @@ const winnerLine = computed(() => {
         </NuxtLink>
       </div>
 
-      <p
-        v-if="notice"
-        data-slot="citadels-notice"
-        role="status"
-        class="flex shrink-0 flex-wrap items-center gap-2 px-3 py-2 text-xs leading-normal text-muted-foreground"
-      >
-        {{ notice }}
-        <button
-          data-slot="citadels-retry"
-          type="button"
-          class="text-primary underline-offset-4 hover:underline"
-          @click="retry"
-        >
-          Try fullscreen again
-        </button>
-      </p>
+      <FullscreenNotice
+        :notice="notice"
+        :can-retry="canRetry"
+        class="shrink-0 px-3 py-2 text-xs"
+        @retry="retry"
+      />
 
       <CitadelsBoard v-if="board" :board="board" />
       <p v-else role="status" class="text-muted-foreground p-3 text-sm leading-normal">
