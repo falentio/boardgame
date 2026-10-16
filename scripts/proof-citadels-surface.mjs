@@ -9,6 +9,7 @@
 // without them the auth routes answer 500 and no beat can start.
 //
 // Usage: node scripts/proof-citadels-surface.mjs [--port 3000] [--out DIR]
+// When it has to spawn the dev server, run it under the repo's proof lock: scripts/run-proof.sh shows the flock invocation.
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
