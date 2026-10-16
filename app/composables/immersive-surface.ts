@@ -3,18 +3,13 @@ import type { Fullscreen } from "./fullscreen.ts";
 
 export type SurfacePhase = "gate" | "play";
 
-/** What the surface says when the browser declined the request. */
 export const REFUSAL_NOTICE = "Fullscreen was refused — the game is running in the window";
 
 export interface Surface {
-  /** False when this browser has no element fullscreen, so the gate can say so before the tap. */
   readonly canEnter: ComputedRef<boolean>;
-  /** Reveals the surface, then asks the browser. The reveal never waits on the answer. */
   enter(): void;
-  /** Returns to the gate, leaving fullscreen when we hold it. */
   leave(): void;
   readonly notice: Ref<string | null>;
-  /** Tries fullscreen again, without touching the phase. */
   retry(): void;
 }
 

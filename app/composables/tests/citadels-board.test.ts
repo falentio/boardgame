@@ -27,7 +27,6 @@ const genesis = () =>
 
 const view = (seat: SeatId = ANN): CitadelsView => citadels.project(genesis(), seat);
 
-/** A real projection with one field replaced, so an unreachable state is still honestly shaped. */
 const withView = (base: CitadelsView, patch: Partial<CitadelsView>): CitadelsView => ({
   ...base,
   ...patch,

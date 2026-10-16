@@ -13,7 +13,6 @@ interface FakeHost extends FullscreenHost {
   readonly root: Element;
   readonly requests: Element[];
   readonly exits: () => number;
-  /** Deliver a fullscreenchange with the element the browser now holds. */
   fire(element: Element | null): void;
   answer(next: Answer): void;
   release(): void;

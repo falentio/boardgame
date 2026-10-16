@@ -2,7 +2,6 @@ import { computed, onScopeDispose, ref, type ComputedRef, type Ref } from "vue";
 
 export type SurfaceOrientation = "landscape" | "portrait";
 
-/** The viewport's orientation. Injectable so a node test can flip it. */
 export interface OrientationHost {
   portrait(): boolean;
   subscribe(listener: (portrait: boolean) => void): () => void;

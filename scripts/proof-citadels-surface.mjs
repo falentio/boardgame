@@ -83,8 +83,6 @@ const signUp = async (label) => {
   });
   const body = await res.text();
   if (res.status !== 200) {
-    // A worktree without .dev.vars or without its local D1 migrated answers the
-    // auth routes with a bare 500, which no later assertion could explain.
     const hint = res.status === 500 ? " (check .dev.vars and run pnpm db:migrate:local)" : "";
     throw new Error(`sign-up ${label} returned ${res.status}${hint}: ${body.slice(0, 200)}`);
   }
@@ -180,7 +178,6 @@ const launchBrowser = async (label, debugPort) => {
       );
       await delay(300);
     },
-    // Rotation in place: the page keeps its session, its data, and every node.
     async setOrientation({ width, height, type, angle }) {
       await send(
         "Emulation.setDeviceMetricsOverride",
@@ -346,7 +343,6 @@ const LAYOUT = `(() => {
   return { columns: style.gridTemplateColumns, opponents: getComputedStyle(opponents).flexDirection };
 })()`;
 
-// One read of everything the surface must carry across a rotation or a re-entry.
 const FACTS = `(() => {
   const surface = document.querySelector('[data-slot=citadels-surface]');
   const line = document.querySelector('[data-slot=citadels-surface] [data-slot=citadels-phase]');
@@ -626,7 +622,6 @@ const main = async () => {
           }
           info(`screenshot: ${await guestPage.screenshot("citadels-surface-after-exit")}`);
 
-          // A browser that declines the request must still land on the surface.
           await guestPage.eval(
             `(() => { window.__realRequestFullscreen = Element.prototype.requestFullscreen; window.__fullscreenAttempts = 0; Element.prototype.requestFullscreen = function () { window.__fullscreenAttempts += 1; return Promise.reject(new DOMException("denied", "NotAllowedError")); }; return true; })()`,
           );

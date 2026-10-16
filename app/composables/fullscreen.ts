@@ -12,13 +12,10 @@ import {
 /** What this document can do about element fullscreen. `none` is iPhone Safari, today. */
 export type FullscreenSupport = "element" | "none";
 
-/** What one attempt did. `unsupported` never reaches the browser. */
 export type EnterOutcome = "entered" | "refused" | "unsupported";
 
-/** How long a request may hang before the retry control is free again. */
 export const REQUEST_DEADLINE_MS = 1500;
 
-/** The platform surface, and the only place an API is named. Everything above it takes this port. */
 export interface FullscreenHost {
   supported(target: Element): boolean;
   request(target: Element): Promise<void>;
@@ -31,13 +28,9 @@ export interface FullscreenHost {
 
 export interface Fullscreen {
   readonly support: Ref<FullscreenSupport>;
-  /** The live fullscreen element. Assigned only by the subscription. */
   readonly element: ShallowRef<Element | null>;
-  /** True while this screen's target is the fullscreen element. */
   readonly active: ComputedRef<boolean>;
-  /** Idempotent: a second call while one is in flight joins the first instead of double-requesting. */
   enter(): Promise<EnterOutcome>;
-  /** Idempotent: a no-op when nothing is fullscreen. A rejection here is not an outcome. */
   exit(): Promise<void>;
 }
 
@@ -57,7 +50,6 @@ type FullscreenDocument = Document & {
   webkitFullscreenEnabled?: boolean;
 };
 
-/** The one place the vendor prefixes are named. */
 const prefixed = (doc: Document): FullscreenDocument => doc as FullscreenDocument;
 
 /**
@@ -105,7 +97,6 @@ export const domFullscreenHost = (doc: Document = document): FullscreenHost => {
   };
 };
 
-/** A server, or an environment without element fullscreen: the same shape, nothing to call. */
 const unsupportedHost: FullscreenHost = {
   supported: () => false,
   request: () => Promise.resolve(),

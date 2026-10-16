@@ -10,7 +10,6 @@ import type {
 import { CITY_TARGET, specOfCharacter } from "#shared/core/lockstep/games/citadels/index.ts";
 import type { WindowPurpose } from "#shared/core/lockstep/games/citadels/state.ts";
 
-/** A district sitting in a city, with the Artist's beautify marker on it. */
 export interface CityCard {
   readonly id: DistrictId;
   readonly gold: number;
@@ -18,7 +17,6 @@ export interface CityCard {
 
 interface SeatBase {
   readonly seat: SeatId;
-  /** Stable across both clients, so a proof can compare the same seat in two browsers. */
   readonly name: string;
   readonly gold: number;
   readonly city: readonly CityCard[];
@@ -33,7 +31,6 @@ export interface OpponentSeat extends SeatBase {
   readonly handCount: number;
 }
 
-/** The viewer's plate. Cards, never a count: `hand.length` is the count. */
 export interface MySeat extends SeatBase {
   readonly kind: "me";
   readonly hand: readonly DistrictId[];
@@ -67,7 +64,6 @@ export interface PendingAction {
   readonly cards: number;
 }
 
-/** The public table: every fact every seat at it can see. */
 export interface CitadelsTable {
   readonly round: number;
   readonly phase: Phase;
@@ -83,15 +79,10 @@ export interface CitadelsTable {
 }
 
 export interface CitadelsBoard extends CitadelsTable {
-  /** Clockwise from the viewer's seat, so the same table order renders in both layouts. */
   readonly opponents: readonly OpponentSeat[];
   readonly me: MySeat;
 }
 
-/**
- * Short plain label for the open window's purpose. Exhaustive over every purpose
- * so a new engine purpose is a compile error, not a blank status line.
- */
 const PURPOSE_LABELS: Record<WindowPurpose, string> = {
   "draft-pick": "Pick a character",
   turn: "Take your turn",
