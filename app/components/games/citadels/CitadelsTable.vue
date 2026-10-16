@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { PlayingCards, Trophy } from "@lucide/vue";
+import { PlayingCards } from "@lucide/vue";
 import DistrictCard from "./DistrictCard.vue";
 import type { CastSlotState, CitadelsTable } from "@/composables/citadels-board.ts";
 import type { CharacterId } from "#shared/core/lockstep/games/citadels/index.ts";
@@ -95,19 +95,5 @@ const claim = computed(() => {
       </ul>
     </div>
 
-    <p
-      v-if="table.winner"
-      role="status"
-      class="inline-flex items-center gap-1.5 self-start rounded-lg bg-primary/10 px-3 py-1.5 text-xs leading-tight font-semibold text-primary"
-    >
-      <Trophy class="size-3.5" aria-hidden="true" />{{ table.winner.name }} wins
-    </p>
-    <p
-      v-else-if="table.terminal"
-      role="status"
-      class="self-start rounded-lg bg-primary/10 px-3 py-1.5 text-xs leading-tight font-semibold text-primary"
-    >
-      Game over
-    </p>
   </section>
 </template>
