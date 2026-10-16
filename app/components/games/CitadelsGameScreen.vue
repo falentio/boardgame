@@ -1,11 +1,17 @@
 <script setup lang="ts">
-import { computed } from "vue"
-import CharacterCard from "@/components/citadels/CharacterCard.vue"
+import { computed, ref } from "vue"
+import { Hourglass, Minimize } from "@lucide/vue"
+import CitadelsBoard from "@/components/games/citadels/CitadelsBoard.vue"
+import CitadelsGate from "@/components/games/citadels/CitadelsGate.vue"
 import GameStatusPanel from "@/components/games/GameStatusPanel.vue"
-import { Card, CardContent } from "@/components/ui/card"
-import { ROLE_STRIP_CLASS, ROLE_STRIP_CARD_CLASS } from "@/composables/card-shell"
-import type { Room } from "@/composables/room-domain.ts"
+import { buttonVariants } from "@/components/ui/button"
+import { citadelsBoardOf } from "@/composables/citadels-board.ts"
+import { useFullscreen } from "@/composables/fullscreen.ts"
+import { openSurface, type SurfacePhase } from "@/composables/immersive-surface.ts"
+import { useOrientation } from "@/composables/orientation.ts"
+import { secondsOf } from "@/composables/turn-timer.ts"
 import { useGame } from "@/composables/useGame"
+import type { Room } from "@/composables/room-domain.ts"
 import type { RoomLike } from "#shared/game/index.ts"
 import type { CitadelsSetup } from "#shared/core/lockstep/games/citadels/index.ts"
 import { citadels } from "#shared/core/lockstep/games/citadels/index.ts"
@@ -34,109 +40,88 @@ const names = computed<ReadonlyMap<SeatId, string>>(() => {
   return map
 })
 
-const { view, status } = useGame({
+const { view, status, remainingMs } = useGame({
   game: citadels,
   room: citadelsRoom,
   viewer,
 })
 
-const nameOf = (seat: SeatId): string => names.value.get(seat) ?? seat
+const board = computed(() => (view.value === null ? null : citadelsBoardOf(view.value, names.value)))
 
-const players = computed(() =>
-  view.value === null
-    ? []
-    : view.value.players.map((player) => ({
-        seat: player.seat,
-        name: nameOf(player.seat),
-        gold: player.gold,
-        handCount: player.handCount,
-        cityCount: player.city.length,
-        isCrown: player.seat === view.value?.crown,
-        isActive: player.seat === view.value?.active,
-        isMe: player.seat === view.value?.seat,
-      })),
-)
+const immersive = ref<Element | null>(null)
+const phase = ref<SurfacePhase>("gate")
+const fullscreen = useFullscreen({ target: immersive })
+const { orientation } = useOrientation()
+const { canEnter, enter, leave, notice, retry } = openSurface({ phase, fullscreen })
 
-const purpose = computed(() => {
-  const window = view.value?.window
-  return window === null || window === undefined
-    ? null
-    : window.purpose.replaceAll("-", " ")
-})
-
-const winner = computed(() => {
-  const current = view.value
-  if (current === null || !current.terminal) return null
-  return current.winner === null ? "Game over" : `${nameOf(current.winner)} wins`
-})
+const seconds = computed(() => (remainingMs.value === null ? null : secondsOf(remainingMs.value)))
+const inFullscreen = computed(() => fullscreen.active.value)
 </script>
 
 <template>
-  <GameStatusPanel :status="status" :failed="loadFailed">
-    <div v-if="view" class="flex flex-col gap-4">
-      <Card>
-        <CardContent class="flex flex-col gap-3 pt-4">
-          <div class="flex items-baseline justify-between gap-4">
-            <p class="text-sm leading-none font-medium">
-              Cast
-            </p>
-            <p class="text-muted-foreground text-sm leading-normal tabular-nums">
-              Round {{ view.round }} · {{ view.cast.length }} characters
-            </p>
-          </div>
-          <div data-slot="cast-strip" :class="ROLE_STRIP_CLASS">
-            <CharacterCard
-              v-for="character in view.cast"
-              :key="character"
-              :character="character"
-              :class="ROLE_STRIP_CARD_CLASS"
-            />
-          </div>
-        </CardContent>
-      </Card>
+  <div ref="immersive" data-slot="citadels-immersive">
+    <GameStatusPanel v-if="phase === 'gate'" :status="status" :failed="loadFailed">
+      <CitadelsGate
+        v-if="board"
+        :board="board"
+        :can-enter="canEnter"
+        :notice="notice"
+        @open="enter"
+        @retry="retry"
+      />
+    </GameStatusPanel>
 
-      <Card>
-        <CardContent class="flex flex-col gap-3 pt-4">
-          <p class="text-sm leading-none font-medium">
-            Players
-          </p>
-          <ul class="flex flex-col gap-2">
-            <li
-              v-for="player in players"
-              :key="player.seat"
-              class="flex items-center justify-between gap-4 text-sm"
-              :class="player.isActive && 'font-semibold'"
-            >
-              <span class="min-w-0 truncate">
-                {{ player.name }}
-                <span v-if="player.isMe" class="text-muted-foreground">(you)</span>
-              </span>
-              <span class="flex items-center gap-3 text-muted-foreground tabular-nums">
-                <span v-if="player.isCrown" class="rounded-full bg-muted px-2 py-0.5 text-[0.625rem] uppercase">
-                  Crown
-                </span>
-                <span>{{ player.gold }} gold</span>
-                <span>{{ player.handCount }} cards</span>
-                <span>{{ player.cityCount }} districts</span>
-              </span>
-            </li>
-          </ul>
-          <p v-if="purpose !== null" role="status" class="text-muted-foreground text-sm leading-normal">
-            Waiting on the {{ purpose }} window.
-          </p>
-        </CardContent>
-      </Card>
+    <section
+      v-else
+      data-slot="citadels-surface"
+      :data-orientation="orientation"
+      :data-phase="board?.phase"
+      class="group/surface fixed inset-0 z-50 flex h-dvh min-h-0 flex-col bg-background"
+    >
+      <header v-if="board" class="flex shrink-0 items-center gap-3 border-b border-foreground/10 px-3 py-2">
+        <span data-slot="citadels-phase" class="text-sm leading-none font-semibold tabular-nums">
+          Round {{ board.round }} · {{ board.phaseLabel }}
+        </span>
+        <span
+          v-if="seconds !== null"
+          data-slot="citadels-clock"
+          class="inline-flex items-center gap-1 text-xs leading-none text-muted-foreground tabular-nums"
+        >
+          <Hourglass class="size-3.5" aria-hidden="true" />{{ seconds }}s
+        </span>
+        <button
+          data-slot="citadels-exit"
+          type="button"
+          :class="buttonVariants({ variant: 'outline', size: 'sm' })"
+          class="ms-auto"
+          @click="leave"
+        >
+          <Minimize class="size-3.5" aria-hidden="true" />
+          {{ inFullscreen ? "Exit fullscreen" : "Exit" }}
+        </button>
+      </header>
 
-      <Card v-if="winner !== null">
-        <CardContent class="flex flex-col gap-3 pt-4">
-          <h2 class="text-lg leading-snug font-semibold">
-            {{ winner }}
-          </h2>
-          <NuxtLink to="/" class="text-primary self-start text-sm underline-offset-4 hover:underline">
-            Back to home
-          </NuxtLink>
-        </CardContent>
-      </Card>
-    </div>
-  </GameStatusPanel>
+      <p
+        v-if="notice"
+        data-slot="citadels-notice"
+        role="status"
+        class="flex shrink-0 flex-wrap items-center gap-2 px-3 py-2 text-xs leading-normal text-muted-foreground"
+      >
+        {{ notice }}
+        <button
+          data-slot="citadels-retry"
+          type="button"
+          class="text-primary underline-offset-4 hover:underline"
+          @click="retry"
+        >
+          Try fullscreen again
+        </button>
+      </p>
+
+      <CitadelsBoard v-if="board" :board="board" />
+      <p v-else role="status" class="text-muted-foreground p-3 text-sm leading-normal">
+        Waiting for the game to start…
+      </p>
+    </section>
+  </div>
 </template>

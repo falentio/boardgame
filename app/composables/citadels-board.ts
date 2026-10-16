@@ -6,9 +6,9 @@ import type {
   Phase,
   PlayerView,
   Rank,
-  WindowPurpose,
 } from "#shared/core/lockstep/games/citadels/index.ts";
 import { CITY_TARGET, specOfCharacter } from "#shared/core/lockstep/games/citadels/index.ts";
+import type { WindowPurpose } from "#shared/core/lockstep/games/citadels/state.ts";
 
 /** A district sitting in a city, with the Artist's beautify marker on it. */
 export interface CityCard {

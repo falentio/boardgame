@@ -4,7 +4,6 @@ import {
   REQUEST_DEADLINE_MS,
   refusalOf,
   useFullscreen,
-  type EnterOutcome,
   type FullscreenHost,
 } from "../fullscreen.ts";
 
@@ -122,7 +121,7 @@ test("a second enter joins the attempt already in flight", async () => {
 test("a refused request reports refused, and never reads as a grant", async () => {
   const { host, fullscreen, stop } = harness();
   host.answer("refuse");
-  await expect(fullscreen.enter()).resolves.toBe<EnterOutcome>("refused");
+  await expect(fullscreen.enter()).resolves.toBe("refused");
   expect(host.element()).toBeNull();
   expect(fullscreen.active.value).toBe(false);
   expect(fullscreen.support.value).toBe("element");
@@ -132,7 +131,7 @@ test("a refused request reports refused, and never reads as a grant", async () =
 test("a lost user activation is a refusal, not a missing capability", async () => {
   const { host, fullscreen, stop } = harness();
   host.answer("lost-activation");
-  await expect(fullscreen.enter()).resolves.toBe<EnterOutcome>("refused");
+  await expect(fullscreen.enter()).resolves.toBe("refused");
   expect(fullscreen.support.value).toBe("element");
   stop();
 });
@@ -140,14 +139,14 @@ test("a lost user activation is a refusal, not a missing capability", async () =
 test("a browser that refuses to start the request reports unsupported", async () => {
   const { host, fullscreen, stop } = harness();
   host.answer("unsupported");
-  await expect(fullscreen.enter()).resolves.toBe<EnterOutcome>("unsupported");
+  await expect(fullscreen.enter()).resolves.toBe("unsupported");
   stop();
 });
 
 test("a browser without the API is unsupported without asking it", async () => {
   const { host, fullscreen, stop } = harness({ canRequest: false });
   expect(fullscreen.support.value).toBe("none");
-  await expect(fullscreen.enter()).resolves.toBe<EnterOutcome>("unsupported");
+  await expect(fullscreen.enter()).resolves.toBe("unsupported");
   expect(host.requests).toHaveLength(0);
   stop();
 });
@@ -155,7 +154,7 @@ test("a browser without the API is unsupported without asking it", async () => {
 test("an unmounted target is unsupported rather than a request on null", async () => {
   const { host, fullscreen, stop } = harness({ mounted: false });
   expect(fullscreen.support.value).toBe("element");
-  await expect(fullscreen.enter()).resolves.toBe<EnterOutcome>("unsupported");
+  await expect(fullscreen.enter()).resolves.toBe("unsupported");
   expect(host.requests).toHaveLength(0);
   stop();
 });
@@ -168,7 +167,7 @@ test("a hung request frees the retry control at the deadline", async () => {
   expect(host.requests).toHaveLength(1);
   await vi.advanceTimersByTimeAsync(REQUEST_DEADLINE_MS);
   host.answer("grant");
-  await expect(fullscreen.enter()).resolves.toBe<EnterOutcome>("entered");
+  await expect(fullscreen.enter()).resolves.toBe("entered");
   expect(host.requests).toHaveLength(2);
   stop();
 });
@@ -180,13 +179,13 @@ test("a late answer to a cleared attempt changes nothing", async () => {
   void fullscreen.enter();
   await vi.advanceTimersByTimeAsync(REQUEST_DEADLINE_MS);
   host.answer("grant");
-  await expect(fullscreen.enter()).resolves.toBe<EnterOutcome>("entered");
+  await expect(fullscreen.enter()).resolves.toBe("entered");
   host.release();
   await vi.advanceTimersByTimeAsync(0);
   expect(fullscreen.element.value).toBeNull();
   expect(fullscreen.active.value).toBe(false);
   host.answer("grant");
-  await expect(fullscreen.enter()).resolves.toBe<EnterOutcome>("entered");
+  await expect(fullscreen.enter()).resolves.toBe("entered");
   expect(host.requests).toHaveLength(3);
   stop();
 });
