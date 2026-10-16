@@ -54,7 +54,12 @@ const startServer = async () => {
   const server = spawn(
     "pnpm",
     ["exec", "nuxt", "dev", "--port", String(PORT), "--host", "localhost"],
-    { cwd: ROOT, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, NODE_ENV: "development" }, detached: true },
+    {
+      cwd: ROOT,
+      stdio: ["ignore", "pipe", "pipe"],
+      env: { ...process.env, NODE_ENV: "development" },
+      detached: true,
+    },
   );
   let log = "";
   server.stdout.on("data", (d) => (log += d));
@@ -88,7 +93,14 @@ const signUp = async (label) => {
   if (!cookie) throw new Error(`sign-up ${label} set no cookie`);
   const [pair] = cookie.split(";");
   const eq = pair.indexOf("=");
-  return { id: user.id, email, name: label, cookie: pair, cookieName: pair.slice(0, eq), cookieValue: pair.slice(eq + 1) };
+  return {
+    id: user.id,
+    email,
+    name: label,
+    cookie: pair,
+    cookieName: pair.slice(0, eq),
+    cookieValue: pair.slice(eq + 1),
+  };
 };
 
 const launchBrowser = async (label, debugPort) => {
@@ -150,7 +162,10 @@ const launchBrowser = async (label, debugPort) => {
   };
 
   const { result: created } = await send("Target.createTarget", { url: "about:blank" });
-  const { result: attached } = await send("Target.attachToTarget", { targetId: created.targetId, flatten: true });
+  const { result: attached } = await send("Target.attachToTarget", {
+    targetId: created.targetId,
+    flatten: true,
+  });
   const session = attached.sessionId;
   await send("Page.enable", {}, session);
   await send("Runtime.enable", {}, session);
@@ -158,7 +173,11 @@ const launchBrowser = async (label, debugPort) => {
 
   const page = {
     async setViewport(width, height) {
-      await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false }, session);
+      await send(
+        "Emulation.setDeviceMetricsOverride",
+        { width, height, deviceScaleFactor: 1, mobile: false },
+        session,
+      );
       await delay(300);
     },
     // Rotation in place: the page keeps its session, its data, and every node.
@@ -171,7 +190,11 @@ const launchBrowser = async (label, debugPort) => {
       await delay(400);
     },
     async setSessionCookie(user) {
-      await send("Network.setCookie", { url: BASE, name: user.cookieName, value: user.cookieValue }, session);
+      await send(
+        "Network.setCookie",
+        { url: BASE, name: user.cookieName, value: user.cookieValue },
+        session,
+      );
     },
     // A cold dev server compiles the route on first request; a navigation that
     // races that compile can sit pending for a minute, so retry it.
@@ -189,14 +212,21 @@ const launchBrowser = async (label, debugPort) => {
           if (Date.now() - started > 3000) info(`${url} answered in ${Date.now() - started} ms`);
           return;
         }
-        info(`${url} did not commit on attempt ${attempt + 1} (${JSON.stringify(nav.result?.errorText ?? null)})`);
+        info(
+          `${url} did not commit on attempt ${attempt + 1} (${JSON.stringify(nav.result?.errorText ?? null)})`,
+        );
       }
       throw new Error(`the browser never left about:blank for ${url}`);
     },
     async eval(expression) {
-      const msg = await send("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true }, session);
+      const msg = await send(
+        "Runtime.evaluate",
+        { expression, returnByValue: true, awaitPromise: true },
+        session,
+      );
       if (msg.error) throw new Error(`eval error: ${JSON.stringify(msg.error)}`);
-      if (msg.result.exceptionDetails) throw new Error(`eval failed: ${msg.result.exceptionDetails.text}`);
+      if (msg.result.exceptionDetails)
+        throw new Error(`eval failed: ${msg.result.exceptionDetails.text}`);
       return msg.result.result.value;
     },
     async href() {
@@ -214,16 +244,29 @@ const launchBrowser = async (label, debugPort) => {
     // than a warm page needs, and reports rather than throws: callers decide
     // whether a page that never hydrated is worth another load.
     async waitForHydration({ timeoutMs = 90000 } = {}) {
-      return page.waitFor("document.querySelector('#__nuxt') && document.querySelector('#__nuxt').__vue_app__", { timeoutMs });
+      return page.waitFor(
+        "document.querySelector('#__nuxt') && document.querySelector('#__nuxt').__vue_app__",
+        { timeoutMs },
+      );
     },
     async rectOf(jsEl) {
-      return page.eval(`(() => { const el = ${jsEl}; if (!el) return null; el.scrollIntoView({ block: 'center', inline: 'center' }); const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+      return page.eval(
+        `(() => { const el = ${jsEl}; if (!el) return null; el.scrollIntoView({ block: 'center', inline: 'center' }); const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`,
+      );
     },
     async mouseClick(x, y) {
       await send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y, buttons: 0 }, session);
-      await send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", buttons: 1, clickCount: 1 }, session);
+      await send(
+        "Input.dispatchMouseEvent",
+        { type: "mousePressed", x, y, button: "left", buttons: 1, clickCount: 1 },
+        session,
+      );
       await delay(80);
-      await send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", buttons: 0, clickCount: 1 }, session);
+      await send(
+        "Input.dispatchMouseEvent",
+        { type: "mouseReleased", x, y, button: "left", buttons: 0, clickCount: 1 },
+        session,
+      );
     },
     // A real CDP pointer sequence: a synthetic el.click() carries no user
     // activation, so it would prove the fallback instead of the fullscreen path.
@@ -237,7 +280,8 @@ const launchBrowser = async (label, debugPort) => {
         }
         await delay(200);
         const again = await page.rectOf(jsEl);
-        if (again === null || Math.abs(first.x - again.x) >= 2 || Math.abs(first.y - again.y) >= 2) continue;
+        if (again === null || Math.abs(first.x - again.x) >= 2 || Math.abs(first.y - again.y) >= 2)
+          continue;
         await page.mouseClick(again.x, again.y);
         for (let wait = 0; wait < 6; wait++) {
           if (await page.eval(`!!(${effect})`)) return true;
@@ -257,7 +301,8 @@ const launchBrowser = async (label, debugPort) => {
 };
 
 const GAME_PATH = "location.pathname.match(/^\\/games\\/[A-Z]{8,9}$/) !== null";
-const BUTTON_TEXT = (text) => `[...document.querySelectorAll('button')].find((b) => b.textContent.trim().includes(${JSON.stringify(text)}))`;
+const BUTTON_TEXT = (text) =>
+  `[...document.querySelectorAll('button')].find((b) => b.textContent.trim().includes(${JSON.stringify(text)}))`;
 
 const EL = {
   gate: "[data-slot=citadels-gate]",
@@ -270,7 +315,16 @@ const EL = {
 };
 const q = (selector) => `document.querySelector(${JSON.stringify(selector)})`;
 
-const CITADELS_CAST = ["assassin", "thief", "magician", "king", "bishop", "merchant", "architect", "warlord"];
+const CITADELS_CAST = [
+  "assassin",
+  "thief",
+  "magician",
+  "king",
+  "bishop",
+  "merchant",
+  "architect",
+  "warlord",
+];
 const G54_ROLES = ["banker", "director", "guerrilla", "politician", "peacekeeper"];
 
 const PAGE_STATE = `(() => ({ href: location.href, immersive: !!document.querySelector('[data-slot=citadels-immersive]'), gate: !!document.querySelector('[data-slot=citadels-gate]'), surface: !!document.querySelector('[data-slot=citadels-surface]'), board: !!document.querySelector('[data-slot=game-board]'), text: document.body === null ? null : document.body.innerText.split(String.fromCharCode(10)).join(" | ").slice(0, 240) }))()`;
@@ -345,9 +399,13 @@ const openRoute = async (page, url, { attempts = 3, timeoutMs = 45000 } = {}) =>
     await page.goto(url);
     const hydrated = await page.waitForHydration({ timeoutMs });
     if (hydrated) {
-      const broken = await page.eval("document.body !== null && document.body.innerText.includes('Failed to fetch dynamically imported module')");
+      const broken = await page.eval(
+        "document.body !== null && document.body.innerText.includes('Failed to fetch dynamically imported module')",
+      );
       if (!broken) return;
-      info(`${url} answered the page module with an error (attempt ${attempt + 1}); loading it again`);
+      info(
+        `${url} answered the page module with an error (attempt ${attempt + 1}); loading it again`,
+      );
       continue;
     }
     info(`${url} never hydrated on attempt ${attempt + 1}; loading it again`);
@@ -363,11 +421,14 @@ const joinThroughLink = async (page, code) => {
 
 const startThroughLobby = async (page, code) => {
   await openRoute(page, `${BASE}/rooms/${code}`);
-  const full = await page.waitFor("document.body.innerText.includes('All seats filled')", { timeoutMs: 30000 });
+  const full = await page.waitFor("document.body.innerText.includes('All seats filled')", {
+    timeoutMs: 30000,
+  });
   if (!full) throw new Error(`room ${code} never filled its seats`);
   const started = page.waitFor(GAME_PATH, { timeoutMs: 30000 });
   await page.clickElement(BUTTON_TEXT("Start game"), GAME_PATH);
-  if (!(await started)) throw new Error(`Start game did not open the board, at ${await page.href()}`);
+  if (!(await started))
+    throw new Error(`Start game did not open the board, at ${await page.href()}`);
 };
 
 const runBeats = async (beats) => {
@@ -413,12 +474,20 @@ const main = async () => {
     const hostPage = hostBrowser.page;
     const guestPage = guestBrowser.page;
     const otherPage = otherBrowser.page;
-    for (const [browser, user] of [[hostBrowser, host], [guestBrowser, guest], [otherBrowser, other]]) {
+    for (const [browser, user] of [
+      [hostBrowser, host],
+      [guestBrowser, guest],
+      [otherBrowser, other],
+    ]) {
       await browser.page.setViewport(1280, 800);
       await browser.page.setSessionCookie(user);
     }
 
-    const citadels = await createRoomThroughApi(host, { name: "Citadels surface proof", seats: 3, setup: { game: "citadels", cast: CITADELS_CAST } });
+    const citadels = await createRoomThroughApi(host, {
+      name: "Citadels surface proof",
+      seats: 3,
+      setup: { game: "citadels", cast: CITADELS_CAST },
+    });
     await joinThroughLink(otherPage, citadels);
     await joinThroughLink(guestPage, citadels);
     pass(`both guest accounts joined ${citadels} through the shared link`);
@@ -426,7 +495,10 @@ const main = async () => {
     pass(`the host started ${citadels}`);
     // The citadels screen is the heaviest module graph in the app: let the host
     // page finish compiling it before another browser asks for the same route.
-    const hostScreen = await hostPage.waitFor(`!!document.querySelector('[data-slot=citadels-immersive]')`, { timeoutMs: 120000 });
+    const hostScreen = await hostPage.waitFor(
+      `!!document.querySelector('[data-slot=citadels-immersive]')`,
+      { timeoutMs: 120000 },
+    );
     info(`host citadels screen mounted: ${hostScreen}`);
 
     let landscape = null;
@@ -442,7 +514,9 @@ const main = async () => {
             { timeoutMs: 120000 },
           );
           if (!gated) {
-            fail(`no gate on /games/${citadels} for a seated non-host: ${JSON.stringify(await guestPage.eval(PAGE_STATE))}`);
+            fail(
+              `no gate on /games/${citadels} for a seated non-host: ${JSON.stringify(await guestPage.eval(PAGE_STATE))}`,
+            );
             return;
           }
           pass("the gate is present and the surface is absent before the tap");
@@ -460,9 +534,13 @@ const main = async () => {
           }
           gateRound = gate.round;
 
-          const label = await guestPage.eval(`document.querySelector(${JSON.stringify(EL.enter)})?.textContent.trim() ?? null`);
+          const label = await guestPage.eval(
+            `document.querySelector(${JSON.stringify(EL.enter)})?.textContent.trim() ?? null`,
+          );
           if (label === null || !/^Open (in fullscreen|the game)$/.test(label)) {
-            fail(`the CTA label is ${JSON.stringify(label)}, want "Open in fullscreen" or "Open the game"`);
+            fail(
+              `the CTA label is ${JSON.stringify(label)}, want "Open in fullscreen" or "Open the game"`,
+            );
           } else {
             pass(`the CTA reads "${label}"`);
           }
@@ -477,7 +555,8 @@ const main = async () => {
             q(EL.enter),
             `!!document.querySelector(${JSON.stringify(EL.surface)})`,
           );
-          if (!clicked) throw new Error("the CTA did not reveal the surface after a real CDP pointer click");
+          if (!clicked)
+            throw new Error("the CTA did not reveal the surface after a real CDP pointer click");
           pass("the surface appeared after a real CDP pointer click on the CTA");
 
           if (await guestPage.eval(`!!document.querySelector(${JSON.stringify(EL.gate)})`)) {
@@ -486,12 +565,20 @@ const main = async () => {
             pass("the gate is gone");
           }
 
-          const fullscreen = await guestPage.waitFor("document.fullscreenElement !== null", { timeoutMs: 6000 });
-          const holder = await guestPage.eval("document.fullscreenElement === null ? null : document.fullscreenElement.getAttribute('data-slot')");
+          const fullscreen = await guestPage.waitFor("document.fullscreenElement !== null", {
+            timeoutMs: 6000,
+          });
+          const holder = await guestPage.eval(
+            "document.fullscreenElement === null ? null : document.fullscreenElement.getAttribute('data-slot')",
+          );
           if (!fullscreen) {
-            fail("the surface is up but document.fullscreenElement is null — the request rode no activation or the browser refused it");
+            fail(
+              "the surface is up but document.fullscreenElement is null — the request rode no activation or the browser refused it",
+            );
           } else if (holder !== "citadels-immersive") {
-            fail(`document.fullscreenElement carries data-slot=${JSON.stringify(holder)}, want the immersive root`);
+            fail(
+              `document.fullscreenElement carries data-slot=${JSON.stringify(holder)}, want the immersive root`,
+            );
           } else {
             pass("document.fullscreenElement is the immersive root");
           }
@@ -504,7 +591,9 @@ const main = async () => {
 
           landscape = await guestPage.eval(FACTS);
           if (landscape.orientation !== "landscape") {
-            fail(`the surface reads data-orientation=${JSON.stringify(landscape.orientation)} at 1280x800`);
+            fail(
+              `the surface reads data-orientation=${JSON.stringify(landscape.orientation)} at 1280x800`,
+            );
           } else {
             pass("the surface reads data-orientation=landscape at 1280x800");
           }
@@ -520,21 +609,27 @@ const main = async () => {
             { timeoutMs: 10000 },
           );
           if (!back) {
-            fail(`exiting fullscreen left href ${await guestPage.href()} without the gate (surface up: ${await guestPage.eval(`!!document.querySelector(${JSON.stringify(EL.surface)})`)})`);
+            fail(
+              `exiting fullscreen left href ${await guestPage.href()} without the gate (surface up: ${await guestPage.eval(`!!document.querySelector(${JSON.stringify(EL.surface)})`)})`,
+            );
             return;
           }
           pass("exitFullscreen() brought the gate back and removed the surface");
 
           const gate = await guestPage.eval(GATE_STATE);
           if (gate === null || gate.round !== gateRound) {
-            fail(`the gate state line reads ${JSON.stringify(gate === null ? null : gate.text)}, want round ${gateRound}`);
+            fail(
+              `the gate state line reads ${JSON.stringify(gate === null ? null : gate.text)}, want round ${gateRound}`,
+            );
           } else {
             pass(`the round line still reads "${gate.text}"`);
           }
           info(`screenshot: ${await guestPage.screenshot("citadels-surface-after-exit")}`);
 
           // A browser that declines the request must still land on the surface.
-          await guestPage.eval(`(() => { window.__realRequestFullscreen = Element.prototype.requestFullscreen; window.__fullscreenAttempts = 0; Element.prototype.requestFullscreen = function () { window.__fullscreenAttempts += 1; return Promise.reject(new DOMException("denied", "NotAllowedError")); }; return true; })()`);
+          await guestPage.eval(
+            `(() => { window.__realRequestFullscreen = Element.prototype.requestFullscreen; window.__fullscreenAttempts = 0; Element.prototype.requestFullscreen = function () { window.__fullscreenAttempts += 1; return Promise.reject(new DOMException("denied", "NotAllowedError")); }; return true; })()`,
+          );
           const revealed = await guestPage.clickElement(
             q(EL.enter),
             `!!document.querySelector(${JSON.stringify(EL.surface)}) && !!document.querySelector(${JSON.stringify(EL.notice)})`,
@@ -545,7 +640,9 @@ const main = async () => {
             pass("a refused request still revealed the surface");
           }
 
-          const notice = await guestPage.eval(`(() => { const el = document.querySelector(${JSON.stringify(EL.notice)}); if (el === null) return null; const r = el.getBoundingClientRect(); return { text: el.textContent.trim(), height: Math.round(r.height) }; })()`);
+          const notice = await guestPage.eval(
+            `(() => { const el = document.querySelector(${JSON.stringify(EL.notice)}); if (el === null) return null; const r = el.getBoundingClientRect(); return { text: el.textContent.trim(), height: Math.round(r.height) }; })()`,
+          );
           if (notice === null || notice.height === 0) {
             fail(`${EL.notice} is ${JSON.stringify(notice)} — absent or zero-height`);
           } else {
@@ -559,30 +656,42 @@ const main = async () => {
 
           const afterExit = await guestPage.eval(FACTS);
           if (landscape !== null) {
-            const moved = landscape.seats.filter((seat, i) => JSON.stringify(seat) !== JSON.stringify(afterExit.seats[i] ?? null));
+            const moved = landscape.seats.filter(
+              (seat, i) => JSON.stringify(seat) !== JSON.stringify(afterExit.seats[i] ?? null),
+            );
             if (moved.length > 0) {
-              fail(`seats changed across the exit: ${JSON.stringify(moved.map((seat, i) => [seat, afterExit.seats[i]]))}`);
+              fail(
+                `seats changed across the exit: ${JSON.stringify(moved.map((seat, i) => [seat, afterExit.seats[i]]))}`,
+              );
             } else {
-              pass(`all ${landscape.seats.length} seats kept their gold and districts across the exit (${JSON.stringify(afterExit.seats)})`);
+              pass(
+                `all ${landscape.seats.length} seats kept their gold and districts across the exit (${JSON.stringify(afterExit.seats)})`,
+              );
             }
           }
           info(`screenshot: ${await guestPage.screenshot("citadels-surface-refused")}`);
 
-          const retried = await guestPage.clickElement(q(EL.retry), "window.__fullscreenAttempts >= 2");
+          const retried = await guestPage.clickElement(
+            q(EL.retry),
+            "window.__fullscreenAttempts >= 2",
+          );
           if (!retried) {
             fail("the retry control sent no second fullscreen request");
           } else {
             pass("the retry sent a second fullscreen request");
           }
-          const stillThere = await guestPage.waitFor(
-            `${q(EL.surface)} && ${q(EL.retry)}`,
-            { timeoutMs: 4000 },
-          );
+          const stillThere = await guestPage.waitFor(`${q(EL.surface)} && ${q(EL.retry)}`, {
+            timeoutMs: 4000,
+          });
           if (!stillThere) fail("the surface or its retry vanished after the retry");
           else pass("the surface is still up after the retry, with the retry control in place");
 
-          await guestPage.eval("Element.prototype.requestFullscreen = window.__realRequestFullscreen; true");
-          await guestPage.eval("document.fullscreenElement === null ? null : document.exitFullscreen()");
+          await guestPage.eval(
+            "Element.prototype.requestFullscreen = window.__realRequestFullscreen; true",
+          );
+          await guestPage.eval(
+            "document.fullscreenElement === null ? null : document.exitFullscreen()",
+          );
           const returned = await guestPage.clickElement(
             q(EL.exit),
             `${q(EL.gate)} && !document.querySelector(${JSON.stringify(EL.surface)})`,
@@ -599,23 +708,40 @@ const main = async () => {
             `!!document.querySelector(${JSON.stringify(EL.surface)})`,
           );
           if (!entered) throw new Error("the CTA did not re-open the surface");
-          if (!(await guestPage.waitFor("document.fullscreenElement !== null", { timeoutMs: 6000 }))) {
+          if (
+            !(await guestPage.waitFor("document.fullscreenElement !== null", { timeoutMs: 6000 }))
+          ) {
             fail("the surface re-opened but fullscreen was not requested again");
           }
-          await guestPage.eval(`(() => { window.__proofSurface = document.querySelector(${JSON.stringify(EL.surface)}); window.__proofSeats = [...document.querySelectorAll('[data-slot=citadels-seat]')]; return window.__proofSeats.length; })()`);
+          await guestPage.eval(
+            `(() => { window.__proofSurface = document.querySelector(${JSON.stringify(EL.surface)}); window.__proofSeats = [...document.querySelectorAll('[data-slot=citadels-seat]')]; return window.__proofSeats.length; })()`,
+          );
 
           const before = await guestPage.eval(FACTS);
           const layoutBefore = await guestPage.eval(LAYOUT);
-          if (before.orientation !== "landscape") fail(`the surface reads data-orientation=${JSON.stringify(before.orientation)} before the rotation`);
-          else pass(`rotating from a landscape surface with ${before.seats.length} seats and ${before.hand} cards in hand`);
+          if (before.orientation !== "landscape")
+            fail(
+              `the surface reads data-orientation=${JSON.stringify(before.orientation)} before the rotation`,
+            );
+          else
+            pass(
+              `rotating from a landscape surface with ${before.seats.length} seats and ${before.hand} cards in hand`,
+            );
 
-          await guestPage.setOrientation({ width: 390, height: 844, type: "portraitPrimary", angle: 0 });
+          await guestPage.setOrientation({
+            width: 390,
+            height: 844,
+            type: "portraitPrimary",
+            angle: 0,
+          });
           const portrait = await guestPage.waitFor(
             `${q(EL.surface)}.getAttribute('data-orientation') === 'portrait'`,
             { timeoutMs: 6000 },
           );
           if (!portrait) {
-            fail(`the surface still reads data-orientation=${JSON.stringify(await guestPage.eval(`${q(EL.surface)}.getAttribute('data-orientation')`))} at 390x844`);
+            fail(
+              `the surface still reads data-orientation=${JSON.stringify(await guestPage.eval(`${q(EL.surface)}.getAttribute('data-orientation')`))} at 390x844`,
+            );
           } else {
             pass("the surface reads data-orientation=portrait at 390x844");
           }
@@ -625,26 +751,47 @@ const main = async () => {
           const portraitDiffs = factDiffs(before, inPortrait);
           const layoutPortrait = await guestPage.eval(LAYOUT);
           if (layoutPortrait === null || layoutBefore === null) {
-            fail("the board or the rivals region is missing, so the rotation had nothing to reflow");
-          } else if (layoutPortrait.columns === layoutBefore.columns && layoutPortrait.opponents === layoutBefore.opponents) {
-            fail(`portrait reflowed nothing: the board is still ${layoutBefore.columns} and the rivals region still ${layoutBefore.opponents}`);
+            fail(
+              "the board or the rivals region is missing, so the rotation had nothing to reflow",
+            );
+          } else if (
+            layoutPortrait.columns === layoutBefore.columns &&
+            layoutPortrait.opponents === layoutBefore.opponents
+          ) {
+            fail(
+              `portrait reflowed nothing: the board is still ${layoutBefore.columns} and the rivals region still ${layoutBefore.opponents}`,
+            );
           } else {
-            pass(`portrait reflowed the board (${layoutBefore.columns} -> ${layoutPortrait.columns}, rivals ${layoutBefore.opponents} -> ${layoutPortrait.opponents})`);
+            pass(
+              `portrait reflowed the board (${layoutBefore.columns} -> ${layoutPortrait.columns}, rivals ${layoutBefore.opponents} -> ${layoutPortrait.opponents})`,
+            );
           }
           if (portraitDiffs.length > 0) fail(`portrait changed ${portraitDiffs.join("; ")}`);
-          else pass(`portrait kept the round, all ${inPortrait.seats.length} seats, and ${inPortrait.hand} cards in hand`);
+          else
+            pass(
+              `portrait kept the round, all ${inPortrait.seats.length} seats, and ${inPortrait.hand} cards in hand`,
+            );
 
-          const remounted = await guestPage.eval("!window.__proofSurface.isConnected || window.__proofSurface !== document.querySelector('[data-slot=citadels-surface]')");
+          const remounted = await guestPage.eval(
+            "!window.__proofSurface.isConnected || window.__proofSurface !== document.querySelector('[data-slot=citadels-surface]')",
+          );
           if (remounted) fail("the surface node was replaced by the rotation");
           else pass("the surface node survived the rotation");
 
-          await guestPage.setOrientation({ width: 1280, height: 800, type: "landscapePrimary", angle: 0 });
+          await guestPage.setOrientation({
+            width: 1280,
+            height: 800,
+            type: "landscapePrimary",
+            angle: 0,
+          });
           const back = await guestPage.waitFor(
             `${q(EL.surface)}.getAttribute('data-orientation') === 'landscape'`,
             { timeoutMs: 6000 },
           );
           if (!back) {
-            fail(`the surface reads data-orientation=${JSON.stringify(await guestPage.eval(`${q(EL.surface)}.getAttribute('data-orientation')`))} back at 1280x800`);
+            fail(
+              `the surface reads data-orientation=${JSON.stringify(await guestPage.eval(`${q(EL.surface)}.getAttribute('data-orientation')`))} back at 1280x800`,
+            );
           } else {
             pass("the surface reads data-orientation=landscape back at 1280x800");
           }
@@ -652,7 +799,9 @@ const main = async () => {
           const backDiffs = factDiffs(before, rotatedBack);
           if (backDiffs.length > 0) fail(`the round trip changed ${backDiffs.join("; ")}`);
           else pass("the round trip kept the round, every seat, and the hand");
-          const seatsKept = await guestPage.eval("window.__proofSeats.every((seat) => seat.isConnected)");
+          const seatsKept = await guestPage.eval(
+            "window.__proofSeats.every((seat) => seat.isConnected)",
+          );
           if (!seatsKept) fail("a seat node was replaced by the rotation");
           else pass(`all ${before.seats.length} seat nodes survived both rotations`);
         },
@@ -660,13 +809,22 @@ const main = async () => {
       {
         name: "a g54 room on the same route still renders its own board",
         run: async () => {
-          const g54 = await createRoomThroughApi(host, { name: "G54 surface proof", seats: 2, setup: { game: "g54", roles: G54_ROLES } });
+          const g54 = await createRoomThroughApi(host, {
+            name: "G54 surface proof",
+            seats: 2,
+            setup: { game: "g54", roles: G54_ROLES },
+          });
           await joinThroughLink(otherPage, g54);
           await startThroughLobby(hostPage, g54);
           await openRoute(hostPage, `${BASE}/games/${g54}`);
-          const board = await hostPage.waitFor("!!document.querySelector('[data-slot=game-board]')", { timeoutMs: 90000 });
+          const board = await hostPage.waitFor(
+            "!!document.querySelector('[data-slot=game-board]')",
+            { timeoutMs: 90000 },
+          );
           const gate = await hostPage.eval(`!!document.querySelector(${JSON.stringify(EL.gate)})`);
-          const surface = await hostPage.eval(`!!document.querySelector(${JSON.stringify(EL.surface)})`);
+          const surface = await hostPage.eval(
+            `!!document.querySelector(${JSON.stringify(EL.surface)})`,
+          );
           if (!board) fail(`the g54 room ${g54} rendered no [data-slot=game-board]`);
           else pass(`the g54 room ${g54} renders its own board`);
           if (gate) fail("a g54 game shows the citadels gate");

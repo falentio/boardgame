@@ -22,7 +22,8 @@ const CARA = seatId("cara");
 const SEATS = [ANN, BOB, CARA];
 const SEED = genesisSeed("citadels-board-tests");
 
-const genesis = () => citadels.genesis({ cast: [...BASE_CAST] }, makeRoster(SEATS), makeRandom(SEED));
+const genesis = () =>
+  citadels.genesis({ cast: [...BASE_CAST] }, makeRoster(SEATS), makeRandom(SEED));
 
 const view = (seat: SeatId = ANN): CitadelsView => citadels.project(genesis(), seat);
 
@@ -67,7 +68,13 @@ test("a city narrows to the district id and its placed gold, with no catalog cop
   const projected = view(ANN);
   const built = projected.players.map((player) =>
     player.seat === ANN
-      ? { ...player, city: [{ id: "tavern", gold: 3 }, { id: "keep", gold: 0 }] }
+      ? {
+          ...player,
+          city: [
+            { id: "tavern", gold: 3 },
+            { id: "keep", gold: 0 },
+          ],
+        }
       : player,
   );
   const board = citadelsBoardOf(withView(projected, { players: built }), names());
@@ -165,10 +172,7 @@ test("the table carries the round, the public counts, and the discard", () => {
 });
 
 test("a terminal board names the winner", () => {
-  const board = citadelsBoardOf(
-    withView(view(ANN), { terminal: true, winner: BOB }),
-    names(),
-  );
+  const board = citadelsBoardOf(withView(view(ANN), { terminal: true, winner: BOB }), names());
   expect(board.terminal).toBe(true);
   expect(board.winner).toEqual({ seat: BOB, name: "Bo" });
 });

@@ -1,61 +1,63 @@
 <script setup lang="ts">
-import { computed, ref } from "vue"
-import { Hourglass, Minimize } from "@lucide/vue"
-import CitadelsBoard from "@/components/games/citadels/CitadelsBoard.vue"
-import CitadelsGate from "@/components/games/citadels/CitadelsGate.vue"
-import GameStatusPanel from "@/components/games/GameStatusPanel.vue"
-import { buttonVariants } from "@/components/ui/button"
-import { citadelsBoardOf } from "@/composables/citadels-board.ts"
-import { useFullscreen } from "@/composables/fullscreen.ts"
-import { openSurface, type SurfacePhase } from "@/composables/immersive-surface.ts"
-import { useOrientation } from "@/composables/orientation.ts"
-import { secondsOf } from "@/composables/turn-timer.ts"
-import { useGame } from "@/composables/useGame"
-import type { Room } from "@/composables/room-domain.ts"
-import type { RoomLike } from "#shared/game/index.ts"
-import type { CitadelsSetup } from "#shared/core/lockstep/games/citadels/index.ts"
-import { citadels } from "#shared/core/lockstep/games/citadels/index.ts"
-import { seatId, type SeatId, type UserId } from "#shared/rooms/ids.ts"
+import { computed, ref } from "vue";
+import { Hourglass, Minimize } from "@lucide/vue";
+import CitadelsBoard from "@/components/games/citadels/CitadelsBoard.vue";
+import CitadelsGate from "@/components/games/citadels/CitadelsGate.vue";
+import GameStatusPanel from "@/components/games/GameStatusPanel.vue";
+import { buttonVariants } from "@/components/ui/button";
+import { citadelsBoardOf } from "@/composables/citadels-board.ts";
+import { useFullscreen } from "@/composables/fullscreen.ts";
+import { openSurface, type SurfacePhase } from "@/composables/immersive-surface.ts";
+import { useOrientation } from "@/composables/orientation.ts";
+import { secondsOf } from "@/composables/turn-timer.ts";
+import { useGame } from "@/composables/useGame";
+import type { Room } from "@/composables/room-domain.ts";
+import type { RoomLike } from "#shared/game/index.ts";
+import type { CitadelsSetup } from "#shared/core/lockstep/games/citadels/index.ts";
+import { citadels } from "#shared/core/lockstep/games/citadels/index.ts";
+import { seatId, type SeatId, type UserId } from "#shared/rooms/ids.ts";
 
 const props = defineProps<{
-  room: Room
-  viewer: UserId | null
-  loadFailed?: string | null
-}>()
+  room: Room;
+  viewer: UserId | null;
+  loadFailed?: string | null;
+}>();
 
 const citadelsRoom = computed<RoomLike<CitadelsSetup> | null>(() => {
-  const room = props.room
-  if (room.setup.game !== "citadels") return null
-  return { code: room.code, setup: room.setup, seats: room.seats, startedAt: room.startedAt }
-})
+  const room = props.room;
+  if (room.setup.game !== "citadels") return null;
+  return { code: room.code, setup: room.setup, seats: room.seats, startedAt: room.startedAt };
+});
 
-const viewer = computed(() => props.viewer)
+const viewer = computed(() => props.viewer);
 
 const names = computed<ReadonlyMap<SeatId, string>>(() => {
-  const map = new Map<SeatId, string>()
+  const map = new Map<SeatId, string>();
   for (const seat of props.room.seats) {
-    if (seat.occupant === null) continue
-    map.set(seatId(seat.id), seat.name ?? "Player")
+    if (seat.occupant === null) continue;
+    map.set(seatId(seat.id), seat.name ?? "Player");
   }
-  return map
-})
+  return map;
+});
 
 const { view, status, remainingMs } = useGame({
   game: citadels,
   room: citadelsRoom,
   viewer,
-})
+});
 
-const board = computed(() => (view.value === null ? null : citadelsBoardOf(view.value, names.value)))
+const board = computed(() =>
+  view.value === null ? null : citadelsBoardOf(view.value, names.value),
+);
 
-const immersive = ref<Element | null>(null)
-const phase = ref<SurfacePhase>("gate")
-const fullscreen = useFullscreen({ target: immersive })
-const { orientation } = useOrientation()
-const { canEnter, enter, leave, notice, retry } = openSurface({ phase, fullscreen })
+const immersive = ref<Element | null>(null);
+const phase = ref<SurfacePhase>("gate");
+const fullscreen = useFullscreen({ target: immersive });
+const { orientation } = useOrientation();
+const { canEnter, enter, leave, notice, retry } = openSurface({ phase, fullscreen });
 
-const seconds = computed(() => (remainingMs.value === null ? null : secondsOf(remainingMs.value)))
-const inFullscreen = computed(() => fullscreen.active.value)
+const seconds = computed(() => (remainingMs.value === null ? null : secondsOf(remainingMs.value)));
+const inFullscreen = computed(() => fullscreen.active.value);
 </script>
 
 <template>
@@ -78,7 +80,10 @@ const inFullscreen = computed(() => fullscreen.active.value)
       :data-phase="board?.phase"
       class="group/surface fixed inset-0 z-50 flex h-dvh min-h-0 flex-col bg-background"
     >
-      <header v-if="board" class="flex shrink-0 items-center gap-3 border-b border-foreground/10 px-3 py-2">
+      <header
+        v-if="board"
+        class="flex shrink-0 items-center gap-3 border-b border-foreground/10 px-3 py-2"
+      >
         <span data-slot="citadels-phase" class="text-sm leading-none font-semibold tabular-nums">
           Round {{ board.round }} · {{ board.phaseLabel }}
         </span>

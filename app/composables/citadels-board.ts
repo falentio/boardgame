@@ -142,7 +142,11 @@ const castStateOf = (view: CitadelsView, character: CharacterId): CastSlotState 
   return "available";
 };
 
-const plateOf = (player: PlayerView, view: CitadelsView, nameOf: (seat: SeatId) => string): SeatBase => ({
+const plateOf = (
+  player: PlayerView,
+  view: CitadelsView,
+  nameOf: (seat: SeatId) => string,
+): SeatBase => ({
   seat: player.seat,
   name: nameOf(player.seat),
   gold: player.gold,
@@ -200,16 +204,13 @@ export const citadelsBoardOf = (
           },
     deckCount: view.deckCount,
     discard: [...view.discard],
-    winner:
-      view.winner === null ? null : { seat: view.winner, name: nameOf(view.winner) },
+    winner: view.winner === null ? null : { seat: view.winner, name: nameOf(view.winner) },
     terminal: view.terminal,
-    opponents: ordered.slice(1).map(
-      (player): OpponentSeat => ({
-        ...plateOf(player, view, nameOf),
-        kind: "rival",
-        handCount: player.handCount,
-      }),
-    ),
+    opponents: ordered.slice(1).map((player): OpponentSeat => ({
+      ...plateOf(player, view, nameOf),
+      kind: "rival",
+      handCount: player.handCount,
+    })),
     me: {
       ...plateOf(mine, view, nameOf),
       kind: "me",

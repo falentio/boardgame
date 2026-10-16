@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import CitadelsHand from "./CitadelsHand.vue"
-import CitadelsSeat from "./CitadelsSeat.vue"
-import CitadelsTable from "./CitadelsTable.vue"
-import type { CitadelsBoard } from "@/composables/citadels-board.ts"
+import CitadelsHand from "./CitadelsHand.vue";
+import CitadelsSeat from "./CitadelsSeat.vue";
+import CitadelsTable from "./CitadelsTable.vue";
+import type { CitadelsBoard } from "@/composables/citadels-board.ts";
 
-defineProps<{ board: CitadelsBoard }>()
+defineProps<{ board: CitadelsBoard }>();
 </script>
 
 <template>

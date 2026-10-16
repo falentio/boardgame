@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { computed } from "vue"
-import { Coins, Crown } from "@lucide/vue"
-import DistrictCard from "./DistrictCard.vue"
-import type { SeatPlate } from "@/composables/citadels-board.ts"
+import { computed } from "vue";
+import { Coins, Crown } from "@lucide/vue";
+import DistrictCard from "./DistrictCard.vue";
+import type { SeatPlate } from "@/composables/citadels-board.ts";
 
-const props = defineProps<{ seat: SeatPlate }>()
+const props = defineProps<{ seat: SeatPlate }>();
 
 const mark = computed(() => {
-  if (props.seat.owed) return "Owes input"
-  return props.seat.active ? "Acting" : null
-})
+  if (props.seat.owed) return "Owes input";
+  return props.seat.active ? "Acting" : null;
+});
 </script>
 
 <template>
@@ -25,7 +25,8 @@ const mark = computed(() => {
       <span
         v-if="seat.kind === 'me'"
         class="shrink-0 text-[0.625rem] leading-none font-medium tracking-wide text-muted-foreground uppercase"
-      >You</span>
+        >You</span
+      >
       <span
         v-if="seat.crown"
         data-slot="citadels-crown"
@@ -37,7 +38,8 @@ const mark = computed(() => {
         v-if="seat.active"
         data-slot="citadels-active"
         class="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[0.625rem] leading-none font-semibold text-primary-foreground uppercase"
-      >Acting</span>
+        >Acting</span
+      >
       <span
         class="ms-auto inline-flex shrink-0 items-center gap-1 text-sm leading-none font-semibold tabular-nums"
         :aria-label="`${seat.gold} gold`"

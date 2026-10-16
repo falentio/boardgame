@@ -1,4 +1,13 @@
-import { computed, onScopeDispose, ref, shallowRef, watch, type ComputedRef, type Ref, type ShallowRef } from "vue";
+import {
+  computed,
+  onScopeDispose,
+  ref,
+  shallowRef,
+  watch,
+  type ComputedRef,
+  type Ref,
+  type ShallowRef,
+} from "vue";
 
 /** What this document can do about element fullscreen. `none` is iPhone Safari, today. */
 export type FullscreenSupport = "element" | "none";
@@ -109,9 +118,7 @@ export const useFullscreen = (options: UseFullscreenOptions): Fullscreen => {
   const host = options.host ?? (import.meta.client ? domFullscreenHost() : unsupportedHost);
   const support = ref<FullscreenSupport>("element");
   const element = shallowRef<Element | null>(null);
-  const active = computed(
-    () => element.value !== null && element.value === options.target.value,
-  );
+  const active = computed(() => element.value !== null && element.value === options.target.value);
   let inflight: Promise<EnterOutcome> | null = null;
   let attemptId = 0;
   let deadline: ReturnType<typeof setTimeout> | null = null;

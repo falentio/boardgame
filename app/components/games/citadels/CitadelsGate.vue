@@ -1,17 +1,15 @@
 <script setup lang="ts">
-import { Maximize } from "@lucide/vue"
-import { buttonVariants } from "@/components/ui/button"
-import type { CitadelsBoard } from "@/composables/citadels-board.ts"
+import { Maximize } from "@lucide/vue";
+import { buttonVariants } from "@/components/ui/button";
+import type { CitadelsBoard } from "@/composables/citadels-board.ts";
 
-defineProps<{ board: CitadelsBoard; canEnter: boolean; notice: string | null }>()
-const emit = defineEmits<{ open: []; retry: [] }>()
+defineProps<{ board: CitadelsBoard; canEnter: boolean; notice: string | null }>();
+const emit = defineEmits<{ open: []; retry: [] }>();
 </script>
 
 <template>
   <div data-slot="citadels-gate" class="flex flex-col items-start gap-3">
-    <h1 class="text-2xl leading-tight font-semibold">
-      Citadels
-    </h1>
+    <h1 class="text-2xl leading-tight font-semibold">Citadels</h1>
     <p data-slot="citadels-phase" class="text-muted-foreground text-sm leading-normal tabular-nums">
       Round {{ board.round }} · {{ board.phaseLabel }} · {{ board.cast.length }} characters
     </p>
