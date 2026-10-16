@@ -14,6 +14,7 @@ export type FullscreenSupport = "element" | "none";
 
 export type EnterOutcome = "entered" | "refused" | "unsupported";
 
+/** How long a request may hang before the retry control is free again. */
 export const REQUEST_DEADLINE_MS = 1500;
 
 export interface FullscreenHost {
@@ -28,6 +29,7 @@ export interface FullscreenHost {
 
 export interface Fullscreen {
   readonly support: Ref<FullscreenSupport>;
+/** The live fullscreen element. Written only by the fullscreenchange subscription. */
   readonly element: ShallowRef<Element | null>;
   readonly active: ComputedRef<boolean>;
   enter(): Promise<EnterOutcome>;

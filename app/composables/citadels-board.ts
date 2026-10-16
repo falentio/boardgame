@@ -10,6 +10,7 @@ import type {
 import { CITY_TARGET, specOfCharacter } from "#shared/core/lockstep/games/citadels/index.ts";
 import type { WindowPurpose } from "#shared/core/lockstep/games/citadels/state.ts";
 
+/** A district sitting in a city, with the Artist's beautify marker on it. */
 export interface CityCard {
   readonly id: DistrictId;
   readonly gold: number;
@@ -31,6 +32,7 @@ export interface OpponentSeat extends SeatBase {
   readonly handCount: number;
 }
 
+/** The viewer's plate: the cards, never a count. */
 export interface MySeat extends SeatBase {
   readonly kind: "me";
   readonly hand: readonly DistrictId[];
@@ -79,6 +81,7 @@ export interface CitadelsTable {
 }
 
 export interface CitadelsBoard extends CitadelsTable {
+/** Clockwise from the viewer's seat, so both layouts agree on the table order. */
   readonly opponents: readonly OpponentSeat[];
   readonly me: MySeat;
 }
