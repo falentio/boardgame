@@ -14,7 +14,7 @@ import {
   type CitadelsView,
 } from "#shared/core/lockstep/games/citadels/index.ts";
 import { seatId, type SeatId } from "#shared/rooms/ids.ts";
-import { citadelsBoardOf, phaseLabel, purposeLabel } from "../citadels-board.ts";
+import { citadelsBoardOf, citadelsPurposeLabel, phaseLabel } from "../citadels-board.ts";
 
 const ANN = seatId("ann");
 const BOB = seatId("bob");
@@ -199,7 +199,7 @@ test("a draft pick reaches the board as the viewer's own pick", () => {
   expect(board.cast.find((slot) => slot.character === picked)?.state).toBe("mine");
 });
 
-test("purposeLabel names every window purpose in the engine's union", () => {
+test("citadelsPurposeLabel names every window purpose in the engine's union", () => {
   const purposes: readonly string[] = [
     "draft-pick",
     "turn",
@@ -234,12 +234,12 @@ test("purposeLabel names every window purpose in the engine's union", () => {
   ];
   expect(purposes).toHaveLength(30);
   for (const purpose of purposes) {
-    const label = purposeLabel(purpose as Parameters<typeof purposeLabel>[0]);
+    const label = citadelsPurposeLabel(purpose as Parameters<typeof citadelsPurposeLabel>[0]);
     expect(label.length).toBeGreaterThan(0);
     expect(label).not.toBe(purpose);
   }
-  expect(purposeLabel("thief-rob")).toBe("Rob a player");
-  expect(purposeLabel("armory-destroy")).toBe("Destroy a district");
+  expect(citadelsPurposeLabel("thief-rob")).toBe("Rob a player");
+  expect(citadelsPurposeLabel("armory-destroy")).toBe("Destroy a district");
 });
 
 test("phaseLabel covers every engine phase", () => {

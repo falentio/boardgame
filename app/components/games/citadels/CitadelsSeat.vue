@@ -2,9 +2,9 @@
 import { computed } from "vue"
 import { Coins, Crown } from "@lucide/vue"
 import DistrictCard from "./DistrictCard.vue"
-import type { Seat } from "@/composables/citadels-board.ts"
+import type { SeatPlate } from "@/composables/citadels-board.ts"
 
-const props = defineProps<{ seat: Seat }>()
+const props = defineProps<{ seat: SeatPlate }>()
 
 const mark = computed(() => {
   if (props.seat.owed) return "Owes input"

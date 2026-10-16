@@ -40,7 +40,7 @@ export interface MySeat extends SeatBase {
   readonly cityTarget: number;
 }
 
-export type Seat = MySeat | OpponentSeat;
+export type SeatPlate = MySeat | OpponentSeat;
 
 export type CastSlotState = "available" | "mine" | "faceup" | "pending";
 
@@ -125,7 +125,7 @@ const PURPOSE_LABELS: Record<WindowPurpose, string> = {
   "theatre-swap": "Swap a character blindly",
 };
 
-export const purposeLabel = (purpose: WindowPurpose): string => PURPOSE_LABELS[purpose];
+export const citadelsPurposeLabel = (purpose: WindowPurpose): string => PURPOSE_LABELS[purpose];
 
 const PHASE_LABELS: Record<Phase, string> = {
   draft: "Draft",
@@ -182,7 +182,7 @@ export const citadelsBoardOf = (
         ? null
         : {
             purpose: view.window.purpose,
-            label: purposeLabel(view.window.purpose),
+            label: citadelsPurposeLabel(view.window.purpose),
             owedByMe: view.owedSeats.includes(view.seat),
           },
     pending:
