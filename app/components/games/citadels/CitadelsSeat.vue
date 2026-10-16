@@ -6,10 +6,7 @@ import type { SeatPlate } from "@/composables/citadels-board.ts";
 
 const props = defineProps<{ seat: SeatPlate }>();
 
-const mark = computed(() => {
-  if (props.seat.owed) return "Owes input";
-  return props.seat.active ? "Acting" : null;
-});
+const owedNote = computed(() => (props.seat.owed ? "Owes input" : null));
 </script>
 
 <template>
@@ -51,7 +48,7 @@ const mark = computed(() => {
     <p class="text-xs leading-tight text-muted-foreground tabular-nums">
       <template v-if="seat.kind === 'rival'">{{ seat.handCount }} cards in hand</template>
       <template v-else>{{ seat.city.length }} of {{ seat.cityTarget }} districts</template>
-      <span v-if="mark"> · {{ mark }}</span>
+      <span v-if="owedNote"> · {{ owedNote }}</span>
     </p>
 
     <ul class="flex flex-wrap gap-1.5">
