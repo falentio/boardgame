@@ -203,7 +203,7 @@ export const citadelsBoardOf = (
             cards: view.pending.cards,
           },
     deckCount: view.deckCount,
-    discard: [...view.discard],
+    discard: view.discard,
     winner: view.winner === null ? null : { seat: view.winner, name: nameOf(view.winner) },
     terminal: view.terminal,
     opponents: ordered.slice(1).map((player): OpponentSeat => ({
@@ -214,7 +214,7 @@ export const citadelsBoardOf = (
     me: {
       ...plateOf(mine, view, nameOf),
       kind: "me",
-      hand: [...view.myHand],
+      hand: view.myHand,
       cityTarget: CITY_TARGET,
     },
   };
