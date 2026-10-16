@@ -81,7 +81,7 @@ export interface CitadelsTable {
 }
 
 export interface CitadelsBoard extends CitadelsTable {
-/** Clockwise from the viewer's seat, so both layouts agree on the table order. */
+  /** Clockwise from the viewer's seat, so both layouts agree on the table order. */
   readonly opponents: readonly OpponentSeat[];
   readonly me: MySeat;
 }

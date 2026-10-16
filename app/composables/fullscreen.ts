@@ -29,7 +29,7 @@ export interface FullscreenHost {
 
 export interface Fullscreen {
   readonly support: Ref<FullscreenSupport>;
-/** The live fullscreen element. Written only by the fullscreenchange subscription. */
+  /** The live fullscreen element. Written only by the fullscreenchange subscription. */
   readonly element: ShallowRef<Element | null>;
   readonly active: ComputedRef<boolean>;
   enter(): Promise<EnterOutcome>;
