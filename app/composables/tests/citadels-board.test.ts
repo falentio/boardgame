@@ -95,11 +95,11 @@ test("the crown, the active seat, and who still owes input come from the view", 
 
 test("the window names its purpose and whether the viewer owes it", () => {
   const mine = citadelsBoardOf(view(ANN), names());
-  expect(mine.window?.purpose).toBe("draft-pick");
-  expect(mine.window?.label).toBe("Pick a character");
-  expect(mine.window?.owedByMe).toBe(true);
+  expect(mine.table.window?.purpose).toBe("draft-pick");
+  expect(mine.table.window?.label).toBe("Pick a character");
+  expect(mine.table.window?.owedByMe).toBe(true);
   const theirs = citadelsBoardOf(view(CARA), names());
-  expect(theirs.window?.owedByMe).toBe(false);
+  expect(theirs.table.window?.owedByMe).toBe(false);
 });
 
 test("the cast marks the faceup discards, the viewer's own pick, and the card in flight", () => {
@@ -119,18 +119,18 @@ test("the cast marks the faceup discards, the viewer's own pick, and the card in
     names(),
   );
   const stateOf = (character: string) =>
-    board.cast.find((slot) => slot.character === character)?.state;
+    board.table.cast.find((slot) => slot.character === character)?.state;
   expect(stateOf(inFlight)).toBe("pending");
   expect(stateOf(picked)).toBe("mine");
   expect(stateOf(faceup)).toBe("faceup");
-  expect(board.cast.filter((slot) => slot.state === "available")).toHaveLength(5);
+  expect(board.table.cast.filter((slot) => slot.state === "available")).toHaveLength(5);
 });
 
 test("the cast carries each character's name and rank", () => {
   const board = citadelsBoardOf(view(ANN), names());
-  expect(board.cast.map((slot) => slot.rank)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
-  expect(board.cast.map((slot) => slot.name)).toContain("Assassin");
-  expect(board.cast.length).toBeGreaterThan(0);
+  expect(board.table.cast.map((slot) => slot.rank)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+  expect(board.table.cast.map((slot) => slot.name)).toContain("Assassin");
+  expect(board.table.cast.length).toBeGreaterThan(0);
 });
 
 test("the pending action names the actor, the character, and the target", () => {
@@ -138,7 +138,7 @@ test("the pending action names the actor, the character, and the target", () => 
     withView(view(ANN), { pending: { actor: BOB, character: "assassin", target: ANN, cards: 3 } }),
     names(),
   );
-  expect(board.pending).toEqual({
+  expect(board.table.pending).toEqual({
     actor: BOB,
     actorName: "Bo",
     character: "assassin",
@@ -154,26 +154,26 @@ test("a pending action without a character or a target reports both as absent", 
     withView(view(ANN), { pending: { actor: BOB, character: null, target: null, cards: 0 } }),
     names(),
   );
-  expect(board.pending?.characterName).toBeNull();
-  expect(board.pending?.targetName).toBeNull();
+  expect(board.table.pending?.characterName).toBeNull();
+  expect(board.table.pending?.targetName).toBeNull();
 });
 
 test("the table carries the round, the public counts, and the discard", () => {
   const projected = view(ANN);
   const board = citadelsBoardOf(projected, names());
-  expect(board.round).toBe(projected.round);
-  expect(board.phase).toBe("draft");
-  expect(board.phaseLabel).toBe("Draft");
-  expect(board.deckCount).toBe(projected.deckCount);
-  expect(board.discard).toEqual(projected.discard);
-  expect(board.terminal).toBe(false);
-  expect(board.winner).toBeNull();
+  expect(board.table.round).toBe(projected.round);
+  expect(board.table.phase).toBe("draft");
+  expect(board.table.phaseLabel).toBe("Draft");
+  expect(board.table.deckCount).toBe(projected.deckCount);
+  expect(board.table.discard).toEqual(projected.discard);
+  expect(board.table.terminal).toBe(false);
+  expect(board.table.winner).toBeNull();
 });
 
 test("a terminal board names the winner", () => {
   const board = citadelsBoardOf(withView(view(ANN), { terminal: true, winner: BOB }), names());
-  expect(board.terminal).toBe(true);
-  expect(board.winner).toEqual({ seat: BOB, name: "Bo" });
+  expect(board.table.terminal).toBe(true);
+  expect(board.table.winner).toEqual({ seat: BOB, name: "Bo" });
 });
 
 test("a seat missing from the roster map falls back to its id", () => {
@@ -198,8 +198,8 @@ test("a draft pick reaches the board as the viewer's own pick", () => {
   const picked = stepped.myPick;
   if (picked === null) throw new Error("the pick window closed without a pick");
   const board = citadelsBoardOf(stepped, names());
-  expect(board.myPick).toBe(picked);
-  expect(board.cast.find((slot) => slot.character === picked)?.state).toBe("mine");
+  expect(board.table.myPick).toBe(picked);
+  expect(board.table.cast.find((slot) => slot.character === picked)?.state).toBe("mine");
 });
 
 test("citadelsPurposeLabel names every window purpose in the engine's union", () => {

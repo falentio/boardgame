@@ -80,7 +80,8 @@ export interface CitadelsTable {
   readonly terminal: boolean;
 }
 
-export interface CitadelsBoard extends CitadelsTable {
+export interface CitadelsBoard {
+  readonly table: CitadelsTable;
   /** Clockwise from the viewer's seat, so both layouts agree on the table order. */
   readonly opponents: readonly OpponentSeat[];
   readonly me: MySeat;
@@ -167,39 +168,43 @@ export const citadelsBoardOf = (
   // is a broken view rather than an input to handle.
   if (mine === undefined) throw new Error("citadels view is missing the viewer's seat");
   return {
-    round: view.round,
-    phase: view.phase,
-    phaseLabel: phaseLabel(view.phase),
-    cast: view.cast.map((character) => {
-      const spec = specOfCharacter(character);
-      return { character, name: spec.name, rank: spec.rank, state: castStateOf(view, character) };
-    }),
-    myPick: view.myPick,
-    window:
-      view.window === null
-        ? null
-        : {
-            purpose: view.window.purpose,
-            label: citadelsPurposeLabel(view.window.purpose),
-            owedByMe: view.owedSeats.includes(view.seat),
-          },
-    pending:
-      view.pending === null
-        ? null
-        : {
-            actor: view.pending.actor,
-            actorName: nameOf(view.pending.actor),
-            character: view.pending.character,
-            characterName:
-              view.pending.character === null ? null : specOfCharacter(view.pending.character).name,
-            target: view.pending.target,
-            targetName: view.pending.target === null ? null : nameOf(view.pending.target),
-            cards: view.pending.cards,
-          },
-    deckCount: view.deckCount,
-    discard: view.discard,
-    winner: view.winner === null ? null : { seat: view.winner, name: nameOf(view.winner) },
-    terminal: view.terminal,
+    table: {
+      round: view.round,
+      phase: view.phase,
+      phaseLabel: phaseLabel(view.phase),
+      cast: view.cast.map((character) => {
+        const spec = specOfCharacter(character);
+        return { character, name: spec.name, rank: spec.rank, state: castStateOf(view, character) };
+      }),
+      myPick: view.myPick,
+      window:
+        view.window === null
+          ? null
+          : {
+              purpose: view.window.purpose,
+              label: citadelsPurposeLabel(view.window.purpose),
+              owedByMe: view.owedSeats.includes(view.seat),
+            },
+      pending:
+        view.pending === null
+          ? null
+          : {
+              actor: view.pending.actor,
+              actorName: nameOf(view.pending.actor),
+              character: view.pending.character,
+              characterName:
+                view.pending.character === null
+                  ? null
+                  : specOfCharacter(view.pending.character).name,
+              target: view.pending.target,
+              targetName: view.pending.target === null ? null : nameOf(view.pending.target),
+              cards: view.pending.cards,
+            },
+      deckCount: view.deckCount,
+      discard: view.discard,
+      winner: view.winner === null ? null : { seat: view.winner, name: nameOf(view.winner) },
+      terminal: view.terminal,
+    },
     opponents: ordered.slice(1).map((player): OpponentSeat => ({
       ...plateOf(player, view, nameOf),
       kind: "rival",

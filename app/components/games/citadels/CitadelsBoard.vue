@@ -24,7 +24,7 @@ defineProps<{ board: CitadelsBoard }>();
       />
     </div>
 
-    <CitadelsTable :table="board" />
+    <CitadelsTable :table="board.table" />
 
     <div
       class="flex min-h-0 flex-col gap-2 group-data-[orientation=landscape]/surface:col-span-2 group-data-[orientation=landscape]/surface:flex-row"

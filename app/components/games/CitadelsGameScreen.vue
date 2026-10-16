@@ -59,7 +59,7 @@ const { canEnter, canRetry, enter, leave, notice, retry } = openSurface({ phase,
 const inFullscreen = computed(() => fullscreen.active.value);
 
 const winnerLine = computed(() => {
-  const winner = board.value?.winner ?? null;
+  const winner = board.value?.table.winner ?? null;
   return winner === null ? "Game over" : `${winner.name} wins`;
 });
 </script>
@@ -69,7 +69,7 @@ const winnerLine = computed(() => {
     <GameStatusPanel v-if="phase === 'gate'" :status="status" :failed="loadFailed">
       <CitadelsGate
         v-if="board"
-        :board="board"
+        :table="board.table"
         :can-enter="canEnter"
         :can-retry="canRetry"
         :notice="notice"
@@ -82,7 +82,7 @@ const winnerLine = computed(() => {
       v-else
       data-slot="citadels-surface"
       :data-orientation="orientation"
-      :data-phase="board?.phase"
+      :data-phase="board?.table.phase"
       class="group/surface fixed inset-0 z-50 flex h-dvh min-h-0 flex-col bg-background"
     >
       <header
@@ -90,7 +90,7 @@ const winnerLine = computed(() => {
         class="flex shrink-0 items-center gap-3 border-b border-foreground/10 px-3 py-2"
       >
         <span data-slot="citadels-phase" class="text-sm leading-none font-semibold tabular-nums">
-          Round {{ board.round }} · {{ board.phaseLabel }}
+          Round {{ board.table.round }} · {{ board.table.phaseLabel }}
         </span>
         <button
           data-slot="citadels-exit"
@@ -105,7 +105,7 @@ const winnerLine = computed(() => {
       </header>
 
       <div
-        v-if="board?.terminal"
+        v-if="board?.table.terminal"
         data-slot="citadels-terminal"
         role="status"
         class="flex shrink-0 flex-wrap items-center gap-3 border-b border-foreground/10 bg-primary/10 px-3 py-2 text-sm leading-normal"
