@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { PlayingCards } from "@lucide/vue";
-import DistrictCard from "./DistrictCard.vue";
+import DistrictCard from "../DistrictCard.vue";
 import type { CastSlotState, CitadelsTable } from "@/composables/citadels-board.ts";
 import type { CharacterId } from "#shared/core/lockstep/games/citadels/index.ts";
 

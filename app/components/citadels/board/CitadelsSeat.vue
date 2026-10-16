@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { Coins, Crown } from "@lucide/vue";
-import DistrictCard from "./DistrictCard.vue";
+import DistrictCard from "../DistrictCard.vue";
 import type { SeatPlate } from "@/composables/citadels-board.ts";
 
 const props = defineProps<{ seat: SeatPlate }>();

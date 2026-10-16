@@ -2,8 +2,8 @@
 import { computed, ref } from "vue";
 import { Minimize } from "@lucide/vue";
 import FullscreenNotice from "@/components/citadels/FullscreenNotice.vue";
-import CitadelsBoard from "@/components/games/citadels/CitadelsBoard.vue";
-import CitadelsGate from "@/components/games/citadels/CitadelsGate.vue";
+import CitadelsBoard from "@/components/citadels/board/CitadelsBoard.vue";
+import CitadelsGate from "@/components/citadels/CitadelsGate.vue";
 import GameStatusPanel from "@/components/games/GameStatusPanel.vue";
 import { buttonVariants } from "@/components/ui/button";
 import { citadelsBoardOf } from "@/composables/citadels-board.ts";

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import DistrictCard from "./DistrictCard.vue";
+import DistrictCard from "../DistrictCard.vue";
 import type { DistrictId } from "#shared/core/lockstep/games/citadels/index.ts";
 
 defineProps<{ hand: readonly DistrictId[] }>();
