@@ -70,7 +70,7 @@ const claim = computed(() => {
       class="rounded-lg bg-card px-3 py-1.5 text-xs leading-tight font-medium ring-1 ring-foreground/10"
     >
       {{ table.window.label }}
-      <span v-if="table.window.owedByMe" class="text-primary"> · your move</span>
+      <span v-if="table.window.owedByMe" class="text-primary"> · you owe input</span>
     </p>
     <p v-if="claim" role="status" class="text-xs leading-tight text-muted-foreground">
       {{ claim }}
