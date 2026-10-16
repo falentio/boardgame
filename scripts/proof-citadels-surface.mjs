@@ -10,6 +10,7 @@
 //
 // Usage: node scripts/proof-citadels-surface.mjs [--port 3000] [--out DIR]
 import { spawn } from "node:child_process";
+import { createServer } from "node:net";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
 
@@ -101,7 +102,23 @@ const signUp = async (label) => {
   };
 };
 
-const launchBrowser = async (label, debugPort) => {
+/**
+ * A port nothing listens on. A fixed debug port can belong to a chrome a killed
+ * earlier run left behind, and the version probe would then attach this run to
+ * that browser and its stale session instead of the one just launched.
+ */
+const freePort = () =>
+  new Promise((resolve, reject) => {
+    const probe = createServer();
+    probe.on("error", reject);
+    probe.listen(0, "127.0.0.1", () => {
+      const port = probe.address().port;
+      probe.close(() => resolve(port));
+    });
+  });
+
+const launchBrowser = async (label) => {
+  const debugPort = await freePort();
   const profileDir = `/tmp/proof-surface-${label}-${PORT}-${process.pid}`;
   rmSync(profileDir, { recursive: true, force: true });
   const chrome = spawn(
@@ -116,7 +133,7 @@ const launchBrowser = async (label, debugPort) => {
       "--remote-allow-origins=*",
       "about:blank",
     ],
-    { stdio: "ignore" },
+    { stdio: "ignore", detached: true },
   );
   let wsUrl = null;
   for (let i = 0; i < 80; i++) {
@@ -294,7 +311,19 @@ const launchBrowser = async (label, debugPort) => {
       return path;
     },
   };
-  return { chrome, page, close: () => chrome.kill("SIGKILL") };
+  return {
+    chrome,
+    page,
+    // The group, not the parent: a chrome helper that holds the debug port or the
+    // profile would otherwise outlive the run and leak into the next one.
+    close: () => {
+      try {
+        process.kill(-chrome.pid, "SIGKILL");
+      } catch {
+        chrome.kill("SIGKILL");
+      }
+    },
+  };
 };
 
 const GAME_PATH = "location.pathname.match(/^\\/games\\/[A-Z]{8,9}$/) !== null";
@@ -412,7 +441,14 @@ const openRoute = async (page, url, { attempts = 3, timeoutMs = 45000 } = {}) =>
 const joinThroughLink = async (page, code) => {
   await openRoute(page, `${BASE}/join/${code}`);
   const seated = await page.waitFor(`location.pathname === '/rooms/${code}'`, { timeoutMs: 30000 });
-  if (!seated) throw new Error(`the join link did not seat the account, at ${await page.href()}`);
+  if (!seated) {
+    // The page's own copy says why: a full room, a started room, or an infra error
+    // the client mapped to its retry state.
+    const said = await page.eval("document.body.innerText.replace(/\n+/g, ' | ').slice(0, 200)");
+    throw new Error(
+      `the join link did not seat the account, at ${await page.href()}: ${said}`,
+    );
+  }
 };
 
 const startThroughLobby = async (page, code) => {
@@ -463,9 +499,9 @@ const main = async () => {
     const other = await signUp("other");
     pass(`created accounts ${host.email}, ${guest.email}, ${other.email}`);
 
-    const hostBrowser = await launchBrowser("host", PORT + 81);
-    const guestBrowser = await launchBrowser("guest", PORT + 82);
-    const otherBrowser = await launchBrowser("other", PORT + 83);
+    const hostBrowser = await launchBrowser("host");
+    const guestBrowser = await launchBrowser("guest");
+    const otherBrowser = await launchBrowser("other");
     browsers.push(hostBrowser, guestBrowser, otherBrowser);
     const hostPage = hostBrowser.page;
     const guestPage = guestBrowser.page;
@@ -505,10 +541,16 @@ const main = async () => {
         name: "a started citadels room gates a seated non-host",
         run: async () => {
           await openRoute(guestPage, `${BASE}/games/${citadels}`);
-          const gated = await guestPage.waitFor(
-            `${q(EL.gate)} && !document.querySelector(${JSON.stringify(EL.surface)})`,
-            { timeoutMs: 120000 },
-          );
+          const gateUp = `${q(EL.gate)} && !document.querySelector(${JSON.stringify(EL.surface)})`;
+          let gated = await guestPage.waitFor(gateUp, { timeoutMs: 120000 });
+          if (!gated) {
+            // A dev server that just restarted can still be compiling the citadels
+            // chunk when the first browser asks for it. One reload turns that stall
+            // into a wait; a page that is genuinely stuck fails both times.
+            info(`no gate after the first load of /games/${citadels}; loading the route once more`);
+            await openRoute(guestPage, `${BASE}/games/${citadels}`);
+            gated = await guestPage.waitFor(gateUp, { timeoutMs: 120000 });
+          }
           if (!gated) {
             fail(
               `no gate on /games/${citadels} for a seated non-host: ${JSON.stringify(await guestPage.eval(PAGE_STATE))}`,
