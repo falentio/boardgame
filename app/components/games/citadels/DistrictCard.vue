@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from "vue";
 import { computed } from "vue";
-import type { DistrictId, DistrictType } from "#shared/core/lockstep/games/citadels/index.ts";
+import type { DistrictId } from "#shared/core/lockstep/games/citadels/index.ts";
 import { specOfDistrict } from "#shared/core/lockstep/games/citadels/index.ts";
+import { DISTRICT_ACCENT } from "@/composables/card-shell";
 import { cn } from "@/lib/utils";
 
 const props = defineProps<{
@@ -12,16 +13,8 @@ const props = defineProps<{
   class?: HTMLAttributes["class"];
 }>();
 
-const ACCENT: Readonly<Record<DistrictType, string>> = {
-  noble: "var(--district-noble)",
-  religious: "var(--district-religious)",
-  trade: "var(--district-trade)",
-  military: "var(--district-military)",
-  unique: "var(--district-unique)",
-};
-
 const spec = computed(() => specOfDistrict(props.district));
-const accent = computed(() => ACCENT[spec.value.type]);
+const accent = computed(() => DISTRICT_ACCENT[spec.value.type]);
 </script>
 
 <template>
