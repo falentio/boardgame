@@ -26,6 +26,7 @@ export interface PrototypeBoard {
   readonly subject: Readonly<Ref<ProtoSeat>>
   readonly hand: Readonly<Ref<readonly string[]>>
   readonly city: Readonly<Ref<readonly ProtoCard[]>>
+  readonly subjectCity: Readonly<Ref<readonly ProtoCard[]>>
   readonly gold: Readonly<Ref<number>>
   readonly selected: Readonly<Ref<string | null>>
   readonly selectCard: (id: string | null) => void
@@ -166,6 +167,10 @@ export const createPrototypeBoard = (): PrototypeBoard => {
     selected.value = null
   }
 
+  const subjectCity = computed<readonly ProtoCard[]>(() =>
+    focused.value === "you" ? city.value : subject.value.city,
+  )
+
   return {
     focused,
     focus: (seat: string) => {
@@ -173,6 +178,7 @@ export const createPrototypeBoard = (): PrototypeBoard => {
       selected.value = null
     },
     subject,
+    subjectCity,
     hand,
     city,
     gold,
