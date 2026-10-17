@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * Variant 4, Projector: big type, one seat read large, everything else read at distance.
- * The shared table holds the left third, the inspected seat takes the right two thirds.
+ * Variant 4, Projector: three columns, left to right.
+ * Global third (cast, shown characters, discard), your board at two thirds, rivals listed on the right.
  */
 import type { CharacterId } from "#shared/core/lockstep/games/citadels/index.ts"
 import { characterName, createPrototypeBoard } from "./use-board"
@@ -13,7 +13,6 @@ import ProtoDistrict from "./ProtoDistrict.vue"
 const b = createPrototypeBoard()
 
 const produced = b.produced as readonly CharacterId[]
-const mine = () => b.focused.value === "you"
 const pickDraft = (id: CharacterId) => b.draft(id)
 const buy = () => {
   const id = b.selected.value
@@ -22,14 +21,14 @@ const buy = () => {
 </script>
 
 <template>
-  <div class="proto-root grid h-dvh min-h-0 w-full grid-cols-[1fr_2fr] overflow-hidden">
+  <div class="proto-root grid h-dvh min-h-0 w-full grid-cols-[1fr_2fr_15rem] overflow-hidden">
     <aside
-      data-slot="v4-shared"
-      class="flex min-h-0 flex-col gap-3 overflow-y-auto border-r border-[var(--mk-line)] bg-[var(--mk-bg)] px-5 py-3"
+      data-slot="v4-global"
+      class="flex min-h-0 flex-col gap-3 overflow-y-auto border-r border-[var(--mk-line)] bg-[var(--mk-bg)] px-4 py-3"
     >
       <header class="flex items-baseline gap-2">
         <h2 class="text-lg font-semibold tracking-tight">Citadels</h2>
-        <span class="font-mono text-[0.625rem] text-[var(--mk-comment)]">round 4 · build</span>
+        <span class="font-mono text-[0.625rem] text-[var(--mk-comment)]">round 4</span>
       </header>
 
       <section class="flex flex-col gap-1.5">
@@ -90,91 +89,30 @@ const buy = () => {
           <ProtoDistrict v-for="id in b.discarded" :key="id" :id="id" size="xs" compact dimmed />
         </div>
       </section>
-
-      <section class="flex flex-col gap-1.5">
-        <span class="font-mono text-[0.5625rem] tracking-[0.16em] text-[var(--mk-comment)] uppercase"
-          >Seats</span
-        >
-        <button
-          v-for="seat in b.rivals"
-          :key="seat.seat"
-          type="button"
-          class="flex flex-col gap-1 rounded-md border p-2 text-left"
-          :class="
-            b.focused.value === seat.seat
-              ? 'border-[var(--mk-yellow)] bg-[var(--mk-yellow)]/8'
-              : 'border-[var(--mk-line)] bg-[var(--mk-panel)]/40'
-          "
-          @click="b.focus(seat.seat)"
-        >
-          <span class="flex items-baseline gap-1.5">
-            <span class="text-sm font-semibold">{{ seat.name }}</span>
-            <ProtoChip v-if="seat.crown" tone="gold">crown</ProtoChip>
-            <span class="ms-auto font-mono text-sm tabular-nums text-[var(--mk-yellow)]"
-              >{{ seat.gold }}g</span
-            >
-          </span>
-          <span class="font-mono text-[0.625rem] text-[var(--mk-comment)]">{{ seat.city.length }}/8</span>
-          <span class="flex gap-0.5">
-            <span
-              v-for="(card, index) in seat.city"
-              :key="`${card.id}-${index}`"
-              class="h-1 flex-1 rounded-full bg-[var(--mk-comment)]/60"
-            />
-          </span>
-        </button>
-      </section>
     </aside>
 
     <main class="flex min-h-0 flex-col gap-3 overflow-y-auto px-6 py-3">
       <div class="flex shrink-0 items-center gap-1.5">
-        <button
-          type="button"
-          class="rounded-md border px-3 py-1 text-sm font-semibold"
-          :class="
-            mine()
-              ? 'border-[var(--mk-yellow)] bg-[var(--mk-yellow)]/10 text-[var(--mk-yellow)]'
-              : 'border-[var(--mk-line)] text-[var(--mk-comment)]'
-          "
-          @click="b.focus('you')"
+        <ProtoChip tone="orange">round 4</ProtoChip>
+        <ProtoChip tone="green">build phase</ProtoChip>
+        <ProtoChip v-if="b.drafted.value" tone="blue" class="ms-auto"
+          >you hold {{ characterName(b.drafted.value) }}</ProtoChip
         >
-          You
-        </button>
-        <button
-          v-for="seat in b.rivals"
-          :key="seat.seat"
-          type="button"
-          class="rounded-md border px-3 py-1 text-sm font-medium"
-          :class="
-            b.focused.value === seat.seat
-              ? 'border-[var(--mk-yellow)] bg-[var(--mk-yellow)]/10 text-[var(--mk-yellow)]'
-              : 'border-[var(--mk-line)] text-[var(--mk-comment)]'
-          "
-          @click="b.focus(seat.seat)"
-        >
-          {{ seat.name }}
-        </button>
-        <ProtoChip class="ms-auto" tone="orange">build phase</ProtoChip>
       </div>
 
       <header v-rise class="flex items-baseline gap-4">
-        <h2 class="text-4xl leading-none font-semibold tracking-tight">
-          {{ b.subject.value.name }}
-        </h2>
+        <h2 class="text-4xl leading-none font-semibold tracking-tight">Your district</h2>
         <span class="font-mono text-2xl leading-none tabular-nums text-[var(--mk-yellow)]"
-          >{{ b.subject.value.gold }}<span class="text-sm">g</span></span
+          >{{ b.gold.value }}<span class="text-sm">g</span></span
         >
         <span class="font-mono text-sm tabular-nums text-[var(--mk-comment)]"
-          >{{ b.subject.value.city.length }} of 8 districts</span
+          >{{ b.city.value.length }} of 8 districts</span
         >
-        <ProtoChip v-if="b.subject.value.character" tone="blue">{{
-          characterName(b.subject.value.character)
-        }}</ProtoChip>
       </header>
 
       <section v-rise="40" class="grid grid-cols-4 gap-2">
         <ProtoDistrict
-          v-for="(card, index) in b.subjectCity.value"
+          v-for="(card, index) in b.city.value"
           :key="`${card.id}-${index}`"
           :id="card.id"
           :gold="card.gold"
@@ -182,7 +120,7 @@ const buy = () => {
           class="w-full"
         />
         <div
-          v-for="n in Math.max(0, 8 - b.subjectCity.value.length)"
+          v-for="n in Math.max(0, 8 - b.city.value.length)"
           :key="`gap-${n}`"
           class="flex h-14 items-center justify-center rounded-md border border-dashed border-[var(--mk-line)]/40 font-mono text-xs text-[var(--mk-comment)]/50"
         >
@@ -190,46 +128,94 @@ const buy = () => {
         </div>
       </section>
 
-      <template v-if="mine()">
-        <section v-rise="80" class="flex flex-col gap-2">
-          <div class="flex items-center justify-between">
-            <span
-              class="font-mono text-[0.5625rem] tracking-[0.16em] text-[var(--mk-comment)] uppercase"
-              >Hand</span
-            >
-            <button
-              type="button"
-              class="rounded-md border px-3 py-1.5 text-sm font-semibold"
-              :class="
-                b.selected.value === null
-                  ? 'border-[var(--mk-line)] text-[var(--mk-comment)]'
-                  : 'border-[var(--mk-green)] bg-[var(--mk-green)]/12 text-[var(--mk-green)]'
-              "
-              :disabled="b.selected.value === null"
-              @click="buy"
-            >
-              Build
+      <section v-rise="80" class="flex flex-col gap-2">
+        <div class="flex items-center justify-between">
+          <span
+            class="font-mono text-[0.5625rem] tracking-[0.16em] text-[var(--mk-comment)] uppercase"
+            >Hand</span
+          >
+          <button
+            type="button"
+            class="rounded-md border px-3 py-1.5 text-sm font-semibold"
+            :class="
+              b.selected.value === null
+                ? 'border-[var(--mk-line)] text-[var(--mk-comment)]'
+                : 'border-[var(--mk-green)] bg-[var(--mk-green)]/12 text-[var(--mk-green)]'
+            "
+            :disabled="b.selected.value === null"
+            @click="buy"
+          >
+            Build
+          </button>
+        </div>
+        <ul class="grid grid-cols-2 gap-1.5">
+          <li v-for="id in b.hand.value" :key="id">
+            <button type="button" class="block w-full" @click="b.selectCard(id)">
+              <ProtoDistrict
+                :id="id"
+                size="md"
+                class="w-full"
+                :selected="b.selected.value === id"
+              />
             </button>
-          </div>
-          <ul class="grid grid-cols-2 gap-1.5">
-            <li v-for="id in b.hand.value" :key="id">
-              <button type="button" class="block w-full" @click="b.selectCard(id)">
-                <ProtoDistrict
-                  :id="id"
-                  size="md"
-                  class="w-full"
-                  :selected="b.selected.value === id"
-                />
-              </button>
-            </li>
-          </ul>
-        </section>
-      </template>
-
-      <p v-else class="text-sm text-[var(--mk-comment)]">
-        Reading {{ b.subject.value.name }}'s city and the card they hold. Your seat is one click away
-        on the left.
-      </p>
+          </li>
+        </ul>
+      </section>
     </main>
+
+    <aside
+      data-slot="v4-players"
+      class="flex min-h-0 flex-col gap-2 overflow-y-auto border-l border-[var(--mk-line)] bg-[var(--mk-bg)] px-3 py-3"
+    >
+      <div class="flex items-baseline justify-between">
+        <span class="font-mono text-[0.5625rem] tracking-[0.16em] text-[var(--mk-comment)] uppercase"
+          >Players</span
+        >
+        <span class="font-mono text-[0.625rem] text-[var(--mk-comment)]">4</span>
+      </div>
+
+      <button
+        v-for="seat in b.rivals"
+        :key="seat.seat"
+        type="button"
+        class="flex flex-col gap-1.5 rounded-md border p-2.5 text-left transition-colors duration-150"
+        :class="
+          seat.city.length >= 7
+            ? 'border-[var(--mk-green)]/50 bg-[var(--mk-green)]/6'
+            : 'border-[var(--mk-line)] bg-[var(--mk-panel)]/40'
+        "
+        @click="b.focus(seat.seat)"
+      >
+        <span class="flex items-baseline gap-1.5">
+          <span class="text-sm font-semibold">{{ seat.name }}</span>
+          <ProtoChip v-if="seat.crown" tone="gold">crown</ProtoChip>
+          <span class="ms-auto font-mono text-sm tabular-nums text-[var(--mk-yellow)]"
+            >{{ seat.gold }}g</span
+          >
+        </span>
+        <span class="font-mono text-[0.625rem] tabular-nums text-[var(--mk-comment)]">
+          {{ seat.city.length }} of 8 · {{ seat.handCount }} in hand
+        </span>
+        <span class="flex gap-0.5">
+          <span
+            v-for="(card, index) in seat.city"
+            :key="`${card.id}-${index}`"
+            class="h-1.5 flex-1 rounded-full"
+            :class="card.gold > 0 ? 'bg-[var(--mk-yellow)]' : 'bg-[var(--mk-comment)]/60'"
+          />
+          <span
+            v-for="n in Math.max(0, 8 - seat.city.length)"
+            :key="`e-${n}`"
+            class="h-1.5 flex-1 rounded-full bg-[var(--mk-line)]/60"
+          />
+        </span>
+        <span class="flex items-center gap-1">
+          <ProtoChip v-if="seat.character" tone="blue">{{
+            characterName(seat.character)
+          }}</ProtoChip>
+          <ProtoChip v-else>unknown</ProtoChip>
+        </span>
+      </button>
+    </aside>
   </div>
 </template>
