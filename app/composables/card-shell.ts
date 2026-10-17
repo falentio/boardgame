@@ -1,3 +1,5 @@
+import type { DistrictType } from "#shared/core/lockstep/games/citadels/index.ts"
+
 /** The shell and badge classes the G54 role and general-action cards share, so they cannot drift. */
 export const CARD_SHELL_CLASS =
   "relative flex w-full flex-col overflow-hidden rounded-xl bg-card text-card-foreground text-sm ring-1 ring-foreground/10"
@@ -9,3 +11,12 @@ export const CARD_BADGE_CLASS =
 export const ROLE_STRIP_CLASS = "flex gap-3 overflow-x-auto -mx-1 -mt-1 px-1 pt-1 pb-3"
 
 export const ROLE_STRIP_CARD_CLASS = "w-40 shrink-0"
+
+/** The district accents the citadels cards colour by, so a type cannot drift between them. */
+export const DISTRICT_ACCENT: Readonly<Record<DistrictType, string>> = {
+  noble: "var(--district-noble)",
+  religious: "var(--district-religious)",
+  trade: "var(--district-trade)",
+  military: "var(--district-military)",
+  unique: "var(--district-unique)",
+}

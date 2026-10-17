@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from "vue"
-import type { CharacterId, DistrictType } from "#shared/core/lockstep/games/citadels/index.ts"
+import type { CharacterId } from "#shared/core/lockstep/games/citadels/index.ts"
 import { specOfCharacter } from "#shared/core/lockstep/games/citadels/index.ts"
 import { computed } from "vue"
 import { cn } from "@/lib/utils"
-import { CARD_BADGE_CLASS, CARD_SHELL_CLASS } from "@/composables/card-shell"
+import { CARD_BADGE_CLASS, CARD_SHELL_CLASS, DISTRICT_ACCENT } from "@/composables/card-shell"
 
 const props = withDefaults(
   defineProps<{
@@ -24,14 +24,6 @@ const props = withDefaults(
 
 const emit = defineEmits<{ select: [] }>()
 
-const INCOME_ACCENT: Readonly<Record<DistrictType, string>> = {
-  noble: "var(--district-noble)",
-  religious: "var(--district-religious)",
-  trade: "var(--district-trade)",
-  military: "var(--district-military)",
-  unique: "var(--district-unique)",
-}
-
 const GRANT_LABEL: Readonly<Record<"gold" | "cards" | "gold-or-cards", string>> = {
   gold: "gold",
   cards: "a card",
@@ -40,7 +32,7 @@ const GRANT_LABEL: Readonly<Record<"gold" | "cards" | "gold-or-cards", string>> 
 
 const spec = computed(() => specOfCharacter(props.character))
 const accent = computed(() =>
-  spec.value.income === null ? null : INCOME_ACCENT[spec.value.income.counts],
+  spec.value.income === null ? null : DISTRICT_ACCENT[spec.value.income.counts],
 )
 const income = computed(() => {
   const bonus = spec.value.income
