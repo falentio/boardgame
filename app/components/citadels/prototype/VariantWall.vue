@@ -72,7 +72,7 @@ const buy = () => {
           <li
             v-for="n in Math.max(0, 8 - seat.city.length)"
             :key="`gap-${n}`"
-            class="h-5 rounded-md border border-dashed border-[var(--mk-line)]/50"
+            class="h-5 rounded-md border border-dashed border-[color-mix(in_srgb,var(--mk-line)_50%,transparent)]"
           />
         </ul>
       </section>

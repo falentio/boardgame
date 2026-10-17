@@ -41,8 +41,8 @@ const padClass = () => (props.size === "xxs" ? "pl-1" : "pl-3")
     data-district
     :data-district="id"
     :data-type="spec().type"
-    :data-selected="selected"
-    class="relative flex w-40 shrink-0 flex-col justify-center gap-0.5 overflow-hidden rounded-md border bg-[var(--mk-panel)] transition-[border-color,background-color,opacity] duration-150 ease-out"
+    :data-selected="selected ? 'true' : undefined"
+    class="proto-district relative flex w-40 shrink-0 flex-col justify-center gap-0.5 overflow-hidden rounded-md border bg-[var(--mk-panel)] transition-[border-color,background-color,opacity] duration-150 ease-out"
     :class="[
       SIZES[size],
       selected

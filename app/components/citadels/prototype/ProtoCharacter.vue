@@ -42,7 +42,7 @@ const stateClass = () => {
     data-character
     :data-character="id"
     :data-state="state"
-    class="relative flex min-w-0 flex-col rounded-md border transition-[border-color,background-color] duration-150 ease-out"
+    class="proto-card relative flex min-w-0 flex-col rounded-md border transition-[border-color,background-color] duration-150 ease-out"
     :class="[SIZES[size], stateClass(), state === 'killed' && 'opacity-45', selected && 'border-[var(--mk-yellow)]']"
   >
     <div class="flex items-baseline justify-between gap-2">

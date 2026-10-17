@@ -148,7 +148,7 @@ const buy = () => {
           <div
             v-for="n in Math.max(0, 8 - b.city.value.length)"
             :key="`gap-${n}`"
-            class="flex h-8 items-center justify-center rounded-md border border-dashed border-[var(--mk-line)]/60 font-mono text-[0.625rem] text-[var(--mk-comment)]/60"
+            class="flex h-8 items-center justify-center rounded-md border border-dashed border-[color-mix(in_srgb,var(--mk-line)_60%,transparent)] font-mono text-[0.625rem] text-[var(--mk-comment)]/60"
           >
             +
           </div>

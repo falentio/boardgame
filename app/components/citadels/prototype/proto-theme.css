@@ -14,5 +14,19 @@
   --mk-purple: #ae81ff;
   background: var(--mk-bg);
   color: var(--mk-fg);
-  font-feature-settings: "ss01";
+}
+
+/*
+ * Border colour only: Tailwind's border reset wins the specificity tie with the
+ * utility class, so a @layer base rule here paints the app's neon green.
+ */
+.proto-root .proto-district,
+.proto-root .proto-seat,
+.proto-root .proto-card {
+  border-color: var(--mk-line);
+}
+
+.proto-root .proto-district[data-selected] {
+  border-color: var(--mk-yellow);
+  background: color-mix(in srgb, var(--mk-yellow) 10%, transparent);
 }
