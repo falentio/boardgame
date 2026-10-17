@@ -373,6 +373,42 @@ const LAYOUT = `(() => {
   return { columns: style.gridTemplateColumns, opponents: getComputedStyle(opponents).flexDirection };
 })()`;
 
+// The board draws three regions. Each is laid out by the board's own grid at
+// 1280x800; at 390x844 the middle two stack in one column.
+const REGION_OF = `(el) => {
+  if (el === null) return null;
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const box = range.getBoundingClientRect();
+  const lefts = [box.left, el.getBoundingClientRect().left];
+  for (let y = box.top + box.height / 2; y > 0; y -= 24) {
+    for (const x of lefts) {
+      const hit = document.elementFromPoint(x + 0.5, y);
+      if (hit !== null && el.contains(hit)) return hit.getAttribute('data-slot') ?? hit.tagName.toLowerCase();
+    }
+  }
+  return null;
+}`;
+
+const COLUMNS = `(() => {
+  const regionOf = ${REGION_OF};
+  const boxOf = (slot) => {
+    const el = document.querySelector('[data-slot=' + slot + ']');
+    if (el === null) return null;
+    const box = el.getBoundingClientRect();
+    return { left: Math.round(box.left), width: Math.round(box.width), region: regionOf(el) };
+  };
+  const board = document.querySelector('[data-slot=citadels-board]');
+  const heading = document.querySelector('[data-slot=citadels-self] h2');
+  return {
+    grid: getComputedStyle(board).gridTemplateColumns,
+    global: boxOf('citadels-global'),
+    self: boxOf('citadels-self'),
+    players: boxOf('citadels-players'),
+    heading: heading === null ? null : heading.textContent.trim(),
+  };
+})()`;
+
 const FACTS = `(() => {
   const surface = document.querySelector('[data-slot=citadels-surface]');
   const line = document.querySelector('[data-slot=citadels-surface] [data-slot=citadels-phase]');
@@ -752,7 +788,7 @@ const main = async () => {
             fail("the surface re-opened but fullscreen was not requested again");
           }
           await guestPage.eval(
-            `(() => { window.__proofSurface = document.querySelector(${JSON.stringify(EL.surface)}); window.__proofSeats = [...document.querySelectorAll('[data-slot=citadels-seat]')]; return window.__proofSeats.length; })()`,
+            `(() => { window.__proofSurface = document.querySelector(${JSON.stringify(EL.surface)}); window.__proofBoard = document.querySelector('[data-slot=citadels-board]'); window.__proofSeats = [...document.querySelectorAll('[data-slot=citadels-seat]')]; return window.__proofSeats.length; })()`,
           );
 
           const before = await guestPage.eval(FACTS);
@@ -816,6 +852,12 @@ const main = async () => {
           if (remounted) fail("the surface node was replaced by the rotation");
           else pass("the surface node survived the rotation");
 
+          const boardKept = await guestPage.eval(
+            "window.__proofBoard.isConnected && window.__proofBoard === document.querySelector('[data-slot=citadels-board]')",
+          );
+          if (!boardKept) fail("the board node was replaced by the rotation");
+          else pass("the board node survived the rotation");
+
           await guestPage.setOrientation({
             width: 1280,
             height: 800,
@@ -842,6 +884,102 @@ const main = async () => {
           );
           if (!seatsKept) fail("a seat node was replaced by the rotation");
           else pass(`all ${before.seats.length} seat nodes survived both rotations`);
+        },
+      },
+      {
+        name: "the board draws its three regions across one row",
+        run: async () => {
+          const columns = await guestPage.eval(COLUMNS);
+          if (columns.global === null) {
+            fail(
+              `the board draws no [data-slot=citadels-global] at 1280x800 (saw ${JSON.stringify(columns)})`,
+            );
+            return;
+          }
+          const absent = [
+            columns.self === null && "[data-slot=citadels-self]",
+            columns.players === null && "[data-slot=citadels-players]",
+          ].filter(Boolean);
+          if (absent.length > 0) {
+            fail(`the board draws no ${absent.join(", ")} at 1280x800 (saw ${JSON.stringify(columns)})`);
+            return;
+          }
+          const { global: globalColumn, self: middleColumn, players: playersColumn } = columns;
+          const order = `global ${globalColumn.left}px, self ${middleColumn.left}px, players ${playersColumn.left}px`;
+          if (globalColumn.left < middleColumn.left && middleColumn.left < playersColumn.left) {
+            pass(`the three regions sit left to right: ${order}`);
+          } else {
+            fail(`the regions are out of order: ${order}, want global < self < players`);
+          }
+          if (middleColumn.width > globalColumn.width) {
+            pass(
+              `the middle region is the widest: self ${middleColumn.width}px against global ${globalColumn.width}px`,
+            );
+          } else {
+            fail(
+              `the middle region is ${middleColumn.width}px wide and the global one ${globalColumn.width}px, want self wider than global`,
+            );
+          }
+          const distinct = new Set([globalColumn.region, middleColumn.region, playersColumn.region]);
+          const threeTracks = columns.grid.trim().split(/\s+/).length === 3;
+          if (distinct.size === 3 && threeTracks) {
+            pass(
+              `each region is laid out by the board's own grid: ${globalColumn.region}, ${middleColumn.region}, then ${playersColumn.region} in ${columns.grid}`,
+            );
+          } else {
+            fail(
+              `the regions do not each sit under the board's grid: ${globalColumn.region}, ${middleColumn.region}, ${playersColumn.region} in ${columns.grid}`,
+            );
+          }
+        },
+      },
+      {
+        name: "a rival in the players rail swaps the middle column, and a control brings your own board back",
+        run: async () => {
+          const rivals = await guestPage.eval(
+            `[...document.querySelectorAll('[data-slot=citadels-players] [data-slot=citadels-seat]')].map((seat) => seat.getAttribute('data-seat'))`,
+          );
+          if (rivals.length === 0) {
+            fail("the players rail lists no rival to click");
+            return;
+          }
+          const own = await guestPage.eval(COLUMNS);
+          if (own.heading === null) {
+            fail("the middle column carries no heading to compare before the click");
+            return;
+          }
+          const target = rivals[0];
+          const pressed = await guestPage.clickElement(
+            `document.querySelector('[data-slot=citadels-players] [data-seat="${target}"]')`,
+            `document.querySelector('[data-slot=citadels-players] [data-seat="${target}"]').getAttribute('aria-pressed') === 'true' && !!document.querySelector('[data-slot=citadels-back]')`,
+          );
+          const swapped = await guestPage.eval(COLUMNS);
+          if (!pressed) {
+            fail(`clicking rival ${target} pressed no seat and offered no [data-slot=citadels-back]`);
+          } else if (swapped.heading === own.heading) {
+            fail(
+              `clicking rival ${target} left the middle column reading ${JSON.stringify(own.heading)}`,
+            );
+          } else {
+            pass(
+              `clicking rival ${target} swapped the middle column from "${own.heading}" to "${swapped.heading}" and showed the [data-slot=citadels-back] control`,
+            );
+          }
+
+          const back = await guestPage.clickElement(
+            q("[data-slot=citadels-back]"),
+            `!document.querySelector('[data-slot=citadels-back]')`,
+          );
+          const restored = await guestPage.eval(COLUMNS);
+          if (!back) {
+            fail("the back control did not leave the rival's city");
+          } else if (restored.heading !== own.heading) {
+            fail(
+              `the back control returned the middle column to ${JSON.stringify(restored.heading)}, want ${JSON.stringify(own.heading)}`,
+            );
+          } else {
+            pass(`the back control returned the middle column to "${own.heading}"`);
+          }
         },
       },
       {
