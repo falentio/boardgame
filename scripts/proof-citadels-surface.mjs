@@ -441,6 +441,22 @@ const PAINT = `(() => {
   };
 })()`;
 
+const CITY = `(() => {
+  const city = document.querySelector('[data-slot=citadels-city]');
+  if (city === null) return null;
+  const box = (el) => {
+    const r = el.getBoundingClientRect();
+    return Math.round(r.width) + 'x' + Math.round(r.height);
+  };
+  const cards = [...city.querySelectorAll('[data-slot=citadels-district]')];
+  const slots = [...city.querySelectorAll(':scope > li')].filter((el) => !el.querySelector('[data-slot=citadels-district]'));
+  return {
+    cards: cards.map(box),
+    slots: slots.map(box),
+    display: getComputedStyle(city).display,
+  };
+})()`;
+
 const RAIL = `(() => {
   const rail = document.querySelector('[data-slot=citadels-opponents]');
   if (rail === null) return null;
@@ -721,6 +737,32 @@ const main = async () => {
               fail(`the first seat shows no dicebear avatar, its src is ${JSON.stringify(paint.pfp)}`);
             } else {
               pass(`the first seat shows a dicebear avatar: ${paint.pfp.split("?")[0]}`);
+            }
+          }
+          const city = await guestPage.eval(CITY);
+          if (city === null) {
+            fail("the city grid could not be read");
+          } else if (city.display !== "flex") {
+            fail(`the city lays out as ${city.display}, want flex so cards wrap on their own width`);
+          } else {
+            const distinct = (boxes) => [...new Set(boxes)];
+            const cardBoxes = distinct(city.cards);
+            const slotBoxes = distinct(city.slots);
+            if (cardBoxes.length > 0) {
+              const stray = slotBoxes.filter((box) => !cardBoxes.includes(box));
+              if (stray.length > 0) {
+                fail(
+                  `empty slots measure ${stray.join(", ")} against cards at ${cardBoxes.join(", ")}`,
+                );
+              } else {
+                pass(`every empty slot matches a card's box (${cardBoxes.join(", ")})`);
+              }
+            } else if (slotBoxes.length > 1) {
+              fail(`the empty city draws slots at ${slotBoxes.join(", ")}`);
+            } else {
+              pass(
+                `an empty city draws ${city.slots.length} slots, all ${slotBoxes.join(", ") || "none"}`,
+              );
             }
           }
           const rail = await guestPage.eval(RAIL);
