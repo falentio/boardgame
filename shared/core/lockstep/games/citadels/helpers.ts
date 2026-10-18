@@ -510,6 +510,25 @@ const buildBlockedByThreat = (state: CitadelsState, seat: SeatId): boolean => {
 };
 
 /**
+ * The gold a build of hand index `card` moves out of the builder's purse: the
+ * terms the builder's own city folds into the card's price, what the build pays
+ * in cards or by destroying a district instead of gold, the gold a city card
+ * hands back once the district stands (the Factory), and the tax the build owes.
+ * `tryBuild` is the one thing that prices a build, so the price is asked of it
+ * rather than re-derived; it is pure, so the state handed in comes back untouched,
+ * though the hooks it runs consume `rng`.
+ */
+export const buildPrice = (
+  state: CitadelsState,
+  seat: SeatId,
+  card: number,
+  rng: Random,
+): number => {
+  const purse = playerOf(state, seat).gold;
+  return purse - playerOf(tryBuild(state, seat, card, rng), seat).gold;
+};
+
+/**
  * Build a district from hand index `card` under the terms its city and the card
  * declare; otherwise do nothing. A build may be rejected for being illegal, for
  * an unaffordable gold cost, for a standing Blackmailer marker, or for lacking

@@ -6,6 +6,10 @@ import { createServer } from "node:net";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
 import { checkedArgs, every, expectChecks, originOf, serverAnswers } from "./lib/shots-harness.mjs";
+import { buildPrice, citadels, specOfDistrict, turnIncome } from "../shared/core/lockstep/games/citadels/index.ts";
+import { tryBuild } from "../shared/core/lockstep/games/citadels/helpers.ts";
+import { genesisSeed, makeRandom, makeRoster } from "../shared/core/lockstep/index.ts";
+import { seatId } from "../shared/rooms/ids.ts";
 
 // Usage: node scripts/shots-actions.mjs [--port 3000]
 const args = checkedArgs(process.argv.slice(2), ["--port"]);
@@ -17,8 +21,33 @@ const PASSWORD = "proof-password-123";
 const CAST = ["assassin", "thief", "magician", "king", "bishop", "merchant", "architect", "warlord"];
 const VIEWPORT = { width: 1280, height: 800 };
 const RULE = "rgb(230, 219, 116)";
+const HOST_SEAT = seatId("host");
+const GUEST_SEAT = seatId("guest");
+const PRICE_SEED = genesisSeed("shots-actions-price");
 
 mkdirSync(OUT, { recursive: true });
+
+const goldOf = (state, seat) => {
+  const player = state.players.find((entry) => entry.seat === seat);
+  if (player === undefined) throw new Error("seat " + seat + " is not a player");
+  return player.gold;
+};
+
+/**
+ * A real engine state holding the builder the proof observed. The live run's own
+ * state lives in the client, so the engine is asked about a builder staged from
+ * the surface: the seat, its hand in hand order, its city, and its purse.
+ */
+const stagedBuilder = (hand, city, gold) => {
+  const state = citadels.genesis({ cast: [...CAST] }, makeRoster([HOST_SEAT, GUEST_SEAT]), makeRandom(PRICE_SEED));
+  return {
+    ...state,
+    players: state.players.map((player) =>
+      player.seat === HOST_SEAT ? { ...player, hand, city, gold } : player,
+    ),
+  };
+};
+const cityOfIds = (ids) => ids.map((id) => ({ id, gold: 0 }));
 
 const fails = [];
 let checks = 0;
@@ -259,7 +288,26 @@ const settle = async (page, url, expression, timeoutMs = 60000) => {
   }
 };
 
+/**
+ * The live proof builds the game's first card, and no city stands to price it, so
+ * no discount can be staged on the live surface. It is staged here instead, on the
+ * engine's own build path, over a builder whose city holds the Factory: the
+ * simplest discounting card in the catalog, and the case a price check has to price.
+ */
+const runStagedPrice = () => {
+  const KEEP = "keep";
+  const priced = stagedBuilder([KEEP], cityOfIds(["factory"]), 10);
+  const price = buildPrice(priced, HOST_SEAT, 0, makeRandom(PRICE_SEED));
+  const built = tryBuild(priced, HOST_SEAT, 0, makeRandom(PRICE_SEED));
+  const paid = goldOf(priced, HOST_SEAT) - goldOf(built, HOST_SEAT);
+  check(price === specOfDistrict(KEEP).cost - 1, "the Factory's discount is in the engine's price for the Keep", { price, catalog: specOfDistrict(KEEP).cost });
+  check(paid === price, "the engine's own build of that card pays the price the engine names", { paid, price, city: built.players[0].city.map((district) => district.id) });
+  const alone = buildPrice(stagedBuilder([KEEP], [], 10), HOST_SEAT, 0, makeRandom(PRICE_SEED));
+  check(alone === specOfDistrict(KEEP).cost, "with no city card standing the same build prices at the catalog cost", { price: alone });
+};
+
 const runHarness = async () => {
+  runStagedPrice();
   const page = await launch("harness");
   try {
     await page.goto(HARNESS, 2600);
@@ -557,6 +605,11 @@ const runLiveSurface = async () => {
           ...document.querySelectorAll("[data-slot=citadels-hand-tile] [data-slot=citadels-district]"),
         ].map((card) => card.getAttribute("data-district")),
         gold: gold === null ? null : Number(gold.textContent.trim()),
+        acting: (() => {
+          const row = document.querySelector("[data-slot=citadels-cast-row][data-state=pending]");
+          return row === null ? null : row.getAttribute("data-character");
+        })(),
+        mineActing: document.querySelector("[data-slot=citadels-seat][data-mine] [data-slot=citadels-active]") !== null,
         city: [
           ...document.querySelectorAll(
             "[data-slot=citadels-self] [data-slot=citadels-city] [data-slot=citadels-district]",
@@ -586,10 +639,16 @@ const runLiveSurface = async () => {
       hand.map((card) => card.index + (card.disabled ? ":off" : ":on")),
     );
     const before = await hostPage.eval(STATE);
-    const affordable = hand.filter((card) => Number.isFinite(card.cost) && card.cost <= before.gold);
+    /** What the engine charges for hand index `index`, on the builder the surface shows. */
+    const priceOf = (index, source) =>
+      buildPrice(stagedBuilder(source.handIds, cityOfIds(source.city), source.gold), HOST_SEAT, index, makeRandom(PRICE_SEED));
+    const affordable = hand.filter((card) => {
+      const price = priceOf(card.index, before);
+      return price > 0 && price <= before.gold;
+    });
     const picked = affordable.find((card) => card.index !== 0) ?? affordable[0] ?? null;
 
-    check(picked !== null, "the turn hand holds a card the gather's gold covers", { hand, gold: before.gold });
+    check(picked !== null, "the turn hand holds a card the engine prices within the gather's gold", { hand, gold: before.gold, prices: hand.map((card) => card.index + ":" + priceOf(card.index, before)) });
     if (picked !== null) {
       await hostPage.click('[data-slot=citadels-hand-tile][data-index="' + picked.index + '"]');
       await delay(150);
@@ -602,6 +661,26 @@ const runLiveSurface = async () => {
       await hostPage.click("[data-slot=citadels-actions] [data-action=build]");
       await delay(1800);
       const after = await hostPage.eval(STATE);
+      const price = priceOf(picked.index, before);
+      // The gather hands the turn a marker that names no character, so nothing is
+      // claimed while a build window stands open. A build that spends the turn's last
+      // build also closes the turn, and the frame drains into the next claimed rank:
+      // the purse read afterwards carries that character's income when the rank acts
+      // for this seat, and a window led before the rank's turn (the Thief's rob)
+      // defers its income to a later frame instead. The character comes from the
+      // surface and its income from the engine, so the purse is the price, or the
+      // price less that income; the two coincide whenever the rank pays nothing.
+      const called =
+        after.acting !== null && after.acting !== before.acting && after.mineActing ? after.acting : null;
+      const income =
+        called === null
+          ? 0
+          : turnIncome(
+              stagedBuilder(after.handIds, cityOfIds(after.city), before.gold - price),
+              HOST_SEAT,
+              called,
+              makeRandom(PRICE_SEED),
+            );
       console.log(
         "live build:",
         JSON.stringify({
@@ -609,24 +688,31 @@ const runLiveSurface = async () => {
           handAfter: after.hand,
           goldBefore: before.gold,
           goldAfter: after.gold,
-          pickedIndex: picked.index,
+          price,
+          tileCost: picked.cost,
+          pricedIndex: picked.index,
           picked: picked.district,
-          pickedCost: picked.cost,
+          acting: [before.acting, after.acting],
+          called,
+          income,
           cityBefore: before.city,
           cityAfter: after.city,
           windowAfter: after.window,
         }),
       );
       check(after.city.includes(picked.district), "the engine builds the district the picked index names", { picked, city: after.city });
+      // This build is the host's first, so its city stands empty and no end-of-turn
+      // hook (the Smithy's paid draw) can ride the same frame and confuse the price.
+      check(before.city.length === 0, "the frame holding the live build carries no end-of-turn hook charge", { cityBefore: before.city });
       // A character's own build bonus can draw on top of the build (the Architect draws
       // two), so the proof reads the picked card out of the hand rather than the count.
       const left =
         before.handIds.filter((id) => id === picked.district).length -
         after.handIds.filter((id) => id === picked.district).length;
       check(
-        after.gold === before.gold - picked.cost && left === 1,
-        "the build pays that card's cost and takes that card out of hand",
-        { gold: before.gold + " -> " + after.gold, picked: picked.district, leftHand: left, handAfter: after.handIds },
+        [before.gold - price, before.gold - price + income].includes(after.gold) && left === 1,
+        "the build pays the engine's price for that card and takes that card out of hand",
+        { gold: before.gold + " -> " + after.gold, price, called, income, acting: [before.acting, after.acting], picked: picked.district, leftHand: left, handAfter: after.handIds },
       );
     }
   } finally {
@@ -639,9 +725,9 @@ const runLiveSurface = async () => {
 if (!(await serverAnswers(BASE))) throw new Error("the dev server on " + BASE + " is not answering; start it before this script");
 await runHarness();
 const afterHarness = checks;
-if (!expectChecks(afterHarness, "harness", 17)) fails.push("the harness mode's check count");
+if (!expectChecks(afterHarness, "harness", 20)) fails.push("the harness mode's check count");
 await runLiveSurface();
-if (!expectChecks(checks - afterHarness, "live", 29)) fails.push("the live mode's check count");
+if (!expectChecks(checks - afterHarness, "live", 30)) fails.push("the live mode's check count");
 console.log(fails.length === 0 ? "ALL CHECKS PASS" : fails.length + " CHECK(S) FAILED");
 console.log("failed:", JSON.stringify(fails));
 process.exitCode = fails.length === 0 ? 0 : 1;

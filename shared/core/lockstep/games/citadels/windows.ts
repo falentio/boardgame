@@ -1,5 +1,6 @@
 import type { Frame, FrameIndex, Random, SeatId } from "../../index.ts";
 import type { CitadelsAction } from "./actions.ts";
+import type { CharacterId } from "./characters.ts";
 import { CHARACTER_EFFECTS, CHARACTER_RESOLVERS } from "./characters/index.ts";
 import { DISTRICT_RESOLVERS } from "./districts/effects.ts";
 import { CitadelsError } from "./error.ts";
@@ -12,6 +13,7 @@ import {
   isResigned,
   isTerminal,
   liveSeats,
+  playerOf,
   relocateEffectBelowThreat,
   resolveGeneric,
   withPending,
@@ -26,6 +28,24 @@ export { winnerOf } from "./scoring.ts";
 /** A seat still at the table. A resigned seat is never owed an input. */
 const owedFor = (state: CitadelsState, window: Window): readonly SeatId[] =>
   window.seats.filter((seat) => hasSeat(state, seat) && !isResigned(state, seat));
+
+/**
+ * The gold a character's turn pays its seat when its rank is called: the effect
+ * runs exactly as the drain's resolve step runs it, and the purse difference is
+ * the income. A character whose gold waits on a window it opens (the Thief's
+ * rob, the Magician's swap) pays nothing here, a killed one pays nothing, and a
+ * bewitched one's income belongs to the Witch who plays the turn.
+ */
+export const turnIncome = (
+  state: CitadelsState,
+  seat: SeatId,
+  character: CharacterId,
+  rng: Random,
+): number => {
+  const purse = playerOf(state, seat).gold;
+  const produced = CHARACTER_EFFECTS[character]({ state, seat, rest: state.steps, rng });
+  return playerOf(produced, seat).gold - purse;
+};
 
 /** Apply one non-window step and hand back the state with the stack advanced. */
 const applyImmediate = (state: CitadelsState, step: Step, rng: Random): CitadelsState => {

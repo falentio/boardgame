@@ -33,7 +33,8 @@ export { CHARACTER_CATALOG, BASE_CAST, charactersOfRank, specOfCharacter } from 
 export { DISTRICT_CATALOG, BASIC_DISTRICTS, UNIQUE_DISTRICTS, specOfDistrict } from "./districts.ts";
 export { scoreGame, winnerOf, type Score } from "./scoring.ts";
 export { STARTING_GOLD, STARTING_HAND, CITY_TARGET, validateCast } from "./setup.ts";
-export { DRAW_COUNT, GATHER_GOLD } from "./helpers.ts";
+export { DRAW_COUNT, GATHER_GOLD, buildPrice } from "./helpers.ts";
+export { turnIncome } from "./windows.ts";
 
 /** A player as it appears in a redacted view: counts and the public city, never the hand. */
 export interface PlayerView {
