@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import { specOfCharacter } from "#shared/core/lockstep/games/citadels/index.ts";
 import { defaultAvatarUrl } from "#shared/users/avatar.ts";
+import { INCOME_GRANT_WORDS } from "@/composables/citadels-income-words.ts";
 import type { CastSlot, CastSlotState, CitadelsBoard } from "@/composables/citadels-board.ts";
 import type { CharacterId } from "#shared/core/lockstep/games/citadels/index.ts";
 import "./citadels-skin.css";
@@ -14,17 +15,11 @@ const table = computed(() => props.board.table);
 /** The emblem is the character itself, seeded by its id so it never moves. */
 const emblemOf = (character: CharacterId): string => defaultAvatarUrl(character);
 
-const GRANT: Readonly<Record<"gold" | "cards" | "gold-or-cards", string>> = {
-  gold: "gold",
-  cards: "card",
-  "gold-or-cards": "gold or card",
-};
-
 /** "gold / trade" — what the character pays per matching district, or null. */
 const incomeOf = (character: CharacterId): string | null => {
   const spec = specOfCharacter(character);
   if (spec.income === null) return null;
-  return `${GRANT[spec.income.grants.kind]} / ${spec.income.counts}`;
+  return `${INCOME_GRANT_WORDS[spec.income.grants.kind].bare} / ${spec.income.counts}`;
 };
 
 /** The one word a row is flagged with, in the state's own ink. */

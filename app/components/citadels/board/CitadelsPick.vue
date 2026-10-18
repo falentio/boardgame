@@ -4,6 +4,7 @@ import { specOfCharacter } from "#shared/core/lockstep/games/citadels/index.ts";
 import type { CastSlot, CitadelsBoard } from "@/composables/citadels-board.ts";
 import type { CharacterId } from "#shared/core/lockstep/games/citadels/index.ts";
 import { defaultAvatarUrl } from "#shared/users/avatar.ts";
+import { INCOME_GRANT_WORDS } from "@/composables/citadels-income-words.ts";
 import CitadelsCharacterCard from "./CitadelsCharacterCard.vue";
 
 const props = defineProps<{ board: CitadelsBoard }>();
@@ -24,17 +25,11 @@ watch(open, (still) => {
 const emblemOf = (character: CharacterId): string => defaultAvatarUrl(character);
 const specOf = (character: CharacterId) => specOfCharacter(character);
 
-const GRANT: Readonly<Record<"gold" | "cards" | "gold-or-cards", string>> = {
-  gold: "gold",
-  cards: "a card",
-  "gold-or-cards": "gold or a card",
-};
-
 /** "1 gold per 3 trade districts" — the bonus, in words. */
 const incomeLine = (character: CharacterId): string | null => {
   const spec = specOfCharacter(character);
   if (spec.income === null) return null;
-  return `1 ${GRANT[spec.income.grants.kind]} per ${spec.income.counts} district`;
+  return `1 ${INCOME_GRANT_WORDS[spec.income.grants.kind].withArticle} per ${spec.income.counts} district`;
 };
 
 const takenBy = (slot: CastSlot): string | null => {
