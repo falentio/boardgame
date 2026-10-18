@@ -220,6 +220,165 @@ const finePointerPass = async () => {
   }
 };
 
+const measureTransitions = async (page) => {
+  console.log("");
+  console.log("== 1. transition values per animated element ==");
+  await showScene(page, "turn");
+  const values = [];
+  for (const [label, changes, selector] of [
+    ["turn tile", "enter: frame ink + 1px lift, press: scale; leave: ink back", "[data-slot=citadels-action]"],
+    ["cast row", "enter/leave: state ink ring, colour + background", "[data-slot=citadels-cast-row]"],
+    ["cast state plate", "enter/leave: the state flag's own plate colour", "[data-slot=citadels-cast-flag]"],
+    ["seat card", "enter/leave: focus and hover ink only", "[data-slot=citadels-seat]"],
+    ["seat gold plate", "enter/leave: count ink", "[data-slot=citadels-seat-gold]"],
+    ["hand tile", "enter: edge ink + 1px lift, leave: edge ink out", "[data-slot=citadels-hand-tile]"],
+  ]) {
+    const read = await page.read(selector);
+    values.push([label, read]);
+    console.log("   " + label + " (" + changes + "): " + JSON.stringify(read));
+  }
+  const layout = ["all", "width", "height", "margin", "padding", "top", "left", "inset"];
+  const offenders = [];
+  for (const [label, value] of values) {
+    if (value === null) { offenders.push(label + " missing from the turn scene"); continue; }
+    const named = partsOf(value.prop).filter((prop) => layout.includes(prop));
+    if (named.length > 0) offenders.push(label + " animates " + named.join(", "));
+  }
+  check(offenders.length === 0, "every animated element names its properties, none a layout property", JSON.stringify(offenders));
+
+  const pickerEnter = JSON.parse(await holdEnter(page, "draft", "citadels-picker"));
+  const midShot = await page.shot("overlay-enter-60ms");
+  await release(page);
+  console.log("   picker overlay (enter: mount, leave: unmount) held at 60ms: " + JSON.stringify(pickerEnter));
+  const enterMid = midFlight(pickerEnter);
+  check(pickerEnter.transitions >= 2 && enterMid.partial, "the picker is still mid-flight at 60ms: partial opacity and a scale between 0.97 and 1", JSON.stringify(enterMid) + " " + midShot);
+  check(partsOf(pickerEnter.dur).every((part) => part === "0.18s") && easingsOf(pickerEnter.ease).every((part) => part === "cubic-bezier(0.23, 1, 0.32, 1)"), "the overlay runs 180ms on the board's own ease-out token", pickerEnter.dur + " | " + pickerEnter.ease);
+  check(pickerEnter.seekedTo.every((at) => at === 60), "the captured frame is the 60ms sample of the browser's own timeline", JSON.stringify(pickerEnter.seekedTo));
+
+  const pickerLeave = JSON.parse(await holdLeave(page, "turn", "citadels-picker"));
+  const leaveShot = await page.shot("overlay-leave-60ms");
+  await release(page);
+  console.log("   picker overlay leave held at 60ms: " + JSON.stringify(pickerLeave));
+  const leaveMid = midFlight(pickerLeave);
+  check(pickerLeave.transitions >= 2 && leaveMid.partial && leaveMid.opacity === enterMid.opacity && leaveMid.scale === enterMid.scale, "the exit mirrors the entry: the same opacity and scale at the same 60ms", JSON.stringify(leaveMid) + " " + leaveShot);
+  const gone = await page.waitFor("document.querySelector('[data-slot=citadels-picker]') === null", 4000);
+  check(gone, "the picker leaves the DOM when the scene moves on");
+
+  const keepEnter = JSON.parse(await holdEnter(page, "keep", "citadels-keep"));
+  const keepShot = await page.shot("keep-enter-60ms");
+  await release(page);
+  check(keepEnter.transitions >= 2 && Number(keepEnter.opacity) < 1, "the keep window enters on the same transition", keepShot + " " + JSON.stringify(keepEnter));
+  const choiceEnter = JSON.parse(await holdEnter(page, "choice", "citadels-choice"));
+  const choiceShot = await page.shot("choice-enter-60ms");
+  await release(page);
+  check(choiceEnter.transitions >= 2 && Number(choiceEnter.opacity) < 1, "the choice rail enters on the same transition", choiceShot + " " + JSON.stringify(choiceEnter));
+  return pickerEnter;
+};
+
+const measureStateInk = async (page) => {
+  console.log("");
+  console.log("== 2. state indication on the cast rows ==");
+  await showScene(page, "draft");
+  const draftRow = await page.read("[data-slot=citadels-cast-row][data-state=faceup]");
+  await showScene(page, "turn");
+  const turnRow = await page.read("[data-slot=citadels-cast-row][data-state=pending]");
+  console.log("   faceup row ink: " + draftRow.shadow);
+  console.log("   pending row ink: " + turnRow.shadow);
+  check(draftRow.shadow !== turnRow.shadow, "the row ink differs between two engine states", turnRow.shadow.slice(0, 40));
+  check(partsOf(turnRow.prop).includes("box-shadow") && partsOf(turnRow.dur).every((part) => part === "0.15s") && easingsOf(turnRow.ease).every((part) => part === "ease"), "a row repaints its ink over 150ms ease instead of snapping", turnRow.prop + " | " + turnRow.dur + " | " + turnRow.ease);
+  return turnRow;
+};
+
+const measureHoverGate = async (page) => {
+  console.log("");
+  console.log("== 3. hover gate, both directions ==");
+  const gate = /\(hover: hover\) and \(pointer: fine\) and \(prefers-reduced-motion: no-preference\)/;
+  const blockOf = (source) => {
+    const at = source.search(gate);
+    if (at === -1) return "none";
+    const open = source.indexOf("{", at);
+    let depth = 0;
+    let end = open;
+    for (let i = open; i < source.length; i += 1) {
+      if (source[i] === "{") depth += 1;
+      else if (source[i] === "}") { depth -= 1; if (depth === 0) { end = i; break; } }
+    }
+    return source.slice(at, end + 1).split("\n").map((line) => line.trim()).join(" ");
+  };
+  const skinSource = readFileSync("app/components/citadels/board/citadels-skin.css", "utf8");
+  const tileSource = readFileSync("app/components/citadels/board/CitadelsActions.vue", "utf8");
+  const handSource = readFileSync("app/components/citadels/board/CitadelsHand.vue", "utf8");
+  console.log("   skin gate: " + blockOf(skinSource));
+  console.log("   tile gate: " + blockOf(tileSource));
+  console.log("   hand gate: " + blockOf(handSource));
+  check([skinSource, tileSource, handSource].every((source) => blockOf(source).includes("translate")), "the 1px lift sits inside (hover: hover) and (pointer: fine), in the skin, the turn tile and the hand tile");
+  const ungated = /:hover:not\(:disabled\) \{\n\s+border-color: var\(--monokai-yellow\);\n\s+color: var\(--monokai-yellow\);/.test(tileSource);
+  console.log("   tile colour rule written outside the query: " + String(ungated));
+  check(ungated, "the tile's colour change is written outside the media query");
+
+  const { idle: tileIdle, over: tileOver } = await readHover(page, "[data-slot=citadels-action][data-action=gold]");
+  await page.unhover();
+  console.log("   tile idle: " + JSON.stringify({ borderColor: tileIdle.borderColor, color: tileIdle.color, translate: tileIdle.translate }));
+  console.log("   tile hover: " + JSON.stringify({ borderColor: tileOver.borderColor, color: tileOver.color, translate: tileOver.translate }));
+  check(tileOver.borderColor === RULE && tileOver.color === RULE, "with no hover media the tile still turns its frame and ink yellow", tileOver.borderColor);
+  check(tileOver.translate === "none" || tileOver.translate === "0px", "with no hover media the tile does not move", String(tileOver.translate));
+
+  const { idle: handIdle, over: handOver } = await readHover(page, "[data-slot=citadels-hand-tile]");
+  const cardOver = await page.read("[data-slot=citadels-hand] [data-slot=citadels-district]");
+  await page.shot("hand-hover-no-hover-media");
+  await page.unhover();
+  check(handIdle.outlineColor !== RULE && handOver.outlineColor === RULE, "the hand tile inks its edge yellow wherever the pointer is", handIdle.outlineColor + " -> " + handOver.outlineColor);
+  check(handOver.translate === "none" || handOver.translate === "0px", "the hand tile does not move without a fine pointer", String(handOver.translate));
+  check(String(cardOver.translate) === "none" && String(cardOver.shadow).includes("inset"), "the card inside the tile keeps its own frame and stays still", String(cardOver.shadow).slice(0, 58));
+
+  note("headless refuses (hover: hover) emulation", "the same probes run again with a fine pointer below");
+  return tileOver;
+};
+
+const measureReducedMotion = async (page, { pickerEnter, turnRow, tileOver }) => {
+  console.log("");
+  console.log("== 4. reduced motion ==");
+  await page.media([{ name: "prefers-reduced-motion", value: "reduce" }]);
+  const reducedMedia = await page.eval("(() => ({ reduce: matchMedia('(prefers-reduced-motion: reduce)').matches }))()");
+  const reducedRow = await page.read("[data-slot=citadels-cast-row]");
+  const reducedSeat = await page.read("[data-slot=citadels-seat]");
+  const reducedTile = await page.read("[data-slot=citadels-action]");
+  const reducedHand = await page.read("[data-slot=citadels-hand-tile]");
+  const reducedEnter = JSON.parse(await holdEnter(page, "draft", "citadels-picker"));
+  const reducedShot = await page.shot("overlay-enter-60ms-reduced");
+  await release(page);
+  console.log("   reduce matches: " + JSON.stringify(reducedMedia));
+  console.log("   reduce turn tile: " + JSON.stringify({ prop: reducedTile.prop, dur: reducedTile.dur, ease: reducedTile.ease }));
+  console.log("   reduce cast row: " + JSON.stringify({ prop: reducedRow.prop, dur: reducedRow.dur, ease: reducedRow.ease }));
+  console.log("   reduce seat card: " + JSON.stringify({ prop: reducedSeat.prop }));
+  console.log("   reduce hand tile: " + JSON.stringify({ prop: reducedHand.prop }));
+  console.log("   reduce overlay at 60ms: " + JSON.stringify(reducedEnter));
+  console.log("   PAIR picker overlay   full-run: " + JSON.stringify({ transform: pickerEnter.transform, opacity: pickerEnter.opacity, prop: pickerEnter.prop }));
+  console.log("   PAIR picker overlay    reduce: " + JSON.stringify({ transform: reducedEnter.transform, opacity: reducedEnter.opacity, prop: reducedEnter.prop }));
+  console.log("   PAIR cast row          full-run: " + JSON.stringify({ prop: turnRow.prop }));
+  console.log("   PAIR cast row           reduce: " + JSON.stringify({ prop: reducedRow.prop }));
+  console.log("   PAIR turn tile         full-run: " + JSON.stringify({ prop: tileOver.prop }));
+  console.log("   PAIR turn tile          reduce: " + JSON.stringify({ prop: reducedTile.prop }));
+  check(reducedMedia.reduce, "the browser reports prefers-reduced-motion: reduce");
+  check(reducedEnter.transform === "none" && Number(reducedEnter.opacity) > 0 && Number(reducedEnter.opacity) < 1, "under reduce the overlay keeps the fade and drops the scale", reducedShot);
+  check(partsOf(reducedEnter.prop).join(", ") === "opacity" && partsOf(reducedRow.prop).join(", ") === "box-shadow, background-color, color" && !partsOf(reducedTile.prop).some((prop) => prop === "translate" || prop === "scale") && !partsOf(reducedHand.prop).some((prop) => prop === "translate"), "under reduce no transform stays in a transition list and every ink transition stays", JSON.stringify({ overlay: reducedEnter.prop, castRow: reducedRow.prop, tile: reducedTile.prop, hand: reducedHand.prop }));
+};
+
+const measureSkinPage = async (page) => {
+  console.log("");
+  console.log("== 5. the skin harness page ==");
+  await page.goto(BASE + "/dev/citadels-interface");
+  const boardReady = await page.waitFor("document.querySelector('[data-slot=citadels-surface]')");
+  check(boardReady, "the interface harness renders the surface root");
+  const board = await page.eval("(() => { const root = document.querySelector('[data-slot=citadels-surface]'); const all = [root, ...root.querySelectorAll('*')]; const rounded = all.filter((el) => !(el instanceof HTMLImageElement) && parseFloat(getComputedStyle(el).borderTopLeftRadius) > 0); const inner = document.querySelector('[data-slot=citadels-board]'); return { elements: all.length, rounded: rounded.length, cast: document.querySelectorAll('[data-slot=citadels-cast-row]').length, seats: document.querySelectorAll('[data-slot=citadels-seat]').length, hand: document.querySelectorAll('[data-slot=citadels-hand] [data-slot=citadels-district]').length, bar: document.querySelectorAll('[data-slot=citadels-action]').length, pad: getComputedStyle(root).padding, boardPad: getComputedStyle(inner).padding }; })()");
+  console.log("   interface page: " + JSON.stringify(board));
+  check(board.rounded === 0, "no element on the harness surface carries a corner radius", String(board.rounded));
+  check(board.cast === 8 && board.seats === 4 && board.hand > 0 && board.bar > 0, "the converted page still draws the cast, the seats, the hand and the turn bar", JSON.stringify(board));
+  await page.shot("interface-surface");
+  const boardErrors = page.errorsFor();
+  check(boardErrors.length === 0, "the skin harness logs no console error", JSON.stringify(boardErrors.slice(0, 3)));
+};
+
 const main = async () => {
   const browser = await launch();
   const page = browser.page;
@@ -235,138 +394,13 @@ const main = async () => {
     const media = await page.eval("(() => ({ hover: matchMedia('(hover: hover) and (pointer: fine)').matches, any: matchMedia('(any-hover: hover)').matches, pointer: matchMedia('(pointer: fine)').matches, reduce: matchMedia('(prefers-reduced-motion: reduce)').matches }))()");
     note("headless media features", JSON.stringify(media));
 
-    console.log("");
-    console.log("== 1. transition values per animated element ==");
-    await showScene(page, "turn");
-    const values = [];
-    for (const [label, changes, selector] of [
-      ["turn tile", "enter: frame ink + 1px lift, press: scale; leave: ink back", "[data-slot=citadels-action]"],
-      ["cast row", "enter/leave: state ink ring, colour + background", "[data-slot=citadels-cast-row]"],
-      ["cast state plate", "enter/leave: the state flag's own plate colour", "[data-slot=citadels-cast-flag]"],
-      ["seat card", "enter/leave: focus and hover ink only", "[data-slot=citadels-seat]"],
-      ["seat gold plate", "enter/leave: count ink", "[data-slot=citadels-seat-gold]"],
-      ["hand tile", "enter: edge ink + 1px lift, leave: edge ink out", "[data-slot=citadels-hand-tile]"],
-    ]) {
-      const read = await page.read(selector);
-      values.push([label, read]);
-      console.log("   " + label + " (" + changes + "): " + JSON.stringify(read));
-    }
-    const layout = ["all", "width", "height", "margin", "padding", "top", "left", "inset"];
-    const offenders = [];
-    for (const [label, value] of values) {
-      if (value === null) { offenders.push(label + " missing from the turn scene"); continue; }
-      const named = partsOf(value.prop).filter((prop) => layout.includes(prop));
-      if (named.length > 0) offenders.push(label + " animates " + named.join(", "));
-    }
-    check(offenders.length === 0, "every animated element names its properties, none a layout property", JSON.stringify(offenders));
+    const pickerEnter = await measureTransitions(page);
 
-    const pickerEnter = JSON.parse(await holdEnter(page, "draft", "citadels-picker"));
-    const midShot = await page.shot("overlay-enter-60ms");
-    await release(page);
-    console.log("   picker overlay (enter: mount, leave: unmount) held at 60ms: " + JSON.stringify(pickerEnter));
-    const enterMid = midFlight(pickerEnter);
-    check(pickerEnter.transitions >= 2 && enterMid.partial, "the picker is still mid-flight at 60ms: partial opacity and a scale between 0.97 and 1", JSON.stringify(enterMid) + " " + midShot);
-    check(partsOf(pickerEnter.dur).every((part) => part === "0.18s") && easingsOf(pickerEnter.ease).every((part) => part === "cubic-bezier(0.23, 1, 0.32, 1)"), "the overlay runs 180ms on the board's own ease-out token", pickerEnter.dur + " | " + pickerEnter.ease);
-    check(pickerEnter.seekedTo.every((at) => at === 60), "the captured frame is the 60ms sample of the browser's own timeline", JSON.stringify(pickerEnter.seekedTo));
+    const turnRow = await measureStateInk(page);
 
-    const pickerLeave = JSON.parse(await holdLeave(page, "turn", "citadels-picker"));
-    const leaveShot = await page.shot("overlay-leave-60ms");
-    await release(page);
-    console.log("   picker overlay leave held at 60ms: " + JSON.stringify(pickerLeave));
-    const leaveMid = midFlight(pickerLeave);
-    check(pickerLeave.transitions >= 2 && leaveMid.partial && leaveMid.opacity === enterMid.opacity && leaveMid.scale === enterMid.scale, "the exit mirrors the entry: the same opacity and scale at the same 60ms", JSON.stringify(leaveMid) + " " + leaveShot);
-    const gone = await page.waitFor("document.querySelector('[data-slot=citadels-picker]') === null", 4000);
-    check(gone, "the picker leaves the DOM when the scene moves on");
+    const tileOver = await measureHoverGate(page);
 
-    const keepEnter = JSON.parse(await holdEnter(page, "keep", "citadels-keep"));
-    const keepShot = await page.shot("keep-enter-60ms");
-    await release(page);
-    check(keepEnter.transitions >= 2 && Number(keepEnter.opacity) < 1, "the keep window enters on the same transition", keepShot + " " + JSON.stringify(keepEnter));
-    const choiceEnter = JSON.parse(await holdEnter(page, "choice", "citadels-choice"));
-    const choiceShot = await page.shot("choice-enter-60ms");
-    await release(page);
-    check(choiceEnter.transitions >= 2 && Number(choiceEnter.opacity) < 1, "the choice rail enters on the same transition", choiceShot + " " + JSON.stringify(choiceEnter));
-
-    console.log("");
-    console.log("== 2. state indication on the cast rows ==");
-    await showScene(page, "draft");
-    const draftRow = await page.read("[data-slot=citadels-cast-row][data-state=faceup]");
-    await showScene(page, "turn");
-    const turnRow = await page.read("[data-slot=citadels-cast-row][data-state=pending]");
-    console.log("   faceup row ink: " + draftRow.shadow);
-    console.log("   pending row ink: " + turnRow.shadow);
-    check(draftRow.shadow !== turnRow.shadow, "the row ink differs between two engine states", turnRow.shadow.slice(0, 40));
-    check(partsOf(turnRow.prop).includes("box-shadow") && partsOf(turnRow.dur).every((part) => part === "0.15s") && easingsOf(turnRow.ease).every((part) => part === "ease"), "a row repaints its ink over 150ms ease instead of snapping", turnRow.prop + " | " + turnRow.dur + " | " + turnRow.ease);
-
-    console.log("");
-    console.log("== 3. hover gate, both directions ==");
-    const gate = /\(hover: hover\) and \(pointer: fine\) and \(prefers-reduced-motion: no-preference\)/;
-    const blockOf = (source) => {
-      const at = source.search(gate);
-      if (at === -1) return "none";
-      const open = source.indexOf("{", at);
-      let depth = 0;
-      let end = open;
-      for (let i = open; i < source.length; i += 1) {
-        if (source[i] === "{") depth += 1;
-        else if (source[i] === "}") { depth -= 1; if (depth === 0) { end = i; break; } }
-      }
-      return source.slice(at, end + 1).split("\n").map((line) => line.trim()).join(" ");
-    };
-    const skinSource = readFileSync("app/components/citadels/board/citadels-skin.css", "utf8");
-    const tileSource = readFileSync("app/components/citadels/board/CitadelsActions.vue", "utf8");
-    const handSource = readFileSync("app/components/citadels/board/CitadelsHand.vue", "utf8");
-    console.log("   skin gate: " + blockOf(skinSource));
-    console.log("   tile gate: " + blockOf(tileSource));
-    console.log("   hand gate: " + blockOf(handSource));
-    check([skinSource, tileSource, handSource].every((source) => blockOf(source).includes("translate")), "the 1px lift sits inside (hover: hover) and (pointer: fine), in the skin, the turn tile and the hand tile");
-    const ungated = /:hover:not\(:disabled\) \{\n\s+border-color: var\(--monokai-yellow\);\n\s+color: var\(--monokai-yellow\);/.test(tileSource);
-    console.log("   tile colour rule written outside the query: " + String(ungated));
-    check(ungated, "the tile's colour change is written outside the media query");
-
-    const { idle: tileIdle, over: tileOver } = await readHover(page, "[data-slot=citadels-action][data-action=gold]");
-    await page.unhover();
-    console.log("   tile idle: " + JSON.stringify({ borderColor: tileIdle.borderColor, color: tileIdle.color, translate: tileIdle.translate }));
-    console.log("   tile hover: " + JSON.stringify({ borderColor: tileOver.borderColor, color: tileOver.color, translate: tileOver.translate }));
-    check(tileOver.borderColor === RULE && tileOver.color === RULE, "with no hover media the tile still turns its frame and ink yellow", tileOver.borderColor);
-    check(tileOver.translate === "none" || tileOver.translate === "0px", "with no hover media the tile does not move", String(tileOver.translate));
-
-    const { idle: handIdle, over: handOver } = await readHover(page, "[data-slot=citadels-hand-tile]");
-    const cardOver = await page.read("[data-slot=citadels-hand] [data-slot=citadels-district]");
-    await page.shot("hand-hover-no-hover-media");
-    await page.unhover();
-    check(handIdle.outlineColor !== RULE && handOver.outlineColor === RULE, "the hand tile inks its edge yellow wherever the pointer is", handIdle.outlineColor + " -> " + handOver.outlineColor);
-    check(handOver.translate === "none" || handOver.translate === "0px", "the hand tile does not move without a fine pointer", String(handOver.translate));
-    check(String(cardOver.translate) === "none" && String(cardOver.shadow).includes("inset"), "the card inside the tile keeps its own frame and stays still", String(cardOver.shadow).slice(0, 58));
-
-    note("headless refuses (hover: hover) emulation", "the same probes run again with a fine pointer below");
-
-    console.log("");
-    console.log("== 4. reduced motion ==");
-    await page.media([{ name: "prefers-reduced-motion", value: "reduce" }]);
-    const reducedMedia = await page.eval("(() => ({ reduce: matchMedia('(prefers-reduced-motion: reduce)').matches }))()");
-    const reducedRow = await page.read("[data-slot=citadels-cast-row]");
-    const reducedSeat = await page.read("[data-slot=citadels-seat]");
-    const reducedTile = await page.read("[data-slot=citadels-action]");
-    const reducedHand = await page.read("[data-slot=citadels-hand-tile]");
-    const reducedEnter = JSON.parse(await holdEnter(page, "draft", "citadels-picker"));
-    const reducedShot = await page.shot("overlay-enter-60ms-reduced");
-    await release(page);
-    console.log("   reduce matches: " + JSON.stringify(reducedMedia));
-    console.log("   reduce turn tile: " + JSON.stringify({ prop: reducedTile.prop, dur: reducedTile.dur, ease: reducedTile.ease }));
-    console.log("   reduce cast row: " + JSON.stringify({ prop: reducedRow.prop, dur: reducedRow.dur, ease: reducedRow.ease }));
-    console.log("   reduce seat card: " + JSON.stringify({ prop: reducedSeat.prop }));
-    console.log("   reduce hand tile: " + JSON.stringify({ prop: reducedHand.prop }));
-    console.log("   reduce overlay at 60ms: " + JSON.stringify(reducedEnter));
-    console.log("   PAIR picker overlay   full-run: " + JSON.stringify({ transform: pickerEnter.transform, opacity: pickerEnter.opacity, prop: pickerEnter.prop }));
-    console.log("   PAIR picker overlay    reduce: " + JSON.stringify({ transform: reducedEnter.transform, opacity: reducedEnter.opacity, prop: reducedEnter.prop }));
-    console.log("   PAIR cast row          full-run: " + JSON.stringify({ prop: turnRow.prop }));
-    console.log("   PAIR cast row           reduce: " + JSON.stringify({ prop: reducedRow.prop }));
-    console.log("   PAIR turn tile         full-run: " + JSON.stringify({ prop: tileOver.prop }));
-    console.log("   PAIR turn tile          reduce: " + JSON.stringify({ prop: reducedTile.prop }));
-    check(reducedMedia.reduce, "the browser reports prefers-reduced-motion: reduce");
-    check(reducedEnter.transform === "none" && Number(reducedEnter.opacity) > 0 && Number(reducedEnter.opacity) < 1, "under reduce the overlay keeps the fade and drops the scale", reducedShot);
-    check(partsOf(reducedEnter.prop).join(", ") === "opacity" && partsOf(reducedRow.prop).join(", ") === "box-shadow, background-color, color" && !partsOf(reducedTile.prop).some((prop) => prop === "translate" || prop === "scale") && !partsOf(reducedHand.prop).some((prop) => prop === "translate"), "under reduce no transform stays in a transition list and every ink transition stays", JSON.stringify({ overlay: reducedEnter.prop, castRow: reducedRow.prop, tile: reducedTile.prop, hand: reducedHand.prop }));
+    await measureReducedMotion(page, { pickerEnter, turnRow, tileOver });
 
     await page.media([]);
     await showScene(page, "turn");
@@ -376,18 +410,7 @@ const main = async () => {
 
     await finePointerPass();
 
-    console.log("");
-    console.log("== 5. the skin harness page ==");
-    await page.goto(BASE + "/dev/citadels-interface");
-    const boardReady = await page.waitFor("document.querySelector('[data-slot=citadels-surface]')");
-    check(boardReady, "the interface harness renders the surface root");
-    const board = await page.eval("(() => { const root = document.querySelector('[data-slot=citadels-surface]'); const all = [root, ...root.querySelectorAll('*')]; const rounded = all.filter((el) => !(el instanceof HTMLImageElement) && parseFloat(getComputedStyle(el).borderTopLeftRadius) > 0); const inner = document.querySelector('[data-slot=citadels-board]'); return { elements: all.length, rounded: rounded.length, cast: document.querySelectorAll('[data-slot=citadels-cast-row]').length, seats: document.querySelectorAll('[data-slot=citadels-seat]').length, hand: document.querySelectorAll('[data-slot=citadels-hand] [data-slot=citadels-district]').length, bar: document.querySelectorAll('[data-slot=citadels-action]').length, pad: getComputedStyle(root).padding, boardPad: getComputedStyle(inner).padding }; })()");
-    console.log("   interface page: " + JSON.stringify(board));
-    check(board.rounded === 0, "no element on the harness surface carries a corner radius", String(board.rounded));
-    check(board.cast === 8 && board.seats === 4 && board.hand > 0 && board.bar > 0, "the converted page still draws the cast, the seats, the hand and the turn bar", JSON.stringify(board));
-    await page.shot("interface-surface");
-    const boardErrors = page.errorsFor();
-    check(boardErrors.length === 0, "the skin harness logs no console error", JSON.stringify(boardErrors.slice(0, 3)));
+    await measureSkinPage(page);
   } finally {
     browser.close();
   }
