@@ -87,7 +87,7 @@ const launch = async (options = {}) => {
       }
       return message.result.result.value;
     },
-    read: (selector) => page.eval("(() => { const el = document.querySelector(" + JSON.stringify(selector) + "); if (el === null) return null; const s = getComputedStyle(el); return { prop: s.transitionProperty, dur: s.transitionDuration, ease: s.transitionTimingFunction, transform: s.transform, translate: s.translate, opacity: s.opacity, shadow: s.boxShadow, outlineColor: s.outlineColor, borderColor: s.borderTopColor, color: s.color }; })()"),
+    read: (selector) => page.eval("(() => { const el = document.querySelector(" + JSON.stringify(selector) + "); if (el === null) return null; const s = getComputedStyle(el); return { tag: el.tagName.toLowerCase(), prop: s.transitionProperty, dur: s.transitionDuration, ease: s.transitionTimingFunction, transform: s.transform, translate: s.translate, opacity: s.opacity, shadow: s.boxShadow, outlineColor: s.outlineColor, borderColor: s.borderTopColor, color: s.color }; })()"),
     async goto(url, waitMs = 2600) { await send("Page.navigate", { url }, session); await delay(waitMs); },
     async waitFor(expression, timeoutMs = 20000) {
       const deadline = Date.now() + timeoutMs;
@@ -192,6 +192,18 @@ const finePointerPass = async () => {
     check(cardOver.translate === cardIdle.translate && cardOver.shadow === cardIdle.shadow, "the card inside the hand tile stays still", String(cardOver.translate));
     check(seatOver.translate === "none" || seatOver.translate === "0px", "the seat card changes colour only, as the gate asks", String(seatOver.translate));
     check(String(seatOver.shadow).includes(RULE), "the seat card still answers with yellow ink", String(seatOver.shadow).slice(0, 58));
+    await showScene(page, "draft");
+    await page.eval("(() => { const p = document.querySelector('[data-slot=citadels-picker]'); if (p !== null) p.style.visibility = 'hidden'; return true; })()");
+    const rowIdle = await page.read("[data-slot=citadels-cast-row]");
+    await page.hover("[data-slot=citadels-cast-row]");
+    const rowOver = await page.read("[data-slot=citadels-cast-row]");
+    await page.shot("cast-row-hover-fine-pointer");
+    console.log("   cast row: " + JSON.stringify({ tag: rowIdle.tag, idle: rowIdle.translate, hover: rowOver.translate, ink: String(rowOver.shadow).slice(0, 46) }));
+    check(rowOver.translate === "none" || rowOver.translate === "0px", "a pickable cast row changes ink and never moves", String(rowOver.translate));
+    check(String(rowOver.shadow).includes(RULE), "a pickable cast row still answers with yellow ink", String(rowOver.shadow).slice(0, 46));
+    await page.eval("(() => { const p = document.querySelector('[data-slot=citadels-picker]'); if (p !== null) p.style.visibility = ''; return true; })()");
+    await page.unhover();
+    await showScene(page, "turn");
     await page.media([{ name: "prefers-reduced-motion", value: "reduce" }]);
     await page.hover("[data-slot=citadels-action][data-action=gold]");
     const reducedHover = await page.read("[data-slot=citadels-action][data-action=gold]");
