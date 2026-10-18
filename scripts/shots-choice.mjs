@@ -16,7 +16,7 @@ const CHOICE_KINDS = ["seat", "character", "type", "district", "card", "confirm"
 
 mkdirSync(OUT, { recursive: true });
 
-const { check, failures, launch, openRoom } = createShots({
+const { check, failures, launch, expectChecks, openRoom } = createShots({
   name: "choice",
   base: BASE,
   out: OUT,
@@ -109,11 +109,9 @@ const liveRun = async () => {
     check(live.framed, "the live tiles keep square corners");
     await actor.browser.page.shot("live-window");
 
-    if (["choose-character", "choose-seat", "choose-type"].includes(live.purpose)) {
-      const other = seats.find((seat) => seat.label !== actor.label);
-      const theirs = await other.browser.page.eval(LIVE_FACTS);
-      check(!theirs.insideSurface, `the ${live.purpose} window offers nothing to the seat the resolver ignores`, String(theirs.count));
-    }
+    const other = seats.find((seat) => seat.label !== actor.label);
+    const theirs = await other.browser.page.eval(LIVE_FACTS);
+    check(!theirs.insideSurface, `the ${live.purpose} window offers nothing to the seat the resolver ignores`, String(theirs.count));
 
     const picked = live.values[0];
     const clicked = await actor.browser.page.clickReal("document.querySelector('[data-slot=citadels-surface] [data-slot=citadels-choice-option]')");
@@ -131,6 +129,10 @@ const liveRun = async () => {
 };
 
 await harnessRun();
-if (!HARNESS_ONLY) await liveRun();
+expectChecks("harness", 28);
+if (!HARNESS_ONLY) {
+  await liveRun();
+  expectChecks("live", 11);
+}
 console.log(summarize(failures.length));
 process.exit(failures.length === 0 ? 0 : 1);

@@ -50,6 +50,20 @@ export const every = (items, predicate) => items.length > 0 && items.every(predi
 
 export const summarize = (failed) => (failed === 0 ? "ALL CHECKS PASS" : failed + " CHECK(S) FAILED");
 
+/**
+ * A check that stops running lowers a mode's count, so every mode declares the
+ * count it must run; this line fails the mode that ran a different number.
+ */
+export const expectChecks = (ran, mode, ...expected) => {
+  const matches = expected.includes(ran);
+  console.log(
+    (matches ? "PASS " : "FAIL ") +
+      "the " + mode + " mode runs " + (expected.length === 1 ? expected[0] : expected.join(" or ")) + " checks" +
+      (matches ? "" : " :: ran " + ran),
+  );
+  return matches;
+};
+
 const freePort = () =>
   new Promise((resolve, reject) => {
     const probe = createServer();
@@ -63,9 +77,12 @@ const freePort = () =>
 export const createShots = ({ name, base, out, viewport, detail = "text" }) => {
   const stamp = Date.now();
   const failures = [];
+  let checks = 0;
+  let answered = 0;
   let launched = 0;
 
   const check = (ok, label, value) => {
+    checks += 1;
     console.log((ok ? "PASS " : "FAIL ") + label + (value === undefined ? "" : " :: " + (detail === "json" ? JSON.stringify(value) : value)));
     if (!ok) failures.push(label);
   };
@@ -266,5 +283,13 @@ export const createShots = ({ name, base, out, viewport, detail = "text" }) => {
 
   const answersAt = () => serverAnswers(base);
 
-  return { check, info, failures, launch, signUp, createRoom, joinRoom, startRoom, openRoom, serverAnswers: answersAt };
+  const expectMode = (mode, ...expected) => {
+    const ran = checks - answered;
+    answered = checks;
+    const matches = expectChecks(ran, mode, ...expected);
+    if (!matches) failures.push("the " + mode + " mode's check count");
+    return matches;
+  };
+
+  return { check, info, failures, launch, expectChecks: expectMode, signUp, createRoom, joinRoom, startRoom, openRoom, serverAnswers: answersAt };
 };

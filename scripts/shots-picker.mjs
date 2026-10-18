@@ -10,7 +10,7 @@ const OUT = ".audit/pick";
 const DEBUG_PORT = 9511;
 mkdirSync(OUT, { recursive: true });
 
-const { launch } = createShots({ name: "pick", base: BASE, out: OUT, viewport: { width: 1280, height: 800, deviceScaleFactor: 2 } });
+const { launch, expectChecks, failures } = createShots({ name: "pick", base: BASE, out: OUT, viewport: { width: 1280, height: 800, deviceScaleFactor: 2 } });
 const { page, errors, close } = await launch({ label: "picker", debugPort: DEBUG_PORT });
 
 await page.goto(BASE + "/dev/picker-demo", 2600);
@@ -21,4 +21,6 @@ await delay(600);
 console.log("dialog:", await page.eval("(() => { const d = document.querySelector('[data-slot=citadels-picker-dialog]'); if (!d) return 'no dialog'; return JSON.stringify({ role: d.getAttribute('role'), modal: d.getAttribute('aria-modal'), ability: d.querySelector('[data-slot=citadels-picker-ability]')?.textContent.trim().slice(0, 70), confirm: d.querySelector('[data-slot=citadels-picker-confirm]')?.textContent.trim(), cancel: !!d.querySelector('[data-slot=citadels-picker-cancel]') }); })()"));
 await page.shot("dialog");
 close();
+expectChecks("picker", 0);
 console.log("console errors:", errors.length ? errors.slice(0, 3) : "none");
+process.exitCode = failures.length === 0 ? 0 : 1;

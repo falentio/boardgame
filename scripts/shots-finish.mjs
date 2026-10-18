@@ -17,7 +17,7 @@ const TERMINAL = "[data-slot=citadels-surface] [data-slot=citadels-terminal]";
 
 mkdirSync(OUT, { recursive: true });
 
-const { check, info, failures, launch, openRoom, serverAnswers } = createShots({
+const { check, info, failures, launch, expectChecks, openRoom, serverAnswers } = createShots({
   name: "finish",
   base: BASE,
   out: OUT,
@@ -156,14 +156,31 @@ const liveRun = async () => {
     check(radius !== null && radius.radiusNotZero === 0, "no element on the live surface carries a corner radius", radius === null ? "the surface did not render" : String(radius.radiusNotZero));
     await hostBrowser.page.shot("surface-live");
 
-    const bars = await Promise.all(seats.map((b) => b.page.evalFn(actionFacts)));
+    /* The game opens on the draft, so both picks play before the turn bar is read. */
+    const deadline = Date.now() + 90000;
+    let bars = [];
+    while (Date.now() < deadline) {
+      for (const seat of seats) {
+        if (await seat.page.eval("document.querySelector('[data-slot=citadels-picker]') !== null")) {
+          await pickIn(seat.page);
+          await seat.page.clickReal("document.querySelector('[data-slot=citadels-picker-confirm]')");
+        }
+      }
+      bars = await Promise.all(seats.map((b) => b.page.evalFn(actionFacts)));
+      if (bars.some((facts) => facts.bar)) break;
+      await delay(300);
+    }
     const owner = bars.findIndex((facts) => facts.bar);
     console.log("live turn bars: " + JSON.stringify(bars));
     if (owner < 0) {
       info("no live turn window opened for either seat", JSON.stringify(bars));
       return;
     }
-    const actor = bars[owner];
+    /* The bar arms build only for a picked hand card, so the holding seat picks one
+       before the bar's own facts are read. */
+    const holder = seats[owner];
+    await holder.page.clickReal("document.querySelector('[data-slot=citadels-hand] [data-slot=citadels-hand-tile]:not([disabled])')");
+    const actor = await holder.page.evalFn(actionFacts);
     const idle = bars[owner === 0 ? 1 : 0];
     check(actor.actions.join(",") === "gold,draw,build,pass", "the holding seat's bar carries the four turn actions", JSON.stringify(actor.actions));
     check(actor.buildDisabled === (actor.hand === 0), "build is disabled exactly when the hand is empty", actor.buildDisabled + " with hand " + actor.hand);
@@ -352,7 +369,13 @@ const terminalRun = async () => {
 
 if (!(await serverAnswers())) throw new Error("the dev server on " + BASE + " is not answering; start it before this script");
 await harnessRun();
-if (args.includes("--terminal")) await terminalRun();
-else if (!HARNESS_ONLY) await liveRun();
+expectChecks("harness", 6);
+if (args.includes("--terminal")) {
+  await terminalRun();
+  expectChecks("terminal", 8);
+} else if (!HARNESS_ONLY) {
+  await liveRun();
+  expectChecks("live", 6, 7);
+}
 console.log(summarize(failures.length));
 process.exit(failures.length === 0 ? 0 : 1);

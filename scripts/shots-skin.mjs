@@ -14,7 +14,7 @@ let PICKER_URL = positional[1] ?? ORIGIN + "/dev/picker-demo";
 const TAG = LIVE ? "live" : (positional[2] ?? "after");
 mkdirSync(OUT, { recursive: true });
 
-const { check, failures, launch, openRoom } = createShots({
+const { check, failures, launch, expectChecks, openRoom } = createShots({
   name: "skin",
   base: ORIGIN,
   out: OUT,
@@ -256,6 +256,8 @@ if (!LIVE) {
 }
 
 
+if (LIVE) expectChecks("live", 14, 15);
+else expectChecks("skin", 15, 16);
 console.log("console errors:", errors.length ? errors.slice(0, 3) : "none");
 console.log(summarize(failures.length));
 close();

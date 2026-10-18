@@ -15,7 +15,7 @@ const OUT = ".audit/motion";
 
 mkdirSync(OUT, { recursive: true });
 
-const { check, info, failures, launch } = createShots({
+const { check, info, failures, launch, expectChecks } = createShots({
   name: "motion",
   base: BASE,
   out: OUT,
@@ -344,6 +344,7 @@ info("headless media features", JSON.stringify(media));
   } finally {
     browser.close();
   }
+  expectChecks("motion", 38);
   console.log(summarize(failures.length));
   process.exitCode = failures.length === 0 ? 0 : 1;
 };

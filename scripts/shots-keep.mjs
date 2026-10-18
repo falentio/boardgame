@@ -16,7 +16,7 @@ const OUT = ".audit/keep";
 
 mkdirSync(OUT, { recursive: true });
 
-const { check, info, failures, launch, openRoom, serverAnswers } = createShots({
+const { check, info, failures, launch, expectChecks, openRoom, serverAnswers } = createShots({
   name: "keep",
   base: BASE,
   out: OUT,
@@ -249,12 +249,14 @@ const liveRun = async () => {
 
 if (!(await serverAnswers())) throw new Error("the dev server on " + BASE + " is not answering; start it before this script");
 await harnessRun();
+expectChecks("harness", 12);
 if (!HARNESS_ONLY) {
   try {
     await liveRun();
   } catch (error) {
     check(false, "the live surface run completed", String(error.message ?? error));
   }
+  expectChecks("live", 14);
 }
 console.log(summarize(failures.length));
 process.exit(failures.length === 0 ? 0 : 1);

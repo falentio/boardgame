@@ -5,7 +5,7 @@ import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
-import { checkedArgs, every, originOf, serverAnswers } from "./lib/shots-harness.mjs";
+import { checkedArgs, every, expectChecks, originOf, serverAnswers } from "./lib/shots-harness.mjs";
 
 // Usage: node scripts/shots-actions.mjs [--port 3000]
 const args = checkedArgs(process.argv.slice(2), ["--port"]);
@@ -21,8 +21,10 @@ const RULE = "rgb(230, 219, 116)";
 mkdirSync(OUT, { recursive: true });
 
 const fails = [];
+let checks = 0;
 const info = (msg) => console.log("INFO " + msg);
 const check = (ok, label, detail) => {
+  checks += 1;
   console.log((ok ? "PASS " : "FAIL ") + label + (detail === undefined ? "" : " :: " + JSON.stringify(detail)));
   if (!ok) fails.push(label);
 };
@@ -619,7 +621,10 @@ const runLiveSurface = async () => {
 
 if (!(await serverAnswers(BASE))) throw new Error("the dev server on " + BASE + " is not answering; start it before this script");
 await runHarness();
+const afterHarness = checks;
+if (!expectChecks(afterHarness, "harness", 17)) fails.push("the harness mode's check count");
 await runLiveSurface();
+if (!expectChecks(checks - afterHarness, "live", 29)) fails.push("the live mode's check count");
 console.log(fails.length === 0 ? "ALL CHECKS PASS" : fails.length + " CHECK(S) FAILED");
 console.log("failed:", JSON.stringify(fails));
 process.exitCode = fails.length === 0 ? 0 : 1;
