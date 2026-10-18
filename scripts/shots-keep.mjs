@@ -142,6 +142,9 @@ const keepFacts = `(() => {
   const box = keep.getBoundingClientRect();
   const parent = keep.parentElement.getBoundingClientRect();
   const style = getComputedStyle(keep);
+  const rgba = style.backgroundColor;
+  const inner = rgba.slice(rgba.lastIndexOf('(') + 1, rgba.length - 1).replace('/', ',');
+  const alpha = Number(inner.split(',').pop().trim());
   return {
     insideSurface: keep.closest('${SURFACE}') !== null,
     cards: cards.length,
@@ -155,7 +158,7 @@ const keepFacts = `(() => {
     covers: Math.round(box.width) + 'x' + Math.round(box.height),
     parent: Math.round(parent.width) + 'x' + Math.round(parent.height),
     inset: Math.round(box.left - parent.left) + ',' + Math.round(box.top - parent.top),
-    opaque: !/\/\s*0?\.\d+\)$/.test(style.backgroundColor) && style.backgroundColor !== 'rgba(0, 0, 0, 0)',
+    opaque: Number.isFinite(alpha) && alpha >= 0.99,
     background: style.backgroundColor,
     blur: style.backdropFilter,
   };
@@ -169,7 +172,6 @@ const harnessRun = async () => {
     check(ready, "the harness renders the keep surface");
     if (!ready) return;
 
-    writeFileSync("/tmp/keepfacts-probe.js", keepFacts);
     const window0 = await browser.page.eval(keepFacts);
     console.log("keep: " + JSON.stringify(window0));
     check(window0.cards === 2, "exactly two keep cards render", String(window0.cards));
@@ -216,57 +218,70 @@ const liveRun = async () => {
 
   const hostBrowser = await launch("live-host");
   const guestBrowser = await launch("live-guest");
-  const pickInSurface = async (browser, label) => {
-    const entered = await browser.page.clickReal("document.querySelector('[data-slot=citadels-enter]')");
-    if (!entered) throw new Error(`${label}: the gate never offered Enter`);
-    const surface = await browser.page.waitFor(`document.querySelector('${SURFACE}')`, 20000);
-    if (!surface) throw new Error(`${label}: the surface never came up`);
-    for (let i = 0; i < 40; i++) {
-      const window = await browser.page.eval("document.querySelector('[data-slot=citadels-picker]') !== null");
-      if (!window) { await delay(250); continue; }
-      const picked = await browser.page.clickReal("document.querySelector('[data-slot=citadels-picker-card]:not([disabled])')");
-      if (!picked) throw new Error(`${label}: no pickable character card`);
-      const confirmed = await browser.page.clickReal("document.querySelector('[data-slot=citadels-picker-confirm]')");
-      if (!confirmed) throw new Error(`${label}: the pick dialog offered no confirm`);
-      return true;
-    }
-    return false;
+  const seats = [
+    { label: "host", browser: hostBrowser, user: host },
+    { label: "guest", browser: guestBrowser, user: guest },
+  ];
+  const bodyOf = async (browser) =>
+    browser.page.eval("document.body.innerText.split(String.fromCharCode(10)).join(\" | \").slice(0, 240)");
+
+  const enter = async ({ label, browser }) => {
+    const clicked = await browser.page.clickReal("document.querySelector('[data-slot=citadels-enter]')");
+    if (!clicked) throw new Error(`${label}: the gate never offered Enter`);
+    const up = await browser.page.waitFor(`document.querySelector('[data-slot=citadels-surface]')`, 20000);
+    if (!up) throw new Error(`${label}: the surface never came up`);
   };
 
+  const pageState = async (browser) =>
+    browser.page.eval(
+      "(() => ({ picker: document.querySelector('[data-slot=citadels-picker]') !== null, turn: document.querySelector('[data-slot=citadels-actions]') !== null }))()",
+    );
+
   try {
-    await hostBrowser.page.setCookie(host);
-    await guestBrowser.page.setCookie(guest);
-    await Promise.all([
-      hostBrowser.page.goto(`${BASE}/games/${code}`),
-      guestBrowser.page.goto(`${BASE}/games/${code}`),
-    ]);
-    await Promise.all([hostBrowser.page.hydrated(), guestBrowser.page.hydrated()]);
+    for (const seat of seats) await seat.browser.page.setCookie(seat.user);
+    await Promise.all(seats.map(({ browser }) => browser.page.goto(`${BASE}/games/${code}`)));
+    await Promise.all(seats.map(({ browser }) => browser.page.hydrated()));
+    for (const seat of seats) await enter(seat);
+    check(true, "both seats reached the live surface", code);
 
-    const picked = await Promise.all([
-      pickInSurface(hostBrowser, "host"),
-      pickInSurface(guestBrowser, "guest"),
-    ]);
-    check(picked.every(Boolean), "both seats took their draft pick on the live surface", JSON.stringify(picked));
-
-    const turn = await hostBrowser.page.waitFor("document.querySelector('[data-slot=citadels-actions]')", 30000);
-    if (!turn) {
-      const body = await hostBrowser.page.eval("document.body.innerText.replace(/\n/g, ' | ').slice(0, 240)");
-      throw new Error("the host never reached the turn window; body: " + body);
+    const picks = { host: 0, guest: 0 };
+    let actor = null;
+    let idle = 0;
+    for (let i = 0; i < 900 && actor === null; i += 1) {
+      let moved = false;
+      for (const seat of seats) {
+        const state = await pageState(seat.browser);
+        if (state.turn) { actor = seat; break; }
+        if (!state.picker) continue;
+        const card = await seat.browser.page.clickReal("document.querySelector('[data-slot=citadels-picker-card]:not([disabled])')");
+        if (!card) throw new Error(`${seat.label}: no pickable character card`);
+        const confirmed = await seat.browser.page.clickReal("document.querySelector('[data-slot=citadels-picker-confirm]')");
+        if (!confirmed) throw new Error(`${seat.label}: the pick dialog offered no confirm`);
+        picks[seat.label] += 1;
+        moved = true;
+      }
+      if (moved) { idle = 0; continue; }
+      idle += 1;
+      if (idle % 25 === 0) console.log(`waiting: picks ${JSON.stringify(picks)} idle ${idle} · host ${await hostBrowser.page.eval("document.querySelector('[data-slot=citadels-phase]')?.textContent.trim()")}`);
+      if (idle > 300) break;
+      await delay(400);
     }
-    await hostBrowser.page.shot("keep-live-turn");
+    check(picks.host > 0 && picks.guest > 0, "both seats drafted on the live surface", JSON.stringify(picks));
+    if (actor === null) throw new Error(`no seat reached a turn window; host body: ${await bodyOf(hostBrowser)}`);
+    check(true, `the turn window opened for the ${actor.label}`, `${code} after picks ${JSON.stringify(picks)}`);
+    await actor.browser.page.shot("keep-live-turn");
 
-    const drew = await hostBrowser.page.clickReal("[...document.querySelectorAll('[data-slot=citadels-action]')].find((b) => /draw/i.test(b.textContent))");
+    const handBefore = await actor.browser.page.eval("document.querySelectorAll('[data-slot=citadels-hand] [data-slot=citadels-district]').length");
+    const drew = await actor.browser.page.clickReal("document.querySelector('[data-slot=citadels-action][data-action=\"draw\"]')");
     check(drew, "the turn window offers the draw action");
 
-    const opened = await hostBrowser.page.waitFor(`document.querySelector('${KEEP}')`, 15000);
-    check(opened, "the keep surface opens on the live board after the draw");
+    const opened = await actor.browser.page.waitFor(`document.querySelector('[data-slot=citadels-keep]')`, 15000);
     if (!opened) {
-      const body = await hostBrowser.page.eval("document.body.innerText.replace(/\n/g, ' | ').slice(0, 240)");
-      console.log("live body: " + body);
+      check(false, "the keep surface opens on the live board after the draw", await bodyOf(actor.browser));
       return;
     }
 
-    const live = await hostBrowser.page.eval(keepFacts);
+    const live = await actor.browser.page.eval(keepFacts);
     console.log("live keep: " + JSON.stringify(live));
     check(live.insideSurface, "the keep surface renders inside the live surface root");
     check(live.cards === 2, "the live keep offers the two drawn cards", String(live.cards));
@@ -274,19 +289,17 @@ const liveRun = async () => {
     check(live.district.every((id) => typeof id === "string" && id.length > 0), "each live card names a real district", JSON.stringify(live.district));
     check(!live.opaque && live.blur === "blur(2px)", "the live overlay stays tinted and blurred", live.background + " " + live.blur);
     check(live.names.length === 2 && live.names.every((n) => n.wrap === "anywhere" && !n.clipped), "the live card names wrap and never truncate", JSON.stringify(live.names));
-    await hostBrowser.page.shot("keep-live-window");
+    await actor.browser.page.shot("keep-live-window");
 
-    const handBefore = await hostBrowser.page.eval("document.querySelectorAll('[data-slot=citadels-hand] [data-slot=citadels-district]').length");
-    const kept = await hostBrowser.page.clickReal(`document.querySelector('${KEEP_CARD}[data-index="1"]')`);
+    const kept = await actor.browser.page.clickReal(`document.querySelector('[data-slot=citadels-keep-card][data-index="1"]')`);
     check(kept, "the second live card takes a click");
-    const gone = await hostBrowser.page.waitFor(`document.querySelector('${KEEP}') === null`, 15000);
+    const gone = await actor.browser.page.waitFor("document.querySelector('[data-slot=citadels-keep]') === null", 15000);
     check(gone, "keeping a card closes the live window");
-    const handAfter = await hostBrowser.page.eval("document.querySelectorAll('[data-slot=citadels-hand] [data-slot=citadels-district]').length");
-    check(handAfter === handBefore + 1, "the kept card joined the hand", handBefore + " -> " + handAfter);
-    await hostBrowser.page.shot("keep-live-kept");
+    const handAfter = await actor.browser.page.eval("document.querySelectorAll('[data-slot=citadels-hand] [data-slot=citadels-district]').length");
+    check(handAfter === handBefore + 1, "the kept card joins the hand", handBefore + " -> " + handAfter);
+    await actor.browser.page.shot("keep-live-kept");
   } finally {
-    hostBrowser.close();
-    guestBrowser.close();
+    for (const { browser } of seats) browser.close();
   }
 };
 
