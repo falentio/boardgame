@@ -4,6 +4,7 @@ import { specOfCharacter } from "#shared/core/lockstep/games/citadels/index.ts";
 import type { CastSlot } from "@/composables/citadels-board.ts";
 import type { CharacterId } from "#shared/core/lockstep/games/citadels/index.ts";
 import { defaultAvatarUrl } from "#shared/users/avatar.ts";
+import "./citadels-skin.css";
 
 const props = defineProps<{ slot: CastSlot; picked?: boolean }>();
 const emit = defineEmits<{ choose: [] }>();
@@ -33,7 +34,7 @@ const stateLabel = computed(
     :disabled="taken"
     :aria-pressed="picked === true ? 'true' : undefined"
     :aria-label="`${spec.name}, rank ${spec.rank}, ${stateLabel}`"
-    class="citadels-character group/card relative flex w-full flex-col text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-monokai-yellow disabled:cursor-not-allowed"
+    class="citadels-character citadels-piece citadels-piece--thick group/card relative flex w-full flex-col text-left disabled:cursor-not-allowed"
     :class="taken && 'opacity-40'"
     @click="emit('choose')"
   >
@@ -59,13 +60,15 @@ const stateLabel = computed(
 .citadels-character {
   aspect-ratio: 143 / 201;
   overflow: hidden;
-  background: var(--monokai-panel);
   color: var(--monokai-fg);
-  font-family: ui-monospace, monospace;
+}
+
+.citadels-character:disabled:hover {
   box-shadow:
     inset 0 0 0 1px var(--monokai-line),
     inset 0 0 0 4px var(--monokai-bg),
     inset 0 0 0 6px var(--monokai-yellow);
+  translate: none;
 }
 
 .citadels-character-art {
