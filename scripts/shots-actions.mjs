@@ -345,7 +345,6 @@ const ACTIONS = function () {
 };
 
 const runLiveSurface = async () => {
-  if (!(await serverAnswers(BASE))) throw new Error("the dev server on " + BASE + " is not answering; start it before this script");
   const host = await signUp("host");
   const guest = await signUp("guest");
   const code = await createRoom(host);
@@ -618,6 +617,7 @@ const runLiveSurface = async () => {
   }
 };
 
+if (!(await serverAnswers(BASE))) throw new Error("the dev server on " + BASE + " is not answering; start it before this script");
 await runHarness();
 await runLiveSurface();
 console.log(fails.length === 0 ? "ALL CHECKS PASS" : fails.length + " CHECK(S) FAILED");
