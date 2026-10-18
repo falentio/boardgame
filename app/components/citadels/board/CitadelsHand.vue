@@ -14,7 +14,7 @@ const emit = defineEmits<{ pick: [card: number] }>();
 <template>
   <section data-slot="citadels-hand" class="flex flex-col gap-1.5">
     <span
-      class="text-[0.625rem] leading-none font-semibold tracking-[0.2em] text-muted-foreground uppercase"
+      class="text-[0.625rem] leading-none font-semibold tracking-[0.2em] text-monokai-comment uppercase"
     >
       Your hand ({{ hand.length }})
     </span>
@@ -27,7 +27,7 @@ const emit = defineEmits<{ pick: [card: number] }>();
           :data-picked="picked === index ? 'true' : undefined"
           :aria-pressed="picked === index"
           :aria-label="`Build ${specOfDistrict(district).name} from hand`"
-          class="block focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed"
+          class="block disabled:cursor-not-allowed"
           :disabled="pickable !== true"
           @click="emit('pick', index)"
         >
@@ -36,7 +36,7 @@ const emit = defineEmits<{ pick: [card: number] }>();
       </li>
       <li
         v-if="hand.length === 0"
-        class="self-center text-xs leading-tight text-muted-foreground italic"
+        class="self-center text-xs leading-tight text-monokai-comment italic"
       >
         no cards in hand
       </li>
@@ -55,6 +55,12 @@ const emit = defineEmits<{ pick: [card: number] }>();
 }
 
 [data-slot="citadels-hand-tile"]:hover:not(:disabled) {
+  outline-color: var(--monokai-yellow);
+}
+
+[data-slot="citadels-hand-tile"]:focus-visible {
+  outline-width: 2px;
+  outline-offset: 2px;
   outline-color: var(--monokai-yellow);
 }
 

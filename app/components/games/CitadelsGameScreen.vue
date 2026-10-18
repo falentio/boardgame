@@ -186,7 +186,7 @@ const terminalPlate = computed(() => {
         @keep="keepCard"
         @action="chooseAction"
       />
-      <p v-else role="status" class="text-muted-foreground p-3 text-sm leading-normal">
+      <p v-else role="status" class="text-monokai-comment p-3 text-sm leading-normal">
         Waiting for the game to start…
       </p>
     </section>
