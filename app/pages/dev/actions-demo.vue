@@ -73,7 +73,7 @@ const noWindow = {
         :board="twoCards"
         @gold="record({ t: 'gold' })"
         @draw="record({ t: 'draw' })"
-        @build="record({ t: 'build', card: 0 })"
+        @build="(card) => record({ t: 'build', card })"
         @pass="record({ t: 'pass' })"
       />
     </section>
@@ -86,7 +86,7 @@ const noWindow = {
         :board="noCards"
         @gold="record({ t: 'gold' })"
         @draw="record({ t: 'draw' })"
-        @build="record({ t: 'build', card: 0 })"
+        @build="(card) => record({ t: 'build', card })"
         @pass="record({ t: 'pass' })"
       />
     </section>
