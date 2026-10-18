@@ -124,105 +124,107 @@ watch(open, async (still) => {
 </script>
 <template>
   <Teleport :to="surface ?? 'body'">
-    <section
-      v-if="open"
-      ref="section"
-      data-slot="citadels-picker"
-      role="region"
-      aria-label="Choose a character"
-      tabindex="-1"
-      class="absolute inset-0 z-40 flex flex-col gap-3 overflow-y-auto bg-monokai-bg/30 p-4 backdrop-blur-[2px] focus-visible:outline-none"
-      @keydown="onKeydown"
-    >
-      <header class="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 class="font-mono text-sm leading-none font-bold tracking-[0.18em] uppercase">
-          Pick a character
-        </h2>
-        <span class="font-mono text-[0.625rem] leading-none tracking-[0.16em] text-monokai-comment uppercase">
-          round {{ table.round }} · {{ table.cast.length }} in the draft
-        </span>
-      </header>
-
-      <p v-if="table.pending" role="status" class="font-mono text-[0.6875rem] leading-tight text-monokai-comment">
-        {{ table.pending.actorName }} claims {{ table.pending.characterName ?? "a character" }}
-      </p>
-
-      <ul data-slot="citadels-picker-grid" class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
-        <li v-for="slot in table.cast" :key="slot.character" class="min-w-0">
-          <CitadelsCharacterCard
-            :slot="slot"
-            :picked="picked?.character === slot.character"
-            @choose="choose(slot)"
-          />
-        </li>
-      </ul>
-
-      <div
-        v-if="picked"
-        data-slot="citadels-picker-dialog"
-        role="dialog"
-        aria-modal="true"
-        :aria-label="`Choose ${specOf(picked.character).name}?`"
-        class="absolute inset-0 z-50 flex items-center justify-center bg-monokai-bg/30 p-4 backdrop-blur-[2px]"
-        @click="close"
+    <Transition name="citadels-overlay">
+      <section
+        v-if="open"
+        ref="section"
+        data-slot="citadels-picker"
+        role="region"
+        aria-label="Choose a character"
+        tabindex="-1"
+        class="absolute inset-0 z-40 flex flex-col gap-3 overflow-y-auto bg-monokai-bg/30 p-4 backdrop-blur-[2px] focus-visible:outline-none"
+        @keydown="onKeydown"
       >
+        <header class="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 class="font-mono text-sm leading-none font-bold tracking-[0.18em] uppercase">
+            Pick a character
+          </h2>
+          <span class="font-mono text-[0.625rem] leading-none tracking-[0.16em] text-monokai-comment uppercase">
+            round {{ table.round }} · {{ table.cast.length }} in the draft
+          </span>
+        </header>
+
+        <p v-if="table.pending" role="status" class="font-mono text-[0.6875rem] leading-tight text-monokai-comment">
+          {{ table.pending.actorName }} claims {{ table.pending.characterName ?? "a character" }}
+        </p>
+
+        <ul data-slot="citadels-picker-grid" class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
+          <li v-for="slot in table.cast" :key="slot.character" class="min-w-0">
+            <CitadelsCharacterCard
+              :slot="slot"
+              :picked="picked?.character === slot.character"
+              @choose="choose(slot)"
+            />
+          </li>
+        </ul>
+
         <div
-          ref="panel"
-          class="flex w-full max-w-sm flex-col gap-3 border border-monokai-yellow bg-monokai-panel p-3"
-          @click.stop
+          v-if="picked"
+          data-slot="citadels-picker-dialog"
+          role="dialog"
+          aria-modal="true"
+          :aria-label="`Choose ${specOf(picked.character).name}?`"
+          class="absolute inset-0 z-50 flex items-center justify-center bg-monokai-bg/30 p-4 backdrop-blur-[2px]"
+          @click="close"
         >
-          <header class="flex items-start gap-2">
-            <span class="size-16 shrink-0 overflow-hidden border border-monokai-line bg-monokai-bg">
-              <img :src="emblemOf(picked.character)" alt="" class="size-full object-cover" />
-            </span>
-            <span class="flex min-w-0 flex-col gap-1">
-              <span class="font-mono text-sm leading-none font-bold tracking-[0.03em] uppercase">
-                {{ specOf(picked.character).name }}
-              </span>
-              <span class="font-mono text-[0.625rem] leading-none tracking-[0.16em] text-monokai-comment uppercase">
-                rank {{ String(specOf(picked.character).rank).padStart(2, "0") }}
-              </span>
-            </span>
-          </header>
-
-          <p class="font-mono text-[0.6875rem] leading-snug text-monokai-fg" data-slot="citadels-picker-ability">
-            {{ specOf(picked.character).summary }}
-          </p>
-
-          <p
-            v-if="incomeLine(picked.character)"
-            class="font-mono text-[0.625rem] leading-none tracking-[0.16em] text-monokai-yellow uppercase"
+          <div
+            ref="panel"
+            class="flex w-full max-w-sm flex-col gap-3 border border-monokai-yellow bg-monokai-panel p-3"
+            @click.stop
           >
-            {{ incomeLine(picked.character) }}
-          </p>
-          <p v-if="takenBy(picked)" class="font-mono text-[0.625rem] leading-none tracking-[0.16em] text-monokai-pink uppercase">
-            {{ takenBy(picked) }}
-          </p>
+            <header class="flex items-start gap-2">
+              <span class="size-16 shrink-0 overflow-hidden border border-monokai-line bg-monokai-bg">
+                <img :src="emblemOf(picked.character)" alt="" class="size-full object-cover" />
+              </span>
+              <span class="flex min-w-0 flex-col gap-1">
+                <span class="font-mono text-sm leading-none font-bold tracking-[0.03em] uppercase">
+                  {{ specOf(picked.character).name }}
+                </span>
+                <span class="font-mono text-[0.625rem] leading-none tracking-[0.16em] text-monokai-comment uppercase">
+                  rank {{ String(specOf(picked.character).rank).padStart(2, "0") }}
+                </span>
+              </span>
+            </header>
 
-          <p class="font-mono text-[0.6875rem] leading-snug text-monokai-comment">
-            Choose {{ specOf(picked.character).name }}?
-          </p>
+            <p class="font-mono text-[0.6875rem] leading-snug text-monokai-fg" data-slot="citadels-picker-ability">
+              {{ specOf(picked.character).summary }}
+            </p>
 
-          <footer class="flex justify-end gap-2">
-            <button
-              type="button"
-              data-slot="citadels-picker-cancel"
-              class="border border-monokai-line px-2.5 py-1 font-mono text-[0.625rem] tracking-[0.16em] uppercase focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-monokai-yellow"
-              @click="close"
+            <p
+              v-if="incomeLine(picked.character)"
+              class="font-mono text-[0.625rem] leading-none tracking-[0.16em] text-monokai-yellow uppercase"
             >
-              Cancel
-            </button>
-            <button
-              type="button"
-              data-slot="citadels-picker-confirm"
-              class="bg-monokai-yellow px-2.5 py-1 font-mono text-[0.625rem] font-bold tracking-[0.16em] text-monokai-bg uppercase focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-monokai-fg"
-              @click="confirm"
-            >
-              Choose {{ specOf(picked.character).name }}
-            </button>
-          </footer>
+              {{ incomeLine(picked.character) }}
+            </p>
+            <p v-if="takenBy(picked)" class="font-mono text-[0.625rem] leading-none tracking-[0.16em] text-monokai-pink uppercase">
+              {{ takenBy(picked) }}
+            </p>
+
+            <p class="font-mono text-[0.6875rem] leading-snug text-monokai-comment">
+              Choose {{ specOf(picked.character).name }}?
+            </p>
+
+            <footer class="flex justify-end gap-2">
+              <button
+                type="button"
+                data-slot="citadels-picker-cancel"
+                class="border border-monokai-line px-2.5 py-1 font-mono text-[0.625rem] tracking-[0.16em] uppercase focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-monokai-yellow"
+                @click="close"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                data-slot="citadels-picker-confirm"
+                class="bg-monokai-yellow px-2.5 py-1 font-mono text-[0.625rem] font-bold tracking-[0.16em] text-monokai-bg uppercase focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-monokai-fg"
+                @click="confirm"
+              >
+                Choose {{ specOf(picked.character).name }}
+              </button>
+            </footer>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </Transition>
   </Teleport>
 </template>

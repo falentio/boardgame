@@ -64,3 +64,28 @@
   font-variant-numeric: tabular-nums;
   color: var(--monokai-yellow);
 }
+
+.citadels-overlay-enter-active,
+.citadels-overlay-leave-active {
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 180ms var(--ease-out);
+}
+
+.citadels-overlay-enter-from,
+.citadels-overlay-leave-to {
+  opacity: 0;
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .citadels-overlay-enter-active,
+  .citadels-overlay-leave-active {
+    transition-property: opacity;
+  }
+
+  .citadels-overlay-enter-from,
+  .citadels-overlay-leave-to {
+    transform: none;
+  }
+}
