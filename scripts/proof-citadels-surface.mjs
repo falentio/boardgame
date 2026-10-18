@@ -384,7 +384,13 @@ const REGION_OF = `(el) => {
   for (let y = box.top + box.height / 2; y > 0; y -= 24) {
     for (const x of lefts) {
       const hit = document.elementFromPoint(x + 0.5, y);
-      if (hit !== null && el.contains(hit)) return hit.getAttribute('data-slot') ?? hit.tagName.toLowerCase();
+      if (hit === null || !el.contains(hit)) continue;
+      // Walk up to the nearest named slot: an emblem or a bare tag is not a region name.
+      for (let node = hit; node !== null && el.contains(node); node = node.parentElement) {
+        const slot = node.getAttribute('data-slot');
+        if (slot !== null && slot.startsWith('citadels-')) return slot;
+      }
+      return hit.tagName.toLowerCase();
     }
   }
   return null;
@@ -454,6 +460,31 @@ const CITY = `(() => {
     cards: cards.map(box),
     slots: slots.map(box),
     display: getComputedStyle(city).display,
+  };
+})()`;
+
+const CAST = `(() => {
+  const col = document.querySelector('[data-slot=citadels-global]');
+  if (col === null) return null;
+  const c = col.getBoundingClientRect();
+  const rowsAll = [...col.querySelectorAll('[data-slot=citadels-cast-row]')];
+  const rows = [...col.querySelectorAll('[data-slot=citadels-cast-row]')];
+  const emblems = rows.map((r) => r.querySelector('[data-slot=citadels-cast-emblem]'));
+  const imgs = [...col.querySelectorAll('[data-slot=citadels-cast-emblem] img')];
+  const clipped = [...col.querySelectorAll('*')].filter((el) => {
+    const b = el.getBoundingClientRect();
+    return b.height > 0 && (b.bottom > c.bottom + 0.5 || b.right > c.right + 0.5);
+  });
+  return {
+    rows: rows.length,
+    states: rows.map((r) => r.getAttribute('data-state')),
+    emblem: emblems[0] === null || emblems[0] === undefined ? null : Math.round(emblems[0].getBoundingClientRect().width),
+    loaded: imgs.filter((i) => i.complete && i.naturalWidth > 0).length,
+    clipped: clipped.length,
+    sample: clipped.slice(0, 3).map((el) => (el.getAttribute('data-slot') ?? el.textContent.trim()).slice(0, 24)),
+    scrolls: col.scrollHeight > col.clientHeight + 1,
+    colHeight: Math.round(c.height),
+    scrollHeight: col.scrollHeight,
   };
 })()`;
 
@@ -762,6 +793,24 @@ const main = async () => {
             } else {
               pass(
                 `an empty city draws ${city.slots.length} slots, all ${slotBoxes.join(", ") || "none"}`,
+              );
+            }
+          }
+          const cast = await guestPage.waitFor(
+            `(() => { const imgs = [...document.querySelectorAll('[data-slot=citadels-cast-emblem] img')]; return imgs.length > 0 && imgs.every((i) => i.complete && i.naturalWidth > 0); })()`,
+            { timeoutMs: 8000 },
+          ).then((ok) => (ok ? guestPage.eval(CAST) : guestPage.eval(CAST)));
+          if (cast === null) {
+            fail("the global column could not be read");
+          } else if (cast.loaded !== cast.rows) {
+            fail(`${cast.loaded} of ${cast.rows} cast emblems loaded`);
+          } else {
+            pass(
+              `the global cast draws ${cast.rows} rows with ${cast.loaded} emblems at ${cast.emblem}px`,
+            );
+            if (cast.scrolls) {
+              info(
+                `the global column scrolls: content ${cast.scrollHeight}px in ${cast.colHeight}px`,
               );
             }
           }
