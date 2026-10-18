@@ -14,7 +14,12 @@ import {
   type CitadelsView,
 } from "#shared/core/lockstep/games/citadels/index.ts";
 import { seatId, type SeatId } from "#shared/rooms/ids.ts";
-import { citadelsBoardOf, citadelsPurposeLabel, phaseLabel } from "../citadels-board.ts";
+import {
+  citadelsBoardOf,
+  citadelsPurposeLabel,
+  phaseLabel,
+  type CitadelsBoard,
+} from "../citadels-board.ts";
 import { windowChoiceValue } from "../window-choices.ts";
 import {
   advance,
@@ -125,28 +130,63 @@ test("the window names its purpose and whether the viewer owes it", () => {
   expect(theirs.table.window?.owedByMe).toBe(false);
 });
 
-test("the cast marks the faceup discards, the viewer's own pick, and the card in flight", () => {
-  const base = view(ANN);
-  const faceup = base.cast[0];
-  const picked = base.cast[1];
-  const inFlight = base.cast[2];
-  if (faceup === undefined || picked === undefined || inFlight === undefined) {
-    throw new Error("the base cast is too small for this test");
+/** Fold the real draft until the viewer has picked and a public discard is up. */
+const midDraft = (): CitadelsState => {
+  let folded = genesis();
+  for (let i = 0; i < 60; i += 1) {
+    const mine = citadels.project(folded, ANN);
+    if (mine.myPick !== null && mine.faceup.length > 0) return folded;
+    folded = autoStep(folded);
   }
-  const board = citadelsBoardOf(
-    withView(base, {
-      faceup: [faceup],
-      myPick: picked,
-      pending: { actor: BOB, character: inFlight, target: ANN, cards: 2 },
-    }),
-    names(),
+  throw new Error("no draft pick in 60 frames");
+};
+
+/** Fold the real round until a character's turn is in flight. */
+const inFlightTurn = (): CitadelsState => {
+  let folded = genesis();
+  for (let i = 0; i < 4000; i += 1) {
+    const pending = folded.pending;
+    if (openPurpose(folded) === "turn" && pending !== null && pending.character !== null) {
+      return folded;
+    }
+    folded = autoStep(folded);
+  }
+  throw new Error("no turn with a character in flight in 4000 frames");
+};
+
+const castStateIn = (board: CitadelsBoard, character: CharacterId) =>
+  board.table.cast.find((slot) => slot.character === character)?.state;
+
+test("a real draft's cast marks the faceup discard and the viewer's own pick", () => {
+  const state = midDraft();
+  const mine = citadels.project(state, ANN);
+  const board = citadelsBoardOf(mine, names());
+  const faceup = mine.faceup[0];
+  const picked = mine.myPick;
+  if (faceup === undefined || picked === null) {
+    throw new Error("the draft lost its public discard or the viewer's pick");
+  }
+  expect(castStateIn(board, faceup)).toBe("faceup");
+  expect(castStateIn(board, picked)).toBe("mine");
+  expect(board.table.cast.filter((slot) => slot.state === "available")).toHaveLength(
+    mine.cast.length - 2,
   );
-  const stateOf = (character: string) =>
-    board.table.cast.find((slot) => slot.character === character)?.state;
-  expect(stateOf(inFlight)).toBe("pending");
-  expect(stateOf(picked)).toBe("mine");
-  expect(stateOf(faceup)).toBe("faceup");
-  expect(board.table.cast.filter((slot) => slot.state === "available")).toHaveLength(5);
+  expect(board.table.pending).toBeNull();
+});
+
+test("a real turn's cast marks the character in flight", () => {
+  const state = inFlightTurn();
+  const inFlight = state.pending?.character ?? null;
+  if (inFlight === null) throw new Error("the fold reached no character in flight");
+  const board = citadelsBoardOf(citadels.project(state, ANN), names());
+  expect(castStateIn(board, inFlight)).toBe("pending");
+  expect(board.table.cast.filter((slot) => slot.state === "available")).toHaveLength(
+    state.cast.length - 1,
+  );
+  // A turn has no draft, so `myPick` and `faceup` are empty and neither "mine"
+  // nor "faceup" can share a cast with "pending".
+  expect(board.table.myPick).toBeNull();
+  expect(board.table.cast.filter((slot) => slot.state === "faceup")).toHaveLength(0);
 });
 
 test("the cast carries each character's name and rank", () => {
