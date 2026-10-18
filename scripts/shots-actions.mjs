@@ -548,13 +548,23 @@ const runLiveSurface = async () => {
     // A character's own effect can open a window between the gather and the build
     // (the draft below prefers a character that opens none), and such a window takes
     // a real press to answer, so answer it until the hand comes back pickable.
-    const barrier = Date.now() + 25000;
+    // A character's own window after the gather is answered by its own seat's press,
+    // and by the engine's input clock when the window owes every live seat and only
+    // one of them has a control: the frame seals and carries the missing seat at
+    // shared/core/lockstep/session.ts:140 after the 30s of useGame.ts:46. The hand
+    // cannot come back pickable inside that clock, so the budget clears it.
+    const barrier = Date.now() + 75000;
     let hand = await hostPage.eval(HAND);
     while ((hand.length === 0 || hand[0].disabled) && Date.now() < barrier) {
       await hostPage.clickReal("[data-slot=citadels-surface] [data-slot=citadels-choice-option]");
       await delay(280);
       hand = await hostPage.eval(HAND);
     }
+    check(
+      hand.length > 0 && hand[0].disabled === false,
+      "the turn hand comes back pickable once the gather's window closes",
+      hand.map((card) => card.index + (card.disabled ? ":off" : ":on")),
+    );
     const before = await hostPage.eval(STATE);
     const affordable = hand.filter((card) => Number.isFinite(card.cost) && card.cost <= before.gold);
     const picked = affordable.find((card) => card.index !== 0) ?? affordable[0] ?? null;
