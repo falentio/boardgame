@@ -27,7 +27,7 @@ const pfp = defaultAvatarUrl(props.seat.seat);
     :aria-label="`${seat.name}: ${seat.gold} gold, ${seat.city.length} of 8 districts, ${handCount} in hand`"
     :data-mine="seat.kind === 'me' ? '' : undefined"
     type="button"
-    class="citadels-piece citadels-piece--thick flex w-full flex-col gap-1 p-1.5 text-left"
+    class="citadels-piece citadels-piece--thick citadels-piece--still flex w-full flex-col gap-1 p-1.5 text-left"
     @click="emit('focus')"
   >
     <span class="flex items-center gap-1.5">
