@@ -357,7 +357,8 @@ const theaterSwap: ChoiceBuilder = (ctx) => [
   pass("HOLD"),
 ];
 
-const duo = (label: string): ChoiceBuilder => () => [pass(label)];
+/** A window whose owner has nothing to pick: the engine applies it on confirm. */
+const confirmOnly: ChoiceBuilder = () => [pass("CONTINUE")];
 
 /** One builder per window purpose, so a new purpose has to declare its inputs here. */
 const CHOICE_BUILDERS: Record<WindowPurpose, ChoiceBuilder> = {
@@ -384,10 +385,10 @@ const CHOICE_BUILDERS: Record<WindowPurpose, ChoiceBuilder> = {
   "trader-build": traderBuild,
   "warlord-destroy": warlordDestroy,
   "tax-collect": taxCollect,
-  "witch-resume": duo("CONTINUE"),
-  "queen-income": duo("CONTINUE"),
-  "thief-rob": duo("CONTINUE"),
-  "witch-takeover": duo("CONTINUE"),
+  "witch-resume": confirmOnly,
+  "queen-income": confirmOnly,
+  "thief-rob": confirmOnly,
+  "witch-takeover": confirmOnly,
   "blackmailer-threat": blackmailerThreat,
   "armory-destroy": armoryDestroy,
   "theatre-swap": theaterSwap,
