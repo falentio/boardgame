@@ -87,9 +87,34 @@ const choose = (action: Choice): void => {
 <style scoped>
 /* Tailwind's hover variant sits behind (hover: hover), which a touch screen and a
    headless browser both refuse; the tile answers a hover wherever the pointer is. */
+[data-slot="citadels-action"] {
+  transition:
+    border-color 150ms ease,
+    color 150ms ease,
+    translate 150ms ease,
+    scale 120ms var(--ease-out);
+}
+
 [data-slot="citadels-action"]:hover:not(:disabled) {
   border-color: var(--monokai-yellow);
   color: var(--monokai-yellow);
-  translate: 0 -1px;
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  [data-slot="citadels-action"]:hover:not(:disabled) {
+    translate: 0 -1px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-slot="citadels-action"]:active:not(:disabled) {
+    scale: 0.97;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="citadels-action"] {
+    transition-property: border-color, color;
+  }
 }
 </style>
