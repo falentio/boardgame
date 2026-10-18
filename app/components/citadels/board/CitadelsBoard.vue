@@ -2,6 +2,7 @@
 import { computed, ref, watch } from "vue";
 import { ArrowLeft, Coins } from "@lucide/vue";
 import CitadelsHand from "./CitadelsHand.vue";
+import CitadelsKeep from "./CitadelsKeep.vue";
 import CitadelsPick from "./CitadelsPick.vue";
 import CitadelsSeat from "./CitadelsSeat.vue";
 import CitadelsTable from "./CitadelsTable.vue";
@@ -10,7 +11,7 @@ import type { CitadelsBoard, SeatPlate } from "@/composables/citadels-board.ts";
 import type { CharacterId } from "#shared/core/lockstep/games/citadels/index.ts";
 
 const props = defineProps<{ board: CitadelsBoard }>();
-const emit = defineEmits<{ pick: [character: CharacterId] }>();
+const emit = defineEmits<{ pick: [character: CharacterId]; keep: [index: number] }>();
 
 const focusedSeat = ref<SeatPlate["seat"] | null>(null);
 
@@ -115,6 +116,8 @@ const claim = computed(() => {
           <p v-else role="status" class="text-muted-foreground">No window open.</p>
           <p v-if="claim" class="text-xs leading-snug text-muted-foreground">{{ claim }}</p>
         </section>
+
+        <CitadelsKeep :board="board" @keep="(index) => emit('keep', index)" />
 
         <CitadelsHand :hand="board.me.hand" />
       </template>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { specOfCharacter } from "#shared/core/lockstep/games/citadels/index.ts";
 import type { CastSlot, CitadelsBoard } from "@/composables/citadels-board.ts";
 import type { CharacterId } from "#shared/core/lockstep/games/citadels/index.ts";
@@ -50,99 +50,173 @@ const confirm = (): void => {
   emit("pick", slot.character);
   picked.value = null;
 };
+
+const section = ref<HTMLElement | null>(null);
+const panel = ref<HTMLElement | null>(null);
+const trigger = ref<HTMLElement | null>(null);
+
+/** The picker hangs off the self column, so it teleports to the game surface rather than covering that column alone. */
+const surface = ref<HTMLElement | null>(null);
+onMounted(() => {
+  surface.value = document.querySelector<HTMLElement>("[data-slot=citadels-surface]");
+});
+
+const focusables = (): HTMLElement[] => {
+  if (panel.value === null) return [];
+  return [
+    ...panel.value.querySelectorAll<HTMLElement>(
+      "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
+    ),
+  ];
+};
+
+const close = (): void => {
+  picked.value = null;
+};
+
+const choose = (slot: CastSlot): void => {
+  trigger.value = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  picked.value = slot;
+};
+
+const onKeydown = (event: KeyboardEvent): void => {
+  if (picked.value === null) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    close();
+    return;
+  }
+  if (event.key !== "Tab") return;
+  const ring = focusables();
+  const first = ring[0];
+  const last = ring[ring.length - 1];
+  if (first === undefined || last === undefined) return;
+  const active = document.activeElement;
+  const escaped = active === null || !ring.includes(active as HTMLElement);
+  if (event.shiftKey && (escaped || active === first)) {
+    event.preventDefault();
+    last.focus();
+    return;
+  }
+  if (!event.shiftKey && (escaped || active === last)) {
+    event.preventDefault();
+    first.focus();
+  }
+};
+
+watch(picked, async (slot) => {
+  if (slot !== null) {
+    await nextTick();
+    focusables()[0]?.focus();
+    return;
+  }
+  const back = trigger.value;
+  if (back !== null && back.isConnected) back.focus();
+});
+
+watch(open, async (still) => {
+  if (!still) return;
+  await nextTick();
+  section.value?.focus();
+});
 </script>
 <template>
-  <section
-    v-if="open"
-    data-slot="citadels-picker"
-    aria-label="Choose a character"
-    class="absolute inset-0 z-40 flex flex-col gap-3 overflow-y-auto bg-monokai-bg/30 p-4 backdrop-blur-[2px]"
-  >
-    <header class="flex flex-wrap items-baseline justify-between gap-2">
-      <h2 class="font-mono text-sm leading-none font-bold tracking-[0.18em] uppercase">
-        Pick a character
-      </h2>
-      <span class="font-mono text-[0.625rem] leading-none tracking-[0.16em] text-monokai-comment uppercase">
-        round {{ table.round }} · {{ table.cast.length }} in the draft
-      </span>
-    </header>
-
-    <p v-if="table.pending" role="status" class="font-mono text-[0.6875rem] leading-tight text-monokai-comment">
-      {{ table.pending.actorName }} claims {{ table.pending.characterName ?? "a character" }}
-    </p>
-
-    <ul data-slot="citadels-picker-grid" class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
-      <li v-for="slot in table.cast" :key="slot.character" class="min-w-0">
-        <CitadelsCharacterCard
-          :slot="slot"
-          :picked="picked?.character === slot.character"
-          @choose="picked = slot"
-        />
-      </li>    </ul>
-
-    <div
-      v-if="picked"
-      data-slot="citadels-picker-dialog"
-      role="dialog"
-      aria-modal="true"
-      :aria-label="`Choose ${specOf(picked.character).name}?`"
-      class="absolute inset-0 z-50 flex items-center justify-center bg-monokai-bg/30 p-4"
+  <Teleport :to="surface ?? 'body'">
+    <section
+      v-if="open"
+      ref="section"
+      data-slot="citadels-picker"
+      role="region"
+      aria-label="Choose a character"
+      tabindex="-1"
+      class="absolute inset-0 z-40 flex flex-col gap-3 overflow-y-auto bg-monokai-bg/30 p-4 backdrop-blur-[2px] focus-visible:outline-none"
     >
+      <header class="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 class="font-mono text-sm leading-none font-bold tracking-[0.18em] uppercase">
+          Pick a character
+        </h2>
+        <span class="font-mono text-[0.625rem] leading-none tracking-[0.16em] text-monokai-comment uppercase">
+          round {{ table.round }} · {{ table.cast.length }} in the draft
+        </span>
+      </header>
+
+      <p v-if="table.pending" role="status" class="font-mono text-[0.6875rem] leading-tight text-monokai-comment">
+        {{ table.pending.actorName }} claims {{ table.pending.characterName ?? "a character" }}
+      </p>
+
+      <ul data-slot="citadels-picker-grid" class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
+        <li v-for="slot in table.cast" :key="slot.character" class="min-w-0">
+          <CitadelsCharacterCard
+            :slot="slot"
+            :picked="picked?.character === slot.character"
+            @choose="choose(slot)"
+          />
+        </li>    </ul>
+
       <div
-        class="flex w-full max-w-sm flex-col gap-3 border border-monokai-yellow bg-monokai-panel p-3"
-        @click.stop
+        v-if="picked"
+        data-slot="citadels-picker-dialog"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="`Choose ${specOf(picked.character).name}?`"
+        class="absolute inset-0 z-50 flex items-center justify-center bg-monokai-bg/30 p-4"
       >
-        <header class="flex items-start gap-2">
-          <span class="size-16 shrink-0 overflow-hidden border border-monokai-line bg-monokai-bg">
-            <img :src="emblemOf(picked.character)" alt="" class="size-full object-cover" />
-          </span>
-          <span class="flex min-w-0 flex-col gap-1">
-            <span class="font-mono text-sm leading-none font-bold tracking-[0.03em] uppercase">
-              {{ specOf(picked.character).name }}
-            </span>
-            <span class="font-mono text-[0.625rem] leading-none tracking-[0.16em] text-monokai-comment uppercase">
-              rank {{ String(specOf(picked.character).rank).padStart(2, "0") }}
-            </span>
-          </span>
-        </header>
-
-        <p class="font-mono text-[0.6875rem] leading-snug text-monokai-fg" data-slot="citadels-picker-ability">
-          {{ specOf(picked.character).summary }}
-        </p>
-
-        <p
-          v-if="incomeLine(picked.character)"
-          class="font-mono text-[0.625rem] leading-none tracking-[0.16em] text-monokai-yellow uppercase"
+        <div
+          class="flex w-full max-w-sm flex-col gap-3 border border-monokai-yellow bg-monokai-panel p-3"
+          @click.stop
         >
-          {{ incomeLine(picked.character) }}
-        </p>
-        <p v-if="takenBy(picked)" class="font-mono text-[0.625rem] leading-none tracking-[0.16em] text-monokai-pink uppercase">
-          {{ takenBy(picked) }}
-        </p>
+          <header class="flex items-start gap-2">
+            <span class="size-16 shrink-0 overflow-hidden border border-monokai-line bg-monokai-bg">
+              <img :src="emblemOf(picked.character)" alt="" class="size-full object-cover" />
+            </span>
+            <span class="flex min-w-0 flex-col gap-1">
+              <span class="font-mono text-sm leading-none font-bold tracking-[0.03em] uppercase">
+                {{ specOf(picked.character).name }}
+              </span>
+              <span class="font-mono text-[0.625rem] leading-none tracking-[0.16em] text-monokai-comment uppercase">
+                rank {{ String(specOf(picked.character).rank).padStart(2, "0") }}
+              </span>
+            </span>
+          </header>
 
-        <p class="font-mono text-[0.6875rem] leading-snug text-monokai-comment">
-          Choose {{ specOf(picked.character).name }}?
-        </p>
+          <p class="font-mono text-[0.6875rem] leading-snug text-monokai-fg" data-slot="citadels-picker-ability">
+            {{ specOf(picked.character).summary }}
+          </p>
 
-        <footer class="flex justify-end gap-2">
-          <button
-            type="button"
-            data-slot="citadels-picker-cancel"
-            class="border border-monokai-line px-2.5 py-1 font-mono text-[0.625rem] tracking-[0.16em] uppercase focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-monokai-yellow"
-            @click="picked = null"
+          <p
+            v-if="incomeLine(picked.character)"
+            class="font-mono text-[0.625rem] leading-none tracking-[0.16em] text-monokai-yellow uppercase"
           >
-            Cancel
-          </button>
-          <button
-            type="button"
-            data-slot="citadels-picker-confirm"
-            class="bg-monokai-yellow px-2.5 py-1 font-mono text-[0.625rem] font-bold tracking-[0.16em] text-monokai-bg uppercase focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-monokai-fg"
-            @click="confirm"
-          >
-            Choose {{ specOf(picked.character).name }}
-          </button>
-        </footer>
+            {{ incomeLine(picked.character) }}
+          </p>
+          <p v-if="takenBy(picked)" class="font-mono text-[0.625rem] leading-none tracking-[0.16em] text-monokai-pink uppercase">
+            {{ takenBy(picked) }}
+          </p>
+
+          <p class="font-mono text-[0.6875rem] leading-snug text-monokai-comment">
+            Choose {{ specOf(picked.character).name }}?
+          </p>
+
+          <footer class="flex justify-end gap-2">
+            <button
+              type="button"
+              data-slot="citadels-picker-cancel"
+              class="border border-monokai-line px-2.5 py-1 font-mono text-[0.625rem] tracking-[0.16em] uppercase focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-monokai-yellow"
+              @click="close"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              data-slot="citadels-picker-confirm"
+              class="bg-monokai-yellow px-2.5 py-1 font-mono text-[0.625rem] font-bold tracking-[0.16em] text-monokai-bg uppercase focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-monokai-fg"
+              @click="confirm"
+            >
+              Choose {{ specOf(picked.character).name }}
+            </button>
+          </footer>
+        </div>
       </div>
-    </div>
-  </section>
+    </section>
+  </Teleport>
 </template>
