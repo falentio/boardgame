@@ -6,7 +6,7 @@
 // Usage: node scripts/shots-motion.mjs [--port 3001]
 import { mkdirSync, readFileSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
-import { checkedArgs, createShots, originOf, summarize } from "./lib/shots-harness.mjs";
+import { checkedArgs, createShots, every, originOf, summarize } from "./lib/shots-harness.mjs";
 
 const args = checkedArgs(process.argv.slice(2), ["--port"]);
 const DEBUG_PORT = 9551;
@@ -181,8 +181,8 @@ const measureTransitions = async (page) => {
   console.log("   picker overlay (enter: mount, leave: unmount) held at 60ms: " + JSON.stringify(pickerEnter));
   const enterMid = midFlight(pickerEnter);
   check(pickerEnter.transitions >= 2 && enterMid.partial, "the picker is still mid-flight at 60ms: partial opacity and a scale between 0.97 and 1", JSON.stringify(enterMid) + " " + midShot);
-  check(partsOf(pickerEnter.dur).every((part) => part === "0.18s") && easingsOf(pickerEnter.ease).every((part) => part === "cubic-bezier(0.23, 1, 0.32, 1)"), "the overlay runs 180ms on the board's own ease-out token", pickerEnter.dur + " | " + pickerEnter.ease);
-  check(pickerEnter.seekedTo.every((at) => at === 60), "the captured frame is the 60ms sample of the browser's own timeline", JSON.stringify(pickerEnter.seekedTo));
+  check(every(partsOf(pickerEnter.dur), (part) => part === "0.18s") && every(easingsOf(pickerEnter.ease), (part) => part === "cubic-bezier(0.23, 1, 0.32, 1)"), "the overlay runs 180ms on the board's own ease-out token", pickerEnter.dur + " | " + pickerEnter.ease);
+  check(every(pickerEnter.seekedTo, (at) => at === 60), "the captured frame is the 60ms sample of the browser's own timeline", JSON.stringify(pickerEnter.seekedTo));
 
   const pickerLeave = JSON.parse(await holdLeave(page, "turn", "citadels-picker"));
   const leaveShot = await page.shot("overlay-leave-60ms");
@@ -214,7 +214,7 @@ const measureStateInk = async (page) => {
   console.log("   faceup row ink: " + draftRow.shadow);
   console.log("   pending row ink: " + turnRow.shadow);
   check(draftRow.shadow !== turnRow.shadow, "the row ink differs between two engine states", turnRow.shadow.slice(0, 40));
-  check(partsOf(turnRow.prop).includes("box-shadow") && partsOf(turnRow.dur).every((part) => part === "0.15s") && easingsOf(turnRow.ease).every((part) => part === "ease"), "a row repaints its ink over 150ms ease instead of snapping", turnRow.prop + " | " + turnRow.dur + " | " + turnRow.ease);
+  check(partsOf(turnRow.prop).includes("box-shadow") && every(partsOf(turnRow.dur), (part) => part === "0.15s") && every(easingsOf(turnRow.ease), (part) => part === "ease"), "a row repaints its ink over 150ms ease instead of snapping", turnRow.prop + " | " + turnRow.dur + " | " + turnRow.ease);
   return turnRow;
 };
 

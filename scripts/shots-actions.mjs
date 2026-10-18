@@ -5,7 +5,7 @@ import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
-import { checkedArgs, originOf, serverAnswers } from "./lib/shots-harness.mjs";
+import { checkedArgs, every, originOf, serverAnswers } from "./lib/shots-harness.mjs";
 
 // Usage: node scripts/shots-actions.mjs [--port 3000]
 const args = checkedArgs(process.argv.slice(2), ["--port"]);
@@ -268,9 +268,9 @@ const runHarness = async () => {
     );
     console.log("shape:", JSON.stringify(shape));
     check(JSON.stringify(shape.twoCards.map((b) => b.action)) === JSON.stringify(["gold", "draw", "build", "pass"]), "four controls in order (gold, draw, build, pass)", shape.twoCards.map((b) => b.action));
-    check(shape.twoCards.every((b) => b.tag === "BUTTON"), "each control is a real <button>", shape.twoCards.map((b) => b.tag));
+    check(every(shape.twoCards, (b) => b.tag === "BUTTON"), "each control is a real <button>", shape.twoCards.map((b) => b.tag));
     check(JSON.stringify(shape.twoCards.filter((b) => !b.disabled).map((b) => b.action)) === JSON.stringify(["gold", "draw", "pass"]), "two-card hand: build waits for a hand card to be picked", shape.twoCards);
-    check(shape.pickedCard.every((b) => b.disabled === false), "a picked hand card arms all four controls", shape.pickedCard);
+    check(every(shape.pickedCard, (b) => b.disabled === false), "a picked hand card arms all four controls", shape.pickedCard);
     check(JSON.stringify(shape.noCards.map((b) => b.action)) === JSON.stringify(["gold", "draw", "build", "pass"]), "empty hand still renders all four", shape.noCards.map((b) => b.action));
     check(JSON.stringify(shape.noCards.filter((b) => b.disabled).map((b) => b.action)) === JSON.stringify(["build"]), "empty hand: only build disabled", shape.noCards.filter((b) => b.disabled).map((b) => b.action));
     check(shape.otherWindow === false, "keep window renders nothing", shape.otherWindow);
@@ -331,8 +331,8 @@ const runHarness = async () => {
       }),
     );
     console.log("layout:", JSON.stringify(row));
-    check(row.buttons.every((c) => c.h > 0 && c.w > 0), "every control has a non-zero box", row.buttons);
-    check(row.buttons.every((c) => c.y === row.buttons[0].y), "the four controls sit on one row", row.buttons.map((c) => c.y));
+    check(every(row.buttons, (c) => c.h > 0 && c.w > 0), "every control has a non-zero box", row.buttons);
+    check(every(row.buttons, (c) => c.y === row.buttons[0].y), "the four controls sit on one row", row.buttons.map((c) => c.y));
   } finally {
     console.log("harness console errors:", page.errors.length ? page.errors.slice(0, 3) : "none");
     page.close();
@@ -472,8 +472,8 @@ const runLiveSurface = async () => {
     check(proof.inSelfColumn, "the action slot sits inside the self column");
     check(proof.count === 4, "the action slot holds four [data-slot=citadels-action] elements", proof.count);
     check(JSON.stringify(proof.actions) === JSON.stringify(["gold", "draw", "build", "pass"]), "the four live controls are gold, draw, build, pass", proof.actions);
-    check(proof.tags.every((tag) => tag === "BUTTON"), "every live control is a real <button>", proof.tags);
-    check(proof.radius.every((r) => r === "0px"), "every live control has square corners", proof.radius);
+    check(every(proof.tags, (tag) => tag === "BUTTON"), "every live control is a real <button>", proof.tags);
+    check(every(proof.radius, (r) => r === "0px"), "every live control has square corners", proof.radius);
     check(rivalSawActions === null, "the rival's surface renders no turn control while mine owes the turn", rivalSawActions);
 
     const hover = await hostPage.hover("[data-slot=citadels-surface] [data-action=gold]");

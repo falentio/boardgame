@@ -6,7 +6,7 @@
 // Usage: node scripts/shots-choice.mjs [--port 3003] [--harness-only]
 import { mkdirSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
-import { CAST, checkedArgs, createShots, originOf, summarize } from "./lib/shots-harness.mjs";
+import { CAST, checkedArgs, createShots, every, originOf, summarize } from "./lib/shots-harness.mjs";
 
 const args = checkedArgs(process.argv.slice(2), ["--port", "--harness-only"]);
 const HARNESS_ONLY = args.includes("--harness-only");
@@ -26,7 +26,7 @@ const { check, failures, launch, openRoom } = createShots({
 const PROBE = "(() => {const P = \"[data-slot=choice-demo-panel]\", C = \"[data-slot=citadels-choice]\", O = \"[data-slot=citadels-choice-option]\";return [...document.querySelectorAll(P)].map((panel) => ({purpose: panel.getAttribute('data-purpose'), model: Number(panel.getAttribute('data-model-count')), frames: Number(panel.getAttribute('data-frames')),section: panel.querySelector(C) !== null, count: panel.querySelectorAll(O).length,kinds: [...new Set([...panel.querySelectorAll(O)].map((one) => one.getAttribute('data-choice-kind')))],values: [...panel.querySelectorAll(O)].map((one) => one.getAttribute('data-choice-value')),}));})()";
 const CLICK = "(() => {const P = \"[data-slot=choice-demo-panel]\", O = \"[data-slot=citadels-choice-option]\", L = \"[data-slot=choice-demo-log]\";const panel = [...document.querySelectorAll(P)].find((one) => one.getAttribute('data-purpose') === 'choose-character');const option = panel.querySelector(O);const card = { label: option.querySelector('span').textContent.trim(), kind: option.getAttribute('data-choice-kind'), value: option.getAttribute('data-choice-value') };option.click();return new Promise((resolve) => setTimeout(() => resolve({ ...card, log: document.querySelector(L).textContent.trim() }), 150));})()";
 const RECT = "(() => {const P = \"[data-slot=choice-demo-panel]\";const panel = [...document.querySelectorAll(P)].find((one) => one.getAttribute('data-purpose') === 'warlord-destroy');const box = panel.getBoundingClientRect(); return { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) };})()";
-const LIVE_FACTS = "(() => {const S = \"[data-slot=citadels-surface]\", C = \"[data-slot=citadels-choice]\", O = \"[data-slot=citadels-choice-option]\";const surface = document.querySelector(S); const inside = surface === null ? null : surface.querySelector(C);const options = inside === null ? [] : [...inside.querySelectorAll(O)];return { surface: surface !== null, insideSurface: inside !== null, purpose: inside === null ? null : inside.getAttribute('data-choice-purpose'),count: options.length, kinds: [...new Set(options.map((one) => one.getAttribute('data-choice-kind')))].filter(Boolean),values: options.map((one) => one.getAttribute('data-choice-value')),labels: options.map((one) => one.textContent.trim()).slice(0, 8),framed: options.every((one) => getComputedStyle(one).borderRadius === '0px') };})()";
+const LIVE_FACTS = "(() => {const S = \"[data-slot=citadels-surface]\", C = \"[data-slot=citadels-choice]\", O = \"[data-slot=citadels-choice-option]\";const surface = document.querySelector(S); const inside = surface === null ? null : surface.querySelector(C);const options = inside === null ? [] : [...inside.querySelectorAll(O)];return { surface: surface !== null, insideSurface: inside !== null, purpose: inside === null ? null : inside.getAttribute('data-choice-purpose'),count: options.length, kinds: [...new Set(options.map((one) => one.getAttribute('data-choice-kind')))].filter(Boolean),values: options.map((one) => one.getAttribute('data-choice-value')),labels: options.map((one) => one.textContent.trim()).slice(0, 8),framed: options.length > 0 && options.every((one) => getComputedStyle(one).borderRadius === '0px') };})()";
 
 const harnessRun = async () => {
   const browser = await launch({ label: "harness" });
@@ -38,8 +38,8 @@ const harnessRun = async () => {
       const named = `${panel.purpose} (${panel.frames} frames)`;
       check(panel.section, "the choice section renders for " + named);
       check(panel.count === panel.model && panel.model > 0, "the controls match the model for " + named, `${panel.count}/${panel.model}`);
-      check(panel.kinds.every((kind) => CHOICE_KINDS.includes(kind)), "every control carries a kind for " + named, panel.kinds.join(","));
-      check(panel.values.every((value) => typeof value === "string" && value.length > 0), "every control carries a value for " + named, panel.values.join(","));
+      check(every(panel.kinds, (kind) => CHOICE_KINDS.includes(kind)), "every control carries a kind for " + named, panel.kinds.join(","));
+      check(every(panel.values, (value) => typeof value === "string" && value.length > 0), "every control carries a value for " + named, panel.values.join(","));
     }
     const kinds = new Set(panels.flatMap((panel) => panel.kinds));
     check(["seat", "character", "type", "district", "card"].every((kind) => kinds.has(kind)), "seat, character, type, district and card all render", [...kinds].join(","));
@@ -104,8 +104,8 @@ const liveRun = async () => {
     console.log("live choice: " + JSON.stringify(live));
     check(live.insideSurface, "the choice section renders inside the live surface root");
     check(live.count > 0, "the live window offers at least one control", String(live.count));
-    check(live.kinds.every((kind) => CHOICE_KINDS.includes(kind)), "every live control carries a kind", live.kinds.join(","));
-    check(live.values.every((value) => typeof value === "string" && value.length > 0), "every live control carries a value", live.values.join(","));
+    check(every(live.kinds, (kind) => CHOICE_KINDS.includes(kind)), "every live control carries a kind", live.kinds.join(","));
+    check(every(live.values, (value) => typeof value === "string" && value.length > 0), "every live control carries a value", live.values.join(","));
     check(live.framed, "the live tiles keep square corners");
     await actor.browser.page.shot("live-window");
 

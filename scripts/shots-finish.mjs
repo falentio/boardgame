@@ -4,7 +4,7 @@
 // Usage: node scripts/shots-finish.mjs [--port 3001] [--harness-only] [--terminal]
 import { mkdirSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
-import { CAST, checkedArgs, createShots, originOf, summarize } from "./lib/shots-harness.mjs";
+import { CAST, checkedArgs, createShots, every, originOf, summarize } from "./lib/shots-harness.mjs";
 
 const args = checkedArgs(process.argv.slice(2), ["--port", "--harness-only", "--terminal"]);
 const HARNESS_ONLY = args.includes("--harness-only");
@@ -174,7 +174,7 @@ const liveRun = async () => {
     console.log("live terminal: " + JSON.stringify(terminal));
     const ended = terminal.filter((facts) => facts !== null);
     if (ended.length === 0) info("no seat reached the over state in this run", code);
-    else check(ended.every((f) => f.insideSurface && f.winner !== null), "the over state renders a framed plate with the winner inside the live surface", JSON.stringify(ended));
+    else check(every(ended, (f) => f.insideSurface && f.winner !== null), "the over state renders a framed plate with the winner inside the live surface", JSON.stringify(ended));
   } finally {
     hostBrowser.close();
     guestBrowser.close();
@@ -336,12 +336,12 @@ const terminalRun = async () => {
     }
     const all = await Promise.all(seats.map((seat) => seat.page.evalFn(terminalFacts)));
     console.log("live terminal: " + JSON.stringify(all));
-    check(all.every((facts) => facts !== null), "both seats read the over state from their own board");
-    check(all.every((facts) => facts.insideSurface), "the over state renders inside the live surface root");
-    check(all.every((facts) => facts.winner !== null), "the plate names the winner", JSON.stringify(all.map((facts) => facts.winner)));
-    check(all.every((facts) => facts.score !== null && facts.score.length > 0), "the plate carries the winner's tally", JSON.stringify(all.map((facts) => facts.score)));
-    check(all.every((facts) => facts.radius === "0px" && facts.frame.includes("inset")), "the plate is a square framed piece", JSON.stringify(all.map((facts) => facts.radius + " " + facts.frame.slice(0, 60))));
-    check(all.every((facts) => facts.exitRadius === "0px" && facts.exitFrame.includes("inset") && facts.underlined === "none"), "the way out is a framed control, not an underlined link", JSON.stringify(all.map((facts) => facts.exitTag + " " + facts.underlined + " " + facts.exitRadius)));
+    check(every(all, (facts) => facts !== null), "both seats read the over state from their own board");
+    check(every(all, (facts) => facts.insideSurface), "the over state renders inside the live surface root");
+    check(every(all, (facts) => facts.winner !== null), "the plate names the winner", JSON.stringify(all.map((facts) => facts.winner)));
+    check(every(all, (facts) => facts.score !== null && facts.score.length > 0), "the plate carries the winner's tally", JSON.stringify(all.map((facts) => facts.score)));
+    check(every(all, (facts) => facts.radius === "0px" && facts.frame.includes("inset")), "the plate is a square framed piece", JSON.stringify(all.map((facts) => facts.radius + " " + facts.frame.slice(0, 60))));
+    check(every(all, (facts) => facts.exitRadius === "0px" && facts.exitFrame.includes("inset") && facts.underlined === "none"), "the way out is a framed control, not an underlined link", JSON.stringify(all.map((facts) => facts.exitTag + " " + facts.underlined + " " + facts.exitRadius)));
     await seats[strong].page.shot("terminal-plate");
     await seats[weak].page.shot("terminal-plate-other-seat");
   } finally {

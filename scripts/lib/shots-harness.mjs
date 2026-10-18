@@ -45,6 +45,9 @@ export const originOf = (args, { defaultPort, env = process.env }) => {
   return "http://localhost:" + port;
 };
 
+/** An every() over no items is true, so a list of controls read from a page that drew none has to fail on its own. */
+export const every = (items, predicate) => items.length > 0 && items.every(predicate);
+
 export const summarize = (failed) => (failed === 0 ? "ALL CHECKS PASS" : failed + " CHECK(S) FAILED");
 
 const freePort = () =>

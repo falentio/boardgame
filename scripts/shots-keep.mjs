@@ -7,7 +7,7 @@
 // Usage: node scripts/shots-keep.mjs [--port 3000] [--harness-only]
 import { mkdirSync, writeFileSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
-import { CAST, checkedArgs, createShots, originOf, summarize } from "./lib/shots-harness.mjs";
+import { CAST, checkedArgs, createShots, every, originOf, summarize } from "./lib/shots-harness.mjs";
 
 const args = checkedArgs(process.argv.slice(2), ["--port", "--harness-only"]);
 const HARNESS_ONLY = args.includes("--harness-only");
@@ -112,11 +112,11 @@ const harnessRun = async () => {
     console.log("keep: " + JSON.stringify(window0));
     check(window0.cards === 2, "exactly two keep cards render", String(window0.cards));
     check(JSON.stringify(window0.index) === JSON.stringify(["0", "1"]), "the cards carry the pool indexes the reducer reads", JSON.stringify(window0.index));
-    check(window0.district.every((id) => typeof id === "string" && id.length > 0), "each card names the district it offers", JSON.stringify(window0.district));
+    check(every(window0.district, (id) => typeof id === "string" && id.length > 0), "each card names the district it offers", JSON.stringify(window0.district));
     check(window0.inset === "0,0" && window0.covers === window0.parent, "the surface covers the column it overlays", window0.inset + " " + window0.covers);
     check(!window0.opaque, "the overlay is tinted, not opaque", window0.background);
     check(window0.blur === "blur(2px)", "the overlay blurs the board behind it", window0.blur);
-    check(window0.names.length === 2 && window0.names.every((n) => n.wrap === "anywhere" && !n.clipped), "the card names wrap and never truncate", JSON.stringify(window0.names));
+    check(window0.names.length === 2 && every(window0.names, (n) => n.wrap === "anywhere" && !n.clipped), "the card names wrap and never truncate", JSON.stringify(window0.names));
     await browser.page.shot("keep-window");
 
     await browser.page.press("Escape", "Escape", 27);
@@ -228,9 +228,9 @@ const liveRun = async () => {
     check(live.insideSurface, "the keep surface renders inside the live surface root");
     check(live.cards === 2, "the live keep offers the two drawn cards", String(live.cards));
     check(JSON.stringify(live.index) === JSON.stringify(["0", "1"]), "the live cards carry indexes 0 and 1", JSON.stringify(live.index));
-    check(live.district.every((id) => typeof id === "string" && id.length > 0), "each live card names a real district", JSON.stringify(live.district));
+    check(every(live.district, (id) => typeof id === "string" && id.length > 0), "each live card names a real district", JSON.stringify(live.district));
     check(!live.opaque && live.blur === "blur(2px)", "the live overlay stays tinted and blurred", live.background + " alpha " + live.alpha + " " + live.blur);
-    check(live.names.length === 2 && live.names.every((n) => n.wrap === "anywhere" && !n.clipped), "the live card names wrap and never truncate", JSON.stringify(live.names));
+    check(live.names.length === 2 && every(live.names, (n) => n.wrap === "anywhere" && !n.clipped), "the live card names wrap and never truncate", JSON.stringify(live.names));
     await actorBrowser.page.shot("keep-live-window");
 
     const handBefore = await actorBrowser.page.eval("document.querySelectorAll('[data-slot=citadels-hand] [data-slot=citadels-district]').length");
