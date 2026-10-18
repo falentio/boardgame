@@ -73,6 +73,7 @@ const actionFacts = function facts() {
   const hand = [...document.querySelectorAll("[data-slot=citadels-hand] [data-slot=citadels-district]")];
   const buttons = bar === null ? [] : [...bar.querySelectorAll("[data-slot=citadels-action]")];
   const build = buttons.find((button) => button.getAttribute("data-action") === "build") ?? null;
+  const pickedTile = document.querySelector("[data-slot=citadels-hand] [data-picked='true']");
   return {
     selector,
     surface: document.querySelector("[data-slot=citadels-surface]") !== null,
@@ -80,6 +81,7 @@ const actionFacts = function facts() {
     actions: buttons.map((button) => button.getAttribute("data-action")),
     labels: buttons.map((button) => button.textContent.trim()),
     buildDisabled: build === null ? null : build.disabled,
+    picked: pickedTile === null ? null : pickedTile.getAttribute("data-index"),
     hand: hand.length,
   };
 };
@@ -197,10 +199,12 @@ const liveRun = async () => {
       "the bar the " + actorName + " holds in room " + code + " carries the four turn actions",
       JSON.stringify({ selector: actor.selector, surface: actor.surface, actions: actor.actions, labels: actor.labels }),
     );
+    await actorBrowser.page.clickReal("document.querySelector('[data-slot=citadels-hand] [data-slot=citadels-hand-tile]:not([disabled])')");
+    const armed = await actorBrowser.page.evalFn(actionFacts);
     check(
-      actor.buildDisabled === (actor.hand === 0),
-      "build is disabled exactly when the actor's hand is empty in room " + code,
-      "buildDisabled=" + actor.buildDisabled + " hand=" + actor.hand,
+      actor.picked === null && actor.buildDisabled === true && armed.picked !== null,
+      "the bar arms build only for a card the player picked in room " + code,
+      "before: buildDisabled=" + actor.buildDisabled + " picked=" + actor.picked + "; after a hand pick: picked=" + armed.picked + " buildDisabled=" + armed.buildDisabled,
     );
     check(
       idle.matched === false,
