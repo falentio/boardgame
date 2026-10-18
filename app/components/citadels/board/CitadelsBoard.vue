@@ -9,6 +9,7 @@ import CitadelsTable from "./CitadelsTable.vue";
 import DistrictCard from "../DistrictCard.vue";
 import type { CitadelsBoard, SeatPlate } from "@/composables/citadels-board.ts";
 import type { CharacterId } from "#shared/core/lockstep/games/citadels/index.ts";
+import "./citadels-skin.css";
 
 const props = defineProps<{ board: CitadelsBoard }>();
 const emit = defineEmits<{ pick: [character: CharacterId]; keep: [index: number] }>();
@@ -52,37 +53,50 @@ const claim = computed(() => {
 <template>
   <div
     data-slot="citadels-board"
-    class="grid min-h-0 flex-1 grid-cols-1 gap-3 overflow-y-auto p-3 group-data-[orientation=landscape]/surface:overflow-hidden group-data-[orientation=landscape]/surface:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_15rem] group-data-[orientation=landscape]/surface:grid-rows-[minmax(0,1fr)]"
+    class="grid min-h-0 flex-1 grid-cols-1 gap-1 overflow-y-auto p-1 group-data-[orientation=landscape]/surface:overflow-hidden group-data-[orientation=landscape]/surface:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_15rem] group-data-[orientation=landscape]/surface:grid-rows-[minmax(0,1fr)]"
   >
     <div
       data-slot="citadels-self"
-      class="relative order-1 flex min-h-0 flex-col gap-3 group-data-[orientation=landscape]/surface:order-2 group-data-[orientation=landscape]/surface:overflow-y-auto group-data-[orientation=landscape]/surface:px-3"
+      class="relative order-1 flex min-h-0 flex-col gap-1 group-data-[orientation=landscape]/surface:order-2 group-data-[orientation=landscape]/surface:overflow-y-auto"
     >
-      <header class="flex flex-wrap items-baseline gap-3">
-        <h2 class="text-2xl leading-none font-semibold tracking-tight">
-          {{ isMine ? "Your district" : `${shown.name}'s district` }}
-        </h2>
-        <span
-          class="inline-flex items-center gap-1 text-xl leading-none font-semibold text-amber-500 tabular-nums"
-          :aria-label="`${shown.gold} gold`"
-        >
-          <Coins class="size-4" aria-hidden="true" />{{ shown.gold }}
+      <header
+        data-slot="citadels-self-plate"
+        class="citadels-piece citadels-piece--thick flex items-stretch"
+      >
+        <span class="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5">
+          <span class="min-w-0 text-xs leading-none font-bold tracking-[0.08em] text-monokai-fg uppercase [overflow-wrap:anywhere]">
+            {{ isMine ? "Your district" : `${shown.name}'s district` }}
+          </span>
+          <span
+            data-slot="citadels-self-gold"
+            class="citadels-piece citadels-piece--plate ms-auto flex shrink-0 items-center gap-1 px-1 py-0.5"
+            :aria-label="`${shown.gold} gold`"
+          >
+            <Coins class="size-2.5 text-monokai-yellow" aria-hidden="true" />
+            <span class="citadels-ink text-[0.6875rem] leading-none font-bold">{{ shown.gold }}</span>
+          </span>
+          <span
+            data-slot="citadels-self-city"
+            class="citadels-piece citadels-piece--plate flex shrink-0 items-center gap-1 px-1 py-0.5"
+          >
+            <span class="citadels-label !text-[0.5rem]">dist</span>
+            <span class="text-[0.6875rem] leading-none font-bold tabular-nums text-monokai-fg"
+              >{{ shown.city.length }}<span class="text-monokai-comment">/{{ board.me.cityTarget }}</span></span
+            >
+          </span>
         </span>
-        <span class="text-sm leading-none text-muted-foreground tabular-nums"
-          >{{ shown.city.length }} of {{ board.me.cityTarget }} districts</span
-        >
         <button
           v-if="!isMine"
           type="button"
           data-slot="citadels-back"
-          class="ms-auto inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs leading-none font-medium ring-1 ring-foreground/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          class="citadels-piece citadels-piece--plate flex shrink-0 items-center gap-1 px-1.5 text-[0.5rem] tracking-[0.14em] uppercase"
           @click="focusedSeat = null"
         >
-          <ArrowLeft class="size-3.5" aria-hidden="true" />Your board
+          <ArrowLeft class="size-3" aria-hidden="true" /><span class="citadels-label !text-[0.5rem]">your board</span>
         </button>
       </header>
 
-      <ul data-slot="citadels-city" class="flex flex-wrap gap-2">
+      <ul data-slot="citadels-city" class="flex flex-wrap gap-1">
         <li
           v-for="(card, index) in shown.city"
           :key="`${card.id}-${index}`"
@@ -105,16 +119,25 @@ const claim = computed(() => {
       <template v-if="isMine">
         <section
           data-slot="citadels-window"
-          class="flex flex-col gap-1 rounded-xl bg-card p-3 text-sm leading-snug ring-1 ring-foreground/10"
+          class="citadels-piece citadels-piece--plate flex flex-col gap-1 px-2 py-1.5"
         >
-          <p v-if="board.table.window" role="status">
-            {{ board.table.window.label }}
-            <span v-if="board.table.window.owedByMe" class="font-medium text-primary"
-              >· you owe input</span
+          <p v-if="board.table.window" role="status" class="flex items-baseline gap-1.5">
+            <span
+              class="text-[0.5625rem] leading-none tracking-[0.16em] uppercase"
+              :class="board.table.window.owedByMe ? 'text-monokai-green' : 'text-monokai-fg'"
+              >{{ board.table.window.label }}</span
+            >
+            <span
+              v-if="board.table.window.owedByMe"
+              data-slot="citadels-owed-flag"
+              class="citadels-plate px-1 py-0.5 text-[0.5rem] leading-none font-bold tracking-[0.14em]"
+              >you owe</span
             >
           </p>
-          <p v-else role="status" class="text-muted-foreground">No window open.</p>
-          <p v-if="claim" class="text-xs leading-snug text-muted-foreground">{{ claim }}</p>
+          <p v-else role="status" class="citadels-label">no window open</p>
+          <p v-if="claim" class="text-[0.5625rem] leading-tight tracking-[0.1em] text-monokai-comment uppercase">
+            {{ claim }}
+          </p>
         </section>
 
         <CitadelsKeep :board="board" @keep="(index) => emit('keep', index)" />
@@ -127,15 +150,12 @@ const claim = computed(() => {
 
     <aside
       data-slot="citadels-players"
-      class="order-3 flex min-h-0 flex-col gap-2 group-data-[orientation=landscape]/surface:overflow-y-auto"
+      class="order-3 flex min-h-0 flex-col gap-1 group-data-[orientation=landscape]/surface:overflow-y-auto"
     >
-      <span
-        class="text-[0.625rem] leading-none font-semibold tracking-[0.2em] text-muted-foreground uppercase"
-        >Players</span
-      >
+      <span class="citadels-label">Players</span>
       <div
         data-slot="citadels-opponents"
-        class="flex flex-col gap-2 group-data-[orientation=landscape]/surface:h-full group-data-[orientation=landscape]/surface:overflow-y-auto"
+        class="flex flex-col gap-1 group-data-[orientation=landscape]/surface:h-full group-data-[orientation=landscape]/surface:overflow-y-auto"
       >
         <CitadelsSeat
           v-for="seat in board.seats"
