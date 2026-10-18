@@ -42,9 +42,6 @@ export interface MySeat extends SeatBase {
 
 export type SeatPlate = MySeat | OpponentSeat;
 
-/** Every seat at the table in clockwise order, the viewer's own first. */
-export type TableSeat = SeatPlate;
-
 export type CastSlotState = "available" | "mine" | "faceup" | "pending";
 
 export interface CastSlot {
@@ -93,7 +90,7 @@ export interface CitadelsBoard {
   /** Clockwise from the viewer's seat, so both layouts agree on the table order. */
   readonly opponents: readonly OpponentSeat[];
   /** The same order, with the viewer's own seat first: what the players rail draws. */
-  readonly seats: readonly TableSeat[];
+  readonly seats: readonly SeatPlate[];
   readonly me: MySeat;
 }
 

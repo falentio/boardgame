@@ -4,10 +4,10 @@ import { DISTRICT_ACCENT } from "@/composables/card-shell";
 import { specOfDistrict } from "#shared/core/lockstep/games/citadels/index.ts";
 import { defaultAvatarUrl } from "#shared/users/avatar.ts";
 import { computed } from "vue";
-import type { TableSeat } from "@/composables/citadels-board.ts";
+import type { SeatPlate } from "@/composables/citadels-board.ts";
 import "./citadels-skin.css";
 
-const props = defineProps<{ seat: TableSeat; focused: boolean }>();
+const props = defineProps<{ seat: SeatPlate; focused: boolean }>();
 const emit = defineEmits<{ focus: [] }>();
 
 const handCount = computed(() => (props.seat.kind === "me" ? props.seat.hand.length : props.seat.handCount));
