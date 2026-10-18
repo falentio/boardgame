@@ -1,20 +1,17 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import { Coins, Crown } from "@lucide/vue";
-import type { OpponentSeat, CityCard } from "@/composables/citadels-board.ts";
+import { Coins, Crown, Layers } from "@lucide/vue";
 import { DISTRICT_ACCENT } from "@/composables/card-shell";
 import { specOfDistrict } from "#shared/core/lockstep/games/citadels/index.ts";
+import { defaultAvatarUrl } from "#shared/users/avatar.ts";
+import type { OpponentSeat } from "@/composables/citadels-board.ts";
 
 const props = defineProps<{ rival: OpponentSeat; focused: boolean }>();
 const emit = defineEmits<{ focus: [] }>();
 
-const cityLine = computed(() => `${props.rival.city.length} of 8 districts`);
-const barOf = (card: CityCard): readonly [string, string] => {
-  const type = specOfDistrict(card.id).type;
-  return [DISTRICT_ACCENT[type], card.gold > 0 ? "opacity-100" : "opacity-70"];
-};
-const gaps = computed(() => Array.from({ length: Math.max(0, 8 - props.rival.city.length) }));
-const reach = computed(() => props.rival.city.length >= 7);
+const pips = Array.from({ length: 8 }, (_, i) => props.rival.city[i] ?? null);
+const ink = (id: string): string => DISTRICT_ACCENT[specOfDistrict(id).type];
+const near = props.rival.city.length >= 7;
+const pfp = defaultAvatarUrl(props.rival.seat);
 </script>
 
 <template>
@@ -23,56 +20,53 @@ const reach = computed(() => props.rival.city.length >= 7);
     :data-seat="rival.seat"
     :data-gold="rival.gold"
     :aria-pressed="focused"
-    :aria-label="`Show ${rival.name}'s board`"
+    :aria-label="`${rival.name}: ${rival.gold} gold, ${rival.city.length} of 8 districts, ${rival.handCount} in hand`"
     type="button"
-    class="flex w-full flex-col gap-1.5 rounded-xl bg-card p-2.5 text-left ring-1 transition-colors ring-foreground/10 hover:ring-foreground/25 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-    :class="[
-      focused && 'ring-2 ring-primary',
-      rival.active && !focused && 'ring-2 ring-primary/50',
-      reach && !focused && !rival.active && 'ring-foreground/20',
-    ]"
+    class="grid w-full grid-cols-[auto_1fr_auto] items-start gap-x-2 border p-1.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-monokai-yellow"
+    :class="focused ? 'border-monokai-yellow' : 'border-monokai-line hover:border-monokai-comment'"
     @click="emit('focus')"
   >
-    <span class="flex min-w-0 items-center gap-1.5">
-      <span class="min-w-0 truncate text-sm leading-tight font-semibold">{{ rival.name }}</span>
+    <span class="relative size-9 shrink-0 border border-monokai-line bg-monokai-panel">
+      <img :src="pfp" alt="" class="size-full object-cover" />
       <span
         v-if="rival.crown"
         data-slot="citadels-crown"
-        class="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[0.625rem] leading-none font-medium uppercase"
+        class="absolute -top-px -end-px border border-monokai-bg bg-monokai-yellow p-px text-monokai-bg"
       >
-        <Crown class="size-3" aria-hidden="true" />Crown
+        <Crown class="size-2" aria-hidden="true" />
       </span>
+    </span>
+    <span class="col-span-2 flex min-w-0 items-baseline gap-1.5">
+      <span class="truncate text-xs font-semibold text-monokai-fg">{{ rival.name }}</span>
       <span
         v-if="rival.active"
         data-slot="citadels-active"
-        class="shrink-0 rounded-full bg-primary px-1.5 py-0.5 text-[0.625rem] leading-none font-semibold text-primary-foreground uppercase"
-        >Acting</span
+        class="shrink-0 font-mono text-[0.5rem] font-bold text-monokai-green uppercase"
+        >turn</span
       >
-      <span
-        class="ms-auto inline-flex shrink-0 items-center gap-1 text-sm leading-none font-semibold tabular-nums"
-        :aria-label="`${rival.gold} gold`"
+      <span v-else-if="rival.owed" data-slot="citadels-owed" class="shrink-0 font-mono text-[0.5rem] font-bold text-monokai-pink uppercase"
+        >owes</span
       >
-        <Coins class="size-3.5 text-amber-500" aria-hidden="true" />{{ rival.gold }}
+      <span class="ms-auto flex shrink-0 items-center gap-0.5 font-mono text-xs font-bold tabular-nums text-monokai-yellow">
+        <Coins class="size-3" aria-hidden="true" />{{ rival.gold }}
       </span>
     </span>
-
-    <span class="text-xs leading-tight text-muted-foreground tabular-nums">
-      {{ cityLine }} · {{ rival.handCount }} in hand
+    <span
+      class="flex items-center font-mono text-[0.5625rem] leading-none tabular-nums"
+      :class="near ? 'text-monokai-green' : 'text-monokai-fg'"
+      >{{ rival.city.length }}<span class="text-monokai-comment">/8</span></span
+    >
+    <span />
+    <span class="flex items-center justify-end gap-1 font-mono text-[0.5625rem] leading-none tabular-nums text-monokai-comment">
+      <Layers class="size-2.5 shrink-0" aria-hidden="true" />{{ rival.handCount }}
     </span>
-
-    <span class="flex gap-0.5" aria-hidden="true">
+    <span class="col-span-3 mt-1 flex h-1 w-full" aria-hidden="true">
       <span
-        v-for="(card, index) in rival.city"
-        :key="`${card.id}-${index}`"
-        class="h-1.5 flex-1 rounded-full"
-        :class="barOf(card)[1]"
-        :style="{ backgroundColor: barOf(card)[0] }"
+        v-for="(pip, index) in pips"
+        :key="index"
+        class="flex-1"
+        :style="{ background: pip === null ? 'var(--color-monokai-line)' : ink(pip.id) }"
       />
-      <span v-for="n in gaps" :key="`gap-${n}`" class="h-1.5 flex-1 rounded-full bg-muted" />
-    </span>
-
-    <span v-if="rival.owed" data-slot="citadels-owed" class="text-[0.6875rem] leading-none font-medium text-primary">
-      Owes input
     </span>
   </button>
 </template>
