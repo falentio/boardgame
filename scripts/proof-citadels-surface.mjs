@@ -441,6 +441,16 @@ const PAINT = `(() => {
   };
 })()`;
 
+const RAIL = `(() => {
+  const rail = document.querySelector('[data-slot=citadels-opponents]');
+  if (rail === null) return null;
+  const seats = [...rail.querySelectorAll('[data-slot=citadels-seat]')];
+  return {
+    names: seats.map((seat) => seat.getAttribute('aria-label')?.split(':')[0] ?? '?'),
+    you: seats.some((seat) => seat.hasAttribute('data-mine')),
+  };
+})()`;
+
 const lumOf = (css) => {
   const [r, g, b] = (css.match(/[\d.]+/g) ?? [])
     .filter((part) => Number.isFinite(Number(part)))
@@ -713,6 +723,14 @@ const main = async () => {
               pass(`the first seat shows a dicebear avatar: ${paint.pfp.split("?")[0]}`);
             }
           }
+          const rail = await guestPage.eval(RAIL);
+          if (rail === null) {
+            fail("the players rail could not be read");
+          } else if (!rail.you) {
+            fail(`the players rail lists ${rail.names.join(", ")} with no seat marked as the viewer's own`);
+          } else {
+            pass(`the players rail lists every seat, the viewer's own included: ${rail.names.join(", ")}`);
+          }
           info(`screenshot: ${await guestPage.screenshot("citadels-surface-landscape")}`);
         },
       },
@@ -978,7 +996,7 @@ const main = async () => {
         name: "a rival in the players rail swaps the middle column, and a control brings your own board back",
         run: async () => {
           const rivals = await guestPage.eval(
-            `[...document.querySelectorAll('[data-slot=citadels-players] [data-slot=citadels-seat]')].map((seat) => seat.getAttribute('data-seat'))`,
+            `[...document.querySelectorAll('[data-slot=citadels-players] [data-slot=citadels-seat]')].filter((seat) => !seat.hasAttribute('data-mine')).map((seat) => seat.getAttribute('data-seat'))`,
           );
           if (rivals.length === 0) {
             fail("the players rail lists no rival to click");

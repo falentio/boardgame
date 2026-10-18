@@ -118,15 +118,15 @@ const claim = computed(() => {
         class="flex flex-col gap-2 group-data-[orientation=landscape]/surface:h-full group-data-[orientation=landscape]/surface:overflow-y-auto"
       >
         <CitadelsSeat
-          v-for="rival in board.opponents"
-          :key="rival.seat"
-          :rival="rival"
-          :focused="rival.seat === focusedSeat"
-          @focus="focusedSeat = rival.seat"
+          v-for="seat in board.seats"
+          :key="seat.seat"
+          :seat="seat"
+          :focused="seat.seat === focusedSeat"
+          @focus="focusedSeat = seat.kind === 'rival' ? seat.seat : null"
         />
         <p
           v-if="board.opponents.length === 0"
-          class="text-xs leading-tight text-muted-foreground italic"
+          class="font-mono text-[0.5625rem] leading-tight text-monokai-comment"
         >
           playing solo
         </p>
