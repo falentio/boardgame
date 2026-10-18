@@ -42,8 +42,8 @@ const emit = defineEmits<{ build: [district: DistrictId] }>();
   outline: 1px solid transparent;
   outline-offset: 1px;
   transition:
-    outline-color 150ms ease,
-    translate 150ms ease;
+    outline-color var(--dur-ink) ease,
+    translate var(--dur-ink) ease;
 }
 
 [data-slot="citadels-hand-tile"]:hover:not(:disabled) {

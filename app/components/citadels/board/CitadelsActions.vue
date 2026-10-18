@@ -89,10 +89,10 @@ const choose = (action: Choice): void => {
    headless browser both refuse; the tile answers a hover wherever the pointer is. */
 [data-slot="citadels-action"] {
   transition:
-    border-color 150ms ease,
-    color 150ms ease,
-    translate 150ms ease,
-    scale 120ms var(--ease-out);
+    border-color var(--dur-ink) ease,
+    color var(--dur-ink) ease,
+    translate var(--dur-ink) ease,
+    scale var(--dur-press) var(--ease-out);
 }
 
 [data-slot="citadels-action"]:hover:not(:disabled) {
