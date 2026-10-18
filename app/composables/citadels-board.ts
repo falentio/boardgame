@@ -9,6 +9,7 @@ import type {
 } from "#shared/core/lockstep/games/citadels/index.ts";
 import { CITY_TARGET, specOfCharacter } from "#shared/core/lockstep/games/citadels/index.ts";
 import type { WindowPurpose } from "#shared/core/lockstep/games/citadels/state.ts";
+import { windowChoicesFor, type WindowChoice } from "./window-choices.ts";
 
 /** A district sitting in a city, with the Artist's beautify marker on it. */
 export interface CityCard {
@@ -60,6 +61,8 @@ export interface OpenWindow {
   readonly purpose: WindowPurpose;
   readonly label: string;
   readonly owedByMe: boolean;
+  /** The legal inputs the window leaves the viewer, empty when a rival's input counts. */
+  readonly choices: readonly WindowChoice[];
 }
 
 export interface PendingAction {
@@ -188,6 +191,7 @@ export const citadelsBoardOf = (
       handCount: ordered[at + 1]?.handCount ?? 0,
     })),
   ];
+  const owedByMe = view.owedSeats.includes(view.seat);
   return {
     table: {
       round: view.round,
@@ -205,7 +209,8 @@ export const citadelsBoardOf = (
           : {
               purpose: view.window.purpose,
               label: citadelsPurposeLabel(view.window.purpose),
-              owedByMe: view.owedSeats.includes(view.seat),
+              owedByMe,
+              choices: windowChoicesFor(view, nameOf),
             },
       pending:
         view.pending === null

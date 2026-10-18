@@ -2,6 +2,7 @@
 import { computed, ref, watch } from "vue";
 import { ArrowLeft, Coins } from "@lucide/vue";
 import CitadelsActions from "./CitadelsActions.vue";
+import CitadelsChoice from "./CitadelsChoice.vue";
 import CitadelsHand from "./CitadelsHand.vue";
 import CitadelsKeep from "./CitadelsKeep.vue";
 import CitadelsPick from "./CitadelsPick.vue";
@@ -9,7 +10,7 @@ import CitadelsSeat from "./CitadelsSeat.vue";
 import CitadelsTable from "./CitadelsTable.vue";
 import DistrictCard from "../DistrictCard.vue";
 import type { CitadelsBoard, SeatPlate } from "@/composables/citadels-board.ts";
-import type { CharacterId } from "#shared/core/lockstep/games/citadels/index.ts";
+import type { CharacterId, CitadelsAction } from "#shared/core/lockstep/games/citadels/index.ts";
 import "./citadels-skin.css";
 
 const props = defineProps<{ board: CitadelsBoard }>();
@@ -20,6 +21,7 @@ const emit = defineEmits<{
   draw: [];
   build: [card: number];
   pass: [];
+  choose: [action: CitadelsAction];
 }>();
 
 const focusedSeat = ref<SeatPlate["seat"] | null>(null);
@@ -147,6 +149,8 @@ const claim = computed(() => {
             {{ claim }}
           </p>
         </section>
+
+        <CitadelsChoice :board="board" @choose="(action) => emit('choose', action)" />
 
         <CitadelsActions
           :board="board"

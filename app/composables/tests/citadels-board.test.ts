@@ -15,7 +15,21 @@ import {
 } from "#shared/core/lockstep/games/citadels/index.ts";
 import { seatId, type SeatId } from "#shared/rooms/ids.ts";
 import { citadelsBoardOf, citadelsPurposeLabel, phaseLabel } from "../citadels-board.ts";
-import { autoStep, openPurpose } from "../../../shared/core/tests/lockstep/citadels/driver.ts";
+import { windowChoiceValue } from "../window-choices.ts";
+import {
+  advance,
+  autoAction,
+  autoStep,
+  castWith,
+  dealFor,
+  openPurpose,
+  rawHand,
+  type CitadelsState,
+  type CharacterId,
+} from "../../../shared/core/tests/lockstep/citadels/driver.ts";
+import { specOfDistrict } from "#shared/core/lockstep/games/citadels/districts.ts";
+import { destroyPrice } from "#shared/core/lockstep/games/citadels/characters/warlord.ts";
+import { greatWallToll } from "#shared/core/lockstep/games/citadels/districts/great-wall.ts";
 
 const ANN = seatId("ann");
 const BOB = seatId("bob");
@@ -291,7 +305,213 @@ test("the keep surface shows the drawn pair to its owner and nothing to a rival"
   const rival = SEATS.find((seat) => seat !== owner);
   if (rival === undefined) throw new Error("no rival seat");
   const mine = citadelsBoardOf(citadels.project(state, owner), names());
-  expect(mine.table.window).toEqual({ purpose: "keep", label: "Keep a card", owedByMe: true });
+  expect(mine.table.window).toEqual({
+    purpose: "keep",
+    label: "Keep a card",
+    owedByMe: true,
+    choices: [],
+  });
   expect(mine.table.drawn).toEqual(pool);
   expect(citadelsBoardOf(citadels.project(state, rival), names()).table.drawn).toEqual([]);
+});
+const answeringSeat = (state: CitadelsState): SeatId => {
+  const top = state.steps[0];
+  if (top === undefined || top.kind !== "window") throw new Error("no window open");
+  return top.window.kind === "any"
+    ? (state.pending?.actor ?? state.active)
+    : (top.window.seats[0] ?? state.active);
+};
+
+/** The engine's own always-legal policy, read against a folded state. */
+const auto = (seat: SeatId, state: CitadelsState): CitadelsAction | null =>
+  autoAction(seat, citadels.project(state, seat));
+
+interface FoldOptions {
+  readonly cast?: readonly CharacterId[];
+  readonly wanted?: Readonly<Record<string, CharacterId>>;
+  readonly decide?: (seat: SeatId, state: CitadelsState) => CitadelsAction | null;
+  readonly until?: (state: CitadelsState) => boolean;
+}
+
+/** Fold real frames from a real deal until `purpose` is the window at the top. */
+const foldTo = (purpose: string, options: FoldOptions = {}): CitadelsState => {
+  const decide = options.decide ?? auto;
+  const ready = options.until ?? ((): boolean => true);
+  let state =
+    options.wanted === undefined
+      ? genesis()
+      : dealFor(
+          options.cast ?? BASE_CAST,
+          SEATS,
+          options.wanted,
+          undefined,
+          `fold-${purpose}`,
+        );
+  for (let i = 0; i < 4000; i += 1) {
+    if (openPurpose(state) === purpose && ready(state)) return state;
+    state = advance(state, decide);
+  }
+  throw new Error(`the engine reached no ${purpose} window in 4000 frames`);
+};
+
+const choicesAt = (state: CitadelsState) =>
+  citadelsBoardOf(citadels.project(state, answeringSeat(state)), names()).table.window?.choices ??
+  [];
+
+const withCast = (character: CharacterId) => ({ cast: castWith(character), wanted: { [ANN]: character } });
+
+test("a choose-character window offers every cast character the rule leaves nameable", () => {
+  const state = foldTo("choose-character");
+  const choices = choicesAt(state);
+  expect(state.cast.filter((id) => id !== "assassin")).toContain("thief");
+  expect(choices.map((choice) => choice.kind)).toEqual(["character", "character", "character", "character", "character", "character", "character"]);
+  expect(choices.map((choice) => choice.action)).toEqual(
+    state.cast
+      .filter((id) => id !== "assassin")
+      .map((character) => ({ t: "name-character", character })),
+  );
+  expect(choices.map((choice) => choice.label)).toContain("Thief");
+});
+
+test("a choose-seat window offers the rival seats and never the viewer's own", () => {
+  const state = foldTo("choose-seat", withCast("spy"));
+  const actor = answeringSeat(state);
+  const choices = choicesAt(state);
+  expect(choices.map((choice) => choice.kind)).toEqual(["seat", "seat"]);
+  expect(choices.map((choice) => choice.action)).toEqual(
+    SEATS.filter((seat) => seat !== actor).map((seat) => ({ t: "target", seat })),
+  );
+});
+
+/** Answer the Spy's choose-seat pass with a rival, so the type window below it opens. */
+const spySeat = (seat: SeatId, state: CitadelsState): CitadelsAction | null => {
+  if (openPurpose(state) === "choose-seat") {
+    const rival = SEATS.find((candidate) => candidate !== seat);
+    return rival === undefined ? null : { t: "target", seat: rival };
+  }
+  return auto(seat, state);
+};
+
+test("a choose-type window offers the district types the catalog declares", () => {
+  const state = foldTo("choose-type", { ...withCast("spy"), decide: spySeat });
+  const choices = choicesAt(state);
+  expect(choices.map((choice) => choice.kind)).toEqual(["type", "type", "type", "type", "type"]);
+  expect([...choices.map((choice) => choice.label)].sort()).toEqual([
+    "military",
+    "noble",
+    "religious",
+    "trade",
+    "unique",
+  ]);
+  expect(choices.every((choice) => choice.action.t === "name-type")).toBe(true);
+});
+
+test("a magician-discard window offers the viewer's own hand by index, then a stop", () => {
+  const state = foldTo("magician-discard", withCast("magician"));
+  const actor = answeringSeat(state);
+  const hand = rawHand(state, actor);
+  const choices = choicesAt(state);
+  expect(choices.slice(0, hand.length).map((choice) => choice.action)).toEqual(
+    hand.map((_, index) => ({ t: "keep", index })),
+  );
+  expect(choices.at(-1)).toEqual({
+    action: { t: "pass" },
+    label: "END",
+    kind: "confirm",
+    note: null,
+  });
+  expect(choices).toHaveLength(hand.length + 1);
+});
+
+test("a warlord-destroy window offers the target city's districts, the Keep aside", () => {
+  const state = foldTo("warlord-destroy", {
+    ...withCast("warlord"),
+    decide: (seat, folded) => {
+      if (openPurpose(folded) === "warlord-destroy" && folded.pending?.target === null) {
+        const pick = folded.players
+          .filter((player) => player.seat !== seat)
+          .sort((a, b) => b.city.length - a.city.length)[0];
+        return pick === undefined || pick.city.length === 0
+          ? { t: "pass" }
+          : { t: "target", seat: pick.seat };
+      }
+      return auto(seat, folded);
+    },
+    until: (folded) => folded.pending?.target !== null,
+  });
+  const target = state.pending?.target ?? null;
+  const city = state.players.find((player) => player.seat === target)?.city ?? [];
+  const actor = answeringSeat(state);
+  const purse = state.players.find((player) => player.seat === actor)?.gold ?? 0;
+  const choices = choicesAt(state);
+  const expected = city
+    .map((district, index) => ({ district, index }))
+    .filter(({ district }) => district.id !== "keep")
+    .map(({ district, index }) => ({
+      index,
+      district,
+      price: destroyPrice(district.id, district.gold) + greatWallToll(city),
+    }))
+    .filter(({ price }) => price <= purse);
+  expect(city.length).toBeGreaterThan(0);
+  expect(expected.length).toBeGreaterThan(0);
+  expect(choices.map((choice) => choice.action)).toEqual(
+    expected.map(({ index }) => ({ t: "keep", index })),
+  );
+  expect(choices.map((choice) => choice.kind)).toEqual(expected.map(() => "district"));
+  expect(choices.map((choice) => choice.note)).toEqual(expected.map(({ price }) => String(price)));
+});
+
+test("a trader-build window offers the trade districts in hand, then a stop", () => {
+  const state = foldTo("trader-build", withCast("trader"));
+  const actor = answeringSeat(state);
+  const trade = rawHand(state, actor)
+    .map((id, index) => ({ id, index }))
+    .filter(({ id }) => specOfDistrict(id).type === "trade");
+  const choices = choicesAt(state);
+  expect(choices.slice(0, trade.length).map((choice) => choice.action)).toEqual(
+    trade.map(({ index }) => ({ t: "build", card: index })),
+  );
+  expect(choices.map((choice) => choice.kind).slice(0, trade.length)).toEqual(
+    trade.map(() => "district"),
+  );
+  expect(choices.at(-1)?.label).toBe("STOP");
+});
+
+test("the windows the turn bar and the keep surface own carry no choices", () => {
+  const draft = citadelsBoardOf(view(ANN), names());
+  expect(draft.table.window?.purpose).toBe("draft-pick");
+  expect(draft.table.window?.choices).toEqual([]);
+  const { state } = foldedToKeep();
+  const owner = state.pending?.actor ?? ANN;
+  expect(citadelsBoardOf(citadels.project(state, owner), names()).table.window?.choices).toEqual([]);
+});
+
+test("an any window offers nothing to a seat whose report the resolver ignores", () => {
+  const state = foldTo("choose-character");
+  const actor = answeringSeat(state);
+  const rival = SEATS.find((seat) => seat !== actor);
+  if (rival === undefined) throw new Error("no rival seat");
+  const theirs = citadelsBoardOf(citadels.project(state, rival), names());
+  expect(theirs.table.window?.owedByMe).toBe(true);
+  expect(theirs.table.window?.choices).toEqual([]);
+  expect(choicesAt(state).length).toBeGreaterThan(0);
+});
+
+test("an owed window that leaves no choice keeps a bare confirm so the game can advance", () => {
+  const state = foldTo("tax-collect", withCast("tax-collector"));
+  expect(choicesAt(state)).toEqual([
+    { action: { t: "gold" }, label: "TAKE TOKEN", kind: "confirm", note: null },
+    { action: { t: "pass" }, label: "LEAVE IT", kind: "confirm", note: null },
+  ]);
+});
+
+test("windowChoiceValue reads the value an assertion wants off each kind of choice", () => {
+  expect(windowChoiceValue({ action: { t: "target", seat: BOB }, label: "Bo", kind: "seat", note: null })).toBe("bob");
+  expect(
+    windowChoiceValue({ action: { t: "keep", index: 3 }, label: "Tavern", kind: "district", note: null }),
+  ).toBe("3");
+  expect(
+    windowChoiceValue({ action: { t: "pass" }, label: "END", kind: "confirm", note: null }),
+  ).toBe("pass");
 });
