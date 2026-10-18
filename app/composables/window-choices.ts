@@ -10,7 +10,10 @@ import {
   type PlayerView,
 } from "#shared/core/lockstep/games/citadels/index.ts";
 import { BELL_TOWER, DISTRICT_CATALOG } from "#shared/core/lockstep/games/citadels/districts.ts";
+import { canKill } from "#shared/core/lockstep/games/citadels/characters/assassin.ts";
+import { canConfiscate } from "#shared/core/lockstep/games/citadels/characters/magistrate.ts";
 import { isSeizable, seizePrice } from "#shared/core/lockstep/games/citadels/characters/marshal.ts";
+import { canBewitch } from "#shared/core/lockstep/games/citadels/characters/witch.ts";
 import { destroyPrice } from "#shared/core/lockstep/games/citadels/characters/warlord.ts";
 import { keepProtects } from "#shared/core/lockstep/games/citadels/districts/keep.ts";
 import { greatWallToll } from "#shared/core/lockstep/games/citadels/districts/great-wall.ts";
@@ -126,24 +129,24 @@ const finished = (view: CitadelsView, seat: SeatId): boolean =>
 const cityIds = (view: CitadelsView, seat: SeatId): ReadonlySet<string> =>
   new Set((plateOf(view, seat)?.city ?? []).map((district) => district.id));
 
-const CHOOSE_CHARACTER_OWNER: Partial<Record<CharacterId, (id: CharacterId) => boolean>> = {
-  // characters/assassin.ts:18 canKill: another cast character, never itself.
-  assassin: (id) => id === "assassin",
-  // characters/thief.ts:25 canRob: never the thief, never rank 1 (already called).
-  thief: (id) => id === "thief" || specOfCharacter(id).rank === 1,
-  // characters/witch.ts:42: never the witch.
-  witch: (id) => id === "witch",
-  // characters/magistrate.ts:35: never the magistrate.
-  magistrate: (id) => id === "magistrate",
-  // characters/blackmailer.ts:30 canThreat: never rank 1 (already called).
-  blackmailer: (id) => specOfCharacter(id).rank === 1,
+/** Whether the window's owner may name a character, read from the view alone. */
+type CanName = (view: CitadelsView, character: CharacterId) => boolean;
+
+const CHOOSE_CHARACTER_OWNER: Partial<Record<CharacterId, CanName>> = {
+  assassin: canKill,
+  // characters/thief.ts:25 canRob and characters/blackmailer.ts:30 canThreat also
+  // read `skipped` and `bewitched`, which no view carries, so the cast-level half stands here.
+  thief: (_view, id) => id !== "thief" && specOfCharacter(id).rank !== 1,
+  witch: canBewitch,
+  magistrate: canConfiscate,
+  blackmailer: (_view, id) => specOfCharacter(id).rank !== 1,
 };
 
 const chooseCharacter: ChoiceBuilder = (ctx) => {
   const owner = ctx.view.pending?.character ?? null;
-  const exclude = CHOOSE_CHARACTER_OWNER[owner ?? "assassin"] ?? (() => false);
-  const wanted = owner === null ? (id: CharacterId) => id === owner : exclude;
-  return ctx.view.cast.filter((id) => !wanted(id)).map(characterChoice);
+  const canName = CHOOSE_CHARACTER_OWNER[owner ?? "assassin"] ?? (() => true);
+  const allowed: CanName = owner === null ? () => true : canName;
+  return ctx.view.cast.filter((id) => allowed(ctx.view, id)).map(characterChoice);
 };
 
 const chooseSeat: ChoiceBuilder = (ctx) =>

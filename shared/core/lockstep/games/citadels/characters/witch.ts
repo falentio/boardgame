@@ -25,6 +25,12 @@ const GATHER = 2;
 const NAME_NOTE = "witch-name";
 
 
+/** The Witch may bewitch another character in the cast, never herself. */
+export const canBewitch = (
+  state: { readonly cast: readonly CharacterId[] },
+  character: CharacterId,
+): boolean => character !== "witch" && state.cast.includes(character);
+
 /**
  * Gather resources (the fixed +2), then call the name of another character to
  * bewitch. The turn is put on hold: the round's own turn window stays in the
@@ -39,7 +45,7 @@ export const witch: CharacterEffect = (ctx: CharacterCtx) => {
   if (committing) {
     const named = pending.namedCharacter;
     const cleared = withPending(state, null);
-    if (named === null || named === "witch" || !state.cast.includes(named)) {
+    if (named === null || !canBewitch(state, named)) {
       return withSteps(cleared, rest);
     }
     return withSteps({ ...cleared, bewitched: named }, rest);

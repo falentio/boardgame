@@ -9,14 +9,18 @@ import {
   withSteps,
   type WindowResolver,
 } from "../helpers.ts";
-import type { CitadelsState } from "../state.ts";
 
 /** Tags the assassin's in-flight commit so its second pass is distinguishable. */
 const NAME_NOTE = "assassin-name";
 
-/** The Assassin may kill another character in the cast, never itself. */
-export const canKill = (state: CitadelsState, character: CharacterId): boolean =>
-  character !== "assassin" && state.cast.includes(character);
+/**
+ * The Assassin may kill another character in the cast, never itself. Only the
+ * cast decides, so a seat's view answers this as well as the engine's state.
+ */
+export const canKill = (
+  state: { readonly cast: readonly CharacterId[] },
+  character: CharacterId,
+): boolean => character !== "assassin" && state.cast.includes(character);
 
 /**
  * Call the name of another character. The first pass arms the commit and opens
