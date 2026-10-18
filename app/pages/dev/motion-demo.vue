@@ -122,7 +122,7 @@ interface Target {
   readonly ready: (state: CitadelsState) => boolean;
 }
 
-const SEEN: readonly Target[] = [
+const TARGETS: readonly Target[] = [
   { id: "draft", ready: (state) => openPurpose(state) === "draft-pick" && owedAt(state, ANN) },
   {
     id: "turn",
@@ -162,7 +162,7 @@ const foldScenes = (): readonly Scene[] => {
       makeRandom(SEED),
     );
     for (let frames = 0; frames < 6000; frames += 1) {
-      const target = SEEN.find((candidate) => !found.has(candidate.id) && candidate.ready(state));
+      const target = TARGETS.find((candidate) => !found.has(candidate.id) && candidate.ready(state));
       if (target !== undefined) {
         const seat = target.id === "draft" ? ANN : answeringSeat(state);
         found.set(target.id, {
@@ -173,11 +173,11 @@ const foldScenes = (): readonly Scene[] => {
           purpose: openPurpose(state),
         });
       }
-      if (found.size === SEEN.length) return [...found.values()];
+      if (found.size === TARGETS.length) return [...found.values()];
       state = advance(state, fold.decide);
     }
   }
-  const missing = SEEN.filter((target) => !found.has(target.id)).map((target) => target.id);
+  const missing = TARGETS.filter((target) => !found.has(target.id)).map((target) => target.id);
   throw new Error(`the engine reached no ${missing.join(", ")} window`);
 };
 
