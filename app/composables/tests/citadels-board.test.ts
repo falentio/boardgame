@@ -48,6 +48,14 @@ test("the table starts with the viewer's own seat, then runs clockwise", () => {
   expect(board.opponents.map((seat) => seat.seat)).toEqual([CARA, ANN]);
 });
 
+test("the players rail carries every seat, the viewer's own first", () => {
+  const board = citadelsBoardOf(view(BOB), names());
+  expect(board.seats.map((seat) => seat.seat)).toEqual([BOB, CARA, ANN]);
+  expect(board.seats.map((seat) => seat.kind)).toEqual(["me", "rival", "rival"]);
+  expect(board.seats[0]).toBe(board.me);
+  expect(board.seats.at(-1)?.name).toBe("Ada");
+});
+
 test("the viewer's plate carries cards where a rival's carries a count", () => {
   const projected = view(ANN);
   const board = citadelsBoardOf(projected, names());

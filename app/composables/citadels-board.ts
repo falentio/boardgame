@@ -41,6 +41,12 @@ export interface MySeat extends SeatBase {
 
 export type SeatPlate = MySeat | OpponentSeat;
 
+/** Every seat at the table in clockwise order, the viewer's own first. */
+export type TableSeat = SeatPlate;
+
+/** The seats a rival card can show: the viewer's own plate reads as one of them. */
+export type RivalSeat = OpponentSeat;
+
 export type CastSlotState = "available" | "mine" | "faceup" | "pending";
 
 export interface CastSlot {
@@ -84,6 +90,8 @@ export interface CitadelsBoard {
   readonly table: CitadelsTable;
   /** Clockwise from the viewer's seat, so both layouts agree on the table order. */
   readonly opponents: readonly OpponentSeat[];
+  /** The same order, with the viewer's own seat first: what the players rail draws. */
+  readonly seats: readonly TableSeat[];
   readonly me: MySeat;
 }
 
@@ -163,10 +171,21 @@ export const citadelsBoardOf = (
 ): CitadelsBoard => {
   const nameOf = (seat: SeatId): string => names.get(seat) ?? seat;
   const ordered = rotatedToViewer(view.players, view.seat);
-  const mine = ordered[0];
+  const first = ordered[0];
   // `project` refuses a seat that is not a player, so a view without its own row
   // is a broken view rather than an input to handle.
+  if (first === undefined) throw new Error("citadels view is missing the viewer's seat");
+  const plates = ordered.map((player) => plateOf(player, view, nameOf));
+  const [mine, ...rivals] = plates;
   if (mine === undefined) throw new Error("citadels view is missing the viewer's seat");
+  const seats: readonly TableSeat[] = [
+    { ...mine, kind: "me", hand: view.myHand, cityTarget: CITY_TARGET },
+    ...rivals.map((plate, at): RivalSeat => ({
+      ...plate,
+      kind: "rival",
+      handCount: ordered[at + 1]?.handCount ?? 0,
+    })),
+  ];
   return {
     table: {
       round: view.round,
@@ -205,16 +224,8 @@ export const citadelsBoardOf = (
       winner: view.winner === null ? null : { seat: view.winner, name: nameOf(view.winner) },
       terminal: view.terminal,
     },
-    opponents: ordered.slice(1).map((player): OpponentSeat => ({
-      ...plateOf(player, view, nameOf),
-      kind: "rival",
-      handCount: player.handCount,
-    })),
-    me: {
-      ...plateOf(mine, view, nameOf),
-      kind: "me",
-      hand: view.myHand,
-      cityTarget: CITY_TARGET,
-    },
+    opponents: seats.slice(1) as readonly OpponentSeat[],
+    seats,
+    me: seats[0] as MySeat,
   };
 };
