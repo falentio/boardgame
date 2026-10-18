@@ -109,15 +109,19 @@ const terminalPlate = computed(() => {
     >
       <header
         v-if="board"
-        class="flex shrink-0 items-center gap-3 border-b border-foreground/10 px-3 py-2"
+        data-slot="citadels-plate"
+        class="citadels-piece citadels-piece--thick mx-1 mt-1 flex shrink-0 items-stretch"
       >
-        <span data-slot="citadels-phase" class="text-sm leading-none font-semibold tabular-nums">
-          Round {{ board.table.round }} · {{ board.table.phaseLabel }}
+        <span class="flex min-w-0 flex-1 items-baseline gap-1.5 px-2 py-1.5">
+          <span data-slot="citadels-phase" class="citadels-ink text-lg leading-none font-bold tabular-nums"
+            >Round {{ board.table.round }}</span
+          >
+          <span class="citadels-label">{{ board.table.phaseLabel }}</span>
         </span>
         <button
           data-slot="citadels-exit"
           type="button"
-          class="citadels-piece citadels-piece--plate ms-auto flex shrink-0 items-center gap-1 px-1.5 py-1"
+          class="citadels-piece citadels-piece--plate flex shrink-0 items-center gap-1 px-1.5"
           @click="leave"
         >
           <Minimize class="size-3 shrink-0" aria-hidden="true" />
