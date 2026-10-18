@@ -212,3 +212,28 @@ const terminalPlate = computed(() => {
     </section>
   </div>
 </template>
+
+<style scoped>
+/* The game ends once, so this plate is the one arrival that earns 300ms. */
+[data-slot="citadels-terminal"] {
+  transition:
+    opacity 300ms var(--ease-out),
+    translate 300ms var(--ease-out),
+    box-shadow 150ms ease,
+    background-color 150ms ease,
+    color 150ms ease;
+  @starting-style {
+    opacity: 0;
+    translate: 0 5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="citadels-terminal"] {
+    transition-property: opacity, box-shadow, background-color, color;
+    @starting-style {
+      translate: none;
+    }
+  }
+}
+</style>
