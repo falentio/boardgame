@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { Coins, Flag, Hand, Plus } from "@lucide/vue";
-import type { CitadelsAction } from "#shared/core/lockstep/games/citadels/index.ts";
+import {
+  DRAW_COUNT,
+  GATHER_GOLD,
+  type CitadelsAction,
+} from "#shared/core/lockstep/games/citadels/index.ts";
 import type { CitadelsBoard } from "@/composables/citadels-board.ts";
 
 const props = defineProps<{
@@ -29,8 +33,8 @@ const picked = computed(() => props.card ?? null);
 const buildable = computed(() => hand.value > 0 && picked.value !== null);
 
 const CHOICES = [
-  { action: "gold", label: "Gold", count: "2", icon: Coins },
-  { action: "draw", label: "Cards", count: "2", icon: Hand },
+  { action: "gold", label: "Gold", count: GATHER_GOLD, icon: Coins },
+  { action: "draw", label: "Cards", count: DRAW_COUNT, icon: Hand },
   { action: "build", label: "Build", count: null, icon: Plus },
   { action: "pass", label: "Pass", count: null, icon: Flag },
 ] as const;

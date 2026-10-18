@@ -679,13 +679,16 @@ const endTurnThen = (rest: readonly Step[]): readonly Step[] => {
   return rest.some((step) => step.kind === "end-turn") ? rest : [END_TURN, ...rest];
 };
 
+/** The gather's gold: two coins, before any `onIncome` district hook (the School of Magic). */
+export const GATHER_GOLD = 2;
+
 /** The gather: 2 gold, then any `onIncome` district hooks (the School of Magic). */
 const gatherGold = (
   state: CitadelsState,
   seat: SeatId,
   rest: readonly Step[],
   rng: Random,
-): CitadelsState => runDistrictHooks(addGold(state, seat, 2), "onIncome", seat, rest, rng);
+): CitadelsState => runDistrictHooks(addGold(state, seat, GATHER_GOLD), "onIncome", seat, rest, rng);
 
 /**
  * The seat's own turn windows, dropped from a continuation so the build limit
