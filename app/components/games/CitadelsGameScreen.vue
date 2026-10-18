@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { Minimize } from "@lucide/vue";
+import { Coins, Crown, Layers, LogOut, Minimize } from "@lucide/vue";
 import FullscreenNotice from "@/components/citadels/FullscreenNotice.vue";
 import CitadelsBoard from "@/components/citadels/board/CitadelsBoard.vue";
+import "@/components/citadels/board/citadels-skin.css";
 import CitadelsGate from "@/components/citadels/CitadelsGate.vue";
 import GameStatusPanel from "@/components/games/GameStatusPanel.vue";
-import { buttonVariants } from "@/components/ui/button";
 import { citadelsBoardOf } from "@/composables/citadels-board.ts";
 import { useFullscreen } from "@/composables/fullscreen.ts";
 import { openSurface, type SurfacePhase } from "@/composables/immersive-surface.ts";
@@ -87,9 +87,18 @@ const chooseAction = (action: CitadelsAction): void => {
 
 const inFullscreen = computed(() => fullscreen.active.value);
 
-const winnerLine = computed(() => {
-  const winner = board.value?.table.winner ?? null;
-  return winner === null ? "Game over" : `${winner.name} wins`;
+/** The board carries no point total, so the plate shows the winner's own tally. */
+const terminalPlate = computed(() => {
+  const current = board.value;
+  if (current === null || !current.table.terminal) return null;
+  const winner = current.table.winner;
+  const seat = winner === null ? null : (current.seats.find((row) => row.seat === winner.seat) ?? null);
+  return {
+    winner: winner === null ? null : winner.name,
+    districts: seat?.city.length ?? 0,
+    gold: seat?.gold ?? 0,
+    cityTarget: current.me.cityTarget,
+  };
 });
 </script>
 
@@ -124,26 +133,60 @@ const winnerLine = computed(() => {
         <button
           data-slot="citadels-exit"
           type="button"
-          :class="buttonVariants({ variant: 'outline', size: 'sm' })"
-          class="ms-auto"
+          class="citadels-piece citadels-piece--plate ms-auto flex shrink-0 items-center gap-1 px-1.5 py-1"
           @click="leave"
         >
-          <Minimize class="size-3.5" aria-hidden="true" />
-          {{ inFullscreen ? "Exit fullscreen" : "Exit" }}
+          <Minimize class="size-3 shrink-0" aria-hidden="true" />
+          <span class="citadels-label !text-[0.5rem] !text-monokai-fg">{{
+            inFullscreen ? "exit fullscreen" : "exit"
+          }}</span>
         </button>
       </header>
 
-      <div
-        v-if="board?.table.terminal"
+      <section
+        v-if="terminalPlate"
         data-slot="citadels-terminal"
         role="status"
-        class="flex shrink-0 flex-wrap items-center gap-3 border-b border-foreground/10 bg-primary/10 px-3 py-2 text-sm leading-normal"
+        class="citadels-piece citadels-piece--thick mx-1 mt-1 flex shrink-0 flex-wrap items-center gap-2 px-2 py-1.5"
       >
-        <span class="font-semibold text-primary">{{ winnerLine }}</span>
-        <NuxtLink to="/" class="text-primary underline-offset-4 hover:underline">
-          Back to home
+        <span class="flex min-w-0 items-center gap-1.5">
+          <Crown class="size-3 shrink-0 text-monokai-yellow" aria-hidden="true" />
+          <span
+            data-slot="citadels-terminal-winner"
+            class="min-w-0 font-mono text-[0.6875rem] leading-none font-bold tracking-[0.14em] text-monokai-fg uppercase [overflow-wrap:anywhere]"
+            >{{ terminalPlate.winner ?? "no winner" }}</span
+          >
+          <span v-if="terminalPlate.winner !== null" class="citadels-label !text-[0.5rem]">wins</span>
+        </span>
+
+        <span
+          data-slot="citadels-terminal-score"
+          class="citadels-piece citadels-piece--plate flex shrink-0 items-center gap-1 px-1 py-0.5"
+        >
+          <Layers class="size-2.5 shrink-0 text-monokai-yellow" aria-hidden="true" />
+          <span class="citadels-label !text-[0.5rem]">dist</span>
+          <span class="text-[0.6875rem] leading-none font-bold tabular-nums text-monokai-fg"
+            >{{ terminalPlate.districts }}<span class="text-monokai-comment">/{{ terminalPlate.cityTarget }}</span></span
+          >
+        </span>
+
+        <span
+          data-slot="citadels-terminal-gold"
+          class="citadels-piece citadels-piece--plate flex shrink-0 items-center gap-1 px-1 py-0.5"
+        >
+          <Coins class="size-2.5 shrink-0 text-monokai-yellow" aria-hidden="true" />
+          <span class="citadels-ink text-[0.6875rem] leading-none font-bold">{{ terminalPlate.gold }}</span>
+        </span>
+
+        <NuxtLink
+          to="/"
+          data-slot="citadels-terminal-exit"
+          class="citadels-piece citadels-piece--plate ms-auto flex shrink-0 items-center gap-1 px-1.5 py-1"
+        >
+          <LogOut class="size-3 shrink-0" aria-hidden="true" />
+          <span class="citadels-label !text-[0.5rem] !text-monokai-fg">home</span>
         </NuxtLink>
-      </div>
+      </section>
 
       <FullscreenNotice
         :notice="notice"
