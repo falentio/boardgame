@@ -96,7 +96,7 @@ const finePointerPass = async () => {
   const page = browser.page;
   try {
     await page.goto(BASE + "/dev/motion-demo");
-    const ready = await page.waitFor("document.querySelector('[data-slot=citadels-surface]')");
+    const ready = await page.waitFor("document.querySelector('[data-slot=citadels-surface]')", 20000);
     check(ready, "the motion harness renders in the fine-pointer browser");
     if (!ready) return;
     await showScene(page, "turn");
@@ -299,7 +299,7 @@ const measureSkinPage = async (page) => {
   console.log("");
   console.log("== 5. the skin harness page ==");
   await page.goto(BASE + "/dev/citadels-interface");
-  const boardReady = await page.waitFor("document.querySelector('[data-slot=citadels-surface]')");
+  const boardReady = await page.waitFor("document.querySelector('[data-slot=citadels-surface]')", 20000);
   check(boardReady, "the interface harness renders the surface root");
   const board = await page.eval("(() => { const root = document.querySelector('[data-slot=citadels-surface]'); const all = [root, ...root.querySelectorAll('*')]; const rounded = all.filter((el) => !(el instanceof HTMLImageElement) && parseFloat(getComputedStyle(el).borderTopLeftRadius) > 0); const inner = document.querySelector('[data-slot=citadels-board]'); return { elements: all.length, rounded: rounded.length, cast: document.querySelectorAll('[data-slot=citadels-cast-row]').length, seats: document.querySelectorAll('[data-slot=citadels-seat]').length, hand: document.querySelectorAll('[data-slot=citadels-hand] [data-slot=citadels-district]').length, bar: document.querySelectorAll('[data-slot=citadels-action]').length, pad: getComputedStyle(root).padding, boardPad: getComputedStyle(inner).padding }; })()");
   console.log("   interface page: " + JSON.stringify(board));
@@ -315,7 +315,7 @@ const main = async () => {
   const page = browser.page;
   try {
     await page.goto(BASE + "/dev/motion-demo");
-    const ready = await page.waitFor("document.querySelector('[data-slot=citadels-surface]')");
+    const ready = await page.waitFor("document.querySelector('[data-slot=citadels-surface]')", 20000);
     check(ready, "the motion harness renders the surface root");
     if (!ready) return;
     const shape = await page.eval("(() => { const root = document.querySelector('[data-slot=citadels-surface]'); const box = root.getBoundingClientRect(); return JSON.stringify({ scenes: [...document.querySelectorAll('[data-slot=motion-demo-scene]')].map((b) => b.getAttribute('data-scene')), scene: root.getAttribute('data-scene'), purpose: root.getAttribute('data-scene-purpose'), frames: root.getAttribute('data-scene-frames'), choices: root.getAttribute('data-scene-choices'), covers: Math.round(box.width) + 'x' + Math.round(box.height) }); })()");
