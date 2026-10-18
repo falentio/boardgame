@@ -22,6 +22,7 @@ import {
   type SeatId,
 } from "#shared/core/lockstep/index.ts";
 import { seatId } from "#shared/rooms/ids.ts";
+import type { WindowPurpose } from "#shared/core/lockstep/games/citadels/state.ts";
 
 definePageMeta({ layout: false });
 
@@ -99,7 +100,7 @@ const advance = (state: CitadelsState, decide: Decide): CitadelsState =>
     makeRandom(SEED),
   );
 
-const openPurpose = (state: CitadelsState): string | null => {
+const openPurpose = (state: CitadelsState): WindowPurpose | null => {
   const top = state.steps[0];
   return top !== undefined && top.kind === "window" ? top.window.purpose : null;
 };
@@ -144,7 +145,7 @@ interface Scene {
   readonly board: Board;
   readonly seat: SeatId;
   readonly frames: number;
-  readonly purpose: string | null;
+  readonly purpose: WindowPurpose | null;
 }
 
 /** Fold real frames from a real deal until every scene a motion check needs has appeared. */

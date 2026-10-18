@@ -19,6 +19,7 @@ import {
   type SeatId,
 } from "#shared/core/lockstep/index.ts";
 import { seatId } from "#shared/rooms/ids.ts";
+import type { WindowPurpose } from "#shared/core/lockstep/games/citadels/state.ts";
 
 definePageMeta({ layout: false });
 
@@ -76,7 +77,7 @@ const advance = (state: CitadelsState): CitadelsState =>
     makeRandom(SEED),
   );
 
-const openPurpose = (state: CitadelsState): string | null => {
+const openPurpose = (state: CitadelsState): WindowPurpose | null => {
   const top = state.steps[0];
   return top !== undefined && top.kind === "window" ? top.window.purpose : null;
 };
