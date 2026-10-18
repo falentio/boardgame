@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { Coins, Flag, Hand, Plus } from "@lucide/vue";
+import type { CitadelsAction } from "#shared/core/lockstep/games/citadels/index.ts";
 import type { CitadelsBoard } from "@/composables/citadels-board.ts";
 
-const props = defineProps<{ board: CitadelsBoard }>();
-const emit = defineEmits<{
-  gold: [];
-  draw: [];
-  build: [card: number];
-  pass: [];
+const props = defineProps<{
+  board: CitadelsBoard;
+  /** The hand index the viewer picked, or null while the hand has no card picked. */
+  card?: number | null;
 }>();
+const emit = defineEmits<{ action: [action: CitadelsAction] }>();
 
 /** The four choices exist only on the turn window's gather, before the gather lands. */
 const open = computed(
@@ -17,14 +17,16 @@ const open = computed(
 );
 
 const hand = computed(() => props.board.me.hand.length);
+const picked = computed(() => props.card ?? null);
 
 /**
  * Every turn window is the turn's gather, and the reducer takes all four reports
  * there: pass and an unaffordable build close the turn, gold and draw land the
- * gather and open the build window below it. Only build needs a card, because
- * `tryBuild` reads one out of the hand by index.
+ * gather and open the build window below it. Build needs a card, and the only
+ * card it may name is the one the hand reported, because `tryBuild` reads a hand
+ * index and the hand is what knows which index a card sits at.
  */
-const buildable = computed(() => hand.value > 0);
+const buildable = computed(() => hand.value > 0 && picked.value !== null);
 
 const CHOICES = [
   { action: "gold", label: "Gold", count: "2", icon: Coins },
@@ -35,22 +37,29 @@ const CHOICES = [
 
 type Choice = (typeof CHOICES)[number]["action"];
 
-/** No card picker stands beside the tile, so a build reports the hand's first card. */
-const FIRST_CARD = 0;
+const title = (action: Choice): string | undefined =>
+  action !== "build" || buildable.value
+    ? undefined
+    : hand.value === 0
+      ? "Your hand is empty, so there is nothing to build"
+      : "Pick a card in your hand, then build it";
 
 const choose = (action: Choice): void => {
   switch (action) {
     case "gold":
-      emit("gold");
+      emit("action", { t: "gold" });
       return;
     case "draw":
-      emit("draw");
+      emit("action", { t: "draw" });
       return;
-    case "build":
-      emit("build", FIRST_CARD);
+    case "build": {
+      const card = picked.value;
+      if (card === null) return;
+      emit("action", { t: "build", card });
       return;
+    }
     case "pass":
-      emit("pass");
+      emit("action", { t: "pass" });
   }
 };
 </script>
@@ -68,7 +77,7 @@ const choose = (action: Choice): void => {
         data-slot="citadels-action"
         :data-action="choice.action"
         :disabled="choice.action === 'build' && !buildable"
-        :title="choice.action === 'build' && !buildable ? 'Your hand is empty, so there is nothing to build' : undefined"
+        :title="title(choice.action)"
         class="flex items-center gap-1.5 border border-monokai-line bg-monokai-panel px-2 py-1.5 font-mono text-[0.625rem] leading-none font-bold tracking-[0.16em] text-monokai-fg uppercase focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-monokai-yellow disabled:cursor-not-allowed disabled:border-monokai-line disabled:text-monokai-comment"
         @click="choose(choice.action)"
       >

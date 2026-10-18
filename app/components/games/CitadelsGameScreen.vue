@@ -65,22 +65,6 @@ const keepCard = (index: number): void => {
   report(act<CitadelsAction>({ t: "keep", index }));
 };
 
-const gatherGold = (): void => {
-  report(act<CitadelsAction>({ t: "gold" }));
-};
-
-const drawCards = (): void => {
-  report(act<CitadelsAction>({ t: "draw" }));
-};
-
-const buildCard = (card: number): void => {
-  report(act<CitadelsAction>({ t: "build", card }));
-};
-
-const passTurn = (): void => {
-  report(act<CitadelsAction>({ t: "pass" }));
-};
-
 const chooseAction = (action: CitadelsAction): void => {
   report(act<CitadelsAction>(action));
 };
@@ -200,11 +184,7 @@ const terminalPlate = computed(() => {
         :board="board"
         @pick="pickCharacter"
         @keep="keepCard"
-        @gold="gatherGold"
-        @draw="drawCards"
-        @build="buildCard"
-        @pass="passTurn"
-        @choose="chooseAction"
+        @action="chooseAction"
       />
       <p v-else role="status" class="text-muted-foreground p-3 text-sm leading-normal">
         Waiting for the game to start…

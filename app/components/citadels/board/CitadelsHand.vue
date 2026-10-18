@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import type { DistrictId } from "#shared/core/lockstep/games/citadels/index.ts";
+import { type DistrictId, specOfDistrict } from "#shared/core/lockstep/games/citadels/index.ts";
 import DistrictCard from "../DistrictCard.vue";
 
-defineProps<{ hand: readonly DistrictId[]; disabled?: boolean }>();
-const emit = defineEmits<{ build: [district: DistrictId] }>();
+defineProps<{
+  hand: readonly DistrictId[];
+  /** The hand index the turn bar would build right now, or null when nothing is picked. */
+  picked?: number | null;
+  pickable?: boolean;
+}>();
+const emit = defineEmits<{ pick: [card: number] }>();
 </script>
 
 <template>
@@ -18,10 +23,13 @@ const emit = defineEmits<{ build: [district: DistrictId] }>();
         <button
           type="button"
           data-slot="citadels-hand-tile"
+          :data-index="index"
+          :data-picked="picked === index ? 'true' : undefined"
+          :aria-pressed="picked === index"
+          :aria-label="`Build ${specOfDistrict(district).name} from hand`"
           class="block focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed"
-          :disabled="disabled"
-          :aria-label="`Build ${district}`"
-          @click="emit('build', district)"
+          :disabled="pickable !== true"
+          @click="emit('pick', index)"
         >
           <DistrictCard :district="district" />
         </button>
@@ -47,6 +55,11 @@ const emit = defineEmits<{ build: [district: DistrictId] }>();
 }
 
 [data-slot="citadels-hand-tile"]:hover:not(:disabled) {
+  outline-color: var(--monokai-yellow);
+}
+
+[data-slot="citadels-hand-tile"][data-picked="true"] {
+  outline-width: 2px;
   outline-color: var(--monokai-yellow);
 }
 

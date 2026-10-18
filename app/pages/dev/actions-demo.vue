@@ -67,49 +67,44 @@ const noWindow = {
   <div class="flex h-dvh flex-col gap-4 bg-monokai-bg p-6 font-mono text-monokai-fg">
     <section data-demo="two-cards" class="flex flex-col gap-1.5">
       <span class="text-[0.625rem] leading-none tracking-[0.2em] text-monokai-comment uppercase"
-        >turn window · two cards in hand</span
+        >turn window · two cards in hand, none picked</span
       >
-      <CitadelsActions
-        :board="twoCards"
-        @gold="record({ t: 'gold' })"
-        @draw="record({ t: 'draw' })"
-        @build="(card) => record({ t: 'build', card })"
-        @pass="record({ t: 'pass' })"
-      />
+      <CitadelsActions :board="twoCards" :card="null" @action="record" />
+    </section>
+
+    <section data-demo="picked-card" class="flex flex-col gap-1.5">
+      <span class="text-[0.625rem] leading-none tracking-[0.2em] text-monokai-comment uppercase"
+        >turn window · the hand picked index 1</span
+      >
+      <CitadelsActions :board="twoCards" :card="1" @action="record" />
     </section>
 
     <section data-demo="no-cards" class="flex flex-col gap-1.5">
       <span class="text-[0.625rem] leading-none tracking-[0.2em] text-monokai-comment uppercase"
         >turn window · empty hand</span
       >
-      <CitadelsActions
-        :board="noCards"
-        @gold="record({ t: 'gold' })"
-        @draw="record({ t: 'draw' })"
-        @build="(card) => record({ t: 'build', card })"
-        @pass="record({ t: 'pass' })"
-      />
+      <CitadelsActions :board="noCards" :card="null" @action="record" />
     </section>
 
     <section data-demo="other-window" class="flex flex-col gap-1.5">
       <span class="text-[0.625rem] leading-none tracking-[0.2em] text-monokai-comment uppercase"
         >keep window · owed by me</span
       >
-      <CitadelsActions :board="otherWindow" />
+      <CitadelsActions :board="otherWindow" :card="null" />
     </section>
 
     <section data-demo="rival-window" class="flex flex-col gap-1.5">
       <span class="text-[0.625rem] leading-none tracking-[0.2em] text-monokai-comment uppercase"
         >turn window · owed by a rival</span
       >
-      <CitadelsActions :board="rivalWindow" />
+      <CitadelsActions :board="rivalWindow" :card="null" />
     </section>
 
     <section data-demo="no-window" class="flex flex-col gap-1.5">
       <span class="text-[0.625rem] leading-none tracking-[0.2em] text-monokai-comment uppercase"
         >no window open</span
       >
-      <CitadelsActions :board="noWindow" />
+      <CitadelsActions :board="noWindow" :card="null" />
     </section>
 
     <pre data-slot="actions-emitted" class="text-[0.625rem] text-monokai-comment">{{

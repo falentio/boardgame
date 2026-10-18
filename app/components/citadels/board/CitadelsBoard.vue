@@ -17,11 +17,7 @@ const props = defineProps<{ board: CitadelsBoard }>();
 const emit = defineEmits<{
   pick: [character: CharacterId];
   keep: [index: number];
-  gold: [];
-  draw: [];
-  build: [card: number];
-  pass: [];
-  choose: [action: CitadelsAction];
+  action: [action: CitadelsAction];
 }>();
 
 const focusedSeat = ref<SeatPlate["seat"] | null>(null);
@@ -34,6 +30,25 @@ watch(
     }
   },
 );
+
+/** The turn window is the only one the four controls, and the card they build, answer. */
+const myTurnWindow = computed(
+  () => props.board.table.window?.owedByMe === true && props.board.table.window.purpose === "turn",
+);
+
+/** The hand index the viewer picked, which the turn bar's build is the only reader of. */
+const picked = ref<number | null>(null);
+
+/**
+ * A pick is legal only while the hand still holds that index and the turn is the
+ * viewer's, so the board derives it instead of clearing a ref on every change: a
+ * card already built cannot be reported again from a stale index.
+ */
+const pickedCard = computed(() => {
+  const index = picked.value;
+  if (!myTurnWindow.value || index === null) return null;
+  return index < props.board.me.hand.length ? index : null;
+});
 
 const shown = computed<SeatPlate>(
   () => props.board.opponents.find((rival) => rival.seat === focusedSeat.value) ?? props.board.me,
@@ -150,19 +165,18 @@ const claim = computed(() => {
           </p>
         </section>
 
-        <CitadelsChoice :board="board" @choose="(action) => emit('choose', action)" />
+        <CitadelsChoice :board="board" @choose="(action) => emit('action', action)" />
 
-        <CitadelsActions
-          :board="board"
-          @gold="emit('gold')"
-          @draw="emit('draw')"
-          @build="(card) => emit('build', card)"
-          @pass="emit('pass')"
-        />
+        <CitadelsActions :board="board" :card="pickedCard" @action="(action) => emit('action', action)" />
 
         <CitadelsKeep :board="board" @keep="(index) => emit('keep', index)" />
 
-        <CitadelsHand :hand="board.me.hand" />
+        <CitadelsHand
+          :hand="board.me.hand"
+          :picked="pickedCard"
+          :pickable="myTurnWindow"
+          @pick="picked = $event"
+        />
       </template>
     </div>
 

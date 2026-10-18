@@ -6,7 +6,7 @@ import { createServer } from "node:net";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
 
-const BASE = "http://localhost:3000";
+const BASE = process.env.CITADELS_BASE ?? "http://localhost:3000";
 const HARNESS = BASE + "/dev/actions-demo";
 const OUT = ".audit/actions";
 const STAMP = Date.now();
@@ -48,6 +48,11 @@ const launch = async (label) => {
       "--no-sandbox",
       "--disable-gpu",
       "--disable-dev-shm-usage",
+      // Headless Chrome reports no hover media at all, so the 1px lift behind
+      // (hover: hover) and (pointer: fine) never applies without a reported
+      // pointer. Emulation.setEmulatedMedia takes these features and does
+      // nothing with them; the blink setting is what makes the media match.
+      "--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4",
       "--user-data-dir=" + profile,
       "--remote-debugging-port=" + port,
       "--remote-allow-origins=*",
@@ -131,6 +136,25 @@ const launch = async (label) => {
       return page.eval(
         "(() => { const el = document.querySelector(" + JSON.stringify(selector) + "); if (el === null) return null; const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()",
       );
+    },
+    async clickReal(selector, attempts = 6) {
+      for (let attempt = 0; attempt < attempts; attempt += 1) {
+        // A real press lands where the pointer is, so the target has to be on screen.
+        await page.eval(
+          "(() => { const el = document.querySelector(" + JSON.stringify(selector) + "); if (el !== null) el.scrollIntoView({ block: 'center', inline: 'center' }); return el !== null; })()",
+        );
+        const box = await page.rect(selector);
+        if (box !== null) {
+          const x = Math.round(box.x + box.width / 2);
+          const y = Math.round(box.y + box.height / 2);
+          await send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y, buttons: 0 }, session);
+          await send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", buttons: 1, clickCount: 1 }, session);
+          await send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", buttons: 0, clickCount: 1 }, session);
+          return true;
+        }
+        await delay(120);
+      }
+      return false;
     },
     async hover(selector) {
       const box = await page.rect(selector);
@@ -227,6 +251,7 @@ const runHarness = async () => {
         const opens = (name) => document.querySelector("[data-demo=" + name + "] [data-slot=citadels-actions]") !== null;
         return {
           twoCards: at("two-cards"),
+          pickedCard: at("picked-card"),
           noCards: at("no-cards"),
           otherWindow: opens("other-window"),
           rivalWindow: opens("rival-window"),
@@ -237,7 +262,8 @@ const runHarness = async () => {
     console.log("shape:", JSON.stringify(shape));
     check(JSON.stringify(shape.twoCards.map((b) => b.action)) === JSON.stringify(["gold", "draw", "build", "pass"]), "four controls in order (gold, draw, build, pass)", shape.twoCards.map((b) => b.action));
     check(shape.twoCards.every((b) => b.tag === "BUTTON"), "each control is a real <button>", shape.twoCards.map((b) => b.tag));
-    check(shape.twoCards.every((b) => b.disabled === false), "two-card hand: all four enabled", shape.twoCards);
+    check(JSON.stringify(shape.twoCards.filter((b) => !b.disabled).map((b) => b.action)) === JSON.stringify(["gold", "draw", "pass"]), "two-card hand: build waits for a hand card to be picked", shape.twoCards);
+    check(shape.pickedCard.every((b) => b.disabled === false), "a picked hand card arms all four controls", shape.pickedCard);
     check(JSON.stringify(shape.noCards.map((b) => b.action)) === JSON.stringify(["gold", "draw", "build", "pass"]), "empty hand still renders all four", shape.noCards.map((b) => b.action));
     check(JSON.stringify(shape.noCards.filter((b) => b.disabled).map((b) => b.action)) === JSON.stringify(["build"]), "empty hand: only build disabled", shape.noCards.filter((b) => b.disabled).map((b) => b.action));
     check(shape.otherWindow === false, "keep window renders nothing", shape.otherWindow);
@@ -252,30 +278,40 @@ const runHarness = async () => {
           const out = [];
           for (const action of ["gold", "draw", "build", "pass"]) {
             const button = document.querySelector("[data-demo=two-cards] [data-action=" + action + "]");
+            const before = (window.__emitted || []).length;
             button.click();
             await new Promise((r) => setTimeout(r, 60));
-            out.push({ action, emitted: JSON.parse(JSON.stringify((window.__emitted || []).slice(-1)[0] || null)) });
+            const after = window.__emitted || [];
+            out.push({ action, emitted: after.length > before ? JSON.parse(JSON.stringify(after[after.length - 1])) : null });
           }
+          const reported = (window.__emitted || []).length;
+          const picked = document.querySelector("[data-demo=picked-card] [data-action=build]");
+          picked.click();
+          await new Promise((r) => setTimeout(r, 60));
+          const built = JSON.parse(JSON.stringify((window.__emitted || []).slice(-1)[0] || null));
           const build = document.querySelector("[data-demo=no-cards] [data-action=build]");
           build.click();
           await new Promise((r) => setTimeout(r, 60));
-          return { clicks: out, afterDisabledBuildClick: (window.__emitted || []).length };
+          return { clicks: out, reported, built, afterDisabledBuildClick: (window.__emitted || []).length };
         })();
       }),
     );
     console.log("clicks:", JSON.stringify(clicks.clicks));
     check(JSON.stringify(clicks.clicks.map((c) => c.action)) === JSON.stringify(["gold", "draw", "build", "pass"]), "clicked all four controls", clicks.clicks.map((c) => c.action));
-    check(JSON.stringify(clicks.clicks.map((c) => c.emitted)) === JSON.stringify([{ t: "gold" }, { t: "draw" }, { t: "build", card: 0 }, { t: "pass" }]), "each click emitted its domain action", clicks.clicks.map((c) => c.emitted));
-    check(clicks.afterDisabledBuildClick === 4, "disabled build in an empty hand emits nothing", clicks.afterDisabledBuildClick);
+    check(JSON.stringify(clicks.clicks.map((c) => c.emitted)) === JSON.stringify([{ t: "gold" }, { t: "draw" }, null, { t: "pass" }]), "gold, draw and pass report; an unpicked build reports nothing", clicks.clicks.map((c) => c.emitted));
+    check(JSON.stringify(clicks.built) === JSON.stringify({ t: "build", card: 1 }), "a build reports the hand index it was told, not the first card", clicks.built);
+    check(clicks.afterDisabledBuildClick === clicks.reported + 1, "the empty hand and the unpicked build emit nothing", { reported: clicks.reported, after: clicks.afterDisabledBuildClick });
 
     const a11y = await page.eval(
       expr(function () {
-        const button = document.querySelector("[data-demo=no-cards] [data-action=build]");
+        const button = document.querySelector("[data-demo=two-cards] [data-action=build]");
+        const empty = document.querySelector("[data-demo=no-cards] [data-action=build]");
         const box = document.querySelector("[data-demo=two-cards] [data-slot=citadels-actions]");
-        return { title: button.getAttribute("title"), text: button.textContent.trim(), list: box.getAttribute("aria-label") };
+        return { title: button.getAttribute("title"), emptyTitle: empty.getAttribute("title"), text: button.textContent.trim(), list: box.getAttribute("aria-label") };
       }),
     );
     console.log("a11y:", JSON.stringify(a11y));
+    check(a11y.title !== null && a11y.title.includes("Pick a card") && a11y.title !== a11y.emptyTitle, "the unpicked build names the card it waits for", { unpicked: a11y.title, emptyHand: a11y.emptyTitle });
 
     const row = await page.eval(
       expr(function () {
@@ -334,16 +370,23 @@ const runLiveSurface = async () => {
 
     // Each draft window owes one page a pick; the first unlocked card is the
     // lowest rank still free, so both seats walk the cast from the bottom up.
-    const pickIfOwed = async (page) => {
+    /** The build proof reads the hand right after the gather, so this seat prefers a
+        character whose own effect opens no window between its gather and its build. */
+    const NO_PRE_BUILD_WINDOW = ["architect", "bishop", "merchant", "king"];
+    const pickIfOwed = async (page, prefer = []) => {
       const free = await page.eval(expr(function () {
         return document.querySelector("[data-slot=citadels-picker-card]:not([disabled])") !== null;
       }));
       if (!free) return false;
-      const character = await page.eval(expr(function () {
-        const card = document.querySelector("[data-slot=citadels-picker-card]:not([disabled])");
-        card.click();
-        return card.getAttribute("data-character");
-      }));
+      const character = await page.eval(
+        "(() => {" +
+          " const open = [...document.querySelectorAll('[data-slot=citadels-picker-card]:not([disabled])')];" +
+          " const prefer = " + JSON.stringify(prefer) + ";" +
+          " const card = open.find((one) => prefer.includes(one.getAttribute('data-character'))) || open[0];" +
+          " card.click();" +
+          " return card.getAttribute('data-character');" +
+          "})()",
+      );
       await delay(250);
       const confirmed = await page.click("[data-slot=citadels-picker-confirm]");
       info(page.label + " drafted " + character + " (confirmed: " + confirmed + ")");
@@ -355,7 +398,7 @@ const runLiveSurface = async () => {
     let live = null;
     let rivalSawActions = null;
     while (Date.now() < deadline && live === null) {
-      if (await pickIfOwed(hostPage)) continue;
+      if (await pickIfOwed(hostPage, NO_PRE_BUILD_WINDOW)) continue;
       if (await pickIfOwed(guestPage)) continue;
       const mine = await hostPage.eval(expr(ACTIONS));
       if (mine !== null) {
@@ -454,7 +497,96 @@ const runLiveSurface = async () => {
     // seat its own ability window (a thief robs before it builds), where the tiles
     // stand down by design; which of the two the run lands on is the reducer's call.
     info("window after the gather: " + gold.windowAfter + " (tiles " + (gold.stillOpen ? "up on the build window" : "down for the character's window") + ")");
-    console.log("self column after gold:", await hostPage.clip("self-column-after-gold", "[data-slot=citadels-self]", 10));
+    const HAND = expr(function () {
+      return [...document.querySelectorAll("[data-slot=citadels-hand-tile]")].map((tile) => {
+        const card = tile.querySelector("[data-slot=citadels-district]");
+        const label = card === null ? "" : card.getAttribute("aria-label") || "";
+        return {
+          index: Number(tile.getAttribute("data-index")),
+          district: card === null ? null : card.getAttribute("data-district"),
+          name: label.split(",")[0],
+          cost: Number((label.match(/, (\d+) gold/) || [])[1] || NaN),
+          disabled: tile.disabled,
+        };
+      });
+    });
+    const STATE = expr(function () {
+      const window = document.querySelector("[data-slot=citadels-window]");
+      const choice = document.querySelector("[data-slot=citadels-choice]");
+      const build = document.querySelector("[data-slot=citadels-actions] [data-action=build]");
+      const gold = document.querySelector("[data-slot=citadels-self-gold]");
+      return {
+        window: window === null ? null : window.textContent.trim(),
+        choice: choice === null ? null : choice.querySelectorAll("[data-slot=citadels-choice-option]").length,
+        armed: build !== null && build.disabled === false,
+        marked: document.querySelectorAll("[data-slot=citadels-hand-tile][data-picked=true]").length,
+        hand: document.querySelectorAll("[data-slot=citadels-hand-tile]").length,
+        handIds: [
+          ...document.querySelectorAll("[data-slot=citadels-hand-tile] [data-slot=citadels-district]"),
+        ].map((card) => card.getAttribute("data-district")),
+        gold: gold === null ? null : Number(gold.textContent.trim()),
+        city: [
+          ...document.querySelectorAll(
+            "[data-slot=citadels-self] [data-slot=citadels-city] [data-slot=citadels-district]",
+          ),
+        ].map((card) => card.getAttribute("data-district")),
+      };
+    });
+
+    // A character's own effect can open a window between the gather and the build
+    // (the draft below prefers a character that opens none), and such a window takes
+    // a real press to answer, so answer it until the hand comes back pickable.
+    const barrier = Date.now() + 25000;
+    let hand = await hostPage.eval(HAND);
+    while ((hand.length === 0 || hand[0].disabled) && Date.now() < barrier) {
+      await hostPage.clickReal("[data-slot=citadels-surface] [data-slot=citadels-choice-option]");
+      await delay(280);
+      hand = await hostPage.eval(HAND);
+    }
+    const before = await hostPage.eval(STATE);
+    const affordable = hand.filter((card) => Number.isFinite(card.cost) && card.cost <= before.gold);
+    const picked = affordable.find((card) => card.index !== 0) ?? affordable[0] ?? null;
+
+    check(picked !== null, "the turn hand holds a card the gather's gold covers", { hand, gold: before.gold });
+    if (picked !== null) {
+      await hostPage.click('[data-slot=citadels-hand-tile][data-index="' + picked.index + '"]');
+      await delay(150);
+      const armed = await hostPage.eval(STATE);
+      check(
+        armed.marked === 1 && armed.armed,
+        "picking hand index " + picked.index + " marks that tile and arms the turn bar's build",
+        { marked: armed.marked, armed: armed.armed, picked },
+      );
+      await hostPage.click("[data-slot=citadels-actions] [data-action=build]");
+      await delay(1800);
+      const after = await hostPage.eval(STATE);
+      console.log(
+        "live build:",
+        JSON.stringify({
+          handBefore: hand,
+          handAfter: after.hand,
+          goldBefore: before.gold,
+          goldAfter: after.gold,
+          pickedIndex: picked.index,
+          picked: picked.district,
+          pickedCost: picked.cost,
+          cityBefore: before.city,
+          cityAfter: after.city,
+          windowAfter: after.window,
+        }),
+      );
+      check(after.city.includes(picked.district), "the engine builds the district the picked index names", { picked, city: after.city });
+      // A character's own build bonus can draw on top of the build (the Architect draws
+      // two), so the proof reads the picked card out of the hand rather than the count.
+      const left =
+        before.handIds.filter((id) => id === picked.district).length -
+        after.handIds.filter((id) => id === picked.district).length;
+      check(
+        after.gold === before.gold - picked.cost && left === 1,
+        "the build pays that card's cost and takes that card out of hand",
+        { gold: before.gold + " -> " + after.gold, picked: picked.district, leftHand: left, handAfter: after.handIds },
+      );
+    }
   } finally {
     console.log("live console errors:", hostPage.errors.length ? hostPage.errors.slice(0, 3) : "none", guestPage.errors.length ? guestPage.errors.slice(0, 3) : "none");
     hostPage.close();
