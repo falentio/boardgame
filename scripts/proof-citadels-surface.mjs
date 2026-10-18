@@ -428,6 +428,29 @@ const FACTS = `(() => {
   };
 })()`;
 
+const PAINT = `(() => {
+  const surface = document.querySelector('[data-slot=citadels-surface]');
+  if (surface === null) return null;
+  const seat = document.querySelector('[data-slot=citadels-seat]');
+  const style = getComputedStyle(surface);
+  const avatar = seat === null ? null : seat.querySelector('img');
+  return {
+    bg: style.backgroundColor,
+    fg: style.color,
+    pfp: avatar === null ? null : avatar.getAttribute('src'),
+  };
+})()`;
+
+const lumOf = (css) => {
+  const [r, g, b] = (css.match(/[\d.]+/g) ?? [])
+    .filter((part) => Number.isFinite(Number(part)))
+    .slice(0, 3)
+    .map(Number)
+    .map((v) => v / 255);
+  const channel = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+};
+
 const factDiffs = (before, after) => {
   const diffs = [];
   if (before.href !== after.href) diffs.push(`href ${before.href} -> ${after.href}`);
@@ -671,6 +694,24 @@ const main = async () => {
             );
           } else {
             pass("the surface reads data-orientation=landscape at 1280x800");
+          }
+          const paint = await guestPage.eval(PAINT);
+          if (paint === null) {
+            fail("the surface vanished before its paint could be read");
+          } else {
+            const hi = Math.max(lumOf(paint.bg), lumOf(paint.fg));
+            const lo = Math.min(lumOf(paint.bg), lumOf(paint.fg));
+            const ratio = (hi + 0.05) / (lo + 0.05);
+            if (!Number.isFinite(ratio) || ratio < 7) {
+              fail(`the surface paints ${paint.fg} on ${paint.bg} (${ratio.toFixed(2)}:1), want at least 7:1`);
+            } else {
+              pass(`the surface paints ${paint.fg} on ${paint.bg}: ${ratio.toFixed(2)}:1 contrast`);
+            }
+            if (paint.pfp === null || !paint.pfp.startsWith("https://api.dicebear.com/")) {
+              fail(`the first seat shows no dicebear avatar, its src is ${JSON.stringify(paint.pfp)}`);
+            } else {
+              pass(`the first seat shows a dicebear avatar: ${paint.pfp.split("?")[0]}`);
+            }
           }
           info(`screenshot: ${await guestPage.screenshot("citadels-surface-landscape")}`);
         },
