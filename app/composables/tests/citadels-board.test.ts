@@ -15,6 +15,7 @@ import {
 } from "#shared/core/lockstep/games/citadels/index.ts";
 import { seatId, type SeatId } from "#shared/rooms/ids.ts";
 import { citadelsBoardOf, citadelsPurposeLabel, phaseLabel } from "../citadels-board.ts";
+import { autoStep, openPurpose } from "../../../shared/core/tests/lockstep/citadels/driver.ts";
 
 const ANN = seatId("ann");
 const BOB = seatId("bob");
@@ -257,4 +258,40 @@ test("phaseLabel covers every engine phase", () => {
   expect(phaseLabel("draft")).toBe("Draft");
   expect(phaseLabel("turn")).toBe("Turn");
   expect(phaseLabel("over")).toBe("Game over");
+});
+
+const foldedToKeep = (): { readonly state: ReturnType<typeof genesis>; readonly owner: SeatId } => {
+  let state = genesis();
+  for (let i = 0; i < 4000; i += 1) {
+    const pending = state.pending;
+    if (openPurpose(state) === "keep" && pending !== null && pending.cards.length === 2) {
+      return { state, owner: pending.actor };
+    }
+    state = autoStep(state);
+  }
+  throw new Error("no gather keep in 4000 frames");
+};
+
+test("the drawn pool reaches only the seat that owes the keep window", () => {
+  const { state, owner } = foldedToKeep();
+  const pool = state.pending?.cards ?? [];
+  const mine = citadels.project(state, owner);
+  expect(pool).toHaveLength(2);
+  expect(mine.window?.purpose).toBe("keep");
+  expect(mine.owedSeats).toEqual([owner]);
+  expect(mine.myDraw).toEqual(pool);
+  for (const rival of SEATS.filter((seat) => seat !== owner)) {
+    expect(citadels.project(state, rival).myDraw).toEqual([]);
+  }
+});
+
+test("the keep surface shows the drawn pair to its owner and nothing to a rival", () => {
+  const { state, owner } = foldedToKeep();
+  const pool = state.pending?.cards ?? [];
+  const rival = SEATS.find((seat) => seat !== owner);
+  if (rival === undefined) throw new Error("no rival seat");
+  const mine = citadelsBoardOf(citadels.project(state, owner), names());
+  expect(mine.table.window).toEqual({ purpose: "keep", label: "Keep a card", owedByMe: true });
+  expect(mine.table.drawn).toEqual(pool);
+  expect(citadelsBoardOf(citadels.project(state, rival), names()).table.drawn).toEqual([]);
 });

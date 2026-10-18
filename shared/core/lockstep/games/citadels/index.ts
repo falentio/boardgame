@@ -66,6 +66,12 @@ export interface CitadelsView {
   readonly players: readonly PlayerView[];
   /** Only the viewer's own hand. */
   readonly myHand: readonly DistrictId[];
+  /**
+   * The cards in flight this seat must act on, such as the gather's keep pool. A
+   * pending action's pool is hidden from every other seat: only the actor that owes
+   * the open window sees the ids, every rival reads an empty list.
+   */
+  readonly myDraw: readonly DistrictId[];
   readonly crown: SeatId;
   readonly round: number;
   readonly phase: Phase;
@@ -118,6 +124,10 @@ export const citadels: GameDefinition<CitadelsState, CitadelsAction, CitadelsSet
         city: player.city.map((district) => ({ id: district.id, gold: district.gold })),
       })),
       myHand: mine === undefined ? [] : [...mine.hand],
+      myDraw:
+        state.pending !== null && state.pending.actor === seat && seatsOwedNow(state).includes(seat)
+          ? [...state.pending.cards]
+          : [],
       crown: state.crown,
       round: state.round,
       phase: state.phase,

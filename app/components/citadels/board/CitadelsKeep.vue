@@ -11,12 +11,8 @@ const open = computed(() => {
   return window?.owedByMe === true && window.purpose === "keep";
 });
 
-/** The view hides the drawn pair's ids, so the gather draw is the only pending pool of exactly two cards. */
-const drawn = computed(() => {
-  const pending = props.board.table.pending;
-  if (pending === null || pending.character !== null || pending.cards !== 2) return [];
-  return props.board.table.drawn;
-});
+/** The reducer keeps pool[action.index], so the surface reports the position it shows. */
+const drawn = computed(() => props.board.table.drawn);
 </script>
 
 <template>

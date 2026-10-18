@@ -77,6 +77,8 @@ export interface CitadelsTable {
   readonly phase: Phase;
   readonly phaseLabel: string;
   readonly cast: readonly CastSlot[];
+  /** The cards in flight for the window the viewer owes; empty while a rival awaits theirs. */
+  readonly drawn: readonly DistrictId[];
   readonly myPick: CharacterId | null;
   readonly window: OpenWindow | null;
   readonly pending: PendingAction | null;
@@ -196,6 +198,7 @@ export const citadelsBoardOf = (
         return { character, name: spec.name, rank: spec.rank, state: castStateOf(view, character) };
       }),
       myPick: view.myPick,
+      drawn: view.myDraw,
       window:
         view.window === null
           ? null

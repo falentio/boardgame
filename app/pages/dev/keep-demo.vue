@@ -1,42 +1,49 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import CitadelsKeep from "@/components/citadels/board/CitadelsKeep.vue";
-import type { CitadelsBoard } from "@/composables/citadels-board.ts";
-import type { DistrictId } from "#shared/core/lockstep/games/citadels/index.ts";
+import { citadelsBoardOf } from "@/composables/citadels-board.ts";
+import {
+  BASE_CAST,
+  BASIC_DISTRICTS,
+  citadels,
+  type CitadelsView,
+} from "#shared/core/lockstep/games/citadels/index.ts";
+import { genesisSeed, makeRandom, makeRoster } from "#shared/core/lockstep/index.ts";
+import { seatId } from "#shared/rooms/ids.ts";
 
 definePageMeta({ layout: false });
 
-const board = {
-  table: {
-    round: 3,
-    phase: "turn",
-    phaseLabel: "Turn",
-    cast: [],
-    myPick: null,
-    window: { purpose: "keep", label: "Keep a card", owedByMe: true },
-    pending: { actor: "ada", character: null, target: null, cards: 2 },
-    drawn: ["haunted-quarter", "school-of-magic"] as readonly DistrictId[],
-    deckCount: 41,
-    discard: [],
-    winner: null,
-    terminal: false,
-  },
-  opponents: [],
-  seats: [],
-  me: {
-    seat: "ada",
-    name: "Ada",
-    kind: "me",
-    gold: 6,
-    city: [],
-    crown: true,
-    active: true,
-    owed: true,
-    hand: ["tavern", "docks"] as readonly DistrictId[],
-    cityTarget: 8,
-  },
-} as unknown as CitadelsBoard;
+const ANN = seatId("ann");
+const BOB = seatId("bob");
+const NAMES = new Map([
+  [ANN, "Ada"],
+  [BOB, "Bo"],
+]);
 
+const base = citadels.project(
+  citadels.genesis(
+    { cast: [...BASE_CAST] },
+    makeRoster([ANN, BOB]),
+    makeRandom(genesisSeed("keep-demo")),
+  ),
+  ANN,
+);
+
+/** The engine's own view, moved onto the gather keep the surface renders. */
+const staged = (): CitadelsView => {
+  const drawn = BASIC_DISTRICTS.slice(0, 2).map((district) => district.id);
+  return {
+    ...base,
+    phase: "turn",
+    owedSeats: [ANN],
+    myHand: [...base.myHand, ...drawn],
+    myDraw: drawn,
+    window: { kind: "oneOf", purpose: "keep" },
+    pending: { actor: ANN, character: null, target: null, cards: drawn.length },
+  };
+};
+
+const board = computed(() => citadelsBoardOf(staged(), NAMES));
 const kept = ref<number | null>(null);
 </script>
 
