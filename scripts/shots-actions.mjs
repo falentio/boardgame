@@ -243,11 +243,28 @@ const createRoom = async (host) => {
   return (await res.json()).room.code;
 };
 
+/**
+ * A route can land before its page component is compiled, and a chunk fetch lost
+ * to a re-optimisation leaves the router unstarted (VUE_ROUTER_R0011), so a page
+ * that never reached `expression` is entered again before it is read.
+ */
+const settle = async (page, url, expression, timeoutMs = 60000) => {
+  for (let attempt = 0; ; attempt += 1) {
+    if (attempt > 0) {
+      info(page.label + ": " + url + " never reached " + expression + "; navigating again");
+      await page.goto(url, 2500);
+    }
+    if (await page.waitFor(expression, timeoutMs)) return true;
+    if (attempt >= 2) return false;
+  }
+};
+
 const runHarness = async () => {
   const page = await launch("harness");
   try {
     await page.goto(HARNESS, 2600);
     check(await page.hydrated(), "the demo page's client script runs before the probe reads it");
+    await settle(page, HARNESS, "document.querySelector('[data-demo=two-cards] [data-action=gold]') !== null");
 
     const shape = await page.eval(
       expr(function () {
@@ -359,12 +376,12 @@ const runLiveSurface = async () => {
 
     await guestPage.goto(BASE + "/join/" + code, 1500);
     check(await guestPage.hydrated(), "the guest's join page runs its client script, which is what takes the seat");
-    const seated = await guestPage.waitFor("location.pathname === '/rooms/" + code + "'", 40000);
+    const seated = await settle(guestPage, BASE + "/join/" + code, "location.pathname === '/rooms/" + code + "'", 40000);
     check(seated, "the second account takes the spare seat", await guestPage.eval("location.pathname"));
 
     await hostPage.goto(BASE + "/rooms/" + code, 1500);
     check(await hostPage.hydrated(), "the host's room page runs the client script that fetches the seats");
-    const full = await hostPage.waitFor("document.body.innerText.includes('All seats filled')", 40000);
+    const full = await settle(hostPage, BASE + "/rooms/" + code, "document.body.innerText.includes('All seats filled')", 40000);
     check(full, "the room reports all seats filled");
     const offered = await hostPage.eval(
       "(() => { const b = [...document.querySelectorAll('button')].find((el) => el.textContent.includes('Start game')); if (b === undefined) return false; b.click(); return true; })()",
@@ -375,8 +392,8 @@ const runLiveSurface = async () => {
 
     for (const page of [hostPage, guestPage]) {
       await page.goto(BASE + "/games/" + code, 2500);
+      const immersive = await settle(page, BASE + "/games/" + code, "document.querySelector('[data-slot=citadels-immersive]')", 60000);
       check(await page.hydrated(), page.label + ": the game page runs the client script behind the enter control");
-      const immersive = await page.waitFor("document.querySelector('[data-slot=citadels-immersive]')", 60000);
       check(immersive, page.label + ": the citadels screen mounts on the game route");
       await page.click("[data-slot=citadels-enter]");
       const surface = await page.waitFor("document.querySelector('[data-slot=citadels-surface]')", 20000);
