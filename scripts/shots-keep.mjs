@@ -5,135 +5,24 @@
 // and asserts the same keep surface inside its root.
 //
 // Usage: node scripts/shots-keep.mjs [--port 3001] [--harness-only]
-import { spawn } from "node:child_process";
-import { createServer } from "node:net";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
+import { CAST, argOf, createShots, summarize } from "./lib/shots-harness.mjs";
 
 const args = process.argv.slice(2);
-const argOf = (name, fallback) => {
-  const i = args.indexOf(name);
-  return i === -1 ? fallback : args[i + 1];
-};
-const PORT = Number(argOf("--port", "3000"));
+const PORT = Number(argOf(args, "--port", "3000"));
 const HARNESS_ONLY = args.includes("--harness-only");
 const BASE = process.env.CITADELS_BASE ?? "http://localhost:" + PORT;
-const STAMP = Date.now();
-const PASSWORD = "proof-password-123";
-const OUT = ".audit/keep/";
-const CITADELS_CAST = ["assassin","thief","magician","king","bishop","merchant","architect","warlord"];
+const OUT = ".audit/keep";
 
 mkdirSync(OUT, { recursive: true });
 
-let failures = 0;
-const check = (ok, label, detail) => {
-  if (!ok) failures += 1;
-  console.log((ok ? "PASS " : "FAIL ") + label + (detail === undefined ? "" : " :: " + detail));
-};
-
-const note = (label, detail) => console.log("INFO " + label + (detail === undefined ? "" : " :: " + detail));
-
-const serverAnswers = async () => {
-  try { return (await fetch(BASE + "/api/auth/ok")).ok; } catch { return false; }
-};
-
-const signUp = async (label) => {
-  const res = await fetch(BASE + "/api/auth/sign-up/email", {
-    method: "POST",
-    headers: { "content-type": "application/json", origin: BASE },
-    body: JSON.stringify({ email: `keep-${label}-${STAMP}@example.com`, password: PASSWORD, name: label }),
-  });
-  const body = await res.text();
-  if (res.status !== 200) throw new Error(`sign-up ${label} returned ${res.status}: ${body}`);
-  const pair = res.headers.get("set-cookie").split(";")[0];
-  const eq = pair.indexOf("=");
-  return { cookie: pair, cookieName: pair.slice(0, eq), cookieValue: pair.slice(eq + 1) };
-};
-
-const freePort = () => new Promise((res, rej) => {
-  const probe = createServer();
-  probe.on("error", rej);
-  probe.listen(0, "127.0.0.1", () => { const port = probe.address().port; probe.close(() => res(port)); });
+const { check, info, failures, launch, openRoom, serverAnswers } = createShots({
+  name: "keep",
+  base: BASE,
+  out: OUT,
+  viewport: { width: 1280, height: 800, deviceScaleFactor: 2 },
 });
-
-const launch = async (label) => {
-  const debugPort = await freePort();
-  const profile = `/tmp/keep-${label}-${PORT}-${process.pid}`;
-  rmSync(profile, { recursive: true, force: true });
-  const chrome = spawn("/usr/bin/google-chrome", ["--headless=new","--no-sandbox","--disable-gpu","--disable-dev-shm-usage",`--user-data-dir=${profile}`,`--remote-debugging-port=${debugPort}`,"--remote-allow-origins=*","about:blank"], { stdio: "ignore" });
-  let wsUrl = null;
-  for (let i = 0; i < 80 && !wsUrl; i++) {
-    try { const res = await fetch(`http://127.0.0.1:${debugPort}/json/version`); if (res.ok) wsUrl = (await res.json()).webSocketDebuggerUrl; } catch {}
-    if (!wsUrl) await delay(250);
-  }
-  if (!wsUrl) throw new Error(`${label}: chrome never exposed a debug endpoint`);
-  const ws = new WebSocket(wsUrl);
-  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
-  let id = 0;
-  const pending = new Map();
-  const errors = [];
-  ws.onmessage = (e) => {
-    const m = JSON.parse(e.data);
-    if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
-    else if (m.method === "Runtime.exceptionThrown") errors.push(m.params.exceptionDetails.text);
-    else if (m.method === "Runtime.consoleAPICalled" && m.params.type === "error") errors.push(m.params.args.map((a) => a.value ?? a.description).join(" "));
-  };
-  const send = (method, params = {}, sessionId) =>
-    new Promise((res) => { const i = ++id; pending.set(i, res); ws.send(JSON.stringify({ id: i, method, params, sessionId })); });
-  const created = (await send("Target.createTarget", { url: "about:blank" })).result;
-  const attached = (await send("Target.attachToTarget", { targetId: created.targetId, flatten: true })).result;
-  const session = attached.sessionId;
-  await send("Page.enable", {}, session);
-  await send("Runtime.enable", {}, session);
-  await send("Network.enable", {}, session);
-  await send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 800, deviceScaleFactor: 2, mobile: false }, session);
-  const page = {
-    async eval(expression) {
-      const msg = await send("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true }, session);
-      if (msg.result.exceptionDetails) {
-        const details = msg.result.exceptionDetails;
-        throw new Error((details.exception && details.exception.description) || details.text);
-      }
-      return msg.result.result.value;
-    },
-    async evalFn(fn) { return page.eval("(" + fn.toString() + ")()"); },
-    async goto(url, waitMs = 2600) { await send("Page.navigate", { url }, session); await delay(waitMs); },
-    async setCookie(user) { await send("Network.setCookie", { url: BASE, name: user.cookieName, value: user.cookieValue }, session); },
-    async waitFor(expression, timeoutMs = 10000) {
-      const deadline = Date.now() + timeoutMs;
-      while (Date.now() < deadline) { if (await page.eval(`!!(${expression})`)) return true; await delay(200); }
-      return false;
-    },
-    async hydrated() {
-      return page.waitFor("document.querySelector('#__nuxt') && document.querySelector('#__nuxt').__vue_app__", 60000);
-    },
-    async rectOf(jsEl) {
-      return page.eval(`(() => { const el = ${jsEl}; if (!el) return null; el.scrollIntoView({ block: 'center', inline: 'center' }); const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, disabled: !!el.disabled }; })()`);
-    },
-    async clickReal(jsEl, attempts = 8, settleMs = 400) {
-      for (let i = 0; i < attempts; i++) {
-        const rect = await page.rectOf(jsEl);
-        if (rect === null || rect.disabled) { await delay(250); continue; }
-        await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: rect.x, y: rect.y, buttons: 0 }, session);
-        await send("Input.dispatchMouseEvent", { type: "mousePressed", x: rect.x, y: rect.y, button: "left", buttons: 1, clickCount: 1 }, session);
-        await delay(40);
-        await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: rect.x, y: rect.y, button: "left", buttons: 0, clickCount: 1 }, session);
-        await delay(settleMs);
-        return true;
-      }
-      return false;
-    },
-    async shot(name) {
-      const png = await send("Page.captureScreenshot", { format: "png", fromSurface: true }, session);
-      writeFileSync(OUT + name + ".png", Buffer.from(png.result.data, "base64"));
-    },
-    async press(key, code, keyCode) {
-      await send("Input.dispatchKeyEvent", { type: "keyDown", key, code, windowsVirtualKeyCode: keyCode, nativeVirtualKeyCode: keyCode }, session);
-      await send("Input.dispatchKeyEvent", { type: "keyUp", key, code, windowsVirtualKeyCode: keyCode, nativeVirtualKeyCode: keyCode }, session);
-    },
-  };
-  return { page, errors, close: () => { try { ws.close(); } catch {} try { chrome.kill("SIGKILL"); } catch {} } };
-};
 
 const KEEP = "[data-slot=citadels-keep]";
 const KEEP_CARD = "[data-slot=citadels-keep-card]";
@@ -210,7 +99,7 @@ const firstTurnHolder = async (browsers, timeoutMs) => {
 
 
 const harnessRun = async () => {
-  const browser = await launch("harness");
+  const browser = await launch({ label: "harness" });
   try {
     await browser.page.goto(BASE + "/dev/keep-demo");
     const ready = await browser.page.waitFor(`document.querySelector('${KEEP_CARD}')`, 20000);
@@ -247,23 +136,11 @@ const harnessRun = async () => {
 };
 
 const liveRun = async () => {
-  const host = await signUp("host");
-  const guest = await signUp("guest");
-  const created = await fetch(BASE + "/api/rooms", {
-    method: "POST",
-    headers: { "content-type": "application/json", origin: BASE, cookie: host.cookie },
-    body: JSON.stringify({ name: "keep proof", seats: 2, setup: { game: "citadels", cast: CITADELS_CAST } }),
-  });
-  if (!created.ok) throw new Error(`room create returned ${created.status}: ${await created.text()}`);
-  const code = (await created.json()).room.code;
-  const joined = await fetch(`${BASE}/api/rooms/${code}/join`, { method: "POST", headers: { origin: BASE, cookie: guest.cookie } });
-  if (!joined.ok) throw new Error(`join returned ${joined.status}: ${await joined.text()}`);
-  const started = await fetch(`${BASE}/api/rooms/${code}/start`, { method: "POST", headers: { origin: BASE, cookie: host.cookie } });
-  if (!started.ok) throw new Error(`start returned ${started.status}: ${await started.text()}`);
+  const { code, host, guest } = await openRoom({ room: "keep proof", cast: CAST });
   console.log("room: " + code);
 
-  const hostBrowser = await launch("live-host");
-  const guestBrowser = await launch("live-guest");
+  const hostBrowser = await launch({ label: "live-host" });
+  const guestBrowser = await launch({ label: "live-guest" });
   const enterSurface = async (browser, label) => {
     const entered = await browser.page.clickReal("document.querySelector('[data-slot=citadels-enter]')");
     if (!entered) throw new Error(label + ": the gate never offered Enter");
@@ -304,7 +181,7 @@ const liveRun = async () => {
     await Promise.all([enterSurface(hostBrowser, "host"), enterSurface(guestBrowser, "guest")]);
     const drafted = await draftToTurn(seats, 90000);
     const holder = drafted.holder;
-    note("draft picks the surface accepted per seat (the picker serves one per seat, the rest carry)", JSON.stringify(drafted.picks));
+    info("draft picks the surface accepted per seat (the picker serves one per seat, the rest carry)", JSON.stringify(drafted.picks));
 
     if (holder === null) {
       const body = await hostBrowser.page.eval("document.body.innerText.split(String.fromCharCode(10)).join(' | ').slice(0, 240)");
@@ -376,5 +253,5 @@ if (!HARNESS_ONLY) {
     check(false, "the live surface run completed", String(error.message ?? error));
   }
 }
-console.log(failures === 0 ? "ALL CHECKS PASS" : failures + " CHECK(S) FAILED");
-process.exit(failures === 0 ? 0 : 1);
+console.log(summarize(failures.length));
+process.exit(failures.length === 0 ? 0 : 1);
