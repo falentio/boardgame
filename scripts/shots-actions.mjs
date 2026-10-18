@@ -6,7 +6,12 @@ import { createServer } from "node:net";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
 import { checkedArgs, every, expectChecks, originOf, serverAnswers } from "./lib/shots-harness.mjs";
-import { buildPrice, citadels, specOfDistrict, turnIncome } from "../shared/core/lockstep/games/citadels/index.ts";
+import {
+  buildPrice,
+  citadels,
+  specOfDistrict,
+  turnIncome,
+} from "../shared/core/lockstep/games/citadels/index.ts";
 import { tryBuild } from "../shared/core/lockstep/games/citadels/helpers.ts";
 import { genesisSeed, makeRandom, makeRoster } from "../shared/core/lockstep/index.ts";
 import { seatId } from "../shared/rooms/ids.ts";
@@ -18,7 +23,16 @@ const HARNESS = BASE + "/dev/actions-demo";
 const OUT = ".audit/actions";
 const STAMP = Date.now();
 const PASSWORD = "proof-password-123";
-const CAST = ["assassin", "thief", "magician", "king", "bishop", "merchant", "architect", "warlord"];
+const CAST = [
+  "assassin",
+  "thief",
+  "magician",
+  "king",
+  "bishop",
+  "merchant",
+  "architect",
+  "warlord",
+];
 const VIEWPORT = { width: 1280, height: 800 };
 const RULE = "rgb(230, 219, 116)";
 const HOST_SEAT = seatId("host");
@@ -39,7 +53,11 @@ const goldOf = (state, seat) => {
  * the surface: the seat, its hand in hand order, its city, and its purse.
  */
 const stagedBuilder = (hand, city, gold) => {
-  const state = citadels.genesis({ cast: [...CAST] }, makeRoster([HOST_SEAT, GUEST_SEAT]), makeRandom(PRICE_SEED));
+  const state = citadels.genesis(
+    { cast: [...CAST] },
+    makeRoster([HOST_SEAT, GUEST_SEAT]),
+    makeRandom(PRICE_SEED),
+  );
   return {
     ...state,
     players: state.players.map((player) =>
@@ -54,7 +72,11 @@ let checks = 0;
 const info = (msg) => console.log("INFO " + msg);
 const check = (ok, label, detail) => {
   checks += 1;
-  console.log((ok ? "PASS " : "FAIL ") + label + (detail === undefined ? "" : " :: " + JSON.stringify(detail)));
+  console.log(
+    (ok ? "PASS " : "FAIL ") +
+      label +
+      (detail === undefined ? "" : " :: " + JSON.stringify(detail)),
+  );
   if (!ok) fails.push(label);
 };
 
@@ -130,24 +152,38 @@ const launch = async (label) => {
       ws.send(JSON.stringify({ id: i, method, params, sessionId }));
     });
   const target = (await send("Target.createTarget", { url: "about:blank" })).result;
-  const session = (await send("Target.attachToTarget", { targetId: target.targetId, flatten: true })).result.sessionId;
+  const session = (
+    await send("Target.attachToTarget", { targetId: target.targetId, flatten: true })
+  ).result.sessionId;
   await send("Page.enable", {}, session);
   await send("Runtime.enable", {}, session);
   await send("Network.enable", {}, session);
-  await send("Emulation.setDeviceMetricsOverride", { ...VIEWPORT, deviceScaleFactor: 2, mobile: false }, session);
+  await send(
+    "Emulation.setDeviceMetricsOverride",
+    { ...VIEWPORT, deviceScaleFactor: 2, mobile: false },
+    session,
+  );
 
   const page = {
     label,
     errors,
     async setCookie(user) {
-      await send("Network.setCookie", { url: BASE, name: user.cookieName, value: user.cookieValue }, session);
+      await send(
+        "Network.setCookie",
+        { url: BASE, name: user.cookieName, value: user.cookieValue },
+        session,
+      );
     },
     async goto(url, waitMs = 2500) {
       await send("Page.navigate", { url }, session);
       await delay(waitMs);
     },
     async eval(expression) {
-      const message = await send("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true }, session);
+      const message = await send(
+        "Runtime.evaluate",
+        { expression, returnByValue: true, awaitPromise: true },
+        session,
+      );
       if (message.result && message.result.exceptionDetails) {
         throw new Error(label + " eval threw: " + message.result.exceptionDetails.text);
       }
@@ -155,7 +191,10 @@ const launch = async (label) => {
     },
     /** A click before the client script has taken the DOM over reaches no listener. */
     hydrated: (timeoutMs = 60000) =>
-      page.waitFor("document.querySelector('#__nuxt') && document.querySelector('#__nuxt').__vue_app__", timeoutMs),
+      page.waitFor(
+        "document.querySelector('#__nuxt') && document.querySelector('#__nuxt').__vue_app__",
+        timeoutMs,
+      ),
     async waitFor(expression, timeoutMs = 30000) {
       const deadline = Date.now() + timeoutMs;
       for (;;) {
@@ -166,27 +205,41 @@ const launch = async (label) => {
     },
     async click(selector) {
       return page.eval(
-        "(() => { const el = document.querySelector(" + JSON.stringify(selector) + "); if (el === null) return false; el.click(); return true; })()",
+        "(() => { const el = document.querySelector(" +
+          JSON.stringify(selector) +
+          "); if (el === null) return false; el.click(); return true; })()",
       );
     },
     async rect(selector) {
       return page.eval(
-        "(() => { const el = document.querySelector(" + JSON.stringify(selector) + "); if (el === null) return null; const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()",
+        "(() => { const el = document.querySelector(" +
+          JSON.stringify(selector) +
+          "); if (el === null) return null; const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; })()",
       );
     },
     async clickReal(selector, attempts = 6) {
       for (let attempt = 0; attempt < attempts; attempt += 1) {
         // A real press lands where the pointer is, so the target has to be on screen.
         await page.eval(
-          "(() => { const el = document.querySelector(" + JSON.stringify(selector) + "); if (el !== null) el.scrollIntoView({ block: 'center', inline: 'center' }); return el !== null; })()",
+          "(() => { const el = document.querySelector(" +
+            JSON.stringify(selector) +
+            "); if (el !== null) el.scrollIntoView({ block: 'center', inline: 'center' }); return el !== null; })()",
         );
         const box = await page.rect(selector);
         if (box !== null) {
           const x = Math.round(box.x + box.width / 2);
           const y = Math.round(box.y + box.height / 2);
           await send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y, buttons: 0 }, session);
-          await send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", buttons: 1, clickCount: 1 }, session);
-          await send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", buttons: 0, clickCount: 1 }, session);
+          await send(
+            "Input.dispatchMouseEvent",
+            { type: "mousePressed", x, y, button: "left", buttons: 1, clickCount: 1 },
+            session,
+          );
+          await send(
+            "Input.dispatchMouseEvent",
+            { type: "mouseReleased", x, y, button: "left", buttons: 0, clickCount: 1 },
+            session,
+          );
           return true;
         }
         await delay(120);
@@ -201,11 +254,17 @@ const launch = async (label) => {
       await send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y, buttons: 0 }, session);
       await delay(300);
       return page.eval(
-        "(() => { const el = document.querySelector(" + JSON.stringify(selector) + "); const style = getComputedStyle(el); return { translate: style.translate, border: style.borderTopColor, hovered: el.matches(':hover') }; })()",
+        "(() => { const el = document.querySelector(" +
+          JSON.stringify(selector) +
+          "); const style = getComputedStyle(el); return { translate: style.translate, border: style.borderTopColor, hovered: el.matches(':hover') }; })()",
       );
     },
     async shot(name) {
-      const res = await send("Page.captureScreenshot", { format: "png", fromSurface: true }, session);
+      const res = await send(
+        "Page.captureScreenshot",
+        { format: "png", fromSurface: true },
+        session,
+      );
       const path = OUT + "/" + name + ".png";
       writeFileSync(path, Buffer.from(res.result.data, "base64"));
       return path;
@@ -253,22 +312,35 @@ const signUp = async (label) => {
     body: JSON.stringify({ email, password: PASSWORD, name: label }),
   });
   const body = await res.text();
-  if (res.status !== 200) throw new Error("sign-up " + label + " returned " + res.status + ": " + body.slice(0, 200));
+  if (res.status !== 200)
+    throw new Error("sign-up " + label + " returned " + res.status + ": " + body.slice(0, 200));
   const user = JSON.parse(body).user;
   const cookie = res.headers.get("set-cookie");
   if (cookie === null) throw new Error("sign-up " + label + " set no cookie");
   const pair = cookie.split(";")[0];
   const at = pair.indexOf("=");
-  return { label, email, id: user.id, cookie: pair, cookieName: pair.slice(0, at), cookieValue: pair.slice(at + 1) };
+  return {
+    label,
+    email,
+    id: user.id,
+    cookie: pair,
+    cookieName: pair.slice(0, at),
+    cookieValue: pair.slice(at + 1),
+  };
 };
 
 const createRoom = async (host) => {
   const res = await fetch(BASE + "/api/rooms", {
     method: "POST",
     headers: { origin: BASE, cookie: host.cookie, "content-type": "application/json" },
-    body: JSON.stringify({ name: "Actions live proof", seats: 2, setup: { game: "citadels", cast: CAST } }),
+    body: JSON.stringify({
+      name: "Actions live proof",
+      seats: 2,
+      setup: { game: "citadels", cast: CAST },
+    }),
   });
-  if (res.status !== 201) throw new Error("create room returned " + res.status + ": " + (await res.text()).slice(0, 200));
+  if (res.status !== 201)
+    throw new Error("create room returned " + res.status + ": " + (await res.text()).slice(0, 200));
   return (await res.json()).room.code;
 };
 
@@ -300,10 +372,22 @@ const runStagedPrice = () => {
   const price = buildPrice(priced, HOST_SEAT, 0, makeRandom(PRICE_SEED));
   const built = tryBuild(priced, HOST_SEAT, 0, makeRandom(PRICE_SEED));
   const paid = goldOf(priced, HOST_SEAT) - goldOf(built, HOST_SEAT);
-  check(price === specOfDistrict(KEEP).cost - 1, "the Factory's discount is in the engine's price for the Keep", { price, catalog: specOfDistrict(KEEP).cost });
-  check(paid === price, "the engine's own build of that card pays the price the engine names", { paid, price, city: built.players[0].city.map((district) => district.id) });
+  check(
+    price === specOfDistrict(KEEP).cost - 1,
+    "the Factory's discount is in the engine's price for the Keep",
+    { price, catalog: specOfDistrict(KEEP).cost },
+  );
+  check(paid === price, "the engine's own build of that card pays the price the engine names", {
+    paid,
+    price,
+    city: built.players[0].city.map((district) => district.id),
+  });
   const alone = buildPrice(stagedBuilder([KEEP], [], 10), HOST_SEAT, 0, makeRandom(PRICE_SEED));
-  check(alone === specOfDistrict(KEEP).cost, "with no city card standing the same build prices at the catalog cost", { price: alone });
+  check(
+    alone === specOfDistrict(KEEP).cost,
+    "with no city card standing the same build prices at the catalog cost",
+    { price: alone },
+  );
 };
 
 const runHarness = async () => {
@@ -312,17 +396,24 @@ const runHarness = async () => {
   try {
     await page.goto(HARNESS, 2600);
     check(await page.hydrated(), "the demo page's client script runs before the probe reads it");
-    await settle(page, HARNESS, "document.querySelector('[data-demo=two-cards] [data-action=gold]') !== null");
+    await settle(
+      page,
+      HARNESS,
+      "document.querySelector('[data-demo=two-cards] [data-action=gold]') !== null",
+    );
 
     const shape = await page.eval(
       expr(function () {
         const at = (name) =>
-          [...document.querySelectorAll("[data-demo=" + name + "] [data-slot=citadels-action]")].map((b) => ({
+          [
+            ...document.querySelectorAll("[data-demo=" + name + "] [data-slot=citadels-action]"),
+          ].map((b) => ({
             action: b.getAttribute("data-action"),
             tag: b.tagName,
             disabled: b.disabled,
           }));
-        const opens = (name) => document.querySelector("[data-demo=" + name + "] [data-slot=citadels-actions]") !== null;
+        const opens = (name) =>
+          document.querySelector("[data-demo=" + name + "] [data-slot=citadels-actions]") !== null;
         return {
           twoCards: at("two-cards"),
           pickedCard: at("picked-card"),
@@ -334,14 +425,46 @@ const runHarness = async () => {
       }),
     );
     console.log("shape:", JSON.stringify(shape));
-    check(JSON.stringify(shape.twoCards.map((b) => b.action)) === JSON.stringify(["gold", "draw", "build", "pass"]), "four controls in order (gold, draw, build, pass)", shape.twoCards.map((b) => b.action));
-    check(every(shape.twoCards, (b) => b.tag === "BUTTON"), "each control is a real <button>", shape.twoCards.map((b) => b.tag));
-    check(JSON.stringify(shape.twoCards.filter((b) => !b.disabled).map((b) => b.action)) === JSON.stringify(["gold", "draw", "pass"]), "two-card hand: build waits for a hand card to be picked", shape.twoCards);
-    check(every(shape.pickedCard, (b) => b.disabled === false), "a picked hand card arms all four controls", shape.pickedCard);
-    check(JSON.stringify(shape.noCards.map((b) => b.action)) === JSON.stringify(["gold", "draw", "build", "pass"]), "empty hand still renders all four", shape.noCards.map((b) => b.action));
-    check(JSON.stringify(shape.noCards.filter((b) => b.disabled).map((b) => b.action)) === JSON.stringify(["build"]), "empty hand: only build disabled", shape.noCards.filter((b) => b.disabled).map((b) => b.action));
+    check(
+      JSON.stringify(shape.twoCards.map((b) => b.action)) ===
+        JSON.stringify(["gold", "draw", "build", "pass"]),
+      "four controls in order (gold, draw, build, pass)",
+      shape.twoCards.map((b) => b.action),
+    );
+    check(
+      every(shape.twoCards, (b) => b.tag === "BUTTON"),
+      "each control is a real <button>",
+      shape.twoCards.map((b) => b.tag),
+    );
+    check(
+      JSON.stringify(shape.twoCards.filter((b) => !b.disabled).map((b) => b.action)) ===
+        JSON.stringify(["gold", "draw", "pass"]),
+      "two-card hand: build waits for a hand card to be picked",
+      shape.twoCards,
+    );
+    check(
+      every(shape.pickedCard, (b) => b.disabled === false),
+      "a picked hand card arms all four controls",
+      shape.pickedCard,
+    );
+    check(
+      JSON.stringify(shape.noCards.map((b) => b.action)) ===
+        JSON.stringify(["gold", "draw", "build", "pass"]),
+      "empty hand still renders all four",
+      shape.noCards.map((b) => b.action),
+    );
+    check(
+      JSON.stringify(shape.noCards.filter((b) => b.disabled).map((b) => b.action)) ===
+        JSON.stringify(["build"]),
+      "empty hand: only build disabled",
+      shape.noCards.filter((b) => b.disabled).map((b) => b.action),
+    );
     check(shape.otherWindow === false, "keep window renders nothing", shape.otherWindow);
-    check(shape.rivalWindow === false, "turn window owed by a rival renders nothing", shape.rivalWindow);
+    check(
+      shape.rivalWindow === false,
+      "turn window owed by a rival renders nothing",
+      shape.rivalWindow,
+    );
     check(shape.noWindow === false, "no window renders nothing", shape.noWindow);
 
     console.log("shot:", await page.shot("harness-turn-window"));
@@ -351,12 +474,18 @@ const runHarness = async () => {
         return (async () => {
           const out = [];
           for (const action of ["gold", "draw", "build", "pass"]) {
-            const button = document.querySelector("[data-demo=two-cards] [data-action=" + action + "]");
+            const button = document.querySelector(
+              "[data-demo=two-cards] [data-action=" + action + "]",
+            );
             const before = (window.__emitted || []).length;
             button.click();
             await new Promise((r) => setTimeout(r, 60));
             const after = window.__emitted || [];
-            out.push({ action, emitted: after.length > before ? JSON.parse(JSON.stringify(after[after.length - 1])) : null });
+            out.push({
+              action,
+              emitted:
+                after.length > before ? JSON.parse(JSON.stringify(after[after.length - 1])) : null,
+            });
           }
           const reported = (window.__emitted || []).length;
           const picked = document.querySelector("[data-demo=picked-card] [data-action=build]");
@@ -366,40 +495,96 @@ const runHarness = async () => {
           const build = document.querySelector("[data-demo=no-cards] [data-action=build]");
           build.click();
           await new Promise((r) => setTimeout(r, 60));
-          return { clicks: out, reported, built, afterDisabledBuildClick: (window.__emitted || []).length };
+          return {
+            clicks: out,
+            reported,
+            built,
+            afterDisabledBuildClick: (window.__emitted || []).length,
+          };
         })();
       }),
     );
     console.log("clicks:", JSON.stringify(clicks.clicks));
-    check(JSON.stringify(clicks.clicks.map((c) => c.action)) === JSON.stringify(["gold", "draw", "build", "pass"]), "clicked all four controls", clicks.clicks.map((c) => c.action));
-    check(JSON.stringify(clicks.clicks.map((c) => c.emitted)) === JSON.stringify([{ t: "gold" }, { t: "draw" }, null, { t: "pass" }]), "gold, draw and pass report; an unpicked build reports nothing", clicks.clicks.map((c) => c.emitted));
-    check(JSON.stringify(clicks.built) === JSON.stringify({ t: "build", card: 1 }), "a build reports the hand index it was told, not the first card", clicks.built);
-    check(clicks.afterDisabledBuildClick === clicks.reported + 1, "the empty hand and the unpicked build emit nothing", { reported: clicks.reported, after: clicks.afterDisabledBuildClick });
+    check(
+      JSON.stringify(clicks.clicks.map((c) => c.action)) ===
+        JSON.stringify(["gold", "draw", "build", "pass"]),
+      "clicked all four controls",
+      clicks.clicks.map((c) => c.action),
+    );
+    check(
+      JSON.stringify(clicks.clicks.map((c) => c.emitted)) ===
+        JSON.stringify([{ t: "gold" }, { t: "draw" }, null, { t: "pass" }]),
+      "gold, draw and pass report; an unpicked build reports nothing",
+      clicks.clicks.map((c) => c.emitted),
+    );
+    check(
+      JSON.stringify(clicks.built) === JSON.stringify({ t: "build", card: 1 }),
+      "a build reports the hand index it was told, not the first card",
+      clicks.built,
+    );
+    check(
+      clicks.afterDisabledBuildClick === clicks.reported + 1,
+      "the empty hand and the unpicked build emit nothing",
+      { reported: clicks.reported, after: clicks.afterDisabledBuildClick },
+    );
 
     const a11y = await page.eval(
       expr(function () {
         const button = document.querySelector("[data-demo=two-cards] [data-action=build]");
         const empty = document.querySelector("[data-demo=no-cards] [data-action=build]");
         const box = document.querySelector("[data-demo=two-cards] [data-slot=citadels-actions]");
-        return { title: button.getAttribute("title"), emptyTitle: empty.getAttribute("title"), text: button.textContent.trim(), list: box.getAttribute("aria-label") };
+        return {
+          title: button.getAttribute("title"),
+          emptyTitle: empty.getAttribute("title"),
+          text: button.textContent.trim(),
+          list: box.getAttribute("aria-label"),
+        };
       }),
     );
     console.log("a11y:", JSON.stringify(a11y));
-    check(a11y.title !== null && a11y.title.includes("Pick a card") && a11y.title !== a11y.emptyTitle, "the unpicked build names the card it waits for", { unpicked: a11y.title, emptyHand: a11y.emptyTitle });
+    check(
+      a11y.title !== null && a11y.title.includes("Pick a card") && a11y.title !== a11y.emptyTitle,
+      "the unpicked build names the card it waits for",
+      { unpicked: a11y.title, emptyHand: a11y.emptyTitle },
+    );
 
     const row = await page.eval(
       expr(function () {
-        const buttons = [...document.querySelectorAll("[data-demo=two-cards] [data-action]")].map((b) => {
-          const box = b.getBoundingClientRect();
-          return { action: b.getAttribute("data-action"), x: Math.round(box.x), y: Math.round(box.y), w: Math.round(box.width), h: Math.round(box.height) };
-        });
-        const slot = document.querySelector("[data-demo=two-cards] [data-slot=citadels-actions]").getBoundingClientRect();
-        return { x: Math.round(slot.x), y: Math.round(slot.y), w: Math.round(slot.width), h: Math.round(slot.height), buttons };
+        const buttons = [...document.querySelectorAll("[data-demo=two-cards] [data-action]")].map(
+          (b) => {
+            const box = b.getBoundingClientRect();
+            return {
+              action: b.getAttribute("data-action"),
+              x: Math.round(box.x),
+              y: Math.round(box.y),
+              w: Math.round(box.width),
+              h: Math.round(box.height),
+            };
+          },
+        );
+        const slot = document
+          .querySelector("[data-demo=two-cards] [data-slot=citadels-actions]")
+          .getBoundingClientRect();
+        return {
+          x: Math.round(slot.x),
+          y: Math.round(slot.y),
+          w: Math.round(slot.width),
+          h: Math.round(slot.height),
+          buttons,
+        };
       }),
     );
     console.log("layout:", JSON.stringify(row));
-    check(every(row.buttons, (c) => c.h > 0 && c.w > 0), "every control has a non-zero box", row.buttons);
-    check(every(row.buttons, (c) => c.y === row.buttons[0].y), "the four controls sit on one row", row.buttons.map((c) => c.y));
+    check(
+      every(row.buttons, (c) => c.h > 0 && c.w > 0),
+      "every control has a non-zero box",
+      row.buttons,
+    );
+    check(
+      every(row.buttons, (c) => c.y === row.buttons[0].y),
+      "the four controls sit on one row",
+      row.buttons.map((c) => c.y),
+    );
   } finally {
     console.log("harness console errors:", page.errors.length ? page.errors.slice(0, 3) : "none");
     page.close();
@@ -408,7 +593,11 @@ const runHarness = async () => {
 
 const ACTIONS = function () {
   const box = document.querySelector("[data-slot=citadels-surface] [data-slot=citadels-actions]");
-  return box === null ? null : [...box.querySelectorAll("[data-slot=citadels-action]")].map((b) => b.getAttribute("data-action"));
+  return box === null
+    ? null
+    : [...box.querySelectorAll("[data-slot=citadels-action]")].map((b) =>
+        b.getAttribute("data-action"),
+      );
 };
 
 const runLiveSurface = async () => {
@@ -423,28 +612,63 @@ const runLiveSurface = async () => {
     await guestPage.setCookie(guest);
 
     await guestPage.goto(BASE + "/join/" + code, 1500);
-    check(await guestPage.hydrated(), "the guest's join page runs its client script, which is what takes the seat");
-    const seated = await settle(guestPage, BASE + "/join/" + code, "location.pathname === '/rooms/" + code + "'", 40000);
-    check(seated, "the second account takes the spare seat", await guestPage.eval("location.pathname"));
+    check(
+      await guestPage.hydrated(),
+      "the guest's join page runs its client script, which is what takes the seat",
+    );
+    const seated = await settle(
+      guestPage,
+      BASE + "/join/" + code,
+      "location.pathname === '/rooms/" + code + "'",
+      40000,
+    );
+    check(
+      seated,
+      "the second account takes the spare seat",
+      await guestPage.eval("location.pathname"),
+    );
 
     await hostPage.goto(BASE + "/rooms/" + code, 1500);
-    check(await hostPage.hydrated(), "the host's room page runs the client script that fetches the seats");
-    const full = await settle(hostPage, BASE + "/rooms/" + code, "document.body.innerText.includes('All seats filled')", 40000);
+    check(
+      await hostPage.hydrated(),
+      "the host's room page runs the client script that fetches the seats",
+    );
+    const full = await settle(
+      hostPage,
+      BASE + "/rooms/" + code,
+      "document.body.innerText.includes('All seats filled')",
+      40000,
+    );
     check(full, "the room reports all seats filled");
     const offered = await hostPage.eval(
       "(() => { const b = [...document.querySelectorAll('button')].find((el) => el.textContent.includes('Start game')); if (b === undefined) return false; b.click(); return true; })()",
     );
     check(offered, "the host's room page draws the start control, and it takes the click");
     const started = await hostPage.waitFor("location.pathname === '/games/" + code + "'", 40000);
-    check(started, "the host's start opens the game route", await hostPage.eval("location.pathname"));
+    check(
+      started,
+      "the host's start opens the game route",
+      await hostPage.eval("location.pathname"),
+    );
 
     for (const page of [hostPage, guestPage]) {
       await page.goto(BASE + "/games/" + code, 2500);
-      const immersive = await settle(page, BASE + "/games/" + code, "document.querySelector('[data-slot=citadels-immersive]')", 60000);
-      check(await page.hydrated(), page.label + ": the game page runs the client script behind the enter control");
+      const immersive = await settle(
+        page,
+        BASE + "/games/" + code,
+        "document.querySelector('[data-slot=citadels-immersive]')",
+        60000,
+      );
+      check(
+        await page.hydrated(),
+        page.label + ": the game page runs the client script behind the enter control",
+      );
       check(immersive, page.label + ": the citadels screen mounts on the game route");
       await page.click("[data-slot=citadels-enter]");
-      const surface = await page.waitFor("document.querySelector('[data-slot=citadels-surface]')", 20000);
+      const surface = await page.waitFor(
+        "document.querySelector('[data-slot=citadels-surface]')",
+        20000,
+      );
       check(surface, page.label + ": the enter control reveals the game surface");
     }
 
@@ -454,14 +678,20 @@ const runLiveSurface = async () => {
         character whose own effect opens no window between its gather and its build. */
     const NO_PRE_BUILD_WINDOW = ["architect", "bishop", "merchant", "king"];
     const pickIfOwed = async (page, prefer = []) => {
-      const free = await page.eval(expr(function () {
-        return document.querySelector("[data-slot=citadels-picker-card]:not([disabled])") !== null;
-      }));
+      const free = await page.eval(
+        expr(function () {
+          return (
+            document.querySelector("[data-slot=citadels-picker-card]:not([disabled])") !== null
+          );
+        }),
+      );
       if (!free) return false;
       const character = await page.eval(
         "(() => {" +
           " const open = [...document.querySelectorAll('[data-slot=citadels-picker-card]:not([disabled])')];" +
-          " const prefer = " + JSON.stringify(prefer) + ";" +
+          " const prefer = " +
+          JSON.stringify(prefer) +
+          ";" +
           " const card = open.find((one) => prefer.includes(one.getAttribute('data-character'))) || open[0];" +
           " card.click();" +
           " return card.getAttribute('data-character');" +
@@ -501,14 +731,21 @@ const runLiveSurface = async () => {
       console.log(
         "live querySelector:",
         JSON.stringify(
-          await hostPage.eval(expr(function () {
-            return {
-              path: location.pathname,
-              turn: document.querySelector("[data-slot=citadels-window]") ? document.querySelector("[data-slot=citadels-window]").textContent.trim() : null,
-              board: document.querySelector("[data-slot=citadels-board]") !== null,
-              actions: document.querySelector("[data-slot=citadels-surface] [data-slot=citadels-actions]") !== null,
-            };
-          })),
+          await hostPage.eval(
+            expr(function () {
+              return {
+                path: location.pathname,
+                turn: document.querySelector("[data-slot=citadels-window]")
+                  ? document.querySelector("[data-slot=citadels-window]").textContent.trim()
+                  : null,
+                board: document.querySelector("[data-slot=citadels-board]") !== null,
+                actions:
+                  document.querySelector(
+                    "[data-slot=citadels-surface] [data-slot=citadels-actions]",
+                  ) !== null,
+              };
+            }),
+          ),
         ),
       );
       return;
@@ -516,8 +753,11 @@ const runLiveSurface = async () => {
 
     const proof = await hostPage.eval(
       expr(function () {
-        const box = document.querySelector("[data-slot=citadels-surface] [data-slot=citadels-actions]");
-        const buttons = box === null ? [] : [...box.querySelectorAll("[data-slot=citadels-action]")];
+        const box = document.querySelector(
+          "[data-slot=citadels-surface] [data-slot=citadels-actions]",
+        );
+        const buttons =
+          box === null ? [] : [...box.querySelectorAll("[data-slot=citadels-action]")];
         const self = document.querySelector("[data-slot=citadels-self]");
         return {
           surface: document.querySelector("[data-slot=citadels-surface]") !== null,
@@ -534,19 +774,49 @@ const runLiveSurface = async () => {
     );
     console.log("live querySelector:", JSON.stringify(proof));
     check(proof.surface, "the live game surface is on screen");
-    check(proof.box, "document.querySelector('[data-slot=citadels-surface] [data-slot=citadels-actions]') is non-null");
+    check(
+      proof.box,
+      "document.querySelector('[data-slot=citadels-surface] [data-slot=citadels-actions]') is non-null",
+    );
     check(proof.inSelfColumn, "the action slot sits inside the self column");
-    check(proof.count === 4, "the action slot holds four [data-slot=citadels-action] elements", proof.count);
-    check(JSON.stringify(proof.actions) === JSON.stringify(["gold", "draw", "build", "pass"]), "the four live controls are gold, draw, build, pass", proof.actions);
-    check(every(proof.tags, (tag) => tag === "BUTTON"), "every live control is a real <button>", proof.tags);
-    check(every(proof.radius, (r) => r === "0px"), "every live control has square corners", proof.radius);
-    check(rivalSawActions === null, "the rival's surface renders no turn control while mine owes the turn", rivalSawActions);
+    check(
+      proof.count === 4,
+      "the action slot holds four [data-slot=citadels-action] elements",
+      proof.count,
+    );
+    check(
+      JSON.stringify(proof.actions) === JSON.stringify(["gold", "draw", "build", "pass"]),
+      "the four live controls are gold, draw, build, pass",
+      proof.actions,
+    );
+    check(
+      every(proof.tags, (tag) => tag === "BUTTON"),
+      "every live control is a real <button>",
+      proof.tags,
+    );
+    check(
+      every(proof.radius, (r) => r === "0px"),
+      "every live control has square corners",
+      proof.radius,
+    );
+    check(
+      rivalSawActions === null,
+      "the rival's surface renders no turn control while mine owes the turn",
+      rivalSawActions,
+    );
 
     const hover = await hostPage.hover("[data-slot=citadels-surface] [data-action=gold]");
     console.log("live hover:", JSON.stringify(hover));
-    check(hover !== null && hover.translate === "0px -1px" && hover.border === RULE, "the live control lifts 1px and takes the yellow frame ink on hover", hover);
+    check(
+      hover !== null && hover.translate === "0px -1px" && hover.border === RULE,
+      "the live control lifts 1px and takes the yellow frame ink on hover",
+      hover,
+    );
 
-    console.log("self column:", await hostPage.clip("self-column", "[data-slot=citadels-self]", 10));
+    console.log(
+      "self column:",
+      await hostPage.clip("self-column", "[data-slot=citadels-self]", 10),
+    );
     console.log("surface:", await hostPage.shot("live-surface"));
 
     const gold = await hostPage.eval(
@@ -565,18 +835,31 @@ const runLiveSurface = async () => {
             after: read(),
             boardAfter: document.querySelector("[data-slot=citadels-board]") !== null,
             windowAfter: window === null ? null : window.textContent.trim(),
-            stillOpen: document.querySelector("[data-slot=citadels-surface] [data-slot=citadels-actions]") !== null,
+            stillOpen:
+              document.querySelector(
+                "[data-slot=citadels-surface] [data-slot=citadels-actions]",
+              ) !== null,
           };
         })();
       }),
     );
     console.log("gold gather:", JSON.stringify(gold));
-    check(gold.before !== null && gold.after === String(Number(gold.before) + 2), "the gold control reports through the session and banks 2 gold", gold);
+    check(
+      gold.before !== null && gold.after === String(Number(gold.before) + 2),
+      "the gold control reports through the session and banks 2 gold",
+      gold,
+    );
     check(gold.boardAfter === true, "the board stays mounted through the gather");
     // The tiles ride the turn window alone. After the gather the stack can hand the
     // seat its own ability window (a thief robs before it builds), where the tiles
     // stand down by design; which of the two the run lands on is the reducer's call.
-    info("window after the gather: " + gold.windowAfter + " (tiles " + (gold.stillOpen ? "up on the build window" : "down for the character's window") + ")");
+    info(
+      "window after the gather: " +
+        gold.windowAfter +
+        " (tiles " +
+        (gold.stillOpen ? "up on the build window" : "down for the character's window") +
+        ")",
+    );
     const HAND = expr(function () {
       return [...document.querySelectorAll("[data-slot=citadels-hand-tile]")].map((tile) => {
         const card = tile.querySelector("[data-slot=citadels-district]");
@@ -597,19 +880,28 @@ const runLiveSurface = async () => {
       const gold = document.querySelector("[data-slot=citadels-self-gold]");
       return {
         window: window === null ? null : window.textContent.trim(),
-        choice: choice === null ? null : choice.querySelectorAll("[data-slot=citadels-choice-option]").length,
+        choice:
+          choice === null
+            ? null
+            : choice.querySelectorAll("[data-slot=citadels-choice-option]").length,
         armed: build !== null && build.disabled === false,
-        marked: document.querySelectorAll("[data-slot=citadels-hand-tile][data-picked=true]").length,
+        marked: document.querySelectorAll("[data-slot=citadels-hand-tile][data-picked=true]")
+          .length,
         hand: document.querySelectorAll("[data-slot=citadels-hand-tile]").length,
         handIds: [
-          ...document.querySelectorAll("[data-slot=citadels-hand-tile] [data-slot=citadels-district]"),
+          ...document.querySelectorAll(
+            "[data-slot=citadels-hand-tile] [data-slot=citadels-district]",
+          ),
         ].map((card) => card.getAttribute("data-district")),
         gold: gold === null ? null : Number(gold.textContent.trim()),
         acting: (() => {
           const row = document.querySelector("[data-slot=citadels-cast-row][data-state=pending]");
           return row === null ? null : row.getAttribute("data-character");
         })(),
-        mineActing: document.querySelector("[data-slot=citadels-seat][data-mine] [data-slot=citadels-active]") !== null,
+        mineActing:
+          document.querySelector(
+            "[data-slot=citadels-seat][data-mine] [data-slot=citadels-active]",
+          ) !== null,
         city: [
           ...document.querySelectorAll(
             "[data-slot=citadels-self] [data-slot=citadels-city] [data-slot=citadels-district]",
@@ -641,14 +933,27 @@ const runLiveSurface = async () => {
     const before = await hostPage.eval(STATE);
     /** What the engine charges for hand index `index`, on the builder the surface shows. */
     const priceOf = (index, source) =>
-      buildPrice(stagedBuilder(source.handIds, cityOfIds(source.city), source.gold), HOST_SEAT, index, makeRandom(PRICE_SEED));
+      buildPrice(
+        stagedBuilder(source.handIds, cityOfIds(source.city), source.gold),
+        HOST_SEAT,
+        index,
+        makeRandom(PRICE_SEED),
+      );
     const affordable = hand.filter((card) => {
       const price = priceOf(card.index, before);
       return price > 0 && price <= before.gold;
     });
     const picked = affordable.find((card) => card.index !== 0) ?? affordable[0] ?? null;
 
-    check(picked !== null, "the turn hand holds a card the engine prices within the gather's gold", { hand, gold: before.gold, prices: hand.map((card) => card.index + ":" + priceOf(card.index, before)) });
+    check(
+      picked !== null,
+      "the turn hand holds a card the engine prices within the gather's gold",
+      {
+        hand,
+        gold: before.gold,
+        prices: hand.map((card) => card.index + ":" + priceOf(card.index, before)),
+      },
+    );
     if (picked !== null) {
       await hostPage.click('[data-slot=citadels-hand-tile][data-index="' + picked.index + '"]');
       await delay(150);
@@ -671,7 +976,9 @@ const runLiveSurface = async () => {
       // surface and its income from the engine, so the purse is the price, or the
       // price less that income; the two coincide whenever the rank pays nothing.
       const called =
-        after.acting !== null && after.acting !== before.acting && after.mineActing ? after.acting : null;
+        after.acting !== null && after.acting !== before.acting && after.mineActing
+          ? after.acting
+          : null;
       const income =
         called === null
           ? 0
@@ -700,10 +1007,18 @@ const runLiveSurface = async () => {
           windowAfter: after.window,
         }),
       );
-      check(after.city.includes(picked.district), "the engine builds the district the picked index names", { picked, city: after.city });
+      check(
+        after.city.includes(picked.district),
+        "the engine builds the district the picked index names",
+        { picked, city: after.city },
+      );
       // This build is the host's first, so its city stands empty and no end-of-turn
       // hook (the Smithy's paid draw) can ride the same frame and confuse the price.
-      check(before.city.length === 0, "the frame holding the live build carries no end-of-turn hook charge", { cityBefore: before.city });
+      check(
+        before.city.length === 0,
+        "the frame holding the live build carries no end-of-turn hook charge",
+        { cityBefore: before.city },
+      );
       // A character's own build bonus can draw on top of the build (the Architect draws
       // two), so the proof reads the picked card out of the hand rather than the count.
       const left =
@@ -712,17 +1027,31 @@ const runLiveSurface = async () => {
       check(
         [before.gold - price, before.gold - price + income].includes(after.gold) && left === 1,
         "the build pays the engine's price for that card and takes that card out of hand",
-        { gold: before.gold + " -> " + after.gold, price, called, income, acting: [before.acting, after.acting], picked: picked.district, leftHand: left, handAfter: after.handIds },
+        {
+          gold: before.gold + " -> " + after.gold,
+          price,
+          called,
+          income,
+          acting: [before.acting, after.acting],
+          picked: picked.district,
+          leftHand: left,
+          handAfter: after.handIds,
+        },
       );
     }
   } finally {
-    console.log("live console errors:", hostPage.errors.length ? hostPage.errors.slice(0, 3) : "none", guestPage.errors.length ? guestPage.errors.slice(0, 3) : "none");
+    console.log(
+      "live console errors:",
+      hostPage.errors.length ? hostPage.errors.slice(0, 3) : "none",
+      guestPage.errors.length ? guestPage.errors.slice(0, 3) : "none",
+    );
     hostPage.close();
     guestPage.close();
   }
 };
 
-if (!(await serverAnswers(BASE))) throw new Error("the dev server on " + BASE + " is not answering; start it before this script");
+if (!(await serverAnswers(BASE)))
+  throw new Error("the dev server on " + BASE + " is not answering; start it before this script");
 await runHarness();
 const afterHarness = checks;
 if (!expectChecks(afterHarness, "harness", 20)) fails.push("the harness mode's check count");

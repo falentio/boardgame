@@ -58,7 +58,8 @@ const applyImmediate = (state: CitadelsState, step: Step, rng: Random): Citadels
       return applyEndRound(state, rng);
     case "resolve": {
       const pending = state.pending;
-      if (pending === null || pending.character === null) return withSteps(state, state.steps.slice(1));
+      if (pending === null || pending.character === null)
+        return withSteps(state, state.steps.slice(1));
       const effect = CHARACTER_EFFECTS[pending.character];
       const produced = effect({
         state,
@@ -90,7 +91,9 @@ const drain = (state: CitadelsState, rng: Random): CitadelsState => {
   let next = state;
   for (let guard = 0; ; guard += 1) {
     if (guard > 2000) {
-      throw new CitadelsError(`citadels stack machine did not settle: ${JSON.stringify(next.steps)}`);
+      throw new CitadelsError(
+        `citadels stack machine did not settle: ${JSON.stringify(next.steps)}`,
+      );
     }
     if (isTerminal(next)) return withSteps(next, []);
     const top = next.steps[0];
