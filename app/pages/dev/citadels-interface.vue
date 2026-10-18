@@ -90,7 +90,7 @@ const deal = citadels.genesis({ cast: [...BASE_CAST] }, makeRoster(SEATS), makeR
  * it, so the face pass reads a played board: a row reads mine or pending, a seat
  * plate reads a grown city.
  */
-const held = (() => {
+const turnState = (() => {
   let state = deal;
   let firstTurn: CitadelsState | null = null;
   for (let frames = 0; frames < 4000; frames += 1) {
@@ -108,7 +108,7 @@ const held = (() => {
 
 const showing = ref<"turn" | "draft">("turn");
 const board = computed<Board>(() =>
-  citadelsBoardOf(citadels.project(showing.value === "turn" ? held : deal, ANN), NAMES),
+  citadelsBoardOf(citadels.project(showing.value === "turn" ? turnState : deal, ANN), NAMES),
 );
 
 const pick = (character: CharacterId): void => {
