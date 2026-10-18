@@ -17,7 +17,7 @@ const emit = defineEmits<{ build: [district: DistrictId] }>();
       <li v-for="(district, index) in hand" :key="`${district}-${index}`">
         <button
           type="button"
-          class="block rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed"
+          class="block focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:cursor-not-allowed"
           :disabled="disabled"
           :aria-label="`Build ${district}`"
           @click="emit('build', district)"
