@@ -119,6 +119,9 @@ const launch = async (label) => {
       }
       return message.result && message.result.result ? message.result.result.value : undefined;
     },
+    /** A click before the client script has taken the DOM over reaches no listener. */
+    hydrated: (timeoutMs = 60000) =>
+      page.waitFor("document.querySelector('#__nuxt') && document.querySelector('#__nuxt').__vue_app__", timeoutMs),
     async waitFor(expression, timeoutMs = 30000) {
       const deadline = Date.now() + timeoutMs;
       for (;;) {
@@ -239,6 +242,7 @@ const runHarness = async () => {
   const page = await launch("harness");
   try {
     await page.goto(HARNESS, 2600);
+    check(await page.hydrated(), "the demo page's client script runs before the probe reads it");
 
     const shape = await page.eval(
       expr(function () {
@@ -349,18 +353,24 @@ const runLiveSurface = async () => {
     await guestPage.setCookie(guest);
 
     await guestPage.goto(BASE + "/join/" + code, 1500);
+    check(await guestPage.hydrated(), "the guest's join page runs its client script, which is what takes the seat");
     const seated = await guestPage.waitFor("location.pathname === '/rooms/" + code + "'", 40000);
     check(seated, "the second account takes the spare seat", await guestPage.eval("location.pathname"));
 
     await hostPage.goto(BASE + "/rooms/" + code, 1500);
+    check(await hostPage.hydrated(), "the host's room page runs the client script that fetches the seats");
     const full = await hostPage.waitFor("document.body.innerText.includes('All seats filled')", 40000);
     check(full, "the room reports all seats filled");
-    await hostPage.eval("(() => { const b = [...document.querySelectorAll('button')].find((el) => el.textContent.includes('Start game')); if (b) b.click(); return b !== undefined; })()");
+    const offered = await hostPage.eval(
+      "(() => { const b = [...document.querySelectorAll('button')].find((el) => el.textContent.includes('Start game')); if (b === undefined) return false; b.click(); return true; })()",
+    );
+    check(offered, "the host's room page draws the start control, and it takes the click");
     const started = await hostPage.waitFor("location.pathname === '/games/" + code + "'", 40000);
     check(started, "the host's start opens the game route", await hostPage.eval("location.pathname"));
 
     for (const page of [hostPage, guestPage]) {
       await page.goto(BASE + "/games/" + code, 2500);
+      check(await page.hydrated(), page.label + ": the game page runs the client script behind the enter control");
       const immersive = await page.waitFor("document.querySelector('[data-slot=citadels-immersive]')", 60000);
       check(immersive, page.label + ": the citadels screen mounts on the game route");
       await page.click("[data-slot=citadels-enter]");
