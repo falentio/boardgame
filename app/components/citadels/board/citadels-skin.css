@@ -37,10 +37,8 @@
     inset 0 0 0 6px var(--monokai-yellow);
 }
 
-/* A piece is data until it is a control, so only a control moves under the pointer;
-   a cast row is a row even where a draft makes it pickable, and stays ink. */
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
-  :is(button, a).citadels-piece:not(.citadels-piece--still):not([data-slot="citadels-cast-row"]):not(:disabled):hover {
+  :is(button, a).citadels-piece:not(.citadels-piece--still):not(:disabled):hover {
     translate: 0 -1px;
   }
 }
