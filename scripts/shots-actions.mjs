@@ -5,9 +5,11 @@ import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
-import { serverAnswers } from "./lib/shots-harness.mjs";
+import { checkedArgs, originOf, serverAnswers } from "./lib/shots-harness.mjs";
 
-const BASE = process.env.CITADELS_BASE ?? "http://localhost:3000";
+// Usage: node scripts/shots-actions.mjs [--port 3000]
+const args = checkedArgs(process.argv.slice(2), ["--port"]);
+const BASE = originOf(args, { defaultPort: 3000 });
 const HARNESS = BASE + "/dev/actions-demo";
 const OUT = ".audit/actions";
 const STAMP = Date.now();

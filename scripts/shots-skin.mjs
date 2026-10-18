@@ -1,14 +1,17 @@
 import { mkdirSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
-import { CAST, RULE, createShots, summarize } from "./lib/shots-harness.mjs";
+import { CAST, RULE, argOf, checkedArgs, createShots, originOf, summarize } from "./lib/shots-harness.mjs";
 
+// Usage: node scripts/shots-skin.mjs [--live] [--port 3000] [board-url] [picker-url] [tag]
+const args = checkedArgs(process.argv.slice(2), ["--live", "--port"]);
 const DEBUG_PORT = 9531;
 const OUT = ".audit/skin";
-const LIVE = process.argv.includes("--live");
-const ORIGIN = process.env.CITADELS_BASE ?? "http://localhost:3000";
-let BOARD_URL = process.argv[2] ?? ORIGIN + "/dev/citadels-interface";
-let PICKER_URL = process.argv[3] ?? ORIGIN + "/dev/picker-demo";
-const TAG = LIVE ? "live" : (process.argv[4] ?? "after");
+const LIVE = args.includes("--live");
+const ORIGIN = originOf(args, { defaultPort: 3000 });
+const positional = args.filter((arg) => !arg.startsWith("-") && arg !== argOf(args, "--port", null));
+let BOARD_URL = positional[0] ?? ORIGIN + "/dev/citadels-interface";
+let PICKER_URL = positional[1] ?? ORIGIN + "/dev/picker-demo";
+const TAG = LIVE ? "live" : (positional[2] ?? "after");
 mkdirSync(OUT, { recursive: true });
 
 const { check, failures, launch, openRoom } = createShots({

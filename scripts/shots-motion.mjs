@@ -6,12 +6,11 @@
 // Usage: node scripts/shots-motion.mjs [--port 3001]
 import { mkdirSync, readFileSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
-import { argOf, createShots, summarize } from "./lib/shots-harness.mjs";
+import { checkedArgs, createShots, originOf, summarize } from "./lib/shots-harness.mjs";
 
-const args = process.argv.slice(2);
+const args = checkedArgs(process.argv.slice(2), ["--port"]);
 const DEBUG_PORT = 9551;
-const PORT = Number(argOf(args, "--port", "3001"));
-const BASE = process.env.CITADELS_BASE ?? "http://localhost:" + PORT;
+const BASE = originOf(args, { defaultPort: 3001 });
 const OUT = ".audit/motion";
 
 mkdirSync(OUT, { recursive: true });

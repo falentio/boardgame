@@ -27,6 +27,24 @@ export const serverAnswers = async (base) => {
   }
 };
 
+/** A flag nobody reads is a run that did not happen, so an unknown one stops the script. */
+export const checkedArgs = (args, known) => {
+  const unknown = args.filter((arg) => arg.startsWith("-") && !known.includes(arg));
+  if (unknown.length > 0) throw new Error("unknown flag " + unknown.join(" ") + "; this script reads " + known.join(" "));
+  return args;
+};
+
+/** --port and CITADELS_BASE name the origin; both at once name two, and nobody picks one silently. */
+export const originOf = (args, { defaultPort, env = process.env }) => {
+  const named = env.CITADELS_BASE ?? null;
+  const flag = argOf(args, "--port", null);
+  if (named !== null && flag !== null) throw new Error("--port " + flag + " and CITADELS_BASE=" + named + " both name an origin; pass one");
+  if (named !== null) return named;
+  const port = Number(flag ?? defaultPort);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("port " + JSON.stringify(flag ?? defaultPort) + " is not a port");
+  return "http://localhost:" + port;
+};
+
 export const summarize = (failed) => (failed === 0 ? "ALL CHECKS PASS" : failed + " CHECK(S) FAILED");
 
 const freePort = () =>

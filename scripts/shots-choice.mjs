@@ -6,12 +6,11 @@
 // Usage: node scripts/shots-choice.mjs [--port 3003] [--harness-only]
 import { mkdirSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
-import { CAST, argOf, createShots, summarize } from "./lib/shots-harness.mjs";
+import { CAST, checkedArgs, createShots, originOf, summarize } from "./lib/shots-harness.mjs";
 
-const args = process.argv.slice(2);
-const PORT = Number(argOf(args, "--port", "3003"));
+const args = checkedArgs(process.argv.slice(2), ["--port", "--harness-only"]);
 const HARNESS_ONLY = args.includes("--harness-only");
-const BASE = process.env.CITADELS_BASE ?? "http://localhost:" + PORT;
+const BASE = originOf(args, { defaultPort: 3003 });
 const OUT = ".audit/choice";
 const CHOICE_KINDS = ["seat", "character", "type", "district", "card", "confirm"];
 

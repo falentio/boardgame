@@ -4,12 +4,11 @@
 // Usage: node scripts/shots-finish.mjs [--port 3001] [--harness-only] [--terminal]
 import { mkdirSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
-import { CAST, argOf, createShots, summarize } from "./lib/shots-harness.mjs";
+import { CAST, checkedArgs, createShots, originOf, summarize } from "./lib/shots-harness.mjs";
 
-const args = process.argv.slice(2);
-const PORT = Number(argOf(args, "--port", "3001"));
+const args = checkedArgs(process.argv.slice(2), ["--port", "--harness-only", "--terminal"]);
 const HARNESS_ONLY = args.includes("--harness-only");
-const BASE = process.env.CITADELS_BASE ?? "http://localhost:" + PORT;
+const BASE = originOf(args, { defaultPort: 3001 });
 const OUT = ".audit/finish";
 const SURFACE = "[data-slot=citadels-surface]";
 const ACTIONS = "[data-slot=citadels-surface] [data-slot=citadels-actions]";

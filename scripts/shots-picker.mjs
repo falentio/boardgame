@@ -2,9 +2,10 @@
 // printed for a human to compare, not asserted.
 import { mkdirSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
-import { createShots } from "./lib/shots-harness.mjs";
+import { checkedArgs, createShots, originOf } from "./lib/shots-harness.mjs";
 
-const BASE = process.env.CITADELS_BASE ?? "http://localhost:3000";
+const args = checkedArgs(process.argv.slice(2), ["--port"]);
+const BASE = originOf(args, { defaultPort: 3000 });
 const OUT = ".audit/pick";
 const DEBUG_PORT = 9511;
 mkdirSync(OUT, { recursive: true });
