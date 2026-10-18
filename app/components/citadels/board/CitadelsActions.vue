@@ -69,7 +69,7 @@ const choose = (action: Choice): void => {
         :data-action="choice.action"
         :disabled="choice.action === 'build' && !buildable"
         :title="choice.action === 'build' && !buildable ? 'Your hand is empty, so there is nothing to build' : undefined"
-        class="flex items-center gap-1.5 border border-monokai-line bg-monokai-panel px-2 py-1.5 font-mono text-[0.625rem] leading-none font-bold tracking-[0.16em] text-monokai-fg uppercase hover:-translate-y-px hover:border-monokai-yellow hover:text-monokai-yellow focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-monokai-yellow disabled:cursor-not-allowed disabled:border-monokai-line disabled:text-monokai-comment disabled:hover:translate-y-0 disabled:hover:border-monokai-line disabled:hover:text-monokai-comment"
+        class="flex items-center gap-1.5 border border-monokai-line bg-monokai-panel px-2 py-1.5 font-mono text-[0.625rem] leading-none font-bold tracking-[0.16em] text-monokai-fg uppercase focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-monokai-yellow disabled:cursor-not-allowed disabled:border-monokai-line disabled:text-monokai-comment"
         @click="choose(choice.action)"
       >
         <component :is="choice.icon" class="size-3.5 shrink-0" aria-hidden="true" />
@@ -83,3 +83,13 @@ const choose = (action: Choice): void => {
     </li>
   </ul>
 </template>
+
+<style scoped>
+/* Tailwind's hover variant sits behind (hover: hover), which a touch screen and a
+   headless browser both refuse; the tile answers a hover wherever the pointer is. */
+[data-slot="citadels-action"]:hover:not(:disabled) {
+  border-color: var(--monokai-yellow);
+  color: var(--monokai-yellow);
+  translate: 0 -1px;
+}
+</style>
