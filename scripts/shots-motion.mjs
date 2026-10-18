@@ -18,7 +18,9 @@ const BASE = "http://localhost:" + PORT;
 const OUT = ".audit/motion/";
 const DEBUG_PORT = 9551;
 const POINTER_FLAGS = "--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4";
-const RULE = "rgb(230, 219, 116)";
+/** The palette's ink, resolved through a probe element so a palette change cannot stale the script. */
+const inkOf = (page) =>
+  page.eval("(() => { const root = document.querySelector('[data-slot=citadels-surface]'); const probe = document.createElement('span'); root.appendChild(probe); probe.style.color = 'var(--monokai-yellow)'; const ink = getComputedStyle(probe).color; probe.remove(); return ink; })()");
 mkdirSync(OUT, { recursive: true });
 
 let failures = 0;
@@ -174,6 +176,7 @@ const finePointerPass = async () => {
     const media = await page.eval("(() => ({ hover: matchMedia('(hover: hover) and (pointer: fine)').matches, reduce: matchMedia('(prefers-reduced-motion: reduce)').matches }))()");
     note("fine-pointer browser media features", JSON.stringify(media));
     check(media.hover, "this browser reports (hover: hover) and (pointer: fine)");
+    const rule = await inkOf(page);
     const { idle: tileIdle, over: tileOver } = await readHover(page, "[data-slot=citadels-action][data-action=gold]");
     await page.shot("turn-bar-hover-fine-pointer");
     await page.unhover();
@@ -190,10 +193,10 @@ const finePointerPass = async () => {
     console.log("   card in hand: " + JSON.stringify({ shadow: String(cardIdle.shadow).slice(0, 40), translate: cardIdle.translate, hoverTranslate: cardOver.translate }));
     console.log("   seat card: " + JSON.stringify({ idle: seatIdle.translate, hover: seatOver.translate, ink: String(seatOver.shadow).slice(0, 58) }));
     check(tileOver.translate === "0px -1px" && tileIdle.translate !== "0px -1px", "a fine pointer lifts the turn tile 1px", tileIdle.translate + " -> " + tileOver.translate);
-    check(handOver.translate === "0px -1px" && handOver.outlineColor === RULE, "a fine pointer lifts the hand tile and inks its edge", handOver.translate + " " + handOver.outlineColor);
+    check(handOver.translate === "0px -1px" && handOver.outlineColor === rule, "a fine pointer lifts the hand tile and inks its edge", handOver.translate + " " + handOver.outlineColor);
     check(cardOver.translate === cardIdle.translate && cardOver.shadow === cardIdle.shadow, "the card inside the hand tile stays still", String(cardOver.translate));
     check(seatOver.translate === "none" || seatOver.translate === "0px", "the seat card changes colour only, as the gate asks", String(seatOver.translate));
-    check(String(seatOver.shadow).includes(RULE), "the seat card still answers with yellow ink", String(seatOver.shadow).slice(0, 58));
+    check(String(seatOver.shadow).includes(rule), "the seat card still answers with yellow ink", String(seatOver.shadow).slice(0, 58));
     await showScene(page, "draft");
     await page.eval("(() => { const p = document.querySelector('[data-slot=citadels-picker]'); if (p !== null) p.style.visibility = 'hidden'; return true; })()");
     const rowIdle = await page.read("[data-slot=citadels-cast-row]");
@@ -202,7 +205,7 @@ const finePointerPass = async () => {
     await page.shot("cast-row-hover-fine-pointer");
     console.log("   cast row: " + JSON.stringify({ tag: rowIdle.tag, idle: rowIdle.translate, hover: rowOver.translate, ink: String(rowOver.shadow).slice(0, 46) }));
     check(rowOver.translate === "none" || rowOver.translate === "0px", "a pickable cast row changes ink and never moves", String(rowOver.translate));
-    check(String(rowOver.shadow).includes(RULE), "a pickable cast row still answers with yellow ink", String(rowOver.shadow).slice(0, 46));
+    check(String(rowOver.shadow).includes(rule), "a pickable cast row still answers with yellow ink", String(rowOver.shadow).slice(0, 46));
     await page.eval("(() => { const p = document.querySelector('[data-slot=citadels-picker]'); if (p !== null) p.style.visibility = ''; return true; })()");
     await page.unhover();
     await showScene(page, "turn");
@@ -212,7 +215,7 @@ const finePointerPass = async () => {
     await page.shot("turn-bar-hover-fine-pointer-reduced");
     await page.unhover();
     console.log("   turn tile with a fine pointer under reduce: " + JSON.stringify({ translate: reducedHover.translate, ink: reducedHover.borderColor }));
-    check(reducedHover.translate !== "0px -1px" && reducedHover.borderColor === RULE, "under reduce a fine pointer keeps the ink and drops the lift", String(reducedHover.translate) + " " + reducedHover.borderColor);
+    check(reducedHover.translate !== "0px -1px" && reducedHover.borderColor === rule, "under reduce a fine pointer keeps the ink and drops the lift", String(reducedHover.translate) + " " + reducedHover.borderColor);
     const errors = page.errorsFor();
     check(errors.length === 0, "the fine-pointer browser logs no console error", JSON.stringify(errors.slice(0, 3)));
   } finally {
@@ -316,18 +319,19 @@ const measureHoverGate = async (page) => {
   console.log("   tile colour rule written outside the query: " + String(ungated));
   check(ungated, "the tile's colour change is written outside the media query");
 
+  const rule = await inkOf(page);
   const { idle: tileIdle, over: tileOver } = await readHover(page, "[data-slot=citadels-action][data-action=gold]");
   await page.unhover();
   console.log("   tile idle: " + JSON.stringify({ borderColor: tileIdle.borderColor, color: tileIdle.color, translate: tileIdle.translate }));
   console.log("   tile hover: " + JSON.stringify({ borderColor: tileOver.borderColor, color: tileOver.color, translate: tileOver.translate }));
-  check(tileOver.borderColor === RULE && tileOver.color === RULE, "with no hover media the tile still turns its frame and ink yellow", tileOver.borderColor);
+  check(tileOver.borderColor === rule && tileOver.color === rule, "with no hover media the tile still turns its frame and ink yellow", tileOver.borderColor);
   check(tileOver.translate === "none" || tileOver.translate === "0px", "with no hover media the tile does not move", String(tileOver.translate));
 
   const { idle: handIdle, over: handOver } = await readHover(page, "[data-slot=citadels-hand-tile]");
   const cardOver = await page.read("[data-slot=citadels-hand] [data-slot=citadels-district]");
   await page.shot("hand-hover-no-hover-media");
   await page.unhover();
-  check(handIdle.outlineColor !== RULE && handOver.outlineColor === RULE, "the hand tile inks its edge yellow wherever the pointer is", handIdle.outlineColor + " -> " + handOver.outlineColor);
+  check(handIdle.outlineColor !== rule && handOver.outlineColor === rule, "the hand tile inks its edge yellow wherever the pointer is", handIdle.outlineColor + " -> " + handOver.outlineColor);
   check(handOver.translate === "none" || handOver.translate === "0px", "the hand tile does not move without a fine pointer", String(handOver.translate));
   check(String(cardOver.translate) === "none" && String(cardOver.shadow).includes("inset"), "the card inside the tile keeps its own frame and stays still", String(cardOver.shadow).slice(0, 58));
 
