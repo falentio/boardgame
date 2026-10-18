@@ -61,6 +61,10 @@ const pickCharacter = (character: CharacterId): void => {
   report(act<CitadelsAction>({ t: "pick", character }));
 };
 
+const keepCard = (index: number): void => {
+  report(act<CitadelsAction>({ t: "keep", index }));
+};
+
 const inFullscreen = computed(() => fullscreen.active.value);
 
 const winnerLine = computed(() => {
@@ -128,7 +132,7 @@ const winnerLine = computed(() => {
         @retry="retry"
       />
 
-      <CitadelsBoard v-if="board" :board="board" @pick="pickCharacter" />
+      <CitadelsBoard v-if="board" :board="board" @pick="pickCharacter" @keep="keepCard" />
       <p v-else role="status" class="text-muted-foreground p-3 text-sm leading-normal">
         Waiting for the game to start…
       </p>
