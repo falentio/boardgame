@@ -131,7 +131,7 @@ info("fine-pointer browser media features", JSON.stringify(media));
     const rowOver = await read(page, "[data-slot=citadels-cast-row]");
     await page.shot("cast-row-hover-fine-pointer");
     console.log("   cast row: " + JSON.stringify({ tag: rowIdle.tag, idle: rowIdle.translate, hover: rowOver.translate, ink: String(rowOver.shadow).slice(0, 46) }));
-    check(rowOver.translate === "none" || rowOver.translate === "0px", "a pickable cast row changes ink and never moves", String(rowOver.translate));
+    check(rowOver.translate === "0px -1px", "a pickable cast row changes ink and lifts 1px, as every control does", String(rowOver.translate));
     check(String(rowOver.shadow).includes(rule), "a pickable cast row still answers with yellow ink", String(rowOver.shadow).slice(0, 46));
     await page.eval("(() => { const p = document.querySelector('[data-slot=citadels-picker]'); if (p !== null) p.style.visibility = ''; return true; })()");
     await page.unhover();
