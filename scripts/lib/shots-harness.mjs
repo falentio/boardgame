@@ -18,6 +18,15 @@ export const argOf = (args, name, fallback) => {
   return at === -1 ? fallback : args[at + 1];
 };
 
+/** The harness is worth what its origin answers before the first check. */
+export const serverAnswers = async (base) => {
+  try {
+    return (await fetch(base + "/api/auth/ok")).ok;
+  } catch {
+    return false;
+  }
+};
+
 export const summarize = (failed) => (failed === 0 ? "ALL CHECKS PASS" : failed + " CHECK(S) FAILED");
 
 const freePort = () =>
@@ -234,13 +243,7 @@ export const createShots = ({ name, base, out, viewport, detail = "text" }) => {
     return { code, host, guest };
   };
 
-  const serverAnswers = async () => {
-    try {
-      return (await fetch(base + "/api/auth/ok")).ok;
-    } catch {
-      return false;
-    }
-  };
+  const answersAt = () => serverAnswers(base);
 
-  return { check, info, failures, launch, signUp, createRoom, joinRoom, startRoom, openRoom, serverAnswers };
+  return { check, info, failures, launch, signUp, createRoom, joinRoom, startRoom, openRoom, serverAnswers: answersAt };
 };

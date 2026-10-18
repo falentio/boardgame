@@ -5,6 +5,7 @@ import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
+import { serverAnswers } from "./lib/shots-harness.mjs";
 
 const BASE = process.env.CITADELS_BASE ?? "http://localhost:3000";
 const HARNESS = BASE + "/dev/actions-demo";
@@ -342,6 +343,7 @@ const ACTIONS = function () {
 };
 
 const runLiveSurface = async () => {
+  if (!(await serverAnswers(BASE))) throw new Error("the dev server on " + BASE + " is not answering; start it before this script");
   const host = await signUp("host");
   const guest = await signUp("guest");
   const code = await createRoom(host);
