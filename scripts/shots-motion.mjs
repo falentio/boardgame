@@ -151,6 +151,14 @@ const holdLeave = (page, scene, slot, seek = 60) =>
 const release = (page) => page.eval("(() => { const live = window.__frozen ?? []; for (const a of live) a.play(); window.__frozen = []; return live.length; })()");
 const showScene = (page, scene) => page.eval("(async () => { document.querySelector('[data-slot=motion-demo-scene][data-scene=" + scene + "]').click(); await new Promise((r) => setTimeout(r, 400)); return true; })()");
 
+/** Idle and hovered reads of one element, with the pointer left on it. */
+const readHover = async (page, selector) => {
+  const idle = await page.read(selector);
+  await page.hover(selector);
+  const over = await page.read(selector);
+  return { idle, over };
+};
+
 /** The same hover probes in a browser that reports a fine pointer. */
 const finePointerPass = async () => {
   console.log("");
@@ -166,21 +174,15 @@ const finePointerPass = async () => {
     const media = await page.eval("(() => ({ hover: matchMedia('(hover: hover) and (pointer: fine)').matches, reduce: matchMedia('(prefers-reduced-motion: reduce)').matches }))()");
     note("fine-pointer browser media features", JSON.stringify(media));
     check(media.hover, "this browser reports (hover: hover) and (pointer: fine)");
-    const tileIdle = await page.read("[data-slot=citadels-action][data-action=gold]");
-    await page.hover("[data-slot=citadels-action][data-action=gold]");
-    const tileOver = await page.read("[data-slot=citadels-action][data-action=gold]");
+    const { idle: tileIdle, over: tileOver } = await readHover(page, "[data-slot=citadels-action][data-action=gold]");
     await page.shot("turn-bar-hover-fine-pointer");
     await page.unhover();
-    const handIdle = await page.read("[data-slot=citadels-hand-tile]");
-    await page.hover("[data-slot=citadels-hand-tile]");
-    const handOver = await page.read("[data-slot=citadels-hand-tile]");
+    const { idle: handIdle, over: handOver } = await readHover(page, "[data-slot=citadels-hand-tile]");
     const cardIdle = await page.read("[data-slot=citadels-hand] [data-slot=citadels-district]");
     const cardOver = await page.read("[data-slot=citadels-hand] [data-slot=citadels-district]");
     await page.shot("hand-hover-fine-pointer");
     await page.unhover();
-    const seatIdle = await page.read("[data-slot=citadels-seat]");
-    await page.hover("[data-slot=citadels-seat]");
-    const seatOver = await page.read("[data-slot=citadels-seat]");
+    const { idle: seatIdle, over: seatOver } = await readHover(page, "[data-slot=citadels-seat]");
     await page.shot("seat-hover-fine-pointer");
     await page.unhover();
     console.log("   turn tile: " + JSON.stringify({ idle: tileIdle.translate, hover: tileOver.translate, ink: tileOver.borderColor }));
@@ -322,18 +324,14 @@ const main = async () => {
     console.log("   tile colour rule written outside the query: " + String(ungated));
     check(ungated, "the tile's colour change is written outside the media query");
 
-    const tileIdle = await page.read("[data-slot=citadels-action][data-action=gold]");
-    await page.hover("[data-slot=citadels-action][data-action=gold]");
-    const tileOver = await page.read("[data-slot=citadels-action][data-action=gold]");
+    const { idle: tileIdle, over: tileOver } = await readHover(page, "[data-slot=citadels-action][data-action=gold]");
     await page.unhover();
     console.log("   tile idle: " + JSON.stringify({ borderColor: tileIdle.borderColor, color: tileIdle.color, translate: tileIdle.translate }));
     console.log("   tile hover: " + JSON.stringify({ borderColor: tileOver.borderColor, color: tileOver.color, translate: tileOver.translate }));
     check(tileOver.borderColor === RULE && tileOver.color === RULE, "with no hover media the tile still turns its frame and ink yellow", tileOver.borderColor);
     check(tileOver.translate === "none" || tileOver.translate === "0px", "with no hover media the tile does not move", String(tileOver.translate));
 
-    const handIdle = await page.read("[data-slot=citadels-hand-tile]");
-    await page.hover("[data-slot=citadels-hand-tile]");
-    const handOver = await page.read("[data-slot=citadels-hand-tile]");
+    const { idle: handIdle, over: handOver } = await readHover(page, "[data-slot=citadels-hand-tile]");
     const cardOver = await page.read("[data-slot=citadels-hand] [data-slot=citadels-district]");
     await page.shot("hand-hover-no-hover-media");
     await page.unhover();
