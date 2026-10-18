@@ -36,8 +36,8 @@ const window0 = await evaluate("(() => { const keep = document.querySelector('[d
 check(window0 !== null, "section exists in keep window");
 console.log("keep:", JSON.stringify(window0));
 check(window0?.cards === 2, "exactly two keep cards", String(window0?.cards));
-check(JSON.stringify(window0?.index) === JSON.stringify(["2", "3"]), "data-index are hand tail indexes 2 and 3", JSON.stringify(window0?.index));
-check(window0?.district.join() === "haunted-quarter,school-of-magic", "drawn pair is the hand's tail", String(window0?.district));
+check(JSON.stringify(window0?.index) === JSON.stringify(["0", "1"]), "data-index are the pool indexes the reducer reads", JSON.stringify(window0?.index));
+check(window0?.district.join() === "haunted-quarter,school-of-magic", "drawn pair is the pending pool", String(window0?.district));
 check(window0?.inset === "0,0" && window0?.size === window0?.parent, "covers the self column", window0?.inset + " " + window0?.size);
 check(/\/ 0\.3\)$/.test(window0?.background ?? ""), "30% monokai tint", String(window0?.background));
 check(window0?.blur === "blur(2px)", "2px backdrop blur", String(window0?.blur));
@@ -51,11 +51,11 @@ const afterEscape = await evaluate("(() => ({ section: !!document.querySelector(
 check(afterEscape.section && afterEscape.log === "keep none", "escape leaves the window untouched", JSON.stringify(afterEscape));
 await shot("keep-after-escape.png");
 
-const clicked = await evaluate("(() => { const card = document.querySelector('[data-index=\"3\"]'); if (!card) return 'none'; card.click(); return card.getAttribute('data-district'); })()");
+const clicked = await evaluate("(() => { const card = document.querySelector('[data-index=\"1\"]'); if (!card) return 'none'; card.click(); return card.getAttribute('data-district'); })()");
 await delay(400);
 const afterClick = await evaluate("(() => ({ section: !!document.querySelector('[data-slot=citadels-keep]'), log: document.querySelector('[data-slot=keep-demo-log]')?.textContent.trim() }))()");
 console.log("clicked:", clicked);
-check(afterClick.log === "keep 3", "clicking index 3 reports keep index 3", JSON.stringify(afterClick));
+check(afterClick.log === "keep 1", "clicking the second card reports keep index 1", JSON.stringify(afterClick));
 await shot("keep-after-click.png");
 
 try { ws.close(); } catch {}
