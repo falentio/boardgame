@@ -22,9 +22,6 @@ watch(open, (still) => {
   if (!still) picked.value = null;
 });
 
-const emblemOf = (character: CharacterId): string => defaultAvatarUrl(character);
-const specOf = (character: CharacterId) => specOfCharacter(character);
-
 /** "1 gold per 3 trade districts" — the bonus, in words. */
 const incomeLine = (character: CharacterId): string | null => {
   const spec = specOfCharacter(character);
@@ -158,7 +155,7 @@ watch(open, async (still) => {
           data-slot="citadels-picker-dialog"
           role="dialog"
           aria-modal="true"
-          :aria-label="`Choose ${specOf(picked.character).name}?`"
+          :aria-label="`Choose ${specOfCharacter(picked.character).name}?`"
           class="absolute inset-0 z-50 flex items-center justify-center bg-monokai-bg/30 p-4 backdrop-blur-[2px]"
           @click="close"
         >
@@ -169,20 +166,20 @@ watch(open, async (still) => {
           >
             <header class="flex items-start gap-2">
               <span class="size-16 shrink-0 overflow-hidden border border-monokai-line bg-monokai-bg">
-                <img :src="emblemOf(picked.character)" alt="" class="size-full object-cover" />
+                <img :src="defaultAvatarUrl(picked.character)" alt="" class="size-full object-cover" />
               </span>
               <span class="flex min-w-0 flex-col gap-1">
                 <span class="font-mono text-sm leading-none font-bold tracking-[0.03em] uppercase">
-                  {{ specOf(picked.character).name }}
+                  {{ specOfCharacter(picked.character).name }}
                 </span>
                 <span class="font-mono text-[0.625rem] leading-none tracking-[0.16em] text-monokai-comment uppercase">
-                  rank {{ String(specOf(picked.character).rank).padStart(2, "0") }}
+                  rank {{ String(specOfCharacter(picked.character).rank).padStart(2, "0") }}
                 </span>
               </span>
             </header>
 
             <p class="font-mono text-[0.6875rem] leading-snug text-monokai-fg" data-slot="citadels-picker-ability">
-              {{ specOf(picked.character).summary }}
+              {{ specOfCharacter(picked.character).summary }}
             </p>
 
             <p
@@ -196,7 +193,7 @@ watch(open, async (still) => {
             </p>
 
             <p class="font-mono text-[0.6875rem] leading-snug text-monokai-comment">
-              Choose {{ specOf(picked.character).name }}?
+              Choose {{ specOfCharacter(picked.character).name }}?
             </p>
 
             <footer class="flex justify-end gap-2">
@@ -214,7 +211,7 @@ watch(open, async (still) => {
                 class="bg-monokai-yellow px-2.5 py-1 font-mono text-[0.625rem] font-bold tracking-[0.16em] text-monokai-bg uppercase focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-monokai-fg"
                 @click="confirm"
               >
-                Choose {{ specOf(picked.character).name }}
+                Choose {{ specOfCharacter(picked.character).name }}
               </button>
             </footer>
           </div>

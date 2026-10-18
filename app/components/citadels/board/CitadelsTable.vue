@@ -12,9 +12,6 @@ const emit = defineEmits<{ pick: [character: CharacterId] }>();
 
 const table = computed(() => props.board.table);
 
-/** The emblem is the character itself, seeded by its id so it never moves. */
-const emblemOf = (character: CharacterId): string => defaultAvatarUrl(character);
-
 /** "gold / trade" — what the character pays per matching district, or null. */
 const incomeOf = (character: CharacterId): string | null => {
   const spec = specOfCharacter(character);
@@ -95,7 +92,7 @@ const pick = (slot: CastSlot): void => {
               data-slot="citadels-cast-emblem"
               class="m-1.5 flex size-7 shrink-0 items-center justify-center overflow-hidden bg-monokai-bg"
             >
-              <img :src="emblemOf(slot.character)" alt="" class="size-6 object-cover" />
+              <img :src="defaultAvatarUrl(slot.character)" alt="" class="size-6 object-cover" />
             </span>
             <span class="flex min-w-0 flex-1 flex-col justify-center gap-1 py-1.5 pe-1.5">
               <span class="text-[0.6875rem] leading-none font-bold tracking-[0.03em] uppercase [overflow-wrap:anywhere]">{{
