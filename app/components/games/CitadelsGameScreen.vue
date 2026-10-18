@@ -81,6 +81,10 @@ const passTurn = (): void => {
   report(act<CitadelsAction>({ t: "pass" }));
 };
 
+const chooseAction = (action: CitadelsAction): void => {
+  report(act<CitadelsAction>(action));
+};
+
 const inFullscreen = computed(() => fullscreen.active.value);
 
 const winnerLine = computed(() => {
@@ -157,6 +161,7 @@ const winnerLine = computed(() => {
         @draw="drawCards"
         @build="buildCard"
         @pass="passTurn"
+        @choose="chooseAction"
       />
       <p v-else role="status" class="text-muted-foreground p-3 text-sm leading-normal">
         Waiting for the game to start…
