@@ -17,7 +17,7 @@ const { check, failures, launch, openRoom } = createShots({
   out: OUT,
   viewport: { width: 1280, height: 800, deviceScaleFactor: 2 },
 });
-const { page, send, session: s, errors, close } = await launch({ label: TAG, debugPort: DEBUG_PORT });
+const { page, send, session: s, errors, close } = await launch({ label: TAG, debugPort: DEBUG_PORT, finePointer: true });
 const ev = (expression) => page.eval(expression);
 const shot = (name) => page.shot(name + "-" + TAG);
 
@@ -183,7 +183,9 @@ const hoverOf = async (selector) => {
 };
 /** The draft overlay covers the board, so the topmost in-scope control is the one to probe. */
 const covered = await ev("document.querySelector('[data-slot=citadels-picker]') !== null");
-const target = covered ? "[data-slot=citadels-picker-card]:not([disabled])" : "[data-slot=citadels-seat]";
+/* A seat card is the one piece brief-p7-motion.md:30 keeps still (colour only), so the bare board
+   probe takes a pickable cast row: a framed tile the skin's own lift rule covers. */
+const target = covered ? "[data-slot=citadels-picker-card]:not([disabled])" : "button[data-slot=citadels-cast-row]";
 const hovered = await hoverOf(target);
 console.log("hover " + target + ":", JSON.stringify(hovered));
 check(
@@ -201,8 +203,8 @@ if (covered) {
     const hoverSeat = await hoverOf("[data-slot=citadels-seat]");
     console.log("hover seat:", JSON.stringify(hoverSeat));
     check(
-      typeof hoverSeat.after === "object" && hoverSeat.after.hovered === true && hoverSeat.after.shadow.includes(RULE) && hoverSeat.after.translate === "0px -1px",
-      "a seat tile turns its frame to --monokai-yellow and lifts 1px on hover",
+      typeof hoverSeat.after === "object" && hoverSeat.after.hovered === true && hoverSeat.after.shadow.includes(RULE) && (hoverSeat.after.translate === "none" || hoverSeat.after.translate === "0px"),
+      "a seat tile turns its frame to --monokai-yellow and stays still, as brief-p7-motion.md:30 asks",
     );
   }
 }
