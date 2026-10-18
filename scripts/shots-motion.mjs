@@ -4,31 +4,29 @@
 // through citadelsBoardOf by the /dev/motion-demo page.
 //
 // Usage: node scripts/shots-motion.mjs [--port 3001]
-import { spawn } from "node:child_process";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
+import { argOf, createShots, summarize } from "./lib/shots-harness.mjs";
 
 const args = process.argv.slice(2);
-const argOf = (name, fallback) => {
-  const at = args.indexOf(name);
-  return at === -1 ? fallback : args[at + 1];
-};
-const PORT = Number(argOf("--port", "3001"));
-const BASE = process.env.CITADELS_BASE ?? "http://localhost:" + PORT;
-const OUT = ".audit/motion/";
 const DEBUG_PORT = 9551;
-const POINTER_FLAGS = "--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4";
+const PORT = Number(argOf(args, "--port", "3001"));
+const BASE = process.env.CITADELS_BASE ?? "http://localhost:" + PORT;
+const OUT = ".audit/motion";
+
+mkdirSync(OUT, { recursive: true });
+
+const { check, info, failures, launch } = createShots({
+  name: "motion",
+  base: BASE,
+  out: OUT,
+  viewport: { width: 1280, height: 800, deviceScaleFactor: 2 },
+});
+
 /** The palette's ink, resolved through a probe element so a palette change cannot stale the script. */
 const inkOf = (page) =>
   page.eval("(() => { const root = document.querySelector('[data-slot=citadels-surface]'); const probe = document.createElement('span'); root.appendChild(probe); probe.style.color = 'var(--monokai-yellow)'; const ink = getComputedStyle(probe).color; probe.remove(); return ink; })()");
-mkdirSync(OUT, { recursive: true });
 
-let failures = 0;
-const check = (ok, label, detail) => {
-  if (!ok) failures += 1;
-  console.log((ok ? "PASS " : "FAIL ") + label + (detail === undefined ? "" : " :: " + detail));
-};
-const note = (label, detail) => console.log("     " + label + (detail === undefined ? "" : " :: " + detail));
 const partsOf = (value) => String(value).split(",").map((part) => part.trim());
 const easingsOf = (value) => String(value).split(/,\s(?=[a-z])/).map((part) => part.trim());
 
@@ -38,80 +36,6 @@ const midFlight = (held) => {
   const scale = match === null ? null : Number(match[1]);
   const opacity = Number(held.opacity);
   return { scale: scale, opacity: opacity, partial: scale !== null && scale > 0.97 && scale < 1 && opacity > 0 && opacity < 1 };
-};
-
-const launch = async (options = {}) => {
-  const profile = "/tmp/motion-" + Date.now() + "-" + Math.round(Math.random() * 1000000);
-  const debugPort = options.debugPort ?? DEBUG_PORT;
-  rmSync(profile, { recursive: true, force: true });
-  const flags = ["--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--user-data-dir=" + profile, "--remote-debugging-port=" + debugPort, "--remote-allow-origins=*"];
-  if (options.finePointer === true) flags.push(POINTER_FLAGS);
-  flags.push("about:blank");
-  const chrome = spawn("/usr/bin/google-chrome", flags, { stdio: "ignore" });
-  let wsUrl = null;
-  for (let i = 0; i < 80 && !wsUrl; i += 1) {
-    try {
-      const res = await fetch("http://127.0.0.1:" + debugPort + "/json/version");
-      if (res.ok) wsUrl = (await res.json()).webSocketDebuggerUrl;
-    } catch {}
-    if (!wsUrl) await delay(250);
-  }
-  if (wsUrl === null) throw new Error("chrome never exposed a debug endpoint");
-  const ws = new WebSocket(wsUrl);
-  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
-  let id = 0;
-  const pending = new Map();
-  const errors = [];
-  ws.onmessage = (event) => {
-    const message = JSON.parse(event.data);
-    if (message.id && pending.has(message.id)) { pending.get(message.id)(message); pending.delete(message.id); }
-    else if (message.method === "Runtime.exceptionThrown") errors.push(message.params.exceptionDetails.text);
-    else if (message.method === "Runtime.consoleAPICalled" && message.params.type === "error") errors.push(message.params.args.map((a) => a.value ?? a.description).join(" "));
-  };
-  const send = (method, params = {}, sessionId) => new Promise((res) => {
-    const at = ++id;
-    pending.set(at, res);
-    ws.send(JSON.stringify({ id: at, method, params, sessionId }));
-  });
-  const created = (await send("Target.createTarget", { url: "about:blank" })).result;
-  const attached = (await send("Target.attachToTarget", { targetId: created.targetId, flatten: true })).result;
-  const session = attached.sessionId;
-  await send("Page.enable", {}, session);
-  await send("Runtime.enable", {}, session);
-  await send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 800, deviceScaleFactor: 2, mobile: false }, session);
-  const page = {
-    errorsFor: () => errors.splice(0, errors.length),
-    async eval(expression) {
-      const message = await send("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true }, session);
-      if (message.result.exceptionDetails) {
-        const details = message.result.exceptionDetails;
-        throw new Error((details.exception && details.exception.description) || details.text);
-      }
-      return message.result.result.value;
-    },
-    read: (selector) => page.eval("(() => { const el = document.querySelector(" + JSON.stringify(selector) + "); if (el === null) return null; const s = getComputedStyle(el); return { tag: el.tagName.toLowerCase(), prop: s.transitionProperty, dur: s.transitionDuration, ease: s.transitionTimingFunction, transform: s.transform, translate: s.translate, opacity: s.opacity, shadow: s.boxShadow, outlineColor: s.outlineColor, borderColor: s.borderTopColor, color: s.color }; })()"),
-    async goto(url, waitMs = 2600) { await send("Page.navigate", { url }, session); await delay(waitMs); },
-    async waitFor(expression, timeoutMs = 20000) {
-      const deadline = Date.now() + timeoutMs;
-      while (Date.now() < deadline) { if (await page.eval("!!(" + expression + ")")) return true; await delay(150); }
-      return false;
-    },
-    async media(features) { await send("Emulation.setEmulatedMedia", { media: "screen", features }, session); await delay(150); },
-    async hover(selector) {
-      const box = await page.eval("(() => { const el = document.querySelector(" + JSON.stringify(selector) + "); if (el === null) return null; const r = el.getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; })()");
-      if (box === null) return false;
-      await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: box.x, y: box.y, buttons: 0 }, session);
-      await delay(320);
-      return true;
-    },
-    async unhover() { await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: 2, y: 2, buttons: 0 }, session); await delay(260); },
-    async shot(name) {
-      const png = await send("Page.captureScreenshot", { format: "png", fromSurface: true }, session);
-      writeFileSync(OUT + name + ".png", Buffer.from(png.result.data, "base64"));
-      return OUT + name + ".png";
-    },
-  };
-  return { page, close: () => { try { ws.close(); } catch {} try { process.kill(-chrome.pid); } catch {} try { chrome.kill("SIGKILL"); } catch {} try { rmSync(profile, { recursive: true, force: true }); } catch {} } };
 };
 
 /** Pause the overlay's running transition and seek it to \`seek\` ms. */
@@ -153,11 +77,14 @@ const holdLeave = (page, scene, slot, seek = 60) =>
 const release = (page) => page.eval("(() => { const live = window.__frozen ?? []; for (const a of live) a.play(); window.__frozen = []; return live.length; })()");
 const showScene = (page, scene) => page.eval("(async () => { document.querySelector('[data-slot=motion-demo-scene][data-scene=" + scene + "]').click(); await new Promise((r) => setTimeout(r, 400)); return true; })()");
 
+const read = (page, selector) =>
+  page.eval("(() => { const el = document.querySelector(" + JSON.stringify(selector) + "); if (el === null) return null; const s = getComputedStyle(el); return { tag: el.tagName.toLowerCase(), prop: s.transitionProperty, dur: s.transitionDuration, ease: s.transitionTimingFunction, transform: s.transform, translate: s.translate, opacity: s.opacity, shadow: s.boxShadow, outlineColor: s.outlineColor, borderColor: s.borderTopColor, color: s.color }; })()");
+
 /** Idle and hovered reads of one element, with the pointer left on it. */
 const readHover = async (page, selector) => {
-  const idle = await page.read(selector);
+  const idle = await read(page, selector);
   await page.hover(selector);
-  const over = await page.read(selector);
+  const over = await read(page, selector);
   return { idle, over };
 };
 
@@ -165,7 +92,7 @@ const readHover = async (page, selector) => {
 const finePointerPass = async () => {
   console.log("");
   console.log("== 4b. the same probes with a fine pointer ==");
-  const browser = await launch({ finePointer: true, debugPort: DEBUG_PORT + 1 });
+  const browser = await launch({ label: "fine", finePointer: true, debugPort: DEBUG_PORT + 1 });
   const page = browser.page;
   try {
     await page.goto(BASE + "/dev/motion-demo");
@@ -174,15 +101,15 @@ const finePointerPass = async () => {
     if (!ready) return;
     await showScene(page, "turn");
     const media = await page.eval("(() => ({ hover: matchMedia('(hover: hover) and (pointer: fine)').matches, reduce: matchMedia('(prefers-reduced-motion: reduce)').matches }))()");
-    note("fine-pointer browser media features", JSON.stringify(media));
+info("fine-pointer browser media features", JSON.stringify(media));
     check(media.hover, "this browser reports (hover: hover) and (pointer: fine)");
     const rule = await inkOf(page);
     const { idle: tileIdle, over: tileOver } = await readHover(page, "[data-slot=citadels-action][data-action=gold]");
     await page.shot("turn-bar-hover-fine-pointer");
     await page.unhover();
     const { idle: handIdle, over: handOver } = await readHover(page, "[data-slot=citadels-hand-tile]");
-    const cardIdle = await page.read("[data-slot=citadels-hand] [data-slot=citadels-district]");
-    const cardOver = await page.read("[data-slot=citadels-hand] [data-slot=citadels-district]");
+    const cardIdle = await read(page, "[data-slot=citadels-hand] [data-slot=citadels-district]");
+    const cardOver = await read(page, "[data-slot=citadels-hand] [data-slot=citadels-district]");
     await page.shot("hand-hover-fine-pointer");
     await page.unhover();
     const { idle: seatIdle, over: seatOver } = await readHover(page, "[data-slot=citadels-seat]");
@@ -199,9 +126,9 @@ const finePointerPass = async () => {
     check(String(seatOver.shadow).includes(rule), "the seat card still answers with yellow ink", String(seatOver.shadow).slice(0, 58));
     await showScene(page, "draft");
     await page.eval("(() => { const p = document.querySelector('[data-slot=citadels-picker]'); if (p !== null) p.style.visibility = 'hidden'; return true; })()");
-    const rowIdle = await page.read("[data-slot=citadels-cast-row]");
+    const rowIdle = await read(page, "[data-slot=citadels-cast-row]");
     await page.hover("[data-slot=citadels-cast-row]");
-    const rowOver = await page.read("[data-slot=citadels-cast-row]");
+    const rowOver = await read(page, "[data-slot=citadels-cast-row]");
     await page.shot("cast-row-hover-fine-pointer");
     console.log("   cast row: " + JSON.stringify({ tag: rowIdle.tag, idle: rowIdle.translate, hover: rowOver.translate, ink: String(rowOver.shadow).slice(0, 46) }));
     check(rowOver.translate === "none" || rowOver.translate === "0px", "a pickable cast row changes ink and never moves", String(rowOver.translate));
@@ -211,7 +138,7 @@ const finePointerPass = async () => {
     await showScene(page, "turn");
     await page.media([{ name: "prefers-reduced-motion", value: "reduce" }]);
     await page.hover("[data-slot=citadels-action][data-action=gold]");
-    const reducedHover = await page.read("[data-slot=citadels-action][data-action=gold]");
+    const reducedHover = await read(page, "[data-slot=citadels-action][data-action=gold]");
     await page.shot("turn-bar-hover-fine-pointer-reduced");
     await page.unhover();
     console.log("   turn tile with a fine pointer under reduce: " + JSON.stringify({ translate: reducedHover.translate, ink: reducedHover.borderColor }));
@@ -236,9 +163,9 @@ const measureTransitions = async (page) => {
     ["seat gold plate", "enter/leave: count ink", "[data-slot=citadels-seat-gold]"],
     ["hand tile", "enter: edge ink + 1px lift, leave: edge ink out", "[data-slot=citadels-hand-tile]"],
   ]) {
-    const read = await page.read(selector);
-    values.push([label, read]);
-    console.log("   " + label + " (" + changes + "): " + JSON.stringify(read));
+    const row = await read(page, selector);
+    values.push([label, row]);
+    console.log("   " + label + " (" + changes + "): " + JSON.stringify(row));
   }
   const layout = ["all", "width", "height", "margin", "padding", "top", "left", "inset"];
   const offenders = [];
@@ -282,9 +209,9 @@ const measureStateInk = async (page) => {
   console.log("");
   console.log("== 2. state indication on the cast rows ==");
   await showScene(page, "draft");
-  const draftRow = await page.read("[data-slot=citadels-cast-row][data-state=faceup]");
+  const draftRow = await read(page, "[data-slot=citadels-cast-row][data-state=faceup]");
   await showScene(page, "turn");
-  const turnRow = await page.read("[data-slot=citadels-cast-row][data-state=pending]");
+  const turnRow = await read(page, "[data-slot=citadels-cast-row][data-state=pending]");
   console.log("   faceup row ink: " + draftRow.shadow);
   console.log("   pending row ink: " + turnRow.shadow);
   check(draftRow.shadow !== turnRow.shadow, "the row ink differs between two engine states", turnRow.shadow.slice(0, 40));
@@ -328,14 +255,14 @@ const measureHoverGate = async (page) => {
   check(tileOver.translate === "none" || tileOver.translate === "0px", "with no hover media the tile does not move", String(tileOver.translate));
 
   const { idle: handIdle, over: handOver } = await readHover(page, "[data-slot=citadels-hand-tile]");
-  const cardOver = await page.read("[data-slot=citadels-hand] [data-slot=citadels-district]");
+  const cardOver = await read(page, "[data-slot=citadels-hand] [data-slot=citadels-district]");
   await page.shot("hand-hover-no-hover-media");
   await page.unhover();
   check(handIdle.outlineColor !== rule && handOver.outlineColor === rule, "the hand tile inks its edge yellow wherever the pointer is", handIdle.outlineColor + " -> " + handOver.outlineColor);
   check(handOver.translate === "none" || handOver.translate === "0px", "the hand tile does not move without a fine pointer", String(handOver.translate));
   check(String(cardOver.translate) === "none" && String(cardOver.shadow).includes("inset"), "the card inside the tile keeps its own frame and stays still", String(cardOver.shadow).slice(0, 58));
 
-  note("headless refuses (hover: hover) emulation", "the same probes run again with a fine pointer below");
+info("headless refuses (hover: hover) emulation", "the same probes run again with a fine pointer below");
   return tileOver;
 };
 
@@ -344,10 +271,10 @@ const measureReducedMotion = async (page, { pickerEnter, turnRow, tileOver }) =>
   console.log("== 4. reduced motion ==");
   await page.media([{ name: "prefers-reduced-motion", value: "reduce" }]);
   const reducedMedia = await page.eval("(() => ({ reduce: matchMedia('(prefers-reduced-motion: reduce)').matches }))()");
-  const reducedRow = await page.read("[data-slot=citadels-cast-row]");
-  const reducedSeat = await page.read("[data-slot=citadels-seat]");
-  const reducedTile = await page.read("[data-slot=citadels-action]");
-  const reducedHand = await page.read("[data-slot=citadels-hand-tile]");
+  const reducedRow = await read(page, "[data-slot=citadels-cast-row]");
+  const reducedSeat = await read(page, "[data-slot=citadels-seat]");
+  const reducedTile = await read(page, "[data-slot=citadels-action]");
+  const reducedHand = await read(page, "[data-slot=citadels-hand-tile]");
   const reducedEnter = JSON.parse(await holdEnter(page, "draft", "citadels-picker"));
   const reducedShot = await page.shot("overlay-enter-60ms-reduced");
   await release(page);
@@ -384,7 +311,7 @@ const measureSkinPage = async (page) => {
 };
 
 const main = async () => {
-  const browser = await launch();
+  const browser = await launch({ label: "main" });
   const page = browser.page;
   try {
     await page.goto(BASE + "/dev/motion-demo");
@@ -396,7 +323,7 @@ const main = async () => {
     const folded = JSON.parse(shape);
     check(folded.scenes.length === 4 && folded.scene === "draft" && folded.frames === "0" && folded.purpose === "draft-pick", "every scene folds from the engine, opening on the draft", shape);
     const media = await page.eval("(() => ({ hover: matchMedia('(hover: hover) and (pointer: fine)').matches, any: matchMedia('(any-hover: hover)').matches, pointer: matchMedia('(pointer: fine)').matches, reduce: matchMedia('(prefers-reduced-motion: reduce)').matches }))()");
-    note("headless media features", JSON.stringify(media));
+info("headless media features", JSON.stringify(media));
 
     const pickerEnter = await measureTransitions(page);
 
@@ -418,8 +345,8 @@ const main = async () => {
   } finally {
     browser.close();
   }
-  console.log(failures === 0 ? "ALL CHECKS PASS" : failures + " CHECK(S) FAILED");
-  process.exitCode = failures === 0 ? 0 : 1;
+  console.log(summarize(failures.length));
+  process.exitCode = failures.length === 0 ? 0 : 1;
 };
 
 await main();
