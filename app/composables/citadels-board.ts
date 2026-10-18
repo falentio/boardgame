@@ -45,9 +45,6 @@ export type SeatPlate = MySeat | OpponentSeat;
 /** Every seat at the table in clockwise order, the viewer's own first. */
 export type TableSeat = SeatPlate;
 
-/** The seats a rival card can show: the viewer's own plate reads as one of them. */
-export type RivalSeat = OpponentSeat;
-
 export type CastSlotState = "available" | "mine" | "faceup" | "pending";
 
 export interface CastSlot {
@@ -176,21 +173,16 @@ export const citadelsBoardOf = (
 ): CitadelsBoard => {
   const nameOf = (seat: SeatId): string => names.get(seat) ?? seat;
   const ordered = rotatedToViewer(view.players, view.seat);
-  const first = ordered[0];
+  const [mine, ...rivals] = ordered.map((player) => plateOf(player, view, nameOf));
   // `project` refuses a seat that is not a player, so a view without its own row
   // is a broken view rather than an input to handle.
-  if (first === undefined) throw new Error("citadels view is missing the viewer's seat");
-  const plates = ordered.map((player) => plateOf(player, view, nameOf));
-  const [mine, ...rivals] = plates;
   if (mine === undefined) throw new Error("citadels view is missing the viewer's seat");
-  const seats: readonly TableSeat[] = [
-    { ...mine, kind: "me", hand: view.myHand, cityTarget: CITY_TARGET },
-    ...rivals.map((plate, at): RivalSeat => ({
-      ...plate,
-      kind: "rival",
-      handCount: ordered[at + 1]?.handCount ?? 0,
-    })),
-  ];
+  const me: MySeat = { ...mine, kind: "me", hand: view.myHand, cityTarget: CITY_TARGET };
+  const opponents: readonly OpponentSeat[] = rivals.map((plate, at) => ({
+    ...plate,
+    kind: "rival",
+    handCount: ordered[at + 1]?.handCount ?? 0,
+  }));
   const owedByMe = view.owedSeats.includes(view.seat);
   return {
     table: {
@@ -232,8 +224,8 @@ export const citadelsBoardOf = (
       winner: view.winner === null ? null : { seat: view.winner, name: nameOf(view.winner) },
       terminal: view.terminal,
     },
-    opponents: seats.slice(1) as readonly OpponentSeat[],
-    seats,
-    me: seats[0] as MySeat,
+    opponents,
+    seats: [me, ...opponents],
+    me,
   };
 };
