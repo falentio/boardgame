@@ -83,7 +83,7 @@ const winnerLine = computed(() => {
       data-slot="citadels-surface"
       :data-orientation="orientation"
       :data-phase="board?.table.phase"
-      class="group/surface fixed inset-0 z-50 flex h-dvh min-h-0 flex-col bg-background"
+      class="dark group/surface fixed inset-0 z-50 flex h-dvh min-h-0 flex-col bg-monokai-bg text-monokai-fg"
     >
       <header
         v-if="board"
