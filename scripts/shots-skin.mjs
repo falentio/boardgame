@@ -145,6 +145,19 @@ check(String(skin.district.shadow).includes("inset"), "district card keeps its i
 check(String(skin.row.shadow).includes("inset") && String(skin.row.shadow).split("inset").length === 4, "cast row carries the three-layer framed inset rule");
 check(String(skin.plate.shadow).includes("inset") && String(skin.plate.shadow).includes(RULE), "header reads as a framed plate");
 check(skin.head !== "missing" && skin.head.round !== null && skin.head.phase !== null, "round and phase sit as ink on the board plate " + JSON.stringify(skin.head));
+if (LIVE) {
+  const screenHeader = await ev(`(() => {
+    const plate = document.querySelector("[data-slot=citadels-surface] [data-slot=citadels-plate]");
+    if (plate === null) return null;
+    const round = plate.querySelector("[data-slot=citadels-phase]");
+    return { shadow: getComputedStyle(plate).boxShadow, round: round === null ? null : round.textContent.trim(), size: round === null ? null : getComputedStyle(round).fontSize };
+  })()`);
+  console.log("screen header plate:", JSON.stringify(screenHeader));
+  check(
+    screenHeader !== null && String(screenHeader.shadow).includes(RULE) && /^Round \d+/.test(String(screenHeader.round)),
+    "the screen's own header is a framed plate carrying the round ink",
+  );
+}
 console.log("cast row: emblem inset " + skin.cast.emblemInset + "px, state plate inset " + skin.cast.flagInset + "px, state word \"" + skin.cast.flag + "\" cut in its own ink");
 check(skin.cast.rows > 0 && skin.cast.framed === skin.cast.rows, "cast rows carry a framed emblem and a cut state plate: " + skin.cast.framed + "/" + skin.cast.rows);
 check(maxOf(skin.surfacePad) <= 20, "surface padding at or under 1.25rem (got " + skin.surfacePad + ")");
