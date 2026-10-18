@@ -111,13 +111,13 @@ const harnessRun = async () => {
       await pressTab(browser.page);
       focusedHand = await browser.page.eval("document.activeElement !== null && document.activeElement.closest('[data-slot=citadels-hand]') !== null && document.activeElement.matches(':focus-visible')");
     }
-    const handFocus = await browser.page.eval("(() => { const b = document.activeElement; return { inside: b === null || b.closest === undefined ? false : b.closest('[data-slot=citadels-hand]') !== null, focusVisible: b === null || b.matches === undefined ? false : b.matches(':focus-visible'), shadow: b === null || getComputedStyle === undefined ? null : getComputedStyle(b).boxShadow }; })()");
+    const handFocus = await browser.page.eval("(() => { const b = document.activeElement; if (b === null || b.closest === undefined) return { inside: false }; const s = getComputedStyle(b); return { inside: b.closest('[data-slot=citadels-hand]') !== null, focusVisible: b.matches(':focus-visible'), outline: s.outlineWidth + ' ' + s.outlineStyle + ' ' + s.outlineColor, shadow: s.boxShadow, drawn: (s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) > 0) || s.boxShadow !== 'none' }; })()");
     console.log("hand idle, hover, focus: " + JSON.stringify([handIdle, handHover, handFocus]));
     check(handIdle.radius === "0px", "the hand build button is square", handIdle.radius);
     check(handHover.over.includes("citadels-hand"), "the pointer reaches the hand button's own tile", JSON.stringify(handHover.over));
     check(handHover.card === handIdle.card && handHover.lift === handIdle.lift, "the hand tile's hover is the card frame's own, unchanged by the radius", handIdle.card === handHover.card ? "no computed change on hover" : "changed");
     info("the card frame carries no hover rule, so the hand tile answers a pointer with nothing (DistrictCard.vue:63)");
-    check(handFocus.inside && handFocus.focusVisible && handFocus.shadow !== "none", "the hand build button still shows its focus ring", JSON.stringify(handFocus));
+    check(handFocus.inside && handFocus.focusVisible && handFocus.drawn === true, "the hand build button still shows its focus ring", JSON.stringify(handFocus));
     info("the tile the keyboard ring sits on", await browser.page.eval("(() => { const b = document.activeElement; const tile = b.closest('[data-slot=citadels-hand] li'); return (tile === null ? 'none' : tile.textContent.trim().replace(/\\s+/g, ' ')) + ' <' + b.tagName.toLowerCase() + '>'; })()"));
     await delay(500);
     await browser.page.shot("hand-focus");
