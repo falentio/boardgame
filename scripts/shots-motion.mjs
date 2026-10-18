@@ -14,7 +14,7 @@ const argOf = (name, fallback) => {
   return at === -1 ? fallback : args[at + 1];
 };
 const PORT = Number(argOf("--port", "3001"));
-const BASE = "http://localhost:" + PORT;
+const BASE = process.env.CITADELS_BASE ?? "http://localhost:" + PORT;
 const OUT = ".audit/motion/";
 const DEBUG_PORT = 9551;
 const POINTER_FLAGS = "--blink-settings=primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4";

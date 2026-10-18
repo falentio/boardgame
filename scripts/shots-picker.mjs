@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
+const BASE = process.env.CITADELS_BASE ?? "http://localhost:3000";
 const port = 9511; const profile = "/tmp/pick-" + Date.now();
 mkdirSync(".audit/pick", { recursive: true });
 const chrome = spawn("/usr/bin/google-chrome", ["--headless=new","--no-sandbox","--disable-gpu","--disable-dev-shm-usage","--user-data-dir=" + profile,"--remote-debugging-port=" + port,"--remote-allow-origins=*","about:blank"], { stdio: "ignore", detached: true });
@@ -14,7 +15,7 @@ const t = (await send("Target.createTarget", { url: "about:blank" })).result;
 const s = (await send("Target.attachToTarget", { targetId: t.targetId, flatten: true })).result.sessionId;
 await send("Page.enable", {}, s); await send("Runtime.enable", {}, s);
 await send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 800, deviceScaleFactor: 2, mobile: false }, s);
-await send("Page.navigate", { url: "http://localhost:3000/dev/picker-demo" }, s);
+await send("Page.navigate", { url: BASE + "/dev/picker-demo" }, s);
 await delay(2600);
 const probe = await send("Runtime.evaluate", { expression: "(() => { const picker = document.querySelector('[data-slot=citadels-picker]'); if (!picker) return 'no picker'; const cards = [...picker.querySelectorAll('[data-slot=citadels-picker-card]')]; const r = picker.getBoundingClientRect(); const parent = picker.parentElement.getBoundingClientRect(); return JSON.stringify({ cards: cards.length, inset: Math.round(r.left - parent.left) + ',' + Math.round(r.top - parent.top), covers: Math.round(r.width) + 'x' + Math.round(r.height), parent: Math.round(parent.width) + 'x' + Math.round(parent.height), disabled: cards.filter(c => c.disabled).length }); })()", returnByValue: true }, s);
 console.log("picker:", probe.result.result.value);

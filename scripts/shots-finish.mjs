@@ -14,7 +14,7 @@ const argOf = (name, fallback) => {
 };
 const PORT = Number(argOf("--port", "3001"));
 const HARNESS_ONLY = args.includes("--harness-only");
-const BASE = "http://localhost:" + PORT;
+const BASE = process.env.CITADELS_BASE ?? "http://localhost:" + PORT;
 const STAMP = Date.now();
 const PASSWORD = "proof-password-123";
 const OUT = ".audit/finish/";
