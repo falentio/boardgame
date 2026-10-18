@@ -142,11 +142,16 @@ const CHOOSE_CHARACTER_OWNER: Partial<Record<CharacterId, CanName>> = {
   blackmailer: (_view, id) => specOfCharacter(id).rank !== 1,
 };
 
+/**
+ * The characters the window's owner may name. Every opener arms its pending
+ * character before the naming window (assassin.ts:42, thief.ts:48, witch.ts:54,
+ * magistrate.ts:48, blackmailer.ts:54), so a view naming no owner is not a
+ * naming window the rules describe: the whole cast stays nameable there.
+ */
 const chooseCharacter: ChoiceBuilder = (ctx) => {
   const owner = ctx.view.pending?.character ?? null;
-  const canName = CHOOSE_CHARACTER_OWNER[owner ?? "assassin"] ?? (() => true);
-  const allowed: CanName = owner === null ? () => true : canName;
-  return ctx.view.cast.filter((id) => allowed(ctx.view, id)).map(characterChoice);
+  const rule = owner === null ? undefined : CHOOSE_CHARACTER_OWNER[owner];
+  return ctx.view.cast.filter((id) => rule === undefined || rule(ctx.view, id)).map(characterChoice);
 };
 
 const chooseSeat: ChoiceBuilder = (ctx) =>
