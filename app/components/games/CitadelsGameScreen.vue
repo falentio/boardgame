@@ -13,7 +13,8 @@ import { useOrientation } from "@/composables/orientation.ts";
 import { useGame } from "@/composables/useGame";
 import type { Room } from "@/composables/room-domain.ts";
 import type { RoomLike } from "#shared/game/index.ts";
-import type { CitadelsSetup } from "#shared/core/lockstep/games/citadels/index.ts";
+import type { CitadelsAction, CitadelsSetup, CharacterId } from "#shared/core/lockstep/games/citadels/index.ts";
+import { act } from "#shared/core/lockstep/index.ts";
 import { citadels } from "#shared/core/lockstep/games/citadels/index.ts";
 import { seatId, type SeatId, type UserId } from "#shared/rooms/ids.ts";
 
@@ -40,7 +41,7 @@ const names = computed<ReadonlyMap<SeatId, string>>(() => {
   return map;
 });
 
-const { view, status } = useGame({
+const { view, status, report } = useGame({
   game: citadels,
   room: citadelsRoom,
   viewer,
@@ -55,6 +56,10 @@ const phase = ref<SurfacePhase>("gate");
 const fullscreen = useFullscreen({ target: immersive });
 const { orientation } = useOrientation();
 const { canEnter, canRetry, enter, leave, notice, retry } = openSurface({ phase, fullscreen });
+
+const pickCharacter = (character: CharacterId): void => {
+  report(act<CitadelsAction>({ t: "pick", character }));
+};
 
 const inFullscreen = computed(() => fullscreen.active.value);
 
@@ -123,7 +128,7 @@ const winnerLine = computed(() => {
         @retry="retry"
       />
 
-      <CitadelsBoard v-if="board" :board="board" />
+      <CitadelsBoard v-if="board" :board="board" @pick="pickCharacter" />
       <p v-else role="status" class="text-muted-foreground p-3 text-sm leading-normal">
         Waiting for the game to start…
       </p>

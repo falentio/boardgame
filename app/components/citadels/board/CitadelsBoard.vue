@@ -2,12 +2,15 @@
 import { computed, ref, watch } from "vue";
 import { ArrowLeft, Coins } from "@lucide/vue";
 import CitadelsHand from "./CitadelsHand.vue";
+import CitadelsPick from "./CitadelsPick.vue";
 import CitadelsSeat from "./CitadelsSeat.vue";
 import CitadelsTable from "./CitadelsTable.vue";
 import DistrictCard from "../DistrictCard.vue";
 import type { CitadelsBoard, SeatPlate } from "@/composables/citadels-board.ts";
+import type { CharacterId } from "#shared/core/lockstep/games/citadels/index.ts";
 
 const props = defineProps<{ board: CitadelsBoard }>();
+const emit = defineEmits<{ pick: [character: CharacterId] }>();
 
 const focusedSeat = ref<SeatPlate["seat"] | null>(null);
 
@@ -52,7 +55,7 @@ const claim = computed(() => {
   >
     <div
       data-slot="citadels-self"
-      class="order-1 flex min-h-0 flex-col gap-3 group-data-[orientation=landscape]/surface:order-2 group-data-[orientation=landscape]/surface:overflow-y-auto group-data-[orientation=landscape]/surface:px-3"
+      class="relative order-1 flex min-h-0 flex-col gap-3 group-data-[orientation=landscape]/surface:order-2 group-data-[orientation=landscape]/surface:overflow-y-auto group-data-[orientation=landscape]/surface:px-3"
     >
       <header class="flex flex-wrap items-baseline gap-3">
         <h2 class="text-2xl leading-none font-semibold tracking-tight">
@@ -95,6 +98,8 @@ const claim = computed(() => {
           +
         </li>
       </ul>
+
+      <CitadelsPick :board="board" @pick="(character) => emit('pick', character)" />
 
       <template v-if="isMine">
         <section
