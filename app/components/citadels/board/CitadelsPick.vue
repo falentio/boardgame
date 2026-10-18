@@ -55,19 +55,19 @@ const section = ref<HTMLElement | null>(null);
 const panel = ref<HTMLElement | null>(null);
 const trigger = ref<HTMLElement | null>(null);
 
-/** The picker hangs off the self column, so it teleports to the game surface rather than covering that column alone. */
+/** The picker is mounted inside the self column; the overlay belongs to the game surface. */
 const surface = ref<HTMLElement | null>(null);
 onMounted(() => {
   surface.value = document.querySelector<HTMLElement>("[data-slot=citadels-surface]");
 });
 
-const focusables = (): HTMLElement[] => {
-  if (panel.value === null) return [];
-  return [
-    ...panel.value.querySelectorAll<HTMLElement>(
-      "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])",
-    ),
-  ];
+const FOCUSABLE =
+  "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
+
+/** The confirmation dialog owns the keyboard while it is up; the card grid owns it otherwise. */
+const ring = (): HTMLElement[] => {
+  const scope = picked.value === null ? section.value : panel.value;
+  return scope === null ? [] : [...scope.querySelectorAll<HTMLElement>(FOCUSABLE)];
 };
 
 const close = (): void => {
@@ -75,30 +75,31 @@ const close = (): void => {
 };
 
 const choose = (slot: CastSlot): void => {
-  trigger.value = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const active = document.activeElement;
+  trigger.value =
+    active instanceof HTMLElement && section.value?.contains(active) === true ? active : null;
   picked.value = slot;
 };
 
 const onKeydown = (event: KeyboardEvent): void => {
-  if (picked.value === null) return;
-  if (event.key === "Escape") {
+  if (event.key === "Escape" && picked.value !== null) {
     event.preventDefault();
     close();
     return;
   }
   if (event.key !== "Tab") return;
-  const ring = focusables();
-  const first = ring[0];
-  const last = ring[ring.length - 1];
+  const elements = ring();
+  const first = elements[0];
+  const last = elements[elements.length - 1];
   if (first === undefined || last === undefined) return;
   const active = document.activeElement;
-  const escaped = active === null || !ring.includes(active as HTMLElement);
-  if (event.shiftKey && (escaped || active === first)) {
+  const outside = active instanceof HTMLElement ? !elements.includes(active) : true;
+  if (event.shiftKey && (outside || active === first)) {
     event.preventDefault();
     last.focus();
     return;
   }
-  if (!event.shiftKey && (escaped || active === last)) {
+  if (!event.shiftKey && (outside || active === last)) {
     event.preventDefault();
     first.focus();
   }
@@ -107,10 +108,11 @@ const onKeydown = (event: KeyboardEvent): void => {
 watch(picked, async (slot) => {
   if (slot !== null) {
     await nextTick();
-    focusables()[0]?.focus();
+    ring()[0]?.focus();
     return;
   }
   const back = trigger.value;
+  trigger.value = null;
   if (back !== null && back.isConnected) back.focus();
 });
 
@@ -130,6 +132,7 @@ watch(open, async (still) => {
       aria-label="Choose a character"
       tabindex="-1"
       class="absolute inset-0 z-40 flex flex-col gap-3 overflow-y-auto bg-monokai-bg/30 p-4 backdrop-blur-[2px] focus-visible:outline-none"
+      @keydown="onKeydown"
     >
       <header class="flex flex-wrap items-baseline justify-between gap-2">
         <h2 class="font-mono text-sm leading-none font-bold tracking-[0.18em] uppercase">
@@ -151,7 +154,8 @@ watch(open, async (still) => {
             :picked="picked?.character === slot.character"
             @choose="choose(slot)"
           />
-        </li>    </ul>
+        </li>
+      </ul>
 
       <div
         v-if="picked"
@@ -159,9 +163,11 @@ watch(open, async (still) => {
         role="dialog"
         aria-modal="true"
         :aria-label="`Choose ${specOf(picked.character).name}?`"
-        class="absolute inset-0 z-50 flex items-center justify-center bg-monokai-bg/30 p-4"
+        class="absolute inset-0 z-50 flex items-center justify-center bg-monokai-bg/30 p-4 backdrop-blur-[2px]"
+        @click="close"
       >
         <div
+          ref="panel"
           class="flex w-full max-w-sm flex-col gap-3 border border-monokai-yellow bg-monokai-panel p-3"
           @click.stop
         >
