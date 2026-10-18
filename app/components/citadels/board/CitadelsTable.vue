@@ -1,125 +1,145 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { PlayingCards } from "@lucide/vue";
-import CharacterCard from "../CharacterCard.vue";
-import DistrictCard from "../DistrictCard.vue";
-import type { CastSlotState, CitadelsBoard } from "@/composables/citadels-board.ts";
+import { specOfCharacter } from "#shared/core/lockstep/games/citadels/index.ts";
+import { defaultAvatarUrl } from "#shared/users/avatar.ts";
+import type { CastSlot, CastSlotState, CitadelsBoard } from "@/composables/citadels-board.ts";
 import type { CharacterId } from "#shared/core/lockstep/games/citadels/index.ts";
 
 const props = defineProps<{ board: CitadelsBoard }>();
-defineEmits<{ pick: [character: CharacterId] }>();
-
-const STATE_CLASS: Readonly<Record<CastSlotState, string>> = {
-  available: "bg-muted text-muted-foreground",
-  mine: "bg-primary text-primary-foreground",
-  faceup: "bg-card text-foreground ring-1 ring-foreground/20",
-  pending: "bg-amber-500 text-black",
-};
-
-const PICKABLE: Readonly<Record<CastSlotState, boolean>> = {
-  available: true,
-  mine: false,
-  faceup: true,
-  pending: false,
-};
+const emit = defineEmits<{ pick: [character: CharacterId] }>();
 
 const table = computed(() => props.board.table);
-const faceupIds = computed(
-  () => new Set(table.value.cast.filter((s) => s.state === "faceup").map((s) => s.character)),
-);
-const pickable = (state: CastSlotState) => PICKABLE[state] && table.value.window?.owedByMe === true;
-const rankOf = (character: CharacterId): string =>
-  String(table.value.cast.find((slot) => slot.character === character)?.rank ?? 0).padStart(2, "0");
 
-const pickLine = computed(() => (table.value.window?.owedByMe === true ? "Shown · pick one" : "Shown"));
+/** The emblem is the character itself, seeded by its id so it never moves. */
+const emblemOf = (character: CharacterId): string => defaultAvatarUrl(character);
+
+const GRANT: Readonly<Record<"gold" | "cards" | "gold-or-cards", string>> = {
+  gold: "gold",
+  cards: "card",
+  "gold-or-cards": "gold or card",
+};
+
+/** "gold / trade" — what the character pays per matching district, or null. */
+const incomeOf = (character: CharacterId): string | null => {
+  const spec = specOfCharacter(character);
+  if (spec.income === null) return null;
+  return `${GRANT[spec.income.grants.kind]} / ${spec.income.counts}`;
+};
+
+/** The one word a row is flagged with, in the state's own ink. */
+const FLAG: Readonly<Record<CastSlotState, string>> = {
+  mine: "yours",
+  pending: "claims",
+  faceup: "shown",
+  available: "open",
+};
+
+const INK: Readonly<Record<CastSlotState, string>> = {
+  mine: "var(--monokai-green)",
+  pending: "var(--monokai-pink)",
+  faceup: "var(--monokai-blue)",
+  available: "var(--monokai-line)",
+};
+
+/** A shown or available rank can be picked while the viewer owes a pick. */
+const pickable = (slot: CastSlot): boolean =>
+  table.value.window?.owedByMe === true && (slot.state === "faceup" || slot.state === "available");
+
+const pick = (slot: CastSlot): void => {
+  if (!pickable(slot)) return;
+  emit("pick", slot.character);
+};
 </script>
-
 <template>
   <aside
     data-slot="citadels-global"
-    class="flex min-h-0 flex-col gap-3 overflow-y-auto group-data-[orientation=landscape]/surface:h-full group-data-[orientation=landscape]/surface:rounded-xl group-data-[orientation=landscape]/surface:bg-muted/20 group-data-[orientation=landscape]/surface:p-3 group-data-[orientation=landscape]/surface:ring-1 group-data-[orientation=landscape]/surface:ring-foreground/10"
+    class="flex min-h-0 min-w-0 flex-col gap-1.5 overflow-y-auto p-2 font-mono text-monokai-fg group-data-[orientation=landscape]/surface:h-full group-data-[orientation=landscape]/surface:w-full"
   >
-    <div class="flex items-baseline gap-2">
-      <h2 class="text-lg leading-none font-semibold tracking-tight">Citadels</h2>
-      <span class="text-[0.625rem] leading-none text-muted-foreground tabular-nums"
-        >round {{ table.round }}</span
-      >
-    </div>
+    <header class="flex items-baseline justify-between gap-2">
+      <h2 class="text-sm leading-none font-bold tracking-[0.18em] uppercase">Citadels</h2>
+      <span class="text-[0.5625rem] leading-none tracking-[0.16em] text-monokai-comment uppercase tabular-nums">
+        round {{ table.round }}
+      </span>
+    </header>
 
-    <section class="flex flex-col gap-1.5">
-      <span
-        class="text-[0.625rem] leading-none font-semibold tracking-[0.2em] text-muted-foreground uppercase"
+    <p
+      v-if="table.window"
+      data-slot="citadels-prompt"
+      class="text-[0.5625rem] leading-tight tracking-[0.16em] text-monokai-green uppercase"
+    >
+      {{ table.window.label }}
+    </p>
+
+    <section class="flex min-w-0 flex-col gap-1">
+      <span class="text-[0.5625rem] leading-none tracking-[0.16em] text-monokai-comment uppercase"
         >Cast</span
       >
-      <ul data-slot="citadels-cast" class="flex flex-col gap-1">
-        <li
-          v-for="slot in table.cast"
-          :key="slot.character"
-          data-slot="citadels-cast-chip"
-          :data-character="slot.character"
-          :data-state="slot.state"
-          class="flex items-center gap-2 rounded-md bg-card px-2 py-1 text-xs leading-none"
-          :class="slot.state === 'mine' ? 'ring-1 ring-primary' : 'ring-1 ring-foreground/10'"
-        >
-          <span class="text-[0.625rem] text-muted-foreground tabular-nums">{{
-            String(slot.rank).padStart(2, "0")
-          }}</span>
-          <span class="min-w-0 flex-1 truncate font-medium">{{ slot.name }}</span>
-          <span
-            v-if="slot.state !== 'available'"
-            class="shrink-0 rounded-full px-1.5 py-0.5 text-[0.625rem] leading-none font-semibold"
-            :class="STATE_CLASS[slot.state]"
-            >{{ slot.state === "mine" ? "you" : slot.state }}</span
+      <ul data-slot="citadels-cast" class="flex min-w-0 flex-col gap-1">
+        <li v-for="slot in table.cast" :key="slot.character" class="min-w-0">
+          <component
+            :is="pickable(slot) ? 'button' : 'div'"
+            :type="pickable(slot) ? 'button' : undefined"
+            data-slot="citadels-cast-row"
+            :data-character="slot.character"
+            :data-state="slot.state"
+            :aria-label="`${slot.name}, ${FLAG[slot.state]}${pickable(slot) ? ', pick' : ''}`"
+            class="flex w-full flex-1 items-stretch overflow-hidden text-left"
+            :class="pickable(slot) ? 'cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-monokai-yellow' : ''"
+            @click="pick(slot)"
           >
+            <span data-slot="citadels-cast-emblem" class="relative aspect-square h-[9%] max-h-[70px] shrink-0 bg-monokai-bg">
+              <img :src="emblemOf(slot.character)" alt="" class="size-full object-cover" />
+            </span>
+            <span class="flex min-w-0 flex-1 flex-col justify-center gap-1 px-1.5">
+              <span class="truncate text-[0.6875rem] leading-none font-bold tracking-[0.03em] uppercase">{{
+                slot.name
+              }}</span>
+              <span class="flex min-w-0 items-center gap-1">
+                <span class="h-[3px] w-3.5 shrink-0" :style="{ background: INK[slot.state] }" />
+                <span
+                  v-if="incomeOf(slot.character)"
+                  class="min-w-0 truncate text-[0.5625rem] leading-none tracking-[0.16em] text-monokai-comment uppercase"
+                  >{{ incomeOf(slot.character) }}</span
+                >
+              </span>
+            </span>
+            <span
+              data-slot="citadels-cast-flag"
+              class="flex w-[46px] shrink-0 items-center justify-center"
+              :style="{ background: INK[slot.state] }"
+            >
+              <span class="text-[0.5625rem] leading-none tracking-[0.16em] text-monokai-bg uppercase">{{
+                FLAG[slot.state]
+              }}</span>
+            </span>
+          </component>
         </li>
       </ul>
     </section>
 
-    <section class="flex flex-col gap-1.5">
-      <span
-        class="text-[0.625rem] leading-none font-semibold tracking-[0.2em] text-muted-foreground uppercase"
-        >{{ pickLine }}</span
+    <section class="flex items-baseline justify-between gap-2 border-t border-t-monokai-line pt-1.5">
+      <span class="text-[0.5625rem] leading-none tracking-[0.16em] text-monokai-comment uppercase tabular-nums"
+        >deck {{ table.deckCount }}</span
       >
-      <div class="grid grid-cols-2 gap-1.5">
-        <CharacterCard
-          v-for="slot in table.cast.filter((s) => faceupIds.has(s.character))"
-          :key="slot.character"
-          data-slot="citadels-faceup"
-          :character="slot.character"
-          :selectable="pickable(slot.state)"
-          :selected="slot.state === 'mine'"
-          :class="!pickable(slot.state) && 'max-h-40'"
-          @select="$emit('pick', slot.character)"
-        />
-        <p
-          v-if="faceupIds.size === 0"
-          class="text-xs leading-tight text-muted-foreground italic"
-        >
-          none shown this round
-        </p>
-      </div>
+      <span class="text-[0.5625rem] leading-none tracking-[0.16em] text-monokai-comment uppercase tabular-nums"
+        >discard {{ table.discard.length }}</span
+      >
     </section>
 
-    <p
-      class="inline-flex items-center gap-1.5 text-xs leading-none text-muted-foreground tabular-nums"
-    >
-      <PlayingCards class="size-3.5" aria-hidden="true" />Deck {{ table.deckCount }}
-    </p>
-
-    <section class="flex flex-col gap-1.5">
-      <span
-        class="text-[0.625rem] leading-none font-semibold tracking-[0.2em] text-muted-foreground uppercase"
+    <section class="flex min-w-0 flex-col gap-1">
+      <span class="text-[0.5625rem] leading-none tracking-[0.16em] text-monokai-comment uppercase"
         >Discard</span
       >
-      <ul data-slot="citadels-discard" class="flex flex-wrap gap-1.5">
-        <li v-for="(district, index) in table.discard" :key="`${district}-${index}`">
-          <DistrictCard :district="district" />
-        </li>
+      <ul class="flex flex-wrap gap-1">
         <li
-          v-if="table.discard.length === 0"
-          class="text-xs leading-tight text-muted-foreground italic"
+          v-for="(district, index) in table.discard"
+          :key="`${district}-${index}`"
+          class="border border-monokai-line px-1 text-[0.5625rem] leading-[1.25] whitespace-nowrap text-monokai-comment"
         >
-          nothing discarded yet
+          {{ district }}
+        </li>
+        <li v-if="table.discard.length === 0" class="text-[0.5625rem] text-monokai-comment">
+          nothing discarded
         </li>
       </ul>
     </section>
