@@ -243,6 +243,8 @@ const harnessRun = async () => {
     check(handHover.card === handIdle.card && handHover.lift === handIdle.lift, "the hand tile's hover is the card frame's own, unchanged by the radius", handIdle.card === handHover.card ? "no computed change on hover" : "changed");
     note("the card frame carries no hover rule, so the hand tile answers a pointer with nothing (DistrictCard.vue:63)");
     check(handFocus.inside && handFocus.focusVisible && handFocus.shadow !== "none", "the hand build button still shows its focus ring", JSON.stringify(handFocus));
+    note("the tile the keyboard ring sits on", await browser.page.eval("(() => { const b = document.activeElement; const tile = b.closest('[data-slot=citadels-hand] li'); return (tile === null ? 'none' : tile.textContent.trim().replace(/\\s+/g, ' ')) + ' <' + b.tagName.toLowerCase() + '>'; })()"));
+    await delay(500);
     await browser.page.shot("hand-focus");
     await browser.page.shot("surface-harness");
   } finally {
