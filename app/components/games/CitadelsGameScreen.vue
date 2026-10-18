@@ -65,6 +65,22 @@ const keepCard = (index: number): void => {
   report(act<CitadelsAction>({ t: "keep", index }));
 };
 
+const gatherGold = (): void => {
+  report(act<CitadelsAction>({ t: "gold" }));
+};
+
+const drawCards = (): void => {
+  report(act<CitadelsAction>({ t: "draw" }));
+};
+
+const buildCard = (card: number): void => {
+  report(act<CitadelsAction>({ t: "build", card }));
+};
+
+const passTurn = (): void => {
+  report(act<CitadelsAction>({ t: "pass" }));
+};
+
 const inFullscreen = computed(() => fullscreen.active.value);
 
 const winnerLine = computed(() => {
@@ -132,7 +148,16 @@ const winnerLine = computed(() => {
         @retry="retry"
       />
 
-      <CitadelsBoard v-if="board" :board="board" @pick="pickCharacter" @keep="keepCard" />
+      <CitadelsBoard
+        v-if="board"
+        :board="board"
+        @pick="pickCharacter"
+        @keep="keepCard"
+        @gold="gatherGold"
+        @draw="drawCards"
+        @build="buildCard"
+        @pass="passTurn"
+      />
       <p v-else role="status" class="text-muted-foreground p-3 text-sm leading-normal">
         Waiting for the game to start…
       </p>

@@ -7,7 +7,7 @@ const props = defineProps<{ board: CitadelsBoard }>();
 const emit = defineEmits<{
   gold: [];
   draw: [];
-  build: [];
+  build: [card: number];
   pass: [];
 }>();
 
@@ -27,11 +27,32 @@ const hand = computed(() => props.board.me.hand.length);
 const buildable = computed(() => hand.value > 0);
 
 const CHOICES = [
-  { action: "gold", label: "Take 2 gold", icon: Coins },
-  { action: "draw", label: "Draw 2 cards", icon: Hand },
-  { action: "build", label: "Build", icon: Plus },
-  { action: "pass", label: "Pass", icon: Flag },
+  { action: "gold", label: "Gold", count: "2", icon: Coins },
+  { action: "draw", label: "Cards", count: "2", icon: Hand },
+  { action: "build", label: "Build", count: null, icon: Plus },
+  { action: "pass", label: "Pass", count: null, icon: Flag },
 ] as const;
+
+type Choice = (typeof CHOICES)[number]["action"];
+
+/** No card picker stands beside the tile, so a build reports the hand's first card. */
+const FIRST_CARD = 0;
+
+const choose = (action: Choice): void => {
+  switch (action) {
+    case "gold":
+      emit("gold");
+      return;
+    case "draw":
+      emit("draw");
+      return;
+    case "build":
+      emit("build", FIRST_CARD);
+      return;
+    case "pass":
+      emit("pass");
+  }
+};
 </script>
 
 <template>
@@ -48,16 +69,16 @@ const CHOICES = [
         :data-action="choice.action"
         :disabled="choice.action === 'build' && !buildable"
         :title="choice.action === 'build' && !buildable ? 'Your hand is empty, so there is nothing to build' : undefined"
-        class="inline-flex items-center gap-1.5 border border-monokai-line bg-monokai-panel px-2.5 py-1.5 font-mono text-[0.625rem] leading-none font-bold tracking-[0.16em] text-monokai-fg uppercase hover:border-monokai-yellow hover:text-monokai-yellow focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-monokai-yellow disabled:cursor-not-allowed disabled:border-monokai-line disabled:text-monokai-comment disabled:hover:border-monokai-line disabled:hover:text-monokai-comment"
-        @click="emit(choice.action)"
+        class="flex items-center gap-1.5 border border-monokai-line bg-monokai-panel px-2 py-1.5 font-mono text-[0.625rem] leading-none font-bold tracking-[0.16em] text-monokai-fg uppercase hover:-translate-y-px hover:border-monokai-yellow hover:text-monokai-yellow focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-monokai-yellow disabled:cursor-not-allowed disabled:border-monokai-line disabled:text-monokai-comment disabled:hover:translate-y-0 disabled:hover:border-monokai-line disabled:hover:text-monokai-comment"
+        @click="choose(choice.action)"
       >
-        <component
-          :is="choice.icon"
-          v-if="choice.icon"
-          class="size-3.5 shrink-0"
-          aria-hidden="true"
-        />
+        <component :is="choice.icon" class="size-3.5 shrink-0" aria-hidden="true" />
         <span>{{ choice.label }}</span>
+        <span
+          v-if="choice.count !== null"
+          class="border border-monokai-yellow bg-monokai-yellow px-1 py-0.5 text-[0.625rem] leading-none font-bold text-monokai-bg tabular-nums"
+          >{{ choice.count }}</span
+        >
       </button>
     </li>
   </ul>

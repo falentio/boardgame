@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { ArrowLeft, Coins } from "@lucide/vue";
+import CitadelsActions from "./CitadelsActions.vue";
 import CitadelsHand from "./CitadelsHand.vue";
 import CitadelsKeep from "./CitadelsKeep.vue";
 import CitadelsPick from "./CitadelsPick.vue";
@@ -12,7 +13,14 @@ import type { CharacterId } from "#shared/core/lockstep/games/citadels/index.ts"
 import "./citadels-skin.css";
 
 const props = defineProps<{ board: CitadelsBoard }>();
-const emit = defineEmits<{ pick: [character: CharacterId]; keep: [index: number] }>();
+const emit = defineEmits<{
+  pick: [character: CharacterId];
+  keep: [index: number];
+  gold: [];
+  draw: [];
+  build: [card: number];
+  pass: [];
+}>();
 
 const focusedSeat = ref<SeatPlate["seat"] | null>(null);
 
@@ -64,9 +72,9 @@ const claim = computed(() => {
         class="citadels-piece citadels-piece--thick flex items-stretch"
       >
         <span class="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5">
-          <span class="min-w-0 text-xs leading-none font-bold tracking-[0.08em] text-monokai-fg uppercase [overflow-wrap:anywhere]">
+          <h2 class="min-w-0 text-xs leading-none font-bold tracking-[0.08em] text-monokai-fg uppercase [overflow-wrap:anywhere]">
             {{ isMine ? "Your district" : `${shown.name}'s district` }}
-          </span>
+          </h2>
           <span
             data-slot="citadels-self-gold"
             class="citadels-piece citadels-piece--plate ms-auto flex shrink-0 items-center gap-1 px-1 py-0.5"
@@ -139,6 +147,14 @@ const claim = computed(() => {
             {{ claim }}
           </p>
         </section>
+
+        <CitadelsActions
+          :board="board"
+          @gold="emit('gold')"
+          @draw="emit('draw')"
+          @build="(card) => emit('build', card)"
+          @pass="emit('pass')"
+        />
 
         <CitadelsKeep :board="board" @keep="(index) => emit('keep', index)" />
 
