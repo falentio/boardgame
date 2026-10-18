@@ -24,6 +24,13 @@ const shown = computed<SeatPlate>(
   () => props.board.opponents.find((rival) => rival.seat === focusedSeat.value) ?? props.board.me,
 );
 const isMine = computed(() => shown.value.kind === "me");
+/** With no hand left to draw, the city takes the whole column at half size. */
+const cityHand = computed(() => (shown.value.kind === "me" ? shown.value.hand.length : 0));
+const cityScale = computed(() => (isMine.value && cityHand.value === 0 ? 0.6 : 1));
+const slotBox = computed(() => ({
+  width: Math.round(143 * cityScale.value) + "px",
+  height: Math.round(201 * cityScale.value) + "px",
+}));
 
 const claim = computed(() => {
   const pending = props.board.table.pending;
@@ -71,14 +78,19 @@ const claim = computed(() => {
         </button>
       </header>
 
-      <ul data-slot="citadels-city" class="grid grid-cols-3 gap-2">
-        <li v-for="(card, index) in shown.city" :key="`${card.id}-${index}`">
-          <DistrictCard :district="card.id" :gold="card.gold" class="w-full" />
+      <ul data-slot="citadels-city" class="flex flex-wrap gap-2">
+        <li
+          v-for="(card, index) in shown.city"
+          :key="`${card.id}-${index}`"
+          :style="{ zoom: cityScale }"
+        >
+          <DistrictCard :district="card.id" :gold="card.gold" />
         </li>
         <li
           v-for="n in Math.max(0, board.me.cityTarget - shown.city.length)"
           :key="`empty-${n}`"
-          class="flex h-12 items-center justify-center rounded-lg text-xs leading-none text-muted-foreground ring-1 ring-foreground/15 ring-dashed"
+          class="flex shrink-0 items-center justify-center border border-dashed border-monokai-line font-mono text-lg text-monokai-comment"
+          :style="slotBox"
         >
           +
         </li>
