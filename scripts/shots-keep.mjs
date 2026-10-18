@@ -1,9 +1,10 @@
 // Proves the keep-a-card surface: the CDP harness run asserts the drawn pair, the
 // pool index each card reports, the non-opaque overlay, and that Escape leaves the
 // window untouched; the live run reaches the real /games/<code> surface and
-// asserts the same surface inside its root.
+// asserts the turn bar on the seat that holds the turn and no bar on the other seat,
+// and asserts the same keep surface inside its root.
 //
-// Usage: node scripts/shots-keep.mjs [--port 3000] [--harness-only]
+// Usage: node scripts/shots-keep.mjs [--port 3001] [--harness-only]
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
@@ -29,6 +30,8 @@ const check = (ok, label, detail) => {
   if (!ok) failures += 1;
   console.log((ok ? "PASS " : "FAIL ") + label + (detail === undefined ? "" : " :: " + detail));
 };
+
+const note = (label, detail) => console.log("INFO " + label + (detail === undefined ? "" : " :: " + detail));
 
 const serverAnswers = async () => {
   try { return (await fetch(BASE + "/api/auth/ok")).ok; } catch { return false; }
@@ -93,6 +96,7 @@ const launch = async (label) => {
       }
       return msg.result.result.value;
     },
+    async evalFn(fn) { return page.eval("(" + fn.toString() + ")()"); },
     async goto(url, waitMs = 2600) { await send("Page.navigate", { url }, session); await delay(waitMs); },
     async setCookie(user) { await send("Network.setCookie", { url: BASE, name: user.cookieName, value: user.cookieValue }, session); },
     async waitFor(expression, timeoutMs = 10000) {
@@ -135,31 +139,75 @@ const KEEP = "[data-slot=citadels-keep]";
 const KEEP_CARD = "[data-slot=citadels-keep-card]";
 const SURFACE = "[data-slot=citadels-surface]";
 
-const keepFacts = `(() => {
-  const keep = document.querySelector('${KEEP}');
+/** Written as a function and stringified: a template literal would eat the regex escapes. */
+const keepFacts = function facts() {
+  const keep = document.querySelector("[data-slot=citadels-keep]");
   if (keep === null) return null;
-  const cards = [...keep.querySelectorAll('${KEEP_CARD}')];
+  const cards = [...keep.querySelectorAll("[data-slot=citadels-keep-card]")];
   const box = keep.getBoundingClientRect();
   const parent = keep.parentElement.getBoundingClientRect();
   const style = getComputedStyle(keep);
+  const alphaOf = (color) => {
+    const slash = color.match(/\/(\s*[\d.]+)\s*\)$/);
+    if (slash !== null) return Number(slash[1]);
+    if (color.startsWith("rgba(") || color.startsWith("hsla(")) {
+      const comma = color.match(/,\s*([\d.]+)\s*\)$/);
+      return comma === null ? 1 : Number(comma[1]);
+    }
+    return 1;
+  };
+  const alpha = alphaOf(style.backgroundColor);
   return {
-    insideSurface: keep.closest('${SURFACE}') !== null,
+    insideSurface: keep.closest("[data-slot=citadels-surface]") !== null,
     cards: cards.length,
-    index: cards.map((c) => c.getAttribute('data-index')),
-    district: cards.map((c) => c.getAttribute('data-district')),
-    names: [...keep.querySelectorAll('[data-slot=citadels-district] .citadels-district-name')].map((n) => ({
-      text: n.textContent.trim(),
-      wrap: getComputedStyle(n).overflowWrap,
-      clipped: n.scrollWidth > n.clientWidth + 1,
+    index: cards.map((card) => card.getAttribute("data-index")),
+    district: cards.map((card) => card.getAttribute("data-district")),
+    names: [...keep.querySelectorAll("[data-slot=citadels-district] .citadels-district-name")].map((name) => ({
+      text: name.textContent.trim(),
+      wrap: getComputedStyle(name).overflowWrap,
+      clipped: name.scrollWidth > name.clientWidth + 1,
     })),
-    covers: Math.round(box.width) + 'x' + Math.round(box.height),
-    parent: Math.round(parent.width) + 'x' + Math.round(parent.height),
-    inset: Math.round(box.left - parent.left) + ',' + Math.round(box.top - parent.top),
-    opaque: !/\/\s*0?\.\d+\)$/.test(style.backgroundColor) && style.backgroundColor !== 'rgba(0, 0, 0, 0)',
+    covers: Math.round(box.width) + "x" + Math.round(box.height),
+    parent: Math.round(parent.width) + "x" + Math.round(parent.height),
+    inset: Math.round(box.left - parent.left) + "," + Math.round(box.top - parent.top),
+    alpha,
+    opaque: alpha === 1,
     background: style.backgroundColor,
     blur: style.backdropFilter,
   };
-})()`;
+};
+
+/** The turn bar as the page answers it: the holder's four actions, and build's own gate. */
+const actionFacts = function facts() {
+  const selector = "[data-slot=citadels-surface] [data-slot=citadels-actions]";
+  const bar = document.querySelector(selector);
+  const hand = [...document.querySelectorAll("[data-slot=citadels-hand] [data-slot=citadels-district]")];
+  const buttons = bar === null ? [] : [...bar.querySelectorAll("[data-slot=citadels-action]")];
+  const build = buttons.find((button) => button.getAttribute("data-action") === "build") ?? null;
+  return {
+    selector,
+    surface: document.querySelector("[data-slot=citadels-surface]") !== null,
+    matched: bar !== null,
+    actions: buttons.map((button) => button.getAttribute("data-action")),
+    labels: buttons.map((button) => button.textContent.trim()),
+    buildDisabled: build === null ? null : build.disabled,
+    hand: hand.length,
+  };
+};
+
+/** The seat the engine owes the turn to is whichever page renders the bar. */
+const firstTurnHolder = async (browsers, timeoutMs) => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    for (const [index, browser] of browsers.entries()) {
+      const facts = await browser.page.evalFn(actionFacts);
+      if (facts.matched) return { index, facts };
+    }
+    await delay(300);
+  }
+  return null;
+};
+
 
 const harnessRun = async () => {
   const browser = await launch("harness");
@@ -169,8 +217,8 @@ const harnessRun = async () => {
     check(ready, "the harness renders the keep surface");
     if (!ready) return;
 
-    writeFileSync("/tmp/keepfacts-probe.js", keepFacts);
-    const window0 = await browser.page.eval(keepFacts);
+    writeFileSync("/tmp/keepfacts-probe.js", "(" + keepFacts.toString() + ")()");
+    const window0 = await browser.page.evalFn(keepFacts);
     console.log("keep: " + JSON.stringify(window0));
     check(window0.cards === 2, "exactly two keep cards render", String(window0.cards));
     check(JSON.stringify(window0.index) === JSON.stringify(["0", "1"]), "the cards carry the pool indexes the reducer reads", JSON.stringify(window0.index));
@@ -216,23 +264,34 @@ const liveRun = async () => {
 
   const hostBrowser = await launch("live-host");
   const guestBrowser = await launch("live-guest");
-  const pickInSurface = async (browser, label) => {
+  const enterSurface = async (browser, label) => {
     const entered = await browser.page.clickReal("document.querySelector('[data-slot=citadels-enter]')");
-    if (!entered) throw new Error(`${label}: the gate never offered Enter`);
-    const surface = await browser.page.waitFor(`document.querySelector('${SURFACE}')`, 20000);
-    if (!surface) throw new Error(`${label}: the surface never came up`);
-    for (let i = 0; i < 40; i++) {
-      const window = await browser.page.eval("document.querySelector('[data-slot=citadels-picker]') !== null");
-      if (!window) { await delay(250); continue; }
-      const picked = await browser.page.clickReal("document.querySelector('[data-slot=citadels-picker-card]:not([disabled])')");
-      if (!picked) throw new Error(`${label}: no pickable character card`);
-      const confirmed = await browser.page.clickReal("document.querySelector('[data-slot=citadels-picker-confirm]')");
-      if (!confirmed) throw new Error(`${label}: the pick dialog offered no confirm`);
-      return true;
-    }
-    return false;
+    if (!entered) throw new Error(label + ": the gate never offered Enter");
+    const surface = await browser.page.waitFor("document.querySelector('" + SURFACE + "')", 20000);
+    if (!surface) throw new Error(label + ": the surface never came up");
   };
 
+  /** Two seats draft two characters each, alternating, so the picker reopens (state.ts:110). */
+  const draftToTurn = async (seats, timeoutMs) => {
+    const picks = [0, 0];
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      for (const [index, seat] of seats.entries()) {
+        const open = await seat.page.eval("document.querySelector('[data-slot=citadels-picker]') !== null");
+        if (!open) continue;
+        const picked = await seat.page.clickReal("document.querySelector('[data-slot=citadels-picker-card]:not([disabled])')");
+        if (!picked) continue;
+        const confirmed = await seat.page.clickReal("document.querySelector('[data-slot=citadels-picker-confirm]')");
+        if (confirmed) picks[index] += 1;
+      }
+      const holder = await firstTurnHolder(seats, 400);
+      if (holder !== null) return { holder, picks };
+      await delay(150);
+    }
+    return { holder: null, picks };
+  };
+
+  const seats = [hostBrowser, guestBrowser];
   try {
     await hostBrowser.page.setCookie(host);
     await guestBrowser.page.setCookie(guest);
@@ -242,48 +301,66 @@ const liveRun = async () => {
     ]);
     await Promise.all([hostBrowser.page.hydrated(), guestBrowser.page.hydrated()]);
 
-    const picked = await Promise.all([
-      pickInSurface(hostBrowser, "host"),
-      pickInSurface(guestBrowser, "guest"),
-    ]);
-    check(picked.every(Boolean), "both seats took their draft pick on the live surface", JSON.stringify(picked));
+    await Promise.all([enterSurface(hostBrowser, "host"), enterSurface(guestBrowser, "guest")]);
+    const drafted = await draftToTurn(seats, 90000);
+    const holder = drafted.holder;
+    note("draft picks the surface accepted per seat (the picker serves one per seat, the rest carry)", JSON.stringify(drafted.picks));
 
-    const turn = await hostBrowser.page.waitFor("document.querySelector('[data-slot=citadels-actions]')", 30000);
-    if (!turn) {
-      const body = await hostBrowser.page.eval("document.body.innerText.replace(/\n/g, ' | ').slice(0, 240)");
-      throw new Error("the host never reached the turn window; body: " + body);
+    if (holder === null) {
+      const body = await hostBrowser.page.eval("document.body.innerText.split(String.fromCharCode(10)).join(' | ').slice(0, 240)");
+      throw new Error("no seat reached the turn window after the draft; host body: " + body);
     }
-    await hostBrowser.page.shot("keep-live-turn");
+    const actorBrowser = seats[holder.index];
+    const idleBrowser = seats[holder.index === 0 ? 1 : 0];
+    const actorName = holder.index === 0 ? "host" : "guest";
+    const actor = holder.facts;
+    const idle = await idleBrowser.page.evalFn(actionFacts);
+    check(
+      actor.matched && actor.actions.join(",") === "gold,draw,build,pass",
+      "the bar the " + actorName + " holds in room " + code + " carries the four turn actions",
+      JSON.stringify({ selector: actor.selector, surface: actor.surface, actions: actor.actions, labels: actor.labels }),
+    );
+    check(
+      actor.buildDisabled === (actor.hand === 0),
+      "build is disabled exactly when the actor's hand is empty in room " + code,
+      "buildDisabled=" + actor.buildDisabled + " hand=" + actor.hand,
+    );
+    check(
+      idle.matched === false,
+      "the seat that does not hold the turn in room " + code + " matches no turn bar",
+      JSON.stringify({ selector: idle.selector, surface: idle.surface, matched: idle.matched, actions: idle.actions }),
+    );
+    await actorBrowser.page.shot("keep-live-turn");
 
-    const drew = await hostBrowser.page.clickReal("[...document.querySelectorAll('[data-slot=citadels-action]')].find((b) => /draw/i.test(b.textContent))");
+    const drew = await actorBrowser.page.clickReal("document.querySelector('[data-slot=citadels-action][data-action=draw]')");
     check(drew, "the turn window offers the draw action");
 
-    const opened = await hostBrowser.page.waitFor(`document.querySelector('${KEEP}')`, 15000);
+    const opened = await actorBrowser.page.waitFor("document.querySelector('" + KEEP + "')", 15000);
     check(opened, "the keep surface opens on the live board after the draw");
     if (!opened) {
-      const body = await hostBrowser.page.eval("document.body.innerText.replace(/\n/g, ' | ').slice(0, 240)");
+      const body = await actorBrowser.page.eval("document.body.innerText.split(String.fromCharCode(10)).join(' | ').slice(0, 240)");
       console.log("live body: " + body);
       return;
     }
 
-    const live = await hostBrowser.page.eval(keepFacts);
+    const live = await actorBrowser.page.evalFn(keepFacts);
     console.log("live keep: " + JSON.stringify(live));
     check(live.insideSurface, "the keep surface renders inside the live surface root");
     check(live.cards === 2, "the live keep offers the two drawn cards", String(live.cards));
     check(JSON.stringify(live.index) === JSON.stringify(["0", "1"]), "the live cards carry indexes 0 and 1", JSON.stringify(live.index));
     check(live.district.every((id) => typeof id === "string" && id.length > 0), "each live card names a real district", JSON.stringify(live.district));
-    check(!live.opaque && live.blur === "blur(2px)", "the live overlay stays tinted and blurred", live.background + " " + live.blur);
+    check(!live.opaque && live.blur === "blur(2px)", "the live overlay stays tinted and blurred", live.background + " alpha " + live.alpha + " " + live.blur);
     check(live.names.length === 2 && live.names.every((n) => n.wrap === "anywhere" && !n.clipped), "the live card names wrap and never truncate", JSON.stringify(live.names));
-    await hostBrowser.page.shot("keep-live-window");
+    await actorBrowser.page.shot("keep-live-window");
 
-    const handBefore = await hostBrowser.page.eval("document.querySelectorAll('[data-slot=citadels-hand] [data-slot=citadels-district]').length");
-    const kept = await hostBrowser.page.clickReal(`document.querySelector('${KEEP_CARD}[data-index="1"]')`);
+    const handBefore = await actorBrowser.page.eval("document.querySelectorAll('[data-slot=citadels-hand] [data-slot=citadels-district]').length");
+    const kept = await actorBrowser.page.clickReal(`document.querySelector('${KEEP_CARD}[data-index="1"]')`);
     check(kept, "the second live card takes a click");
-    const gone = await hostBrowser.page.waitFor(`document.querySelector('${KEEP}') === null`, 15000);
+    const gone = await actorBrowser.page.waitFor("document.querySelector('" + KEEP + "') === null", 15000);
     check(gone, "keeping a card closes the live window");
-    const handAfter = await hostBrowser.page.eval("document.querySelectorAll('[data-slot=citadels-hand] [data-slot=citadels-district]').length");
+    const handAfter = await actorBrowser.page.eval("document.querySelectorAll('[data-slot=citadels-hand] [data-slot=citadels-district]').length");
     check(handAfter === handBefore + 1, "the kept card joined the hand", handBefore + " -> " + handAfter);
-    await hostBrowser.page.shot("keep-live-kept");
+    await actorBrowser.page.shot("keep-live-kept");
   } finally {
     hostBrowser.close();
     guestBrowser.close();
