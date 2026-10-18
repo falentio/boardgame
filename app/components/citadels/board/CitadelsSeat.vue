@@ -5,6 +5,7 @@ import { specOfDistrict } from "#shared/core/lockstep/games/citadels/index.ts";
 import { defaultAvatarUrl } from "#shared/users/avatar.ts";
 import { computed } from "vue";
 import type { TableSeat } from "@/composables/citadels-board.ts";
+import "./citadels-skin.css";
 
 const props = defineProps<{ seat: TableSeat; focused: boolean }>();
 const emit = defineEmits<{ focus: [] }>();
@@ -21,52 +22,84 @@ const pfp = defaultAvatarUrl(props.seat.seat);
     data-slot="citadels-seat"
     :data-seat="seat.seat"
     :data-gold="seat.gold"
+    :style="{ '--ink': focused ? 'var(--monokai-yellow)' : 'var(--monokai-line)' }"
     :aria-pressed="focused"
     :aria-label="`${seat.name}: ${seat.gold} gold, ${seat.city.length} of 8 districts, ${handCount} in hand`"
     :data-mine="seat.kind === 'me' ? '' : undefined"
     type="button"
-    class="grid w-full grid-cols-[auto_1fr_auto] items-start gap-x-2 border p-1.5 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-monokai-yellow"
-    :class="focused ? 'border-monokai-yellow' : 'border-monokai-line hover:border-monokai-comment'"
+    class="citadels-piece citadels-piece--thick flex w-full flex-col gap-1 p-1.5 text-left"
     @click="emit('focus')"
   >
-    <span class="relative size-9 shrink-0 border border-monokai-line bg-monokai-panel">
-      <img :src="pfp" alt="" class="size-full object-cover" />
+    <span class="flex items-center gap-1.5">
       <span
-        v-if="seat.crown"
-        data-slot="citadels-crown"
-        class="absolute -top-px -end-px border border-monokai-bg bg-monokai-yellow p-px text-monokai-bg"
+        data-slot="citadels-seat-emblem"
+        class="flex size-8 shrink-0 items-center justify-center overflow-hidden bg-monokai-bg"
       >
-        <Crown class="size-2" aria-hidden="true" />
+        <img :src="pfp" alt="" class="size-7 object-cover" />
+      </span>
+      <span class="flex min-w-0 flex-1 flex-col gap-1">
+        <span class="min-w-0 text-[0.6875rem] leading-none font-bold text-monokai-fg [overflow-wrap:anywhere]">{{
+          seat.name
+        }}</span>
+        <span class="flex min-w-0 items-center gap-1">
+          <span
+            v-if="seat.crown"
+            data-slot="citadels-crown"
+            class="citadels-plate flex size-3.5 shrink-0 items-center justify-center"
+          >
+            <Crown class="size-2" aria-hidden="true" />
+          </span>
+          <span
+            v-if="seat.kind === 'me'"
+            data-slot="citadels-you"
+            class="citadels-label !text-[0.5rem]"
+            >you</span
+          >
+          <span
+            v-if="seat.active"
+            data-slot="citadels-active"
+            class="citadels-label !text-[0.5rem] !text-monokai-green"
+            >turn</span
+          >
+          <span
+            v-else-if="seat.owed"
+            data-slot="citadels-owed"
+            class="citadels-label !text-[0.5rem] !text-monokai-pink"
+            >owes</span
+          >
+        </span>
       </span>
     </span>
-    <span class="col-span-2 flex min-w-0 items-baseline gap-1.5">
-      <span class="truncate text-xs font-semibold text-monokai-fg">{{ seat.name }}</span>
-      <span v-if="seat.kind === 'me'" data-slot="citadels-you" class="shrink-0 font-mono text-[0.5rem] font-bold text-monokai-comment uppercase"
-        >you</span
-      >
+
+    <span class="flex items-stretch gap-1">
       <span
-        v-if="seat.active"
-        data-slot="citadels-active"
-        class="shrink-0 font-mono text-[0.5rem] font-bold text-monokai-green uppercase"
-        >turn</span
+        data-slot="citadels-seat-gold"
+        class="citadels-piece citadels-piece--plate flex flex-1 items-center justify-between px-1 py-0.5"
       >
-      <span v-else-if="seat.owed" data-slot="citadels-owed" class="shrink-0 font-mono text-[0.5rem] font-bold text-monokai-pink uppercase"
-        >owes</span
+        <Coins class="size-2.5 text-monokai-yellow" aria-hidden="true" />
+        <span class="citadels-ink text-[0.6875rem] leading-none font-bold">{{ seat.gold }}</span>
+      </span>
+      <span
+        data-slot="citadels-seat-city"
+        class="citadels-piece citadels-piece--plate flex flex-1 items-center justify-between px-1 py-0.5"
       >
-      <span class="ms-auto flex shrink-0 items-center gap-0.5 font-mono text-xs font-bold tabular-nums text-monokai-yellow">
-        <Coins class="size-3" aria-hidden="true" />{{ seat.gold }}
+        <span class="citadels-label !text-[0.5rem]">dist</span>
+        <span
+          class="text-[0.6875rem] leading-none font-bold tabular-nums"
+          :class="near ? 'text-monokai-green' : 'text-monokai-fg'"
+          >{{ seat.city.length }}<span class="text-monokai-comment">/8</span></span
+        >
+      </span>
+      <span
+        data-slot="citadels-seat-hand"
+        class="citadels-piece citadels-piece--plate flex flex-1 items-center justify-between px-1 py-0.5"
+      >
+        <Layers class="size-2.5 shrink-0 text-monokai-comment" aria-hidden="true" />
+        <span class="citadels-ink text-[0.6875rem] leading-none font-bold">{{ handCount }}</span>
       </span>
     </span>
-    <span
-      class="flex items-center font-mono text-[0.5625rem] leading-none tabular-nums"
-      :class="near ? 'text-monokai-green' : 'text-monokai-fg'"
-      >{{ seat.city.length }}<span class="text-monokai-comment">/8</span></span
-    >
-    <span />
-    <span class="flex items-center justify-end gap-1 font-mono text-[0.5625rem] leading-none tabular-nums text-monokai-comment">
-      <Layers class="size-2.5 shrink-0" aria-hidden="true" />{{ handCount }}
-    </span>
-    <span class="col-span-3 mt-1 flex h-1 w-full" aria-hidden="true">
+
+    <span class="flex h-1 w-full gap-px" aria-hidden="true">
       <span
         v-for="(pip, index) in pips"
         :key="index"
