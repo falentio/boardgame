@@ -1,68 +1,26 @@
-import { spawn } from "node:child_process";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";
+import { CAST, RULE, createShots, summarize } from "./lib/shots-harness.mjs";
 
-const port = 9531;
-const profile = "/tmp/skin-" + Date.now();
+const DEBUG_PORT = 9531;
 const OUT = ".audit/skin";
 const LIVE = process.argv.includes("--live");
 const ORIGIN = process.env.CITADELS_BASE ?? "http://localhost:3000";
-const PASSWORD = "proof-password-123";
-const CAST = ["assassin", "thief", "magician", "king", "bishop", "merchant", "architect", "warlord"];
 let BOARD_URL = process.argv[2] ?? ORIGIN + "/dev/citadels-interface";
 let PICKER_URL = process.argv[3] ?? ORIGIN + "/dev/picker-demo";
 const TAG = LIVE ? "live" : (process.argv[4] ?? "after");
 mkdirSync(OUT, { recursive: true });
 
-const chrome = spawn("/usr/bin/google-chrome", ["--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--user-data-dir=" + profile, "--remote-debugging-port=" + port, "--remote-allow-origins=*", "about:blank"], { stdio: "ignore", detached: true });
-let wsUrl = null;
-for (let i = 0; i < 80 && !wsUrl; i++) { try { const r = await fetch("http://127.0.0.1:" + port + "/json/version"); if (r.ok) wsUrl = (await r.json()).webSocketDebuggerUrl; } catch {} if (!wsUrl) await delay(250); }
-const ws = new WebSocket(wsUrl);
-await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
-let id = 0; const pending = new Map(); const errors = [];
-ws.onmessage = (e) => { const m = JSON.parse(e.data); if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); } else if (m.method === "Runtime.exceptionThrown") errors.push(m.params.exceptionDetails.text); else if (m.method === "Runtime.consoleAPICalled" && m.params.type === "error") errors.push(m.params.args.map((a) => a.value ?? a.description).join(" ")); };
-const send = (m, p = {}, s) => new Promise((res) => { const i = ++id; pending.set(i, res); ws.send(JSON.stringify({ id: i, method: m, params: p, sessionId: s })); });
-const t = (await send("Target.createTarget", { url: "about:blank" })).result;
-const s = (await send("Target.attachToTarget", { targetId: t.targetId, flatten: true })).result.sessionId;
-await send("Page.enable", {}, s);
-await send("Runtime.enable", {}, s);
-await send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 800, deviceScaleFactor: 2, mobile: false }, s);
-const ev = async (expression) => (await send("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true }, s)).result.result.value;
-const shot = async (name) => {
-  const r = await send("Page.captureScreenshot", { format: "png", fromSurface: true }, s);
-  writeFileSync(OUT + "/" + name + "-" + TAG + ".png", Buffer.from(r.result.data, "base64"));
-};
+const { check, failures, launch, openRoom } = createShots({
+  name: "skin",
+  base: ORIGIN,
+  out: OUT,
+  viewport: { width: 1280, height: 800, deviceScaleFactor: 2 },
+});
+const { page, send, session: s, errors, close } = await launch({ label: TAG, debugPort: DEBUG_PORT });
+const ev = (expression) => page.eval(expression);
+const shot = (name) => page.shot(name + "-" + TAG);
 
-const signUp = async (label) => {
-  const email = "skin-" + label + "-" + Date.now() + "@example.com";
-  const res = await fetch(ORIGIN + "/api/auth/sign-up/email", { method: "POST", headers: { "content-type": "application/json", origin: ORIGIN }, body: JSON.stringify({ email, password: PASSWORD, name: label }) });
-  if (res.status !== 200) throw new Error("sign-up " + label + " returned " + res.status + ": " + (await res.text()).slice(0, 160));
-  const pair = res.headers.get("set-cookie").split(";")[0];
-  const at = pair.indexOf("=");
-  return { cookie: pair, cookieName: pair.slice(0, at), cookieValue: pair.slice(at + 1) };
-};
-
-/** A started two-seat room, so the assertions run inside the live /games/<code> surface. */
-const startLiveRoom = async () => {
-  const host = await signUp("skinskinhost");
-  const guest = await signUp("skinskinguest");
-  const created = await fetch(ORIGIN + "/api/rooms", { method: "POST", headers: { origin: ORIGIN, cookie: host.cookie, "content-type": "application/json" }, body: JSON.stringify({ name: "skin board", seats: 2, setup: { game: "citadels", cast: CAST } }) });
-  if (created.status !== 201) throw new Error("create room returned " + created.status + ": " + (await created.text()).slice(0, 200));
-  const { room } = await created.json();
-  const joined = await fetch(ORIGIN + "/api/rooms/" + room.code + "/join", { method: "POST", headers: { origin: ORIGIN, cookie: guest.cookie, "content-type": "application/json" } });
-  if (joined.status !== 200) throw new Error("join returned " + joined.status + ": " + (await joined.text()).slice(0, 200));
-  const started = await fetch(ORIGIN + "/api/rooms/" + room.code + "/start", { method: "POST", headers: { origin: ORIGIN, cookie: host.cookie, "content-type": "application/json" } });
-  if (started.status !== 200) throw new Error("start returned " + started.status + ": " + (await started.text()).slice(0, 200));
-  console.log("live room " + room.code + " started with host " + host.cookieName);
-  return { code: room.code, host };
-};
-
-const fail = [];
-const check = (ok, msg) => {
-  console.log((ok ? "PASS " : "FAIL ") + msg);
-  if (!ok) fail.push(msg);
-};
-const RULE = "rgb(230, 219, 116)";
 const maxOf = (shorthand) => Math.max(...String(shorthand).split(" ").map((v) => parseFloat(v) || 0));
 
 /** A rounded element is only ours when its own markup lives in one of this unit's files. */
@@ -92,9 +50,9 @@ const radiusProbe = (selector) => `(() => {
 
 let liveCode = null;
 if (LIVE) {
-  const live = await startLiveRoom();
+  const live = await openRoom({ room: "skin board", cast: CAST, hostLabel: "skinskinhost", guestLabel: "skinskinguest" });
   liveCode = live.code;
-  await send("Network.enable", {}, s);
+  console.log("live room " + live.code + " started with host " + live.host.cookieName);
   await send("Network.setCookie", { name: live.host.cookieName, value: live.host.cookieValue, domain: "localhost", path: "/" }, s);
   BOARD_URL = ORIGIN + "/games/" + live.code;
 }
@@ -194,13 +152,13 @@ check(maxOf(skin.boardPad) <= 20, "board padding at or under 1.25rem (got " + sk
 check(maxOf(skin.boardGap) <= 4, "board section gap at or under 0.25rem (got " + skin.boardGap + ")");
 check(maxOf(skin.selfGap) <= 4, "self column gap at or under 0.25rem (got " + skin.selfGap + ")");
 
-await send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 800, deviceScaleFactor: 2, mobile: false }, s);
+await page.metrics({ width: 1280, height: 800, deviceScaleFactor: 2, mobile: false });
 await shot("board");
 
-await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true }, s);
+await page.metrics({ width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
 await delay(700);
 await shot("board-portrait");
-await send("Emulation.setDeviceMetricsOverride", { width: 1280, height: 800, deviceScaleFactor: 2, mobile: false }, s);
+await page.metrics({ width: 1280, height: 800, deviceScaleFactor: 2, mobile: false });
 await delay(700);
 
 const centerOf = (selector) => ev(`(() => {
@@ -281,8 +239,6 @@ if (!LIVE) {
 
 
 console.log("console errors:", errors.length ? errors.slice(0, 3) : "none");
-console.log(fail.length === 0 ? "ALL CHECKS PASS" : fail.length + " CHECK(S) FAILED");
-try { ws.close(); } catch {}
-try { process.kill(-chrome.pid); } catch {}
-try { rmSync(profile, { recursive: true, force: true }); } catch {}
-process.exitCode = fail.length === 0 ? 0 : 1;
+console.log(summarize(failures.length));
+close();
+process.exitCode = failures.length === 0 ? 0 : 1;
