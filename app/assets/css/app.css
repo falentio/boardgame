@@ -110,7 +110,7 @@
     --sidebar-ring: oklch(0.708 0 0);
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);
-    /* The game board is a dark room, so these are identical in both modes. */
+    /* The game board is a dark room, so the board palette is the same in both modes. */
     --monokai-bg: #272822;
     --monokai-panel: #2f312a;
     --monokai-panel-raised: #3a3c33;
@@ -157,19 +157,6 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
-    /* The game board is a dark room, so these are identical in both modes. */
-    --monokai-bg: #272822;
-    --monokai-panel: #2f312a;
-    --monokai-panel-raised: #3a3c33;
-    --monokai-line: #4a4c40;
-    --monokai-fg: #f8f8f2;
-    --monokai-comment: #94998b;
-    --monokai-pink: #f92672;
-    --monokai-orange: #fd971f;
-    --monokai-yellow: #e6db74;
-    --monokai-green: #a6e22e;
-    --monokai-blue: #66d9ef;
-    --monokai-purple: #ae81ff;
 }
 
 @layer base {
