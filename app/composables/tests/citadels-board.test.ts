@@ -13,6 +13,7 @@ import {
   type CitadelsAction,
   type CitadelsView,
 } from "#shared/core/lockstep/games/citadels/index.ts";
+import type { WindowPurpose } from "#shared/core/lockstep/games/citadels/state.ts";
 import { seatId, type SeatId } from "#shared/rooms/ids.ts";
 import {
   citadelsBoardOf,
@@ -20,7 +21,7 @@ import {
   phaseLabel,
   type CitadelsBoard,
 } from "../citadels-board.ts";
-import { windowChoiceValue } from "../window-choices.ts";
+import { windowChoiceValue, windowChoicesFor } from "../window-choices.ts";
 import {
   advance,
   autoAction,
@@ -28,7 +29,10 @@ import {
   castWith,
   dealFor,
   openPurpose,
+  play,
   rawHand,
+  withGold,
+  withHand,
   type CitadelsState,
   type CharacterId,
 } from "../../../shared/core/tests/lockstep/citadels/driver.ts";
@@ -466,17 +470,10 @@ test("a magician-discard window offers the viewer's own hand by index, then a st
 test("a warlord-destroy window offers the target city's districts, the Keep aside", () => {
   const state = foldTo("warlord-destroy", {
     ...withCast("warlord"),
-    decide: (seat, folded) => {
-      if (openPurpose(folded) === "warlord-destroy" && folded.pending?.target === null) {
-        const pick = folded.players
-          .filter((player) => player.seat !== seat)
-          .sort((a, b) => b.city.length - a.city.length)[0];
-        return pick === undefined || pick.city.length === 0
-          ? { t: "pass" }
-          : { t: "target", seat: pick.seat };
-      }
-      return auto(seat, folded);
-    },
+    decide: (seat, folded) =>
+      openPurpose(folded) === "warlord-destroy" && folded.pending?.target === null
+        ? targetRichest(folded, seat)
+        : auto(seat, folded),
     until: (folded) => folded.pending?.target !== null,
   });
   const target = state.pending?.target ?? null;
@@ -538,12 +535,127 @@ test("an any window offers nothing to a seat whose report the resolver ignores",
   expect(choicesAt(state).length).toBeGreaterThan(0);
 });
 
-test("an owed window that leaves no choice keeps a bare confirm so the game can advance", () => {
+test("a tax-collect window offers the token and the decline its own rule names", () => {
   const state = foldTo("tax-collect", withCast("tax-collector"));
   expect(choicesAt(state)).toEqual([
     { action: { t: "gold" }, label: "TAKE TOKEN", kind: "confirm", note: null },
     { action: { t: "pass" }, label: "LEAVE IT", kind: "confirm", note: null },
   ]);
+});
+
+/** A seat holding no district at all: the board a window has nothing to work on. */
+const emptyCity = (state: CitadelsState, seat: SeatId): CitadelsState => ({
+  ...state,
+  players: state.players.map((player) => (player.seat === seat ? { ...player, city: [] } : player)),
+});
+
+/** Name the rival with the most districts: the seat a two-stage window works on. */
+const targetRichest = (folded: CitadelsState, seat: SeatId): CitadelsAction => {
+  const pick = folded.players
+    .filter((player) => player.seat !== seat)
+    .sort((a, b) => b.city.length - a.city.length)[0];
+  return pick === undefined || pick.city.length === 0
+    ? { t: "pass" }
+    : { t: "target", seat: pick.seat };
+};
+
+/** Fold a two-stage window to the stage that reads the rival, not the seat. */
+const foldedToStage2 = (purpose: string, character: CharacterId): CitadelsState =>
+  foldTo(purpose, {
+    ...withCast(character),
+    decide: (seat, folded) =>
+      openPurpose(folded) === purpose && folded.pending?.target === null
+        ? targetRichest(folded, seat)
+        : auto(seat, folded),
+    until: (folded) => folded.pending?.target !== null,
+  });
+
+test("a warlord whose target holds no district is offered the window's own close", () => {
+  const state = foldedToStage2("warlord-destroy", "warlord");
+  const actor = answeringSeat(state);
+  const target = state.pending?.target ?? null;
+  if (target === null) throw new Error("the warlord's destroy window named no target");
+  const bare = emptyCity(state, target);
+  expect(choicesAt(bare)).toEqual([
+    { action: { t: "pass" }, label: "DESTROY NOTHING", kind: "confirm", note: null },
+  ]);
+  const played = play(bare, [[actor, { t: "pass" }]]);
+  expect(openPurpose(played)).not.toBe("warlord-destroy");
+});
+
+test("a wizard facing an empty rival hand is offered the window's own close", () => {
+  const state = foldedToStage2("wizard-take", "wizard");
+  const target = state.pending?.target ?? null;
+  if (target === null) throw new Error("the wizard's take window named no target");
+  expect(choicesAt(withHand(state, target, []))).toEqual([
+    { action: { t: "pass" }, label: "TAKE NOTHING", kind: "confirm", note: null },
+  ]);
+});
+
+test("a marshal who cannot pay for anything is offered the window's own close", () => {
+  const state = foldedToStage2("marshal-seize", "marshal");
+  const actor = answeringSeat(state);
+  expect(choicesAt(withGold(state, actor, 0))).toContainEqual({
+    action: { t: "pass" },
+    label: "SEIZE NOTHING",
+    kind: "confirm",
+    note: null,
+  });
+});
+
+test("every window this surface answers offers a control on a bare board", () => {
+  const state = foldedToStage2("warlord-destroy", "warlord");
+  const seat = answeringSeat(state);
+  const base = citadels.project(state, seat);
+  const window = base.window;
+  if (window === null) throw new Error("the folded state carries no window");
+  const bare = withView(
+    {
+      ...base,
+      players: base.players.map((player) => ({ ...player, gold: 0, hand: [], city: [] })),
+    },
+    { myHand: [], myDraw: [] },
+  );
+  const others: readonly WindowPurpose[] = ["draft-pick", "turn", "keep"];
+  const owned: readonly WindowPurpose[] = [
+    "choose-character",
+    "choose-seat",
+    "choose-type",
+    "magician-swap",
+    "magician-discard",
+    "seer-give",
+    "seer-receive",
+    "emperor-crown",
+    "abbot-split",
+    "cardinal-gold",
+    "wizard-take",
+    "diplomat-exchange",
+    "marshal-seize",
+    "artist-beautify",
+    "magistrate-confiscate",
+    "blackmailer-resolve",
+    "scholar-keep",
+    "trader-build",
+    "warlord-destroy",
+    "tax-collect",
+    "witch-resume",
+    "queen-income",
+    "thief-rob",
+    "witch-takeover",
+    "blackmailer-threat",
+    "armory-destroy",
+    "theatre-swap",
+  ];
+  expect(owned.length + others.length).toBe(30);
+  const nameOf = (seat: SeatId): string => names().get(seat) ?? seat;
+  for (const purpose of others) {
+    const theirs = withView(bare, { window: { ...window, purpose } });
+    expect(windowChoicesFor(theirs, nameOf), purpose).toEqual([]);
+  }
+  for (const purpose of owned) {
+    const mine = withView(bare, { window: { ...window, purpose } });
+    expect(windowChoicesFor(mine, nameOf).length, purpose).toBeGreaterThan(0);
+  }
 });
 
 test("windowChoiceValue reads the value an assertion wants off each kind of choice", () => {

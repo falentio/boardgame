@@ -38,6 +38,13 @@ interface ChoiceCtx {
   readonly nameOf: NameOf;
 }
 
+/**
+ * The purposes the choice surface answers: every engine purpose except the three
+ * the turn bar and the keep surface own. A builder exists for each of them and
+ * offers at least one control, so an owed window always has something to press.
+ */
+type ChoicePurpose = Exclude<WindowPurpose, "draft-pick" | "turn" | "keep">;
+
 type ChoiceBuilder = (ctx: ChoiceCtx) => readonly WindowChoice[];
 
 /** The district types a `name-type` window admits, read off the catalog's own rows. */
@@ -51,6 +58,15 @@ const pass = (label: string): WindowChoice => ({
   kind: "confirm",
   note: null,
 });
+
+/**
+ * A pick list that filtered everything out still needs one control, or the owed
+ * window never closes. Every exchange window ends zero-effect on an illegal pick
+ * (diplomat.ts:67, marshal.ts:71, wizard.ts:77, seer.ts:87, scholar.ts:87, armory.ts:96,
+ * warlord.ts:96), so the rule's own close is what such a list offers.
+ */
+const orClose = (items: readonly WindowChoice[], label: string): readonly WindowChoice[] =>
+  items.length > 0 ? items : [pass(label)];
 
 const gold = (label: string, note: string | null): WindowChoice => ({
   action: { t: "gold" },
@@ -171,9 +187,10 @@ const magicianDiscard: ChoiceBuilder = (ctx) => [
   pass("END"),
 ];
 
-/** characters/seer.ts:84: hand index of the card handed to the rival. */
+/** characters/seer.ts:84: hand index of the card handed to the rival. The take step
+    precedes every give, and a give with nothing in hand is skipped (seer.ts:87). */
 const seerGive: ChoiceBuilder = (ctx) =>
-  ctx.view.myHand.map((id, index) => handChoice(id, index, null));
+  orClose(ctx.view.myHand.map((id, index) => handChoice(id, index, null)), "GIVE NOTHING");
 
 /** characters/seer.ts:73: the engine draws the take itself; the seat only reports. */
 const seerReceive: ChoiceBuilder = () => [pass("TAKE CARD")];
@@ -208,12 +225,15 @@ const wizardTake: ChoiceBuilder = (ctx) => {
   const target = ctx.view.pending?.target ?? null;
   if (target === null) return rivals(ctx.view).map((player) => seatChoice(player.seat, ctx.nameOf));
   const count = plateOf(ctx.view, target)?.handCount ?? 0;
-  return Array.from({ length: count }, (_, index): WindowChoice => ({
-    action: { t: "keep", index },
-    label: "CARD",
-    kind: "card",
-    note: String(index + 1),
-  }));
+  return orClose(
+    Array.from({ length: count }, (_, index): WindowChoice => ({
+      action: { t: "keep", index },
+      label: "CARD",
+      kind: "card",
+      note: String(index + 1),
+    })),
+    "TAKE NOTHING",
+  );
 };
 
 /** characters/diplomat.ts:74 the rival, :92 the district taken, then the one given. */
@@ -221,22 +241,31 @@ const diplomatExchange: ChoiceBuilder = (ctx) => {
   const view = ctx.view;
   const target = view.pending?.target ?? null;
   if (target === null) {
-    return rivals(view)
-      .filter((player) => !finished(view, player.seat))
-      .map((player) => seatChoice(player.seat, ctx.nameOf));
+    return orClose(
+      rivals(view)
+        .filter((player) => !finished(view, player.seat))
+        .map((player) => seatChoice(player.seat, ctx.nameOf)),
+      "SWAP NOTHING",
+    );
   }
   const mine = cityIds(view, view.seat);
   if ((view.pending?.cards ?? 0) === 0) {
-    return (plateOf(view, target)?.city ?? [])
-      .map((district, index) => ({ district, index }))
-      .filter(({ district }) => !mine.has(district.id))
-      .map(({ district, index }) => cityChoice(district.id, index, null));
+    return orClose(
+      (plateOf(view, target)?.city ?? [])
+        .map((district, index) => ({ district, index }))
+        .filter(({ district }) => !mine.has(district.id))
+        .map(({ district, index }) => cityChoice(district.id, index, null)),
+      "SWAP NOTHING",
+    );
   }
   const theirs = cityIds(view, target);
-  return (plateOf(view, view.seat)?.city ?? [])
-    .map((district, index) => ({ district, index }))
-    .filter(({ district }) => !theirs.has(district.id))
-    .map(({ district, index }) => cityChoice(district.id, index, null));
+  return orClose(
+    (plateOf(view, view.seat)?.city ?? [])
+      .map((district, index) => ({ district, index }))
+      .filter(({ district }) => !theirs.has(district.id))
+      .map(({ district, index }) => cityChoice(district.id, index, null)),
+    "SWAP NOTHING",
+  );
 };
 
 /** characters/marshal.ts:80 the rival, then :45 isSeizable over that city. */
@@ -250,13 +279,18 @@ const marshalSeize: ChoiceBuilder = (ctx) => {
   }
   const mine = cityIds(view, view.seat);
   const purse = myGold(view);
-  return (plateOf(view, target)?.city ?? [])
-    .map((district, index) => ({ district, index }))
-    .filter(
-      ({ district }) =>
-        isSeizable(district.id) && !mine.has(district.id) && seizePrice(district.id) <= purse,
-    )
-    .map(({ district, index }) => cityChoice(district.id, index, String(seizePrice(district.id))));
+  return orClose(
+    (plateOf(view, target)?.city ?? [])
+      .map((district, index) => ({ district, index }))
+      .filter(
+        ({ district }) =>
+          isSeizable(district.id) && !mine.has(district.id) && seizePrice(district.id) <= purse,
+      )
+      .map(({ district, index }) =>
+        cityChoice(district.id, index, String(seizePrice(district.id))),
+      ),
+    "SEIZE NOTHING",
+  );
 };
 
 /** characters/artist.ts:39 beautify: an unmarked own district, one gold from the stash. */
@@ -283,9 +317,10 @@ const blackmailerResolve: ChoiceBuilder = (ctx) => [
   choose("reveal", "REVEAL", null),
 ];
 
-/** characters/scholar.ts:83: the drawn seven, which the view hands its own seat. */
+/** characters/scholar.ts:83: the drawn seven, which the view hands its own seat. A
+    deck that runs dry opens the window empty, and scholar.ts:87 closes it unkept. */
 const scholarKeep: ChoiceBuilder = (ctx) =>
-  ctx.view.myDraw.map((id, index) => handChoice(id, index, null));
+  orClose(ctx.view.myDraw.map((id, index) => handChoice(id, index, null)), "KEEP NOTHING");
 
 const buildChoice = (id: string, index: number): WindowChoice => ({
   action: { t: "build", card: index },
@@ -315,16 +350,19 @@ const warlordDestroy: ChoiceBuilder = (ctx) => {
   const city = plateOf(view, target)?.city ?? [];
   const toll = greatWallToll(city);
   const purse = myGold(view);
-  return city
-    .map((district, index) => ({ district, index }))
-    .filter(({ district }) => !keepProtects(district.id))
-    .map(({ district, index }) => ({
-      district,
-      index,
-      price: destroyPrice(district.id, district.gold) + toll,
-    }))
-    .filter(({ price }) => price <= purse)
-    .map(({ district, index, price }) => cityChoice(district.id, index, String(price)));
+  return orClose(
+    city
+      .map((district, index) => ({ district, index }))
+      .filter(({ district }) => !keepProtects(district.id))
+      .map(({ district, index }) => ({
+        district,
+        index,
+        price: destroyPrice(district.id, district.gold) + toll,
+      }))
+      .filter(({ price }) => price <= purse)
+      .map(({ district, index, price }) => cityChoice(district.id, index, String(price))),
+    "DESTROY NOTHING",
+  );
 };
 
 /** characters/tax-collector.ts:33 wantsTake: empty the token, or leave it standing. */
@@ -342,12 +380,18 @@ const armoryDestroy: ChoiceBuilder = (ctx) => {
   if (!cityIds(view, view.seat).has("armory")) return [pass("CONTINUE")];
   const target = view.pending?.target ?? null;
   if (target === null) {
-    return rivals(view)
-      .filter((player) => !finished(view, player.seat))
-      .map((player) => seatChoice(player.seat, ctx.nameOf));
+    return orClose(
+      rivals(view)
+        .filter((player) => !finished(view, player.seat))
+        .map((player) => seatChoice(player.seat, ctx.nameOf)),
+      "DESTROY NOTHING",
+    );
   }
-  return (plateOf(view, target)?.city ?? []).map((district, index) =>
-    cityChoice(district.id, index, null),
+  return orClose(
+    (plateOf(view, target)?.city ?? []).map((district, index) =>
+      cityChoice(district.id, index, null),
+    ),
+    "DESTROY NOTHING",
   );
 };
 
@@ -360,11 +404,9 @@ const theaterSwap: ChoiceBuilder = (ctx) => [
 /** A window whose owner has nothing to pick: the engine applies it on confirm. */
 const confirmOnly: ChoiceBuilder = () => [pass("CONTINUE")];
 
-/** One builder per window purpose, so a new purpose has to declare its inputs here. */
-const CHOICE_BUILDERS: Record<WindowPurpose, ChoiceBuilder> = {
-  "draft-pick": () => [],
-  turn: () => [],
-  keep: () => [],
+/** One builder per purpose this surface answers, so a new engine purpose has to
+    declare its inputs here and can never fall through to a blank window. */
+const CHOICE_BUILDERS: Record<ChoicePurpose, ChoiceBuilder> = {
   "choose-character": chooseCharacter,
   "choose-seat": chooseSeat,
   "choose-type": chooseType,
@@ -394,13 +436,6 @@ const CHOICE_BUILDERS: Record<WindowPurpose, ChoiceBuilder> = {
   "theatre-swap": theaterSwap,
 };
 
-/** The surfaces other units own; their windows report through their own control. */
-const OTHER_SURFACES: ReadonlySet<WindowPurpose> = new Set<WindowPurpose>([
-  "turn",
-  "keep",
-  "draft-pick",
-]);
-
 /**
  * The seat whose input a window's resolver reads (helpers.ts:1095 `actorOf`): the
  * pending actor for `any` windows, else the window's own seat. An `any` window
@@ -414,17 +449,24 @@ const answersWindow = (view: CitadelsView): boolean =>
       ? view.pending?.actor === view.seat
       : view.owedSeats.includes(view.seat);
 
+/** Whether this surface answers the purpose; the other three have their own controls. */
+const answersPurpose = (purpose: WindowPurpose): purpose is ChoicePurpose =>
+  purpose in CHOICE_BUILDERS;
+
 /**
  * The inputs the engine's rules leave the viewer for the open window. Empty when
- * another surface owns the purpose, when a rival's input is the one read, or when
- * the window carries nothing to choose; a window that needs a report and offers no
- * choice keeps a bare confirm so the game never waits on an absent control.
+ * another surface owns the purpose or when a rival's input is the one read; a
+ * window this surface answers always offers a control, and one that offers none is
+ * a builder bug rather than a state to render, so it throws.
  */
 export const windowChoicesFor = (view: CitadelsView, nameOf: NameOf): readonly WindowChoice[] => {
   const purpose = view.window?.purpose;
-  if (purpose === undefined || OTHER_SURFACES.has(purpose) || !answersWindow(view)) return [];
+  if (purpose === undefined || !answersPurpose(purpose) || !answersWindow(view)) return [];
   const built = CHOICE_BUILDERS[purpose]({ view, nameOf });
-  return built.length > 0 ? built : [pass("CONTINUE")];
+  if (built.length === 0) {
+    throw new Error(`the ${purpose} window leaves the player no control`);
+  }
+  return built;
 };
 
 /** The value an assertion reads off a control; the action stays the source of truth. */
