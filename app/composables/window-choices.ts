@@ -131,9 +131,9 @@ const CHOOSE_CHARACTER_OWNER: Partial<Record<CharacterId, (id: CharacterId) => b
   assassin: (id) => id === "assassin",
   // characters/thief.ts:25 canRob: never the thief, never rank 1 (already called).
   thief: (id) => id === "thief" || specOfCharacter(id).rank === 1,
-  // characters/witch.ts:77: never the witch.
+  // characters/witch.ts:42: never the witch.
   witch: (id) => id === "witch",
-  // characters/magistrate.ts:44: never the magistrate.
+  // characters/magistrate.ts:35: never the magistrate.
   magistrate: (id) => id === "magistrate",
   // characters/blackmailer.ts:30 canThreat: never rank 1 (already called).
   blackmailer: (id) => specOfCharacter(id).rank === 1,
