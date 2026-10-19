@@ -24,13 +24,20 @@ import { seatId } from "#shared/rooms/ids.ts";
 const ANN = seatId("ann");
 const BOB = seatId("bob");
 const CARA = seatId("cara");
+const DAN = seatId("dune");
+const EVE = seatId("eve");
 
 export const SEATS = [ANN, BOB, CARA];
+
+/** The Queen's ability is dead below five players, so a scene may ask for a full table. */
+export const FIVE = [ANN, BOB, CARA, DAN, EVE];
 export const SEED = genesisSeed("purpose-recordings");
 export const NAMES = new Map([
   [ANN, "Ada"],
   [BOB, "Bo"],
   [CARA, "Cy"],
+  [DAN, "Dune"],
+  [EVE, "Eve"],
 ]);
 
 export type Decide = (seat: SeatId, state: CitadelsState) => CitadelsAction | null;
@@ -46,6 +53,8 @@ export interface Scene {
   readonly uniques?: readonly DistrictId[];
   readonly decide?: Decide;
   readonly until?: (state: CitadelsState) => boolean;
+  /** Who sits at the table. Three by default; a scene may need a full five. */
+  readonly seats?: readonly SeatId[];
 }
 
 /** A legal rank-1..8 cast carrying `target`, plus rank 9 when it lives there. */
@@ -125,7 +134,7 @@ export const foldScene = (scene: Scene): { readonly state: CitadelsState; readon
   const ready = scene.until ?? ((): boolean => true);
   let state = citadels.genesis(
     { cast: [...scene.cast], uniques: scene.uniques ?? DEFAULT_UNIQUES },
-    makeRoster(SEATS),
+    makeRoster(scene.seats ?? SEATS),
     makeRandom(SEED),
   );
   for (let frames = 0; frames < 4000; frames += 1) {
