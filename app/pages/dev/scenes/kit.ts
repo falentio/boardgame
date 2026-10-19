@@ -10,7 +10,7 @@ import {
   type Rank,
   type WindowPurpose,
 } from "#shared/core/lockstep/games/citadels/index.ts";
-import { DEFAULT_UNIQUES, type DistrictId } from "#shared/core/lockstep/games/citadels/districts.ts";
+import type { DistrictId } from "#shared/core/lockstep/games/citadels/districts.ts";
 import {
   act,
   frameIndex,
@@ -133,7 +133,7 @@ export const foldScene = (scene: Scene): { readonly state: CitadelsState; readon
   const decide = scene.decide ?? auto;
   const ready = scene.until ?? ((): boolean => true);
   let state = citadels.genesis(
-    { cast: [...scene.cast], uniques: scene.uniques ?? DEFAULT_UNIQUES },
+    { cast: [...scene.cast], uniques: scene.uniques },
     makeRoster(scene.seats ?? SEATS),
     makeRandom(SEED),
   );
