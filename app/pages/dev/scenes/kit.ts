@@ -35,13 +35,17 @@ export const NAMES = new Map([
 
 export type Decide = (seat: SeatId, state: CitadelsState) => CitadelsAction | null;
 
-/** A scene names the purpose it must fold to, the cast that can reach it, and how to play. */
+/**
+ * A scene names the purpose it must fold to, the cast and deck that can reach it,
+ * and how to play.
+ */
 export interface Scene {
   readonly purpose: WindowPurpose;
   readonly cast: readonly CharacterId[];
+  /** The 14 unique districts the fold deals; the engine's default when a scene names none. */
+  readonly uniques?: readonly DistrictId[];
   readonly decide?: Decide;
   readonly until?: (state: CitadelsState) => boolean;
-  readonly uniques?: readonly DistrictId[];
 }
 
 /** A legal rank-1..8 cast carrying `target`, plus rank 9 when it lives there. */
