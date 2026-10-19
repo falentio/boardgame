@@ -1,3 +1,4 @@
+import type { CharacterId } from "../characters.ts";
 import type { CharacterCtx, CharacterEffect } from "../characters/index.ts";
 import { specOfDistrict } from "../districts.ts";
 import {
@@ -19,6 +20,12 @@ import {
 /** Tags the magistrate's in-flight commit so its second pass is distinguishable. */
 const NAME_NOTE = "magistrate-name";
 
+/** The Magistrate may warrant another character in the cast, never himself. */
+export const canConfiscate = (
+  state: { readonly cast: readonly CharacterId[] },
+  character: CharacterId,
+): boolean => character !== "magistrate" && state.cast.includes(character);
+
 /**
  * Assign three warrant markers to three different characters, the named target
  * first (see `assassinResolve`), then take the normal turn. `tryBuild` opens
@@ -32,7 +39,7 @@ export const magistrate: CharacterEffect = (ctx: CharacterCtx) => {
   if (committing) {
     const named = pending.namedCharacter;
     const cleared = withPending(state, null);
-    if (named === null || named === "magistrate" || !state.cast.includes(named)) {
+    if (named === null || !canConfiscate(state, named)) {
       return withSteps(cleared, rest);
     }
     const decoys = state.cast.filter((id) => id !== named && id !== "magistrate").slice(0, 2);

@@ -30,9 +30,16 @@ export type { CitadelsState, CitadelsPlayer, PlacedDistrict, Phase } from "./sta
 export type { CharacterId, CharacterSpec, Rank } from "./characters.ts";
 export type { DistrictId, DistrictSpec, DistrictType } from "./districts.ts";
 export { CHARACTER_CATALOG, BASE_CAST, charactersOfRank, specOfCharacter } from "./characters.ts";
-export { DISTRICT_CATALOG, BASIC_DISTRICTS, UNIQUE_DISTRICTS, specOfDistrict } from "./districts.ts";
+export {
+  DISTRICT_CATALOG,
+  BASIC_DISTRICTS,
+  UNIQUE_DISTRICTS,
+  specOfDistrict,
+} from "./districts.ts";
 export { scoreGame, winnerOf, type Score } from "./scoring.ts";
 export { STARTING_GOLD, STARTING_HAND, CITY_TARGET, validateCast } from "./setup.ts";
+export { DRAW_COUNT, GATHER_GOLD, buildPrice } from "./helpers.ts";
+export { turnIncome } from "./windows.ts";
 
 /** A player as it appears in a redacted view: counts and the public city, never the hand. */
 export interface PlayerView {
@@ -66,6 +73,12 @@ export interface CitadelsView {
   readonly players: readonly PlayerView[];
   /** Only the viewer's own hand. */
   readonly myHand: readonly DistrictId[];
+  /**
+   * The cards in flight this seat must act on, such as the gather's keep pool. A
+   * pending action's pool is hidden from every other seat: only the actor that owes
+   * the open window sees the ids, every rival reads an empty list.
+   */
+  readonly myDraw: readonly DistrictId[];
   readonly crown: SeatId;
   readonly round: number;
   readonly phase: Phase;
@@ -85,66 +98,72 @@ export interface CitadelsView {
   readonly terminal: boolean;
 }
 
-export const citadels: GameDefinition<CitadelsState, CitadelsAction, CitadelsSetup, CitadelsView> = {
-  id: gameId("citadels"),
-  version: 1,
-  state: stateCodec,
-  action: actionCodec,
+export const citadels: GameDefinition<CitadelsState, CitadelsAction, CitadelsSetup, CitadelsView> =
+  {
+    id: gameId("citadels"),
+    version: 1,
+    state: stateCodec,
+    action: actionCodec,
 
-  genesis(setup: CitadelsSetup, roster: Roster, rng: Random): CitadelsState {
-    return withCrossTurnDefaults(genesisState(setup, roster, rng));
-  },
+    genesis(setup: CitadelsSetup, roster: Roster, rng: Random): CitadelsState {
+      return withCrossTurnDefaults(genesisState(setup, roster, rng));
+    },
 
-  seatsOwed(state: CitadelsState, index: FrameIndex): readonly SeatId[] {
-    return seatsOwedFor(state, index);
-  },
+    seatsOwed(state: CitadelsState, index: FrameIndex): readonly SeatId[] {
+      return seatsOwedFor(state, index);
+    },
 
-  step(state: CitadelsState, frame: Frame<CitadelsAction>, rng: Random): CitadelsState {
-    return stepState(state, frame, rng);
-  },
+    step(state: CitadelsState, frame: Frame<CitadelsAction>, rng: Random): CitadelsState {
+      return stepState(state, frame, rng);
+    },
 
-  project(state: CitadelsState, seat: SeatId): CitadelsView {
-    if (!hasSeat(state, seat)) throw new CitadelsError(`seat ${seat} is not a player`);
-    const mine = state.players.find((p) => p.seat === seat);
-    const window = openWindow(state);
-    const pick = state.draft?.picks.find((entry) => entry.seat === seat)?.character ?? null;
-    return {
-      seat,
-      cast: [...state.cast],
-      players: state.players.map((player): PlayerView => ({
-        seat: player.seat,
-        gold: player.gold,
-        handCount: player.hand.length,
-        city: player.city.map((district) => ({ id: district.id, gold: district.gold })),
-      })),
-      myHand: mine === undefined ? [] : [...mine.hand],
-      crown: state.crown,
-      round: state.round,
-      phase: state.phase,
-      callRank: state.callRank,
-      active: state.active,
-      discard: [...state.discard],
-      deckCount: state.deck.length,
-      faceup: state.draft === null ? [] : [...state.draft.faceup],
-      owedSeats: [...seatsOwedNow(state)],
-      window: window === null ? null : { kind: window.kind, purpose: window.purpose },
-      pending:
-        state.pending === null
-          ? null
-          : {
-              actor: state.pending.actor,
-              character: state.pending.character,
-              target: state.pending.target,
-              cards: state.pending.cards.length,
-            },
-      myPick: pick,
-      winner: winnerOf(state),
-      terminal: isTerminal(state),
-    };
-  },
+    project(state: CitadelsState, seat: SeatId): CitadelsView {
+      if (!hasSeat(state, seat)) throw new CitadelsError(`seat ${seat} is not a player`);
+      const mine = state.players.find((p) => p.seat === seat);
+      const window = openWindow(state);
+      const pick = state.draft?.picks.find((entry) => entry.seat === seat)?.character ?? null;
+      return {
+        seat,
+        cast: [...state.cast],
+        players: state.players.map((player): PlayerView => ({
+          seat: player.seat,
+          gold: player.gold,
+          handCount: player.hand.length,
+          city: player.city.map((district) => ({ id: district.id, gold: district.gold })),
+        })),
+        myHand: mine === undefined ? [] : [...mine.hand],
+        myDraw:
+          state.pending !== null &&
+          state.pending.actor === seat &&
+          seatsOwedNow(state).includes(seat)
+            ? [...state.pending.cards]
+            : [],
+        crown: state.crown,
+        round: state.round,
+        phase: state.phase,
+        callRank: state.callRank,
+        active: state.active,
+        discard: [...state.discard],
+        deckCount: state.deck.length,
+        faceup: state.draft === null ? [] : [...state.draft.faceup],
+        owedSeats: [...seatsOwedNow(state)],
+        window: window === null ? null : { kind: window.kind, purpose: window.purpose },
+        pending:
+          state.pending === null
+            ? null
+            : {
+                actor: state.pending.actor,
+                character: state.pending.character,
+                target: state.pending.target,
+                cards: state.pending.cards.length,
+              },
+        myPick: pick,
+        winner: winnerOf(state),
+        terminal: isTerminal(state),
+      };
+    },
 
-  isTerminal(state: CitadelsState): boolean {
-    return isTerminal(state);
-  },
-};
-
+    isTerminal(state: CitadelsState): boolean {
+      return isTerminal(state);
+    },
+  };

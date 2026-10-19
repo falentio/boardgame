@@ -335,9 +335,7 @@ export const popWindow = (state: CitadelsState): CitadelsState =>
 export const resolveGeneric: WindowResolver = (ctx) => popWindow(ctx.state);
 
 const claimsInRankOrder = (claims: readonly Claim[]): readonly Claim[] =>
-  [...claims].sort(
-    (a, b) => specOfCharacter(a.character).rank - specOfCharacter(b.character).rank,
-  );
+  [...claims].sort((a, b) => specOfCharacter(a.character).rank - specOfCharacter(b.character).rank);
 
 /** The live seats in crown order, crown holder first. */
 export const crownOrder = (state: CitadelsState): readonly SeatId[] => {
@@ -361,10 +359,10 @@ export const resolveDraftPick: WindowResolver = (ctx) => {
   const order = draft.order.slice(1);
   const next = order[0];
   if (next !== undefined) {
-    return withSteps(
-      { ...ctx.state, draft: { ...draft, pool, picks, picker: next, order } },
-      [winStep("draft-pick", [next]), ...ctx.state.steps.slice(1)],
-    );
+    return withSteps({ ...ctx.state, draft: { ...draft, pool, picks, picker: next, order } }, [
+      winStep("draft-pick", [next]),
+      ...ctx.state.steps.slice(1),
+    ]);
   }
   const claimed = claimsInRankOrder(picks);
   const first = claimed[0];
@@ -487,10 +485,10 @@ const recordAlchemistSpend = (
   seat: SeatId,
   goldPaid: number,
 ): CitadelsState =>
-  goldPaid <= 0 || activeCharacterOf(state, seat) !== 'alchemist'
+  goldPaid <= 0 || activeCharacterOf(state, seat) !== "alchemist"
     ? state
     : withPending(state, {
-        ...emptyPending(seat, 'alchemist'),
+        ...emptyPending(seat, "alchemist"),
         gold: (state.pending?.gold ?? 0) + goldPaid,
       });
 
@@ -507,6 +505,25 @@ const recordAlchemistSpend = (
 const buildBlockedByThreat = (state: CitadelsState, seat: SeatId): boolean => {
   const character = activeCharacterOf(state, seat);
   return character !== null && (state.threats ?? []).includes(character);
+};
+
+/**
+ * The gold a build of hand index `card` moves out of the builder's purse: the
+ * terms the builder's own city folds into the card's price, what the build pays
+ * in cards or by destroying a district instead of gold, the gold a city card
+ * hands back once the district stands (the Factory), and the tax the build owes.
+ * `tryBuild` is the one thing that prices a build, so the price is asked of it
+ * rather than re-derived; it is pure, so the state handed in comes back untouched,
+ * though the hooks it runs consume `rng`.
+ */
+export const buildPrice = (
+  state: CitadelsState,
+  seat: SeatId,
+  card: number,
+  rng: Random,
+): number => {
+  const purse = playerOf(state, seat).gold;
+  return purse - playerOf(tryBuild(state, seat, card, rng), seat).gold;
 };
 
 /**
@@ -546,7 +563,8 @@ export const tryBuild = (
 
   if (destroy) {
     if (city.length === 0) return withSteps(state, []);
-    const at = destroySource === null ? -1 : city.findIndex((placed) => placed.id === destroySource);
+    const at =
+      destroySource === null ? -1 : city.findIndex((placed) => placed.id === destroySource);
     const gone = city[at < 0 ? 0 : at];
     city = city.filter((_, i) => i !== (at < 0 ? 0 : at));
     // A destroyed district and any cards tucked under it sink to the bottom of
@@ -588,7 +606,12 @@ export const tryBuild = (
   // A build that paid in gold or cards is confiscatable; a build that destroyed a
   // district (Framework, Necropolis) is not. The gold spent rides on pending so
   // the Magistrate refunds only gold, never the cards a Den consumed.
-  if (paid && warrant !== undefined && magistrate !== null && seatHolding(state, warrant) === seat) {
+  if (
+    paid &&
+    warrant !== undefined &&
+    magistrate !== null &&
+    seatHolding(state, warrant) === seat
+  ) {
     const carrying = withPending(taxed, {
       ...emptyPending(magistrate, null),
       note: CONFISCATE_REFUND_NOTE,
@@ -649,9 +672,7 @@ const withMuseumOffer = (
   if (!museumIn(state, seat)) return { state, steps: cont };
   const hasTurn = cont.some(
     (step) =>
-      step.kind === "window" &&
-      step.window.purpose === "turn" &&
-      step.window.seats.includes(seat),
+      step.kind === "window" && step.window.purpose === "turn" && step.window.seats.includes(seat),
   );
   if (hasTurn) return { state, steps: cont };
   const standing = state.pending;
@@ -679,13 +700,17 @@ const endTurnThen = (rest: readonly Step[]): readonly Step[] => {
   return rest.some((step) => step.kind === "end-turn") ? rest : [END_TURN, ...rest];
 };
 
+/** The gather's gold: two coins, before any `onIncome` district hook (the School of Magic). */
+export const GATHER_GOLD = 2;
+
 /** The gather: 2 gold, then any `onIncome` district hooks (the School of Magic). */
 const gatherGold = (
   state: CitadelsState,
   seat: SeatId,
   rest: readonly Step[],
   rng: Random,
-): CitadelsState => runDistrictHooks(addGold(state, seat, 2), "onIncome", seat, rest, rng);
+): CitadelsState =>
+  runDistrictHooks(addGold(state, seat, GATHER_GOLD), "onIncome", seat, rest, rng);
 
 /**
  * The seat's own turn windows, dropped from a continuation so the build limit
@@ -748,7 +773,8 @@ export const relocateEffectBelowThreat = (
   // put the build window ahead of the ability (D19-1/D19-2).
   if (resumed) return steps;
   const turnAt = steps.findIndex(
-    (step) => step.kind === "window" && step.window.purpose === "turn" && step.window.seats.includes(seat),
+    (step) =>
+      step.kind === "window" && step.window.purpose === "turn" && step.window.seats.includes(seat),
   );
   if (turnAt < 0) return steps;
   const threatAt = steps.findIndex(isThreatWindow);
@@ -859,9 +885,7 @@ export const resolveTurn: WindowResolver = (ctx) => {
   const markGathered = (s: CitadelsState): CitadelsState =>
     withPending(
       s,
-      resumedWitch
-        ? emptyPending(seat, resume?.character ?? null)
-        : turnGatheredPending(seat),
+      resumedWitch ? emptyPending(seat, resume?.character ?? null) : turnGatheredPending(seat),
     );
   // End the turn, clearing the turn marker so a following Museum keep (which the
   // gather keep distinguishes by a bare pending) is not misrouted. The Alchemist's
@@ -879,15 +903,10 @@ export const resolveTurn: WindowResolver = (ctx) => {
   // opens the shortfall offer and retries below it; a build under the limit re-offers
   // the build window; anything else ends the turn. The build's own follow-up windows
   // (the Magistrate's confiscation) lead the continuation.
-  const applyBuild = (
-    base: CitadelsState,
-    card: number,
-    cont: readonly Step[],
-  ): CitadelsState => {
+  const applyBuild = (base: CitadelsState, card: number, cont: readonly Step[]): CitadelsState => {
     const built = tryBuild(base, seat, card, ctx.rng);
     const builtId = playerOf(base, seat).hand[card];
-    const succeeded =
-      playerOf(built, seat).hand.length < playerOf(base, seat).hand.length;
+    const succeeded = playerOf(built, seat).hand.length < playerOf(base, seat).hand.length;
     // The Cardinal's shortfall offer is a build-path clause the plain turn
     // reaches; the resume reaches it too (the Witch plays the Cardinal's turn with
     // her own gold). Keying this on !resumedWitch silently dropped the offer on the
@@ -918,9 +937,7 @@ export const resolveTurn: WindowResolver = (ctx) => {
   };
 
   const threatened =
-    !resumedWitch &&
-    playedCharacter !== null &&
-    (state.threats ?? []).includes(playedCharacter);
+    !resumedWitch && playedCharacter !== null && (state.threats ?? []).includes(playedCharacter);
   // The threatened seat's turn window is visited twice: the pre-threat window,
   // with the threat window standing directly below it, and the post-threat window
   // below the resolved threat. Resolving the threat drops the character from
@@ -959,10 +976,7 @@ export const resolveTurn: WindowResolver = (ctx) => {
     const below =
       threatAt < 0
         ? rest
-        : [
-            ...withoutTurnWindows(rest.slice(0, threatAt), seat),
-            ...rest.slice(threatAt + 1),
-          ];
+        : [...withoutTurnWindows(rest.slice(0, threatAt), seat), ...rest.slice(threatAt + 1)];
     // Where the turn's build window belongs below the resolved threat. The plain
     // turn builds AFTER its ability: the effect's windows sit above its gather
     // window, so they precede its build (the Scholar draws and keeps before it
@@ -979,8 +993,7 @@ export const resolveTurn: WindowResolver = (ctx) => {
     // rather than depending on the pending the relocated abilities leave behind.
     const leadsWithResolve = below[0]?.kind === "resolve";
     const endAt = below.findIndex((step) => step.kind === "end-turn");
-    const ability: readonly Step[] =
-      leadsWithResolve || endAt < 0 ? below : below.slice(0, endAt);
+    const ability: readonly Step[] = leadsWithResolve || endAt < 0 ? below : below.slice(0, endAt);
     const close: readonly Step[] = leadsWithResolve || endAt < 0 ? [] : below.slice(endAt);
     const rearm: Step = { kind: "arm", pending: turnGatheredPending(seat) };
     const belowThreat: readonly Step[] =
@@ -1153,11 +1166,7 @@ const withThreat = (
       ? stack.findIndex((step) => step.kind === "resolve")
       : stack.findIndex((step) => step.kind === "window" && step.window.purpose === "turn");
   if (at < 0) return [winStep("blackmailer-threat", [seat]), ...stack];
-  return [
-    ...stack.slice(0, at + 1),
-    winStep("blackmailer-threat", [seat]),
-    ...stack.slice(at + 1),
-  ];
+  return [...stack.slice(0, at + 1), winStep("blackmailer-threat", [seat]), ...stack.slice(at + 1)];
 };
 
 /**
