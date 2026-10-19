@@ -73,9 +73,14 @@ const geometry = await page.eval(`(() => {
 
 const firstTarget =
   "[data-slot=citadels-choice-option], [data-slot=citadels-hand-tile], [data-slot=citadels-character-card], [data-slot=citadels-action], [data-slot=citadels-cast-row]";
-if (geometry.board === null) {
-  const said = await page.eval("document.body.innerText.replace(/\s+/g, ' ').slice(0, 240)");
-  throw new Error("the page drew no board for " + purpose + ": " + String(said));
+// The page falls back to its own demo board when a fold throws, so a drawn board
+// proves nothing. The label carries the frame count only when THIS purpose folded,
+// and the surface says so in words when the engine reached no such window.
+if (read.board !== true || !/FOLDED IN [0-9]+ FRAMES/.test(String(read.purpose ?? "").toUpperCase())) {
+  const said = await page.eval(
+    "(document.querySelector('[data-slot=citadels-surface]') || document.body).innerText.replace(/\s+/g, ' ').slice(0, 240)",
+  );
+  throw new Error("the page did not fold " + purpose + ": " + String(said));
 }
 await page.hover(firstTarget, 1200);
 await page.unhover();
