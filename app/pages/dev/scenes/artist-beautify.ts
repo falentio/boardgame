@@ -1,4 +1,4 @@
-import { answeringSeat, auto, castWith, openPurpose, type Decide, type Scene } from "./kit.ts";
+import { answeringSeat, auto, openPurpose, type Decide, type Scene } from "./kit.ts";
 import { playerOf } from "#shared/core/lockstep/games/citadels/helpers.ts";
 import type { CharacterId, CitadelsState } from "#shared/core/lockstep/games/citadels/index.ts";
 
