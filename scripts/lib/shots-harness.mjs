@@ -80,6 +80,11 @@ export const createShots = ({ name, base, out, viewport, detail = "text" }) => {
   let checks = 0;
   let answered = 0;
   let launched = 0;
+  /** Event hooks, so a script that needs a Chrome event (a screencast frame) can take it. */
+  const hooks = new Map();
+  const on = (method, handler) => {
+    hooks.set(method, [...(hooks.get(method) ?? []), handler]);
+  };
 
   const check = (ok, label, value) => {
     checks += 1;
@@ -88,12 +93,13 @@ export const createShots = ({ name, base, out, viewport, detail = "text" }) => {
   };
   const info = (label, value) => console.log("INFO " + label + (value === undefined ? "" : " :: " + value));
 
-  const launch = async ({ label = "page", debugPort, finePointer = false } = {}) => {
+  const launch = async ({ label = "page", debugPort, finePointer = false, windowSize } = {}) => {
     const port = debugPort ?? (await freePort());
     const profile = "/tmp/" + name + "-" + label + "-" + process.pid + "-" + (launched += 1);
     rmSync(profile, { recursive: true, force: true });
     const flags = ["--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--user-data-dir=" + profile, "--remote-debugging-port=" + port, "--remote-allow-origins=*"];
     if (finePointer) flags.push(FINE_POINTER_FLAGS);
+    if (windowSize !== undefined) flags.push("--window-size=" + windowSize.width + "," + windowSize.height);
     flags.push("about:blank");
     const chrome = spawn("/usr/bin/google-chrome", flags, { stdio: "ignore", detached: true });
     let wsUrl = null;
@@ -123,6 +129,8 @@ export const createShots = ({ name, base, out, viewport, detail = "text" }) => {
         errors.push(message.params.exceptionDetails.text);
       } else if (message.method === "Runtime.consoleAPICalled" && message.params.type === "error") {
         errors.push(message.params.args.map((arg) => arg.value ?? arg.description).join(" "));
+      } else if (hooks.has(message.method)) {
+        for (const handler of hooks.get(message.method)) handler(message.params);
       } else if (message.method === "Network.requestWillBeSent") {
         const request = message.params.request;
         const body = typeof request.postData === "string" ? request.postData : null;
@@ -230,7 +238,7 @@ export const createShots = ({ name, base, out, viewport, detail = "text" }) => {
         } catch {}
       },
     };
-    return { page, send, session, errors, postings, close: page.close };
+    return { page, send, session, errors, postings, on, close: page.close };
   };
 
   const signUp = async (label) => {

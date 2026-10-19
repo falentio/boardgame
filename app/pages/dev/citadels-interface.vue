@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import CitadelsBoard from "@/components/citadels/board/CitadelsBoard.vue";
 import { citadelsBoardOf, type CitadelsBoard as Board } from "@/composables/citadels-board.ts";
 import {
@@ -20,6 +20,8 @@ import {
 } from "#shared/core/lockstep/index.ts";
 import { seatId } from "#shared/rooms/ids.ts";
 import type { WindowPurpose } from "#shared/core/lockstep/games/citadels/state.ts";
+import { foldScene, NAMES as SCENE_NAMES, viewOf } from "./scenes/kit.ts";
+import { SCENES } from "./scenes/index.ts";
 
 definePageMeta({ layout: false });
 
@@ -106,9 +108,32 @@ const turnState = (() => {
   throw new Error("the engine reached no turn window owed by the viewer seat");
 })();
 
+const route = useRoute();
+
+/** A purpose recording names its scene in the query; the page otherwise plays its own demo. */
+const scenePurpose = typeof route.query.p === "string" ? route.query.p : null;
+const sceneFold = scenePurpose === null ? null : (SCENES.get(scenePurpose) ?? null);
+if (scenePurpose !== null && sceneFold === null) throw new Error("no scene declares " + scenePurpose);
+const sceneError = ref<string | null>(null);
+const folded = ((): { readonly state: CitadelsState; readonly frames: number } | null => {
+  if (sceneFold === null) return null;
+  try {
+    return foldScene(sceneFold);
+  } catch (error) {
+    sceneError.value = error instanceof Error ? error.message : String(error);
+    return null;
+  }
+})();
+
+onMounted(() => {
+  (window as unknown as { __purposeReady?: boolean }).__purposeReady = true;
+});
+
 const showing = ref<"turn" | "draft">("turn");
 const board = computed<Board>(() =>
-  citadelsBoardOf(citadels.project(showing.value === "turn" ? turnState : deal, ANN), NAMES),
+  folded === null || sceneError.value !== null
+    ? citadelsBoardOf(citadels.project(showing.value === "turn" ? turnState : deal, ANN), NAMES)
+    : citadelsBoardOf(viewOf(folded.state), SCENE_NAMES),
 );
 
 const pick = (character: CharacterId): void => {
@@ -127,7 +152,15 @@ const pick = (character: CharacterId): void => {
       <span data-slot="citadels-phase" class="text-sm leading-none font-semibold tabular-nums">
         Round {{ board.table.round }} · {{ board.table.phaseLabel }}
       </span>
+      <span
+        v-if="scenePurpose !== null"
+        data-slot="purpose-label"
+        class="citadels-piece citadels-piece--plate px-2 py-1 font-mono text-[0.5rem] tracking-[0.14em] uppercase"
+      >
+        {{ scenePurpose }} · folded in {{ folded?.frames }} frames<template v-if="sceneError !== null"> · {{ sceneError }}</template>
+      </span>
       <button
+        v-else
         data-slot="citadels-interface-scene"
         data-scene="draft"
         type="button"
