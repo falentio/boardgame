@@ -2,7 +2,10 @@
 // unless the page folded THAT purpose. The surface falls back to its own demo board
 // when a fold throws, so a drawn board alone proves nothing: the label must carry a
 // frame count and the text must not say the engine reached no window.
-import { readFileSync } from "node:fs";
+//
+// With no --purpose it walks every purpose in the recordings manifest and writes
+// .audit/purpose-webm/windows.tsv: the evidence behind each recording.
+import { readFileSync, writeFileSync } from "node:fs";
 import { argOf, checkedArgs, createShots, originOf, serverAnswers } from "./lib/shots-harness.mjs";
 
 const args = checkedArgs(process.argv.slice(2), ["--purpose", "--port"]);
@@ -19,18 +22,11 @@ const { page, close } = await shots.launch({ label: "report", windowSize: { widt
 
 const READ = [
   "(() => {",
-  "  const r = (sel) => {",
-  "    const el = document.querySelector(sel);",
-  "    if (el === null) return null;",
-  "    const b = el.getBoundingClientRect();",
-  "    return { x: Math.round(b.left), y: Math.round(b.top), w: Math.round(b.width), h: Math.round(b.height) };",
-  "  };",
   "  const surface = document.querySelector('[data-slot=citadels-surface]');",
   "  return {",
   "    label: document.querySelector('[data-slot=purpose-label]') ? document.querySelector('[data-slot=purpose-label]').innerText : null,",
   "    text: (surface ? surface.innerText : '').replace(/\\s+/g, ' ').trim().slice(0, 300),",
-  "    board: r('[data-slot=citadels-board]') !== null,",
-  "    window: r('[data-slot=citadels-choice], [data-slot=citadels-pick], [data-slot=citadels-picker], [data-slot=citadels-keep]'),",
+  "    board: document.querySelector('[data-slot=citadels-board]') !== null,",
   "    choices: document.querySelectorAll('[data-slot=citadels-choice-option]').length,",
   "    picks: document.querySelectorAll('[data-slot=citadels-picker-card]').length,",
   "    keeps: document.querySelectorAll('[data-slot=citadels-keep] button').length,",
@@ -40,6 +36,7 @@ const READ = [
   "})()",
 ].join("\n");
 
+const rows = [["purpose", "folded", "refused", "choices", "picks", "keeps", "actions", "fits", "frames"].join("\t")];
 const bad = [];
 for (const purpose of purposes) {
   await page.goto(BASE + "/dev/citadels-interface?p=" + purpose, 600);
@@ -51,13 +48,20 @@ for (const purpose of purposes) {
   const got = await page.eval(READ);
   const label = String(got.label ?? "");
   const text = String(got.text ?? "");
-  const folded = /FOLDED IN [0-9]+ FRAMES/.test(label.toUpperCase());
+  const upper = label.toUpperCase();
+  const folded = /FOLDED IN [0-9]+ FRAMES/.test(upper);
+  const frames = folded ? Number(/FOLDED IN ([0-9]+) FRAMES/.exec(upper)[1]) : -1;
   const refused = /REACHED NO/.test(text.toUpperCase());
   const controls = got.choices + got.picks + got.keeps + got.actions;
   const ok = got.board === true && folded && !refused && controls > 0 && got.fitsViewport === true;
   if (!ok) bad.push(purpose);
-  console.log((ok ? "OK   " : "BAD  ") + purpose.padEnd(22) + "folded=" + String(folded) + " refused=" + String(refused) + " choices=" + String(got.choices) + " picks=" + String(got.picks) + " keeps=" + String(got.keeps) + " actions=" + String(got.actions) + " fits=" + String(got.fitsViewport));
+  rows.push([purpose, folded, refused, got.choices, got.picks, got.keeps, got.actions, got.fitsViewport, frames].join("\t"));
+  console.log((ok ? "OK   " : "BAD  ") + purpose.padEnd(22) + "frames=" + String(frames).padEnd(4) + " choices=" + String(got.choices) + " picks=" + String(got.picks) + " keeps=" + String(got.keeps) + " actions=" + String(got.actions) + " fits=" + String(got.fitsViewport));
   if (!ok) console.log("      " + label + " :: " + text.slice(0, 170));
 }
 close();
+if (only === null) {
+  writeFileSync(".audit/purpose-webm/windows.tsv", rows.join("\n") + "\n");
+  console.log("wrote .audit/purpose-webm/windows.tsv for " + String(purposes.length) + " purposes");
+}
 console.log(bad.length === 0 ? "ALL " + String(purposes.length) + " PURPOSES FOLD AND DRAW A WINDOW" : "NOT PROVEN: " + bad.join(", "));
