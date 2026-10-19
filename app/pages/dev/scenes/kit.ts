@@ -10,6 +10,7 @@ import {
   type Rank,
   type WindowPurpose,
 } from "#shared/core/lockstep/games/citadels/index.ts";
+import type { DistrictId } from "#shared/core/lockstep/games/citadels/districts.ts";
 import {
   act,
   frameIndex,
@@ -41,10 +42,15 @@ export const NAMES = new Map([
 
 export type Decide = (seat: SeatId, state: CitadelsState) => CitadelsAction | null;
 
-/** A scene names the purpose it must fold to, the cast that can reach it, and how to play. */
+/**
+ * A scene names the purpose it must fold to, the cast and deck that can reach it,
+ * and how to play.
+ */
 export interface Scene {
   readonly purpose: WindowPurpose;
   readonly cast: readonly CharacterId[];
+  /** The 14 unique districts the fold deals; the engine's default when a scene names none. */
+  readonly uniques?: readonly DistrictId[];
   readonly decide?: Decide;
   readonly until?: (state: CitadelsState) => boolean;
   /** Who sits at the table. Three by default; a scene may need a full five. */
@@ -126,7 +132,11 @@ export const viewOf = (state: CitadelsState): CitadelsView =>
 export const foldScene = (scene: Scene): { readonly state: CitadelsState; readonly frames: number } => {
   const decide = scene.decide ?? auto;
   const ready = scene.until ?? ((): boolean => true);
-  let state = citadels.genesis({ cast: [...scene.cast] }, makeRoster(scene.seats ?? SEATS), makeRandom(SEED));
+  let state = citadels.genesis(
+    { cast: [...scene.cast], uniques: scene.uniques },
+    makeRoster(scene.seats ?? SEATS),
+    makeRandom(SEED),
+  );
   for (let frames = 0; frames < 4000; frames += 1) {
     if (openPurpose(state) === scene.purpose && ready(state)) return { state, frames };
     state = advance(state, decide);
