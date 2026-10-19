@@ -9,6 +9,7 @@ import type {
 } from "#shared/core/lockstep/games/citadels/index.ts";
 import { CITY_TARGET, specOfCharacter } from "#shared/core/lockstep/games/citadels/index.ts";
 import type { WindowPurpose } from "#shared/core/lockstep/games/citadels/state.ts";
+import { windowChoicesFor, type WindowChoice } from "./window-choices.ts";
 
 /** A district sitting in a city, with the Artist's beautify marker on it. */
 export interface CityCard {
@@ -54,6 +55,8 @@ export interface OpenWindow {
   readonly purpose: WindowPurpose;
   readonly label: string;
   readonly owedByMe: boolean;
+  /** The legal inputs the window leaves the viewer, empty when a rival's input counts. */
+  readonly choices: readonly WindowChoice[];
 }
 
 export interface PendingAction {
@@ -71,6 +74,8 @@ export interface CitadelsTable {
   readonly phase: Phase;
   readonly phaseLabel: string;
   readonly cast: readonly CastSlot[];
+  /** The cards in flight for the window the viewer owes; empty while a rival awaits theirs. */
+  readonly drawn: readonly DistrictId[];
   readonly myPick: CharacterId | null;
   readonly window: OpenWindow | null;
   readonly pending: PendingAction | null;
@@ -84,6 +89,8 @@ export interface CitadelsBoard {
   readonly table: CitadelsTable;
   /** Clockwise from the viewer's seat, so both layouts agree on the table order. */
   readonly opponents: readonly OpponentSeat[];
+  /** The same order, with the viewer's own seat first: what the players rail draws. */
+  readonly seats: readonly SeatPlate[];
   readonly me: MySeat;
 }
 
@@ -163,10 +170,17 @@ export const citadelsBoardOf = (
 ): CitadelsBoard => {
   const nameOf = (seat: SeatId): string => names.get(seat) ?? seat;
   const ordered = rotatedToViewer(view.players, view.seat);
-  const mine = ordered[0];
+  const [mine, ...rivals] = ordered.map((player) => plateOf(player, view, nameOf));
   // `project` refuses a seat that is not a player, so a view without its own row
   // is a broken view rather than an input to handle.
   if (mine === undefined) throw new Error("citadels view is missing the viewer's seat");
+  const me: MySeat = { ...mine, kind: "me", hand: view.myHand, cityTarget: CITY_TARGET };
+  const opponents: readonly OpponentSeat[] = rivals.map((plate, at) => ({
+    ...plate,
+    kind: "rival",
+    handCount: ordered[at + 1]?.handCount ?? 0,
+  }));
+  const owedByMe = view.owedSeats.includes(view.seat);
   return {
     table: {
       round: view.round,
@@ -177,13 +191,15 @@ export const citadelsBoardOf = (
         return { character, name: spec.name, rank: spec.rank, state: castStateOf(view, character) };
       }),
       myPick: view.myPick,
+      drawn: view.myDraw,
       window:
         view.window === null
           ? null
           : {
               purpose: view.window.purpose,
               label: citadelsPurposeLabel(view.window.purpose),
-              owedByMe: view.owedSeats.includes(view.seat),
+              owedByMe,
+              choices: windowChoicesFor(view, nameOf),
             },
       pending:
         view.pending === null
@@ -205,16 +221,8 @@ export const citadelsBoardOf = (
       winner: view.winner === null ? null : { seat: view.winner, name: nameOf(view.winner) },
       terminal: view.terminal,
     },
-    opponents: ordered.slice(1).map((player): OpponentSeat => ({
-      ...plateOf(player, view, nameOf),
-      kind: "rival",
-      handCount: player.handCount,
-    })),
-    me: {
-      ...plateOf(mine, view, nameOf),
-      kind: "me",
-      hand: view.myHand,
-      cityTarget: CITY_TARGET,
-    },
+    opponents,
+    seats: [me, ...opponents],
+    me,
   };
 };

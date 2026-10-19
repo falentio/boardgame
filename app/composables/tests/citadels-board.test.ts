@@ -13,8 +13,32 @@ import {
   type CitadelsAction,
   type CitadelsView,
 } from "#shared/core/lockstep/games/citadels/index.ts";
+import type { WindowPurpose } from "#shared/core/lockstep/games/citadels/state.ts";
 import { seatId, type SeatId } from "#shared/rooms/ids.ts";
-import { citadelsBoardOf, citadelsPurposeLabel, phaseLabel } from "../citadels-board.ts";
+import {
+  citadelsBoardOf,
+  citadelsPurposeLabel,
+  phaseLabel,
+  type CitadelsBoard,
+} from "../citadels-board.ts";
+import { windowChoiceValue, windowChoicesFor } from "../window-choices.ts";
+import {
+  advance,
+  autoAction,
+  autoStep,
+  castWith,
+  dealFor,
+  openPurpose,
+  play,
+  rawHand,
+  withGold,
+  withHand,
+  type CitadelsState,
+  type CharacterId,
+} from "../../../shared/core/tests/lockstep/citadels/driver.ts";
+import { specOfDistrict } from "#shared/core/lockstep/games/citadels/districts.ts";
+import { destroyPrice } from "#shared/core/lockstep/games/citadels/characters/warlord.ts";
+import { greatWallToll } from "#shared/core/lockstep/games/citadels/districts/great-wall.ts";
 
 const ANN = seatId("ann");
 const BOB = seatId("bob");
@@ -46,6 +70,14 @@ test("the table starts with the viewer's own seat, then runs clockwise", () => {
   expect(board.me.seat).toBe(BOB);
   expect(board.me.kind).toBe("me");
   expect(board.opponents.map((seat) => seat.seat)).toEqual([CARA, ANN]);
+});
+
+test("the players rail carries every seat, the viewer's own first", () => {
+  const board = citadelsBoardOf(view(BOB), names());
+  expect(board.seats.map((seat) => seat.seat)).toEqual([BOB, CARA, ANN]);
+  expect(board.seats.map((seat) => seat.kind)).toEqual(["me", "rival", "rival"]);
+  expect(board.seats[0]).toBe(board.me);
+  expect(board.seats.at(-1)?.name).toBe("Ada");
 });
 
 test("the viewer's plate carries cards where a rival's carries a count", () => {
@@ -102,28 +134,63 @@ test("the window names its purpose and whether the viewer owes it", () => {
   expect(theirs.table.window?.owedByMe).toBe(false);
 });
 
-test("the cast marks the faceup discards, the viewer's own pick, and the card in flight", () => {
-  const base = view(ANN);
-  const faceup = base.cast[0];
-  const picked = base.cast[1];
-  const inFlight = base.cast[2];
-  if (faceup === undefined || picked === undefined || inFlight === undefined) {
-    throw new Error("the base cast is too small for this test");
+/** Fold the real draft until the viewer has picked and a public discard is up. */
+const midDraft = (): CitadelsState => {
+  let folded = genesis();
+  for (let i = 0; i < 60; i += 1) {
+    const mine = citadels.project(folded, ANN);
+    if (mine.myPick !== null && mine.faceup.length > 0) return folded;
+    folded = autoStep(folded);
   }
-  const board = citadelsBoardOf(
-    withView(base, {
-      faceup: [faceup],
-      myPick: picked,
-      pending: { actor: BOB, character: inFlight, target: ANN, cards: 2 },
-    }),
-    names(),
+  throw new Error("no draft pick in 60 frames");
+};
+
+/** Fold the real round until a character's turn is in flight. */
+const inFlightTurn = (): CitadelsState => {
+  let folded = genesis();
+  for (let i = 0; i < 4000; i += 1) {
+    const pending = folded.pending;
+    if (openPurpose(folded) === "turn" && pending !== null && pending.character !== null) {
+      return folded;
+    }
+    folded = autoStep(folded);
+  }
+  throw new Error("no turn with a character in flight in 4000 frames");
+};
+
+const castStateIn = (board: CitadelsBoard, character: CharacterId) =>
+  board.table.cast.find((slot) => slot.character === character)?.state;
+
+test("a real draft's cast marks the faceup discard and the viewer's own pick", () => {
+  const state = midDraft();
+  const mine = citadels.project(state, ANN);
+  const board = citadelsBoardOf(mine, names());
+  const faceup = mine.faceup[0];
+  const picked = mine.myPick;
+  if (faceup === undefined || picked === null) {
+    throw new Error("the draft lost its public discard or the viewer's pick");
+  }
+  expect(castStateIn(board, faceup)).toBe("faceup");
+  expect(castStateIn(board, picked)).toBe("mine");
+  expect(board.table.cast.filter((slot) => slot.state === "available")).toHaveLength(
+    mine.cast.length - 2,
   );
-  const stateOf = (character: string) =>
-    board.table.cast.find((slot) => slot.character === character)?.state;
-  expect(stateOf(inFlight)).toBe("pending");
-  expect(stateOf(picked)).toBe("mine");
-  expect(stateOf(faceup)).toBe("faceup");
-  expect(board.table.cast.filter((slot) => slot.state === "available")).toHaveLength(5);
+  expect(board.table.pending).toBeNull();
+});
+
+test("a real turn's cast marks the character in flight", () => {
+  const state = inFlightTurn();
+  const inFlight = state.pending?.character ?? null;
+  if (inFlight === null) throw new Error("the fold reached no character in flight");
+  const board = citadelsBoardOf(citadels.project(state, ANN), names());
+  expect(castStateIn(board, inFlight)).toBe("pending");
+  expect(board.table.cast.filter((slot) => slot.state === "available")).toHaveLength(
+    state.cast.length - 1,
+  );
+  // A turn has no draft, so `myPick` and `faceup` are empty and neither "mine"
+  // nor "faceup" can share a cast with "pending".
+  expect(board.table.myPick).toBeNull();
+  expect(board.table.cast.filter((slot) => slot.state === "faceup")).toHaveLength(0);
 });
 
 test("the cast carries each character's name and rank", () => {
@@ -249,4 +316,354 @@ test("phaseLabel covers every engine phase", () => {
   expect(phaseLabel("draft")).toBe("Draft");
   expect(phaseLabel("turn")).toBe("Turn");
   expect(phaseLabel("over")).toBe("Game over");
+});
+
+const foldedToKeep = (): { readonly state: ReturnType<typeof genesis>; readonly owner: SeatId } => {
+  let state = genesis();
+  for (let i = 0; i < 4000; i += 1) {
+    const pending = state.pending;
+    if (openPurpose(state) === "keep" && pending !== null && pending.cards.length === 2) {
+      return { state, owner: pending.actor };
+    }
+    state = autoStep(state);
+  }
+  throw new Error("no gather keep in 4000 frames");
+};
+
+test("the drawn pool reaches only the seat that owes the keep window", () => {
+  const { state, owner } = foldedToKeep();
+  const pool = state.pending?.cards ?? [];
+  const mine = citadels.project(state, owner);
+  expect(pool).toHaveLength(2);
+  expect(mine.window?.purpose).toBe("keep");
+  expect(mine.owedSeats).toEqual([owner]);
+  expect(mine.myDraw).toEqual(pool);
+  for (const rival of SEATS.filter((seat) => seat !== owner)) {
+    expect(citadels.project(state, rival).myDraw).toEqual([]);
+  }
+});
+
+test("the keep surface shows the drawn pair to its owner and nothing to a rival", () => {
+  const { state, owner } = foldedToKeep();
+  const pool = state.pending?.cards ?? [];
+  const rival = SEATS.find((seat) => seat !== owner);
+  if (rival === undefined) throw new Error("no rival seat");
+  const mine = citadelsBoardOf(citadels.project(state, owner), names());
+  expect(mine.table.window).toEqual({
+    purpose: "keep",
+    label: "Keep a card",
+    owedByMe: true,
+    choices: [],
+  });
+  expect(mine.table.drawn).toEqual(pool);
+  expect(citadelsBoardOf(citadels.project(state, rival), names()).table.drawn).toEqual([]);
+});
+const answeringSeat = (state: CitadelsState): SeatId => {
+  const top = state.steps[0];
+  if (top === undefined || top.kind !== "window") throw new Error("no window open");
+  return top.window.kind === "any"
+    ? (state.pending?.actor ?? state.active)
+    : (top.window.seats[0] ?? state.active);
+};
+
+/** The engine's own always-legal policy, read against a folded state. */
+const auto = (seat: SeatId, state: CitadelsState): CitadelsAction | null =>
+  autoAction(seat, citadels.project(state, seat));
+
+interface FoldOptions {
+  readonly cast?: readonly CharacterId[];
+  readonly wanted?: Readonly<Record<string, CharacterId>>;
+  readonly decide?: (seat: SeatId, state: CitadelsState) => CitadelsAction | null;
+  readonly until?: (state: CitadelsState) => boolean;
+}
+
+/** Fold real frames from a real deal until `purpose` is the window at the top. */
+const foldTo = (purpose: string, options: FoldOptions = {}): CitadelsState => {
+  const decide = options.decide ?? auto;
+  const ready = options.until ?? ((): boolean => true);
+  let state =
+    options.wanted === undefined
+      ? genesis()
+      : dealFor(
+          options.cast ?? BASE_CAST,
+          SEATS,
+          options.wanted,
+          undefined,
+          `fold-${purpose}`,
+        );
+  for (let i = 0; i < 4000; i += 1) {
+    if (openPurpose(state) === purpose && ready(state)) return state;
+    state = advance(state, decide);
+  }
+  throw new Error(`the engine reached no ${purpose} window in 4000 frames`);
+};
+
+const choicesAt = (state: CitadelsState) =>
+  citadelsBoardOf(citadels.project(state, answeringSeat(state)), names()).table.window?.choices ??
+  [];
+
+const withCast = (character: CharacterId) => ({ cast: castWith(character), wanted: { [ANN]: character } });
+
+test("a choose-character window offers every cast character the rule leaves nameable", () => {
+  const state = foldTo("choose-character");
+  const choices = choicesAt(state);
+  expect(state.cast.filter((id) => id !== "assassin")).toContain("thief");
+  expect(choices.map((choice) => choice.kind)).toEqual(["character", "character", "character", "character", "character", "character", "character"]);
+  expect(choices.map((choice) => choice.action)).toEqual(
+    state.cast
+      .filter((id) => id !== "assassin")
+      .map((character) => ({ t: "name-character", character })),
+  );
+  expect(choices.map((choice) => choice.label)).toContain("Thief");
+});
+
+test("a choose-seat window offers the rival seats and never the viewer's own", () => {
+  const state = foldTo("choose-seat", withCast("spy"));
+  const actor = answeringSeat(state);
+  const choices = choicesAt(state);
+  expect(choices.map((choice) => choice.kind)).toEqual(["seat", "seat"]);
+  expect(choices.map((choice) => choice.action)).toEqual(
+    SEATS.filter((seat) => seat !== actor).map((seat) => ({ t: "target", seat })),
+  );
+});
+
+/** Answer the Spy's choose-seat pass with a rival, so the type window below it opens. */
+const spySeat = (seat: SeatId, state: CitadelsState): CitadelsAction | null => {
+  if (openPurpose(state) === "choose-seat") {
+    const rival = SEATS.find((candidate) => candidate !== seat);
+    return rival === undefined ? null : { t: "target", seat: rival };
+  }
+  return auto(seat, state);
+};
+
+test("a choose-type window offers the district types the catalog declares", () => {
+  const state = foldTo("choose-type", { ...withCast("spy"), decide: spySeat });
+  const choices = choicesAt(state);
+  expect(choices.map((choice) => choice.kind)).toEqual(["type", "type", "type", "type", "type"]);
+  expect([...choices.map((choice) => choice.label)].sort()).toEqual([
+    "military",
+    "noble",
+    "religious",
+    "trade",
+    "unique",
+  ]);
+  expect(choices.every((choice) => choice.action.t === "name-type")).toBe(true);
+});
+
+test("a magician-discard window offers the viewer's own hand by index, then a stop", () => {
+  const state = foldTo("magician-discard", withCast("magician"));
+  const actor = answeringSeat(state);
+  const hand = rawHand(state, actor);
+  const choices = choicesAt(state);
+  expect(choices.slice(0, hand.length).map((choice) => choice.action)).toEqual(
+    hand.map((_, index) => ({ t: "keep", index })),
+  );
+  expect(choices.at(-1)).toEqual({
+    action: { t: "pass" },
+    label: "END",
+    kind: "confirm",
+    note: null,
+  });
+  expect(choices).toHaveLength(hand.length + 1);
+});
+
+test("a warlord-destroy window offers the target city's districts, the Keep aside", () => {
+  const state = foldTo("warlord-destroy", {
+    ...withCast("warlord"),
+    decide: (seat, folded) =>
+      openPurpose(folded) === "warlord-destroy" && folded.pending?.target === null
+        ? targetRichest(folded, seat)
+        : auto(seat, folded),
+    until: (folded) => folded.pending?.target !== null,
+  });
+  const target = state.pending?.target ?? null;
+  const city = state.players.find((player) => player.seat === target)?.city ?? [];
+  const actor = answeringSeat(state);
+  const purse = state.players.find((player) => player.seat === actor)?.gold ?? 0;
+  const choices = choicesAt(state);
+  const expected = city
+    .map((district, index) => ({ district, index }))
+    .filter(({ district }) => district.id !== "keep")
+    .map(({ district, index }) => ({
+      index,
+      district,
+      price: destroyPrice(district.id, district.gold) + greatWallToll(city),
+    }))
+    .filter(({ price }) => price <= purse);
+  expect(city.length).toBeGreaterThan(0);
+  expect(expected.length).toBeGreaterThan(0);
+  expect(choices.map((choice) => choice.action)).toEqual(
+    expected.map(({ index }) => ({ t: "keep", index })),
+  );
+  expect(choices.map((choice) => choice.kind)).toEqual(expected.map(() => "district"));
+  expect(choices.map((choice) => choice.note)).toEqual(expected.map(({ price }) => String(price)));
+});
+
+test("a trader-build window offers the trade districts in hand, then a stop", () => {
+  const state = foldTo("trader-build", withCast("trader"));
+  const actor = answeringSeat(state);
+  const trade = rawHand(state, actor)
+    .map((id, index) => ({ id, index }))
+    .filter(({ id }) => specOfDistrict(id).type === "trade");
+  const choices = choicesAt(state);
+  expect(choices.slice(0, trade.length).map((choice) => choice.action)).toEqual(
+    trade.map(({ index }) => ({ t: "build", card: index })),
+  );
+  expect(choices.map((choice) => choice.kind).slice(0, trade.length)).toEqual(
+    trade.map(() => "district"),
+  );
+  expect(choices.at(-1)?.label).toBe("STOP");
+});
+
+test("the windows the turn bar and the keep surface own carry no choices", () => {
+  const draft = citadelsBoardOf(view(ANN), names());
+  expect(draft.table.window?.purpose).toBe("draft-pick");
+  expect(draft.table.window?.choices).toEqual([]);
+  const { state } = foldedToKeep();
+  const owner = state.pending?.actor ?? ANN;
+  expect(citadelsBoardOf(citadels.project(state, owner), names()).table.window?.choices).toEqual([]);
+});
+
+test("an any window offers nothing to a seat whose report the resolver ignores", () => {
+  const state = foldTo("choose-character");
+  const actor = answeringSeat(state);
+  const rival = SEATS.find((seat) => seat !== actor);
+  if (rival === undefined) throw new Error("no rival seat");
+  const theirs = citadelsBoardOf(citadels.project(state, rival), names());
+  expect(theirs.table.window?.owedByMe).toBe(true);
+  expect(theirs.table.window?.choices).toEqual([]);
+  expect(choicesAt(state).length).toBeGreaterThan(0);
+});
+
+test("a tax-collect window offers the token and the decline its own rule names", () => {
+  const state = foldTo("tax-collect", withCast("tax-collector"));
+  expect(choicesAt(state)).toEqual([
+    { action: { t: "gold" }, label: "TAKE TOKEN", kind: "confirm", note: null },
+    { action: { t: "pass" }, label: "LEAVE IT", kind: "confirm", note: null },
+  ]);
+});
+
+/** A seat holding no district at all: the board a window has nothing to work on. */
+const emptyCity = (state: CitadelsState, seat: SeatId): CitadelsState => ({
+  ...state,
+  players: state.players.map((player) => (player.seat === seat ? { ...player, city: [] } : player)),
+});
+
+/** Name the rival with the most districts: the seat a two-stage window works on. */
+const targetRichest = (folded: CitadelsState, seat: SeatId): CitadelsAction => {
+  const pick = folded.players
+    .filter((player) => player.seat !== seat)
+    .sort((a, b) => b.city.length - a.city.length)[0];
+  return pick === undefined || pick.city.length === 0
+    ? { t: "pass" }
+    : { t: "target", seat: pick.seat };
+};
+
+/** Fold a two-stage window to the stage that reads the rival, not the seat. */
+const foldedToStage2 = (purpose: string, character: CharacterId): CitadelsState =>
+  foldTo(purpose, {
+    ...withCast(character),
+    decide: (seat, folded) =>
+      openPurpose(folded) === purpose && folded.pending?.target === null
+        ? targetRichest(folded, seat)
+        : auto(seat, folded),
+    until: (folded) => folded.pending?.target !== null,
+  });
+
+test("a warlord whose target holds no district is offered the window's own close", () => {
+  const state = foldedToStage2("warlord-destroy", "warlord");
+  const actor = answeringSeat(state);
+  const target = state.pending?.target ?? null;
+  if (target === null) throw new Error("the warlord's destroy window named no target");
+  const bare = emptyCity(state, target);
+  expect(choicesAt(bare)).toEqual([
+    { action: { t: "pass" }, label: "DESTROY NOTHING", kind: "confirm", note: null },
+  ]);
+  const played = play(bare, [[actor, { t: "pass" }]]);
+  expect(openPurpose(played)).not.toBe("warlord-destroy");
+});
+
+test("a wizard facing an empty rival hand is offered the window's own close", () => {
+  const state = foldedToStage2("wizard-take", "wizard");
+  const target = state.pending?.target ?? null;
+  if (target === null) throw new Error("the wizard's take window named no target");
+  expect(choicesAt(withHand(state, target, []))).toEqual([
+    { action: { t: "pass" }, label: "TAKE NOTHING", kind: "confirm", note: null },
+  ]);
+});
+
+test("a marshal who cannot pay for anything is offered the window's own close", () => {
+  const state = foldedToStage2("marshal-seize", "marshal");
+  const actor = answeringSeat(state);
+  expect(choicesAt(withGold(state, actor, 0))).toContainEqual({
+    action: { t: "pass" },
+    label: "SEIZE NOTHING",
+    kind: "confirm",
+    note: null,
+  });
+});
+
+test("every window this surface answers offers a control on a bare board", () => {
+  const state = foldedToStage2("warlord-destroy", "warlord");
+  const seat = answeringSeat(state);
+  const base = citadels.project(state, seat);
+  const window = base.window;
+  if (window === null) throw new Error("the folded state carries no window");
+  const bare = withView(
+    {
+      ...base,
+      players: base.players.map((player) => ({ ...player, gold: 0, hand: [], city: [] })),
+    },
+    { myHand: [], myDraw: [] },
+  );
+  const others: readonly WindowPurpose[] = ["draft-pick", "turn", "keep"];
+  const owned: readonly WindowPurpose[] = [
+    "choose-character",
+    "choose-seat",
+    "choose-type",
+    "magician-swap",
+    "magician-discard",
+    "seer-give",
+    "seer-receive",
+    "emperor-crown",
+    "abbot-split",
+    "cardinal-gold",
+    "wizard-take",
+    "diplomat-exchange",
+    "marshal-seize",
+    "artist-beautify",
+    "magistrate-confiscate",
+    "blackmailer-resolve",
+    "scholar-keep",
+    "trader-build",
+    "warlord-destroy",
+    "tax-collect",
+    "witch-resume",
+    "queen-income",
+    "thief-rob",
+    "witch-takeover",
+    "blackmailer-threat",
+    "armory-destroy",
+    "theatre-swap",
+  ];
+  expect(owned.length + others.length).toBe(30);
+  const nameOf = (seat: SeatId): string => names().get(seat) ?? seat;
+  for (const purpose of others) {
+    const theirs = withView(bare, { window: { ...window, purpose } });
+    expect(windowChoicesFor(theirs, nameOf), purpose).toEqual([]);
+  }
+  for (const purpose of owned) {
+    const mine = withView(bare, { window: { ...window, purpose } });
+    expect(windowChoicesFor(mine, nameOf).length, purpose).toBeGreaterThan(0);
+  }
+});
+
+test("windowChoiceValue reads the value an assertion wants off each kind of choice", () => {
+  expect(windowChoiceValue({ action: { t: "target", seat: BOB }, label: "Bo", kind: "seat", note: null })).toBe("bob");
+  expect(
+    windowChoiceValue({ action: { t: "keep", index: 3 }, label: "Tavern", kind: "district", note: null }),
+  ).toBe("3");
+  expect(
+    windowChoiceValue({ action: { t: "pass" }, label: "END", kind: "confirm", note: null }),
+  ).toBe("pass");
 });

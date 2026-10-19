@@ -1,99 +1,152 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { PlayingCards } from "@lucide/vue";
-import DistrictCard from "../DistrictCard.vue";
-import type { CastSlotState, CitadelsTable } from "@/composables/citadels-board.ts";
+import { specOfCharacter } from "#shared/core/lockstep/games/citadels/index.ts";
+import { defaultAvatarUrl } from "#shared/users/avatar.ts";
+import { INCOME_GRANT_WORDS } from "@/composables/citadels-income-words.ts";
+import type { CastSlot, CastSlotState, CitadelsBoard } from "@/composables/citadels-board.ts";
 import type { CharacterId } from "#shared/core/lockstep/games/citadels/index.ts";
+import "./citadels-skin.css";
 
-const props = defineProps<{ table: CitadelsTable }>();
+const props = defineProps<{ board: CitadelsBoard }>();
+const emit = defineEmits<{ pick: [character: CharacterId] }>();
 
-const STATE_CLASS: Readonly<Record<CastSlotState, string>> = {
-  available: "bg-muted/60 text-muted-foreground",
-  mine: "bg-primary text-primary-foreground",
-  faceup: "bg-card text-foreground ring-1 ring-foreground/20",
-  pending: "bg-amber-500 text-black",
+const table = computed(() => props.board.table);
+
+/** "gold / trade" — what the character pays per matching district, or null. */
+const incomeOf = (character: CharacterId): string | null => {
+  const spec = specOfCharacter(character);
+  if (spec.income === null) return null;
+  return `${INCOME_GRANT_WORDS[spec.income.grants.kind].bare} / ${spec.income.counts}`;
 };
 
-const castName = (character: CharacterId): string =>
-  props.table.cast.find((slot) => slot.character === character)?.name ?? character;
+/** The one word a row is flagged with, in the state's own ink. */
+const FLAG: Readonly<Record<CastSlotState, string>> = {
+  mine: "yours",
+  pending: "claims",
+  faceup: "shown",
+  available: "open",
+};
 
-const claim = computed(() => {
-  const pending = props.table.pending;
-  if (pending === null) return null;
-  const who =
-    pending.characterName === null
-      ? `${pending.actorName} is acting`
-      : `${pending.actorName} claims ${pending.characterName}`;
-  const on = pending.targetName === null ? "" : ` on ${pending.targetName}`;
-  const cards = pending.cards === 0 ? "" : ` · ${pending.cards} cards`;
-  return `${who}${on}${cards}`;
-});
+const INK: Readonly<Record<CastSlotState, string>> = {
+  mine: "var(--monokai-green)",
+  pending: "var(--monokai-pink)",
+  faceup: "var(--monokai-blue)",
+  available: "var(--monokai-line)",
+};
+
+/** A shown or available rank can be picked while the viewer owes a pick. */
+const pickable = (slot: CastSlot): boolean =>
+  table.value.window?.owedByMe === true && (slot.state === "faceup" || slot.state === "available");
+
+const pick = (slot: CastSlot): void => {
+  if (!pickable(slot)) return;
+  emit("pick", slot.character);
+};
 </script>
-
 <template>
-  <section
-    data-slot="citadels-table"
-    class="flex min-h-0 flex-col gap-2 overflow-y-auto rounded-xl border border-dashed border-foreground/15 bg-muted/30 p-3"
+  <aside
+    data-slot="citadels-global"
+    class="flex min-h-0 min-w-0 flex-col gap-1 overflow-y-auto p-1 font-mono text-monokai-fg group-data-[orientation=landscape]/surface:h-full group-data-[orientation=landscape]/surface:w-full"
   >
-    <div class="flex flex-col gap-1.5">
-      <span
-        class="text-[0.625rem] leading-none font-semibold tracking-[0.2em] text-muted-foreground uppercase"
-      >
-        Cast
+    <header
+      data-slot="citadels-global-plate"
+      class="citadels-piece citadels-piece--thick flex items-stretch"
+    >
+      <span class="flex min-w-0 flex-1 items-baseline gap-1.5 px-2 py-1.5">
+        <span data-slot="citadels-global-round" class="citadels-ink text-lg leading-none font-bold">{{ table.round }}</span>
+        <span class="citadels-label">round</span>
+        <span data-slot="citadels-global-title" class="citadels-label ms-auto">Citadels</span>
       </span>
-      <ul data-slot="citadels-cast" class="flex flex-wrap gap-1.5">
-        <li
-          v-for="slot in table.cast"
-          :key="slot.character"
-          data-slot="citadels-cast-chip"
-          :data-character="slot.character"
-          :data-state="slot.state"
-          class="rounded-full px-2 py-0.5 text-[0.6875rem] leading-tight font-medium"
-          :class="STATE_CLASS[slot.state]"
-        >
-          {{ slot.rank }} · {{ slot.name }}
-        </li>
-      </ul>
-      <p
-        v-if="table.myPick"
-        data-slot="citadels-pick"
-        class="text-xs leading-tight text-muted-foreground"
+      <span
+        data-slot="citadels-global-phase"
+        class="citadels-plate flex items-center px-2 text-[0.5625rem] leading-none font-bold tracking-[0.16em]"
+        >{{ table.phaseLabel }}</span
       >
-        Your pick this round: {{ castName(table.myPick) }}
-      </p>
-    </div>
+    </header>
 
     <p
       v-if="table.window"
-      data-slot="citadels-window"
-      role="status"
-      class="rounded-lg bg-card px-3 py-1.5 text-xs leading-tight font-medium ring-1 ring-foreground/10"
+      data-slot="citadels-prompt"
+      class="border-s-2 border-s-monokai-green ps-1.5 text-[0.5625rem] leading-tight tracking-[0.16em] text-monokai-green uppercase"
     >
       {{ table.window.label }}
-      <span v-if="table.window.owedByMe" class="text-primary"> · you owe input</span>
-    </p>
-    <p v-if="claim" role="status" class="text-xs leading-tight text-muted-foreground">
-      {{ claim }}
     </p>
 
-    <p
-      class="inline-flex items-center gap-1.5 text-xs leading-none text-muted-foreground tabular-nums"
-    >
-      <PlayingCards class="size-3.5" aria-hidden="true" />Deck {{ table.deckCount }}
-    </p>
-
-    <div v-if="table.discard.length > 0" class="flex flex-col gap-1.5">
-      <span
-        class="text-[0.625rem] leading-none font-semibold tracking-[0.2em] text-muted-foreground uppercase"
-      >
-        Discard
-      </span>
-      <ul data-slot="citadels-discard" class="flex flex-wrap gap-1.5">
-        <li v-for="(district, index) in table.discard" :key="`${district}-${index}`">
-          <DistrictCard :district="district" />
+    <section class="flex min-w-0 flex-col gap-1">
+      <span class="citadels-label">Cast</span>
+      <ul data-slot="citadels-cast" class="flex min-w-0 flex-col gap-1">
+        <li v-for="slot in table.cast" :key="slot.character" class="min-w-0">
+          <component
+            :is="pickable(slot) ? 'button' : 'div'"
+            :type="pickable(slot) ? 'button' : undefined"
+            data-slot="citadels-cast-row"
+            :data-character="slot.character"
+            :data-state="slot.state"
+            :style="{ '--ink': INK[slot.state] }"
+            :aria-label="`${slot.name}, ${FLAG[slot.state]}${pickable(slot) ? ', pick' : ''}`"
+            class="citadels-piece citadels-piece--thick flex w-full flex-1 items-stretch overflow-hidden text-left"
+            :class="pickable(slot) ? 'cursor-pointer' : ''"
+            @click="pick(slot)"
+          >
+            <span
+              data-slot="citadels-cast-emblem"
+              class="m-1.5 flex size-7 shrink-0 items-center justify-center overflow-hidden bg-monokai-bg"
+            >
+              <img :src="defaultAvatarUrl(slot.character)" alt="" class="size-6 object-cover" />
+            </span>
+            <span class="flex min-w-0 flex-1 flex-col justify-center gap-1 py-1.5 pe-1.5">
+              <span class="text-[0.6875rem] leading-none font-bold tracking-[0.03em] uppercase [overflow-wrap:anywhere]">{{
+                slot.name
+              }}</span>
+              <span v-if="incomeOf(slot.character)" class="min-w-0">
+                <span class="citadels-label !text-[0.5rem]">{{ incomeOf(slot.character) }}</span>
+              </span>
+            </span>
+            <span
+              data-slot="citadels-cast-flag"
+              class="citadels-plate m-1.5 flex w-[48px] shrink-0 items-center justify-center"
+              :style="{ '--plate-ink': INK[slot.state] }"
+            >
+              <span class="text-[0.5rem] leading-none font-bold tracking-[0.14em]">{{
+                FLAG[slot.state]
+              }}</span>
+            </span>
+          </component>
         </li>
       </ul>
-    </div>
+    </section>
 
-  </section>
+    <section class="flex items-stretch gap-1 border-t border-t-monokai-line pt-1">
+      <span
+        data-slot="citadels-deck"
+        class="citadels-piece flex flex-1 items-center justify-between px-1.5 py-1"
+      >
+        <span class="citadels-label">deck</span>
+        <span class="citadels-ink text-xs leading-none font-bold">{{ table.deckCount }}</span>
+      </span>
+      <span
+        data-slot="citadels-discard-count"
+        class="citadels-piece flex flex-1 items-center justify-between px-1.5 py-1"
+      >
+        <span class="citadels-label">discard</span>
+        <span class="citadels-ink text-xs leading-none font-bold">{{ table.discard.length }}</span>
+      </span>
+    </section>
+
+    <section class="flex min-w-0 flex-col gap-1">
+      <span class="citadels-label">Discard</span>
+      <ul class="flex flex-wrap gap-1">
+        <li
+          v-for="(district, index) in table.discard"
+          :key="`${district}-${index}`"
+          class="citadels-piece px-1 py-0.5 text-[0.5625rem] leading-[1.25] whitespace-nowrap text-monokai-comment"
+        >
+          {{ district }}
+        </li>
+        <li v-if="table.discard.length === 0" class="text-[0.5625rem] text-monokai-comment">
+          nothing discarded
+        </li>
+      </ul>
+    </section>
+  </aside>
 </template>

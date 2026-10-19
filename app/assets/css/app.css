@@ -10,6 +10,18 @@
 @theme inline {
     --font-sans: 'Geist Variable', sans-serif;
     --font-heading: var(--font-sans);
+    --color-monokai-bg: var(--monokai-bg);
+    --color-monokai-panel: var(--monokai-panel);
+    --color-monokai-panel-raised: var(--monokai-panel-raised);
+    --color-monokai-line: var(--monokai-line);
+    --color-monokai-fg: var(--monokai-fg);
+    --color-monokai-comment: var(--monokai-comment);
+    --color-monokai-pink: var(--monokai-pink);
+    --color-monokai-orange: var(--monokai-orange);
+    --color-monokai-yellow: var(--monokai-yellow);
+    --color-monokai-green: var(--monokai-green);
+    --color-monokai-blue: var(--monokai-blue);
+    --color-monokai-purple: var(--monokai-purple);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -50,6 +62,10 @@
 @theme {
     --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
     --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+    --dur-press: 120ms;
+    --dur-ink: 150ms;
+    --dur-overlay: 180ms;
+    --dur-arrival: 300ms;
 }
 
 :root {
@@ -94,6 +110,19 @@
     --sidebar-ring: oklch(0.708 0 0);
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);
+    /* The game board is a dark room, so the board palette is the same in both modes. */
+    --monokai-bg: #272822;
+    --monokai-panel: #2f312a;
+    --monokai-panel-raised: #3a3c33;
+    --monokai-line: #4a4c40;
+    --monokai-fg: #f8f8f2;
+    --monokai-comment: #94998b;
+    --monokai-pink: #f92672;
+    --monokai-orange: #fd971f;
+    --monokai-yellow: #e6db74;
+    --monokai-green: #a6e22e;
+    --monokai-blue: #66d9ef;
+    --monokai-purple: #ae81ff;
 }
 
 .dark {

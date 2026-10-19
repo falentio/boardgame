@@ -373,6 +373,48 @@ const LAYOUT = `(() => {
   return { columns: style.gridTemplateColumns, opponents: getComputedStyle(opponents).flexDirection };
 })()`;
 
+// The board draws three regions. Each is laid out by the board's own grid at
+// 1280x800; at 390x844 the middle two stack in one column.
+const REGION_OF = `(el) => {
+  if (el === null) return null;
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const box = range.getBoundingClientRect();
+  const lefts = [box.left, el.getBoundingClientRect().left];
+  for (let y = box.top + box.height / 2; y > 0; y -= 24) {
+    for (const x of lefts) {
+      const hit = document.elementFromPoint(x + 0.5, y);
+      if (hit === null || !el.contains(hit)) continue;
+      // Walk up to the nearest named slot: an emblem or a bare tag is not a region name.
+      for (let node = hit; node !== null && el.contains(node); node = node.parentElement) {
+        const slot = node.getAttribute('data-slot');
+        if (slot !== null && slot.startsWith('citadels-')) return slot;
+      }
+      return hit.tagName.toLowerCase();
+    }
+  }
+  return null;
+}`;
+
+const COLUMNS = `(() => {
+  const regionOf = ${REGION_OF};
+  const boxOf = (slot) => {
+    const el = document.querySelector('[data-slot=' + slot + ']');
+    if (el === null) return null;
+    const box = el.getBoundingClientRect();
+    return { left: Math.round(box.left), width: Math.round(box.width), region: regionOf(el) };
+  };
+  const board = document.querySelector('[data-slot=citadels-board]');
+  const heading = document.querySelector('[data-slot=citadels-self] h2');
+  return {
+    grid: getComputedStyle(board).gridTemplateColumns,
+    global: boxOf('citadels-global'),
+    self: boxOf('citadels-self'),
+    players: boxOf('citadels-players'),
+    heading: heading === null ? null : heading.textContent.trim(),
+  };
+})()`;
+
 const FACTS = `(() => {
   const surface = document.querySelector('[data-slot=citadels-surface]');
   const line = document.querySelector('[data-slot=citadels-surface] [data-slot=citadels-phase]');
@@ -391,6 +433,80 @@ const FACTS = `(() => {
     hand: document.querySelectorAll('[data-slot=citadels-hand] [data-slot=citadels-district]').length,
   };
 })()`;
+
+const PAINT = `(() => {
+  const surface = document.querySelector('[data-slot=citadels-surface]');
+  if (surface === null) return null;
+  const seat = document.querySelector('[data-slot=citadels-seat]');
+  const style = getComputedStyle(surface);
+  const avatar = seat === null ? null : seat.querySelector('img');
+  return {
+    bg: style.backgroundColor,
+    fg: style.color,
+    pfp: avatar === null ? null : avatar.getAttribute('src'),
+  };
+})()`;
+
+const CITY = `(() => {
+  const city = document.querySelector('[data-slot=citadels-city]');
+  if (city === null) return null;
+  const box = (el) => {
+    const r = el.getBoundingClientRect();
+    return Math.round(r.width) + 'x' + Math.round(r.height);
+  };
+  const cards = [...city.querySelectorAll('[data-slot=citadels-district]')];
+  const slots = [...city.querySelectorAll(':scope > li')].filter((el) => !el.querySelector('[data-slot=citadels-district]'));
+  return {
+    cards: cards.map(box),
+    slots: slots.map(box),
+    display: getComputedStyle(city).display,
+  };
+})()`;
+
+const CAST = `(() => {
+  const col = document.querySelector('[data-slot=citadels-global]');
+  if (col === null) return null;
+  const c = col.getBoundingClientRect();
+  const rowsAll = [...col.querySelectorAll('[data-slot=citadels-cast-row]')];
+  const rows = [...col.querySelectorAll('[data-slot=citadels-cast-row]')];
+  const emblems = rows.map((r) => r.querySelector('[data-slot=citadels-cast-emblem]'));
+  const imgs = [...col.querySelectorAll('[data-slot=citadels-cast-emblem] img')];
+  const clipped = [...col.querySelectorAll('*')].filter((el) => {
+    const b = el.getBoundingClientRect();
+    return b.height > 0 && (b.bottom > c.bottom + 0.5 || b.right > c.right + 0.5);
+  });
+  return {
+    rows: rows.length,
+    states: rows.map((r) => r.getAttribute('data-state')),
+    emblem: emblems[0] === null || emblems[0] === undefined ? null : Math.round(emblems[0].getBoundingClientRect().width),
+    loaded: imgs.filter((i) => i.complete && i.naturalWidth > 0).length,
+    clipped: clipped.length,
+    sample: clipped.slice(0, 3).map((el) => (el.getAttribute('data-slot') ?? el.textContent.trim()).slice(0, 24)),
+    scrolls: col.scrollHeight > col.clientHeight + 1,
+    colHeight: Math.round(c.height),
+    scrollHeight: col.scrollHeight,
+  };
+})()`;
+
+const RAIL = `(() => {
+  const rail = document.querySelector('[data-slot=citadels-opponents]');
+  if (rail === null) return null;
+  const seats = [...rail.querySelectorAll('[data-slot=citadels-seat]')];
+  return {
+    names: seats.map((seat) => seat.getAttribute('aria-label')?.split(':')[0] ?? '?'),
+    you: seats.some((seat) => seat.hasAttribute('data-mine')),
+  };
+})()`;
+
+const lumOf = (css) => {
+  const [r, g, b] = (css.match(/[\d.]+/g) ?? [])
+    .filter((part) => Number.isFinite(Number(part)))
+    .slice(0, 3)
+    .map(Number)
+    .map((v) => v / 255);
+  const channel = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+};
 
 const factDiffs = (before, after) => {
   const diffs = [];
@@ -440,16 +556,27 @@ const openRoute = async (page, url, { attempts = 3, timeoutMs = 45000 } = {}) =>
 };
 
 const joinThroughLink = async (page, code) => {
-  await openRoute(page, `${BASE}/join/${code}`);
-  const seated = await page.waitFor(`location.pathname === '/rooms/${code}'`, { timeoutMs: 30000 });
-  if (!seated) {
-    // The page's own copy says why: a full room, a started room, or an infra error
-    // the client mapped to its retry state.
-    const said = await page.eval("document.body.innerText.replace(/\n+/g, ' | ').slice(0, 200)");
-    throw new Error(
-      `the join link did not seat the account, at ${await page.href()}: ${said}`,
-    );
+  // Seating is a client round trip: the page loads, posts the seat, then moves to
+  // the room. A load that hydrated but never seated is the same transient as one
+  // that never hydrated, so it gets the same further chances instead of failing the
+  // beat on the first slow answer.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await openRoute(page, `${BASE}/join/${code}`);
+    const seated = await page.waitFor(`location.pathname === '/rooms/${code}'`, {
+      timeoutMs: 30000,
+    });
+    if (seated) return;
+    info(`the join link did not seat on attempt ${attempt + 1}; loading it again`);
   }
+  // The page's own copy says why: a full room, a started room, or an infra error
+  // the client mapped to its retry state. Reading it can itself fail when the page
+  // is mid-navigation, and that must not hide the reason it never seated.
+  const said = await page
+    .eval("document.body.innerText.replace(/\n+/g, ' | ').slice(0, 200)")
+    .catch(() => "the page could not be read");
+  throw new Error(
+    `the join link did not seat the account, at ${await page.href()}: ${said}`,
+  );
 };
 
 const startThroughLobby = async (page, code) => {
@@ -636,6 +763,76 @@ const main = async () => {
           } else {
             pass("the surface reads data-orientation=landscape at 1280x800");
           }
+          const paint = await guestPage.eval(PAINT);
+          if (paint === null) {
+            fail("the surface vanished before its paint could be read");
+          } else {
+            const hi = Math.max(lumOf(paint.bg), lumOf(paint.fg));
+            const lo = Math.min(lumOf(paint.bg), lumOf(paint.fg));
+            const ratio = (hi + 0.05) / (lo + 0.05);
+            if (!Number.isFinite(ratio) || ratio < 7) {
+              fail(`the surface paints ${paint.fg} on ${paint.bg} (${ratio.toFixed(2)}:1), want at least 7:1`);
+            } else {
+              pass(`the surface paints ${paint.fg} on ${paint.bg}: ${ratio.toFixed(2)}:1 contrast`);
+            }
+            if (paint.pfp === null || !paint.pfp.startsWith("https://api.dicebear.com/")) {
+              fail(`the first seat shows no dicebear avatar, its src is ${JSON.stringify(paint.pfp)}`);
+            } else {
+              pass(`the first seat shows a dicebear avatar: ${paint.pfp.split("?")[0]}`);
+            }
+          }
+          const city = await guestPage.eval(CITY);
+          if (city === null) {
+            fail("the city grid could not be read");
+          } else if (city.display !== "flex") {
+            fail(`the city lays out as ${city.display}, want flex so cards wrap on their own width`);
+          } else {
+            const distinct = (boxes) => [...new Set(boxes)];
+            const cardBoxes = distinct(city.cards);
+            const slotBoxes = distinct(city.slots);
+            if (cardBoxes.length > 0) {
+              const stray = slotBoxes.filter((box) => !cardBoxes.includes(box));
+              if (stray.length > 0) {
+                fail(
+                  `empty slots measure ${stray.join(", ")} against cards at ${cardBoxes.join(", ")}`,
+                );
+              } else {
+                pass(`every empty slot matches a card's box (${cardBoxes.join(", ")})`);
+              }
+            } else if (slotBoxes.length > 1) {
+              fail(`the empty city draws slots at ${slotBoxes.join(", ")}`);
+            } else {
+              pass(
+                `an empty city draws ${city.slots.length} slots, all ${slotBoxes.join(", ") || "none"}`,
+              );
+            }
+          }
+          const cast = await guestPage.waitFor(
+            `(() => { const imgs = [...document.querySelectorAll('[data-slot=citadels-cast-emblem] img')]; return imgs.length > 0 && imgs.every((i) => i.complete && i.naturalWidth > 0); })()`,
+            { timeoutMs: 8000 },
+          ).then((ok) => (ok ? guestPage.eval(CAST) : guestPage.eval(CAST)));
+          if (cast === null) {
+            fail("the global column could not be read");
+          } else if (cast.loaded !== cast.rows) {
+            fail(`${cast.loaded} of ${cast.rows} cast emblems loaded`);
+          } else {
+            pass(
+              `the global cast draws ${cast.rows} rows with ${cast.loaded} emblems at ${cast.emblem}px`,
+            );
+            if (cast.scrolls) {
+              info(
+                `the global column scrolls: content ${cast.scrollHeight}px in ${cast.colHeight}px`,
+              );
+            }
+          }
+          const rail = await guestPage.eval(RAIL);
+          if (rail === null) {
+            fail("the players rail could not be read");
+          } else if (!rail.you) {
+            fail(`the players rail lists ${rail.names.join(", ")} with no seat marked as the viewer's own`);
+          } else {
+            pass(`the players rail lists every seat, the viewer's own included: ${rail.names.join(", ")}`);
+          }
           info(`screenshot: ${await guestPage.screenshot("citadels-surface-landscape")}`);
         },
       },
@@ -752,7 +949,7 @@ const main = async () => {
             fail("the surface re-opened but fullscreen was not requested again");
           }
           await guestPage.eval(
-            `(() => { window.__proofSurface = document.querySelector(${JSON.stringify(EL.surface)}); window.__proofSeats = [...document.querySelectorAll('[data-slot=citadels-seat]')]; return window.__proofSeats.length; })()`,
+            `(() => { window.__proofSurface = document.querySelector(${JSON.stringify(EL.surface)}); window.__proofBoard = document.querySelector('[data-slot=citadels-board]'); window.__proofSeats = [...document.querySelectorAll('[data-slot=citadels-seat]')]; return window.__proofSeats.length; })()`,
           );
 
           const before = await guestPage.eval(FACTS);
@@ -816,6 +1013,12 @@ const main = async () => {
           if (remounted) fail("the surface node was replaced by the rotation");
           else pass("the surface node survived the rotation");
 
+          const boardKept = await guestPage.eval(
+            "window.__proofBoard.isConnected && window.__proofBoard === document.querySelector('[data-slot=citadels-board]')",
+          );
+          if (!boardKept) fail("the board node was replaced by the rotation");
+          else pass("the board node survived the rotation");
+
           await guestPage.setOrientation({
             width: 1280,
             height: 800,
@@ -842,6 +1045,102 @@ const main = async () => {
           );
           if (!seatsKept) fail("a seat node was replaced by the rotation");
           else pass(`all ${before.seats.length} seat nodes survived both rotations`);
+        },
+      },
+      {
+        name: "the board draws its three regions across one row",
+        run: async () => {
+          const columns = await guestPage.eval(COLUMNS);
+          if (columns.global === null) {
+            fail(
+              `the board draws no [data-slot=citadels-global] at 1280x800 (saw ${JSON.stringify(columns)})`,
+            );
+            return;
+          }
+          const absent = [
+            columns.self === null && "[data-slot=citadels-self]",
+            columns.players === null && "[data-slot=citadels-players]",
+          ].filter(Boolean);
+          if (absent.length > 0) {
+            fail(`the board draws no ${absent.join(", ")} at 1280x800 (saw ${JSON.stringify(columns)})`);
+            return;
+          }
+          const { global: globalColumn, self: middleColumn, players: playersColumn } = columns;
+          const order = `global ${globalColumn.left}px, self ${middleColumn.left}px, players ${playersColumn.left}px`;
+          if (globalColumn.left < middleColumn.left && middleColumn.left < playersColumn.left) {
+            pass(`the three regions sit left to right: ${order}`);
+          } else {
+            fail(`the regions are out of order: ${order}, want global < self < players`);
+          }
+          if (middleColumn.width > globalColumn.width) {
+            pass(
+              `the middle region is the widest: self ${middleColumn.width}px against global ${globalColumn.width}px`,
+            );
+          } else {
+            fail(
+              `the middle region is ${middleColumn.width}px wide and the global one ${globalColumn.width}px, want self wider than global`,
+            );
+          }
+          const distinct = new Set([globalColumn.region, middleColumn.region, playersColumn.region]);
+          const threeTracks = columns.grid.trim().split(/\s+/).length === 3;
+          if (distinct.size === 3 && threeTracks) {
+            pass(
+              `each region is laid out by the board's own grid: ${globalColumn.region}, ${middleColumn.region}, then ${playersColumn.region} in ${columns.grid}`,
+            );
+          } else {
+            fail(
+              `the regions do not each sit under the board's grid: ${globalColumn.region}, ${middleColumn.region}, ${playersColumn.region} in ${columns.grid}`,
+            );
+          }
+        },
+      },
+      {
+        name: "a rival in the players rail swaps the middle column, and a control brings your own board back",
+        run: async () => {
+          const rivals = await guestPage.eval(
+            `[...document.querySelectorAll('[data-slot=citadels-players] [data-slot=citadels-seat]')].filter((seat) => !seat.hasAttribute('data-mine')).map((seat) => seat.getAttribute('data-seat'))`,
+          );
+          if (rivals.length === 0) {
+            fail("the players rail lists no rival to click");
+            return;
+          }
+          const own = await guestPage.eval(COLUMNS);
+          if (own.heading === null) {
+            fail("the middle column carries no heading to compare before the click");
+            return;
+          }
+          const target = rivals[0];
+          const pressed = await guestPage.clickElement(
+            `document.querySelector('[data-slot=citadels-players] [data-seat="${target}"]')`,
+            `document.querySelector('[data-slot=citadels-players] [data-seat="${target}"]').getAttribute('aria-pressed') === 'true' && !!document.querySelector('[data-slot=citadels-back]')`,
+          );
+          const swapped = await guestPage.eval(COLUMNS);
+          if (!pressed) {
+            fail(`clicking rival ${target} pressed no seat and offered no [data-slot=citadels-back]`);
+          } else if (swapped.heading === own.heading) {
+            fail(
+              `clicking rival ${target} left the middle column reading ${JSON.stringify(own.heading)}`,
+            );
+          } else {
+            pass(
+              `clicking rival ${target} swapped the middle column from "${own.heading}" to "${swapped.heading}" and showed the [data-slot=citadels-back] control`,
+            );
+          }
+
+          const back = await guestPage.clickElement(
+            q("[data-slot=citadels-back]"),
+            `!document.querySelector('[data-slot=citadels-back]')`,
+          );
+          const restored = await guestPage.eval(COLUMNS);
+          if (!back) {
+            fail("the back control did not leave the rival's city");
+          } else if (restored.heading !== own.heading) {
+            fail(
+              `the back control returned the middle column to ${JSON.stringify(restored.heading)}, want ${JSON.stringify(own.heading)}`,
+            );
+          } else {
+            pass(`the back control returned the middle column to "${own.heading}"`);
+          }
         },
       },
       {
