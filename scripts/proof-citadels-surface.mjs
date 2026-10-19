@@ -556,16 +556,27 @@ const openRoute = async (page, url, { attempts = 3, timeoutMs = 45000 } = {}) =>
 };
 
 const joinThroughLink = async (page, code) => {
-  await openRoute(page, `${BASE}/join/${code}`);
-  const seated = await page.waitFor(`location.pathname === '/rooms/${code}'`, { timeoutMs: 30000 });
-  if (!seated) {
-    // The page's own copy says why: a full room, a started room, or an infra error
-    // the client mapped to its retry state.
-    const said = await page.eval("document.body.innerText.replace(/\n+/g, ' | ').slice(0, 200)");
-    throw new Error(
-      `the join link did not seat the account, at ${await page.href()}: ${said}`,
-    );
+  // Seating is a client round trip: the page loads, posts the seat, then moves to
+  // the room. A load that hydrated but never seated is the same transient as one
+  // that never hydrated, so it gets the same further chances instead of failing the
+  // beat on the first slow answer.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await openRoute(page, `${BASE}/join/${code}`);
+    const seated = await page.waitFor(`location.pathname === '/rooms/${code}'`, {
+      timeoutMs: 30000,
+    });
+    if (seated) return;
+    info(`the join link did not seat on attempt ${attempt + 1}; loading it again`);
   }
+  // The page's own copy says why: a full room, a started room, or an infra error
+  // the client mapped to its retry state. Reading it can itself fail when the page
+  // is mid-navigation, and that must not hide the reason it never seated.
+  const said = await page
+    .eval("document.body.innerText.replace(/\n+/g, ' | ').slice(0, 200)")
+    .catch(() => "the page could not be read");
+  throw new Error(
+    `the join link did not seat the account, at ${await page.href()}: ${said}`,
+  );
 };
 
 const startThroughLobby = async (page, code) => {
