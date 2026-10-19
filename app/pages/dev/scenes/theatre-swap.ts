@@ -1,40 +1,60 @@
 import { auto, type Decide, type Scene } from "./kit.ts";
 import {
+  DEFAULT_UNIQUES,
+  type DistrictId,
+} from "#shared/core/lockstep/games/citadels/districts.ts";
+import {
   BASE_CAST,
-  CITY_TARGET,
   citadels,
   specOfDistrict,
+  type CitadelsState,
 } from "#shared/core/lockstep/games/citadels/index.ts";
 
-const THEATER = "theater";
+const THEATER: DistrictId = "theater";
 
-/** Carry the Theater: build it once it is affordable, and bank gold for it until then. */
+/** The default 14 with the Theater in place of the Monument, so a deal can hold it. */
+const UNIQUES: readonly DistrictId[] = [...DEFAULT_UNIQUES.filter((id) => id !== "monument"), THEATER];
+
+/** Carry the Theater: bank the gold for it, build it, and build nothing else. */
 const playTurn: Decide = (seat, state) => {
   const view = citadels.project(state, seat);
   if (view.window?.purpose !== "turn") return auto(seat, state);
   const me = view.players.find((player) => player.seat === seat);
-  if (me === undefined || me.city.length >= CITY_TARGET) return auto(seat, state);
   const held = view.myHand.indexOf(THEATER);
-  if (held < 0) return auto(seat, state);
+  if (me === undefined) return auto(seat, state);
+  // The Theater is a single deck copy, so a seat without one digs it out.
+  if (held < 0) return view.deckCount > 0 ? { t: "draw" } : { t: "gold" };
   return specOfDistrict(THEATER).cost <= me.gold ? { t: "build", card: held } : { t: "gold" };
 };
 
-/** The window's one stage: name the rival seat to swap a character with. */
+/** The window's one stage: name a rival that holds a claim, so the resolver has a card to take. */
 const decide: Decide = (seat, state) => {
   const view = citadels.project(state, seat);
   if (view.window?.purpose !== "theatre-swap") return playTurn(seat, state);
-  const rival = view.players.find((player) => player.seat !== seat);
+  const rival = view.players.find(
+    (player) => player.seat !== seat && state.claimed.some((claim) => claim.seat === player.seat),
+  );
   return rival === undefined ? null : { t: "target", seat: rival.seat };
 };
 
-/**
- * Blocked at the deck, not at the cast. The Theater is a catalog district but
- * not one of `DEFAULT_UNIQUES`, and a scene names a cast, never a unique set, so
- * no fold from `genesis` can deal it into a hand and no city can ever carry it.
- * This scene's fold throws the engine's own "reached no theatre-swap window";
- * the district reaches a game through `CitadelsSetup.uniques`, which the scene
- * contract does not expose.
- */
-const scene: Scene = { purpose: "theatre-swap", cast: BASE_CAST, decide };
+/** Hold only on a resolvable window: `theaterResolve` pops one whose owner or rival holds no claim. */
+const swapReady = (state: CitadelsState): boolean => {
+  const top = state.steps[0];
+  if (top === undefined || top.kind !== "window") return false;
+  const owner = top.window.seats[0];
+  if (owner === undefined) return false;
+  return (
+    state.claimed.some((claim) => claim.seat === owner) &&
+    state.claimed.some((claim) => claim.seat !== owner)
+  );
+};
+
+const scene: Scene = {
+  purpose: "theatre-swap",
+  cast: BASE_CAST,
+  uniques: UNIQUES,
+  decide,
+  until: swapReady,
+};
 
 export default scene;

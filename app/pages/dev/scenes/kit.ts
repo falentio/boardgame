@@ -10,6 +10,7 @@ import {
   type Rank,
   type WindowPurpose,
 } from "#shared/core/lockstep/games/citadels/index.ts";
+import { DEFAULT_UNIQUES, type DistrictId } from "#shared/core/lockstep/games/citadels/districts.ts";
 import {
   act,
   frameIndex,
@@ -40,6 +41,7 @@ export interface Scene {
   readonly cast: readonly CharacterId[];
   readonly decide?: Decide;
   readonly until?: (state: CitadelsState) => boolean;
+  readonly uniques?: readonly DistrictId[];
 }
 
 /** A legal rank-1..8 cast carrying `target`, plus rank 9 when it lives there. */
@@ -117,7 +119,11 @@ export const viewOf = (state: CitadelsState): CitadelsView =>
 export const foldScene = (scene: Scene): { readonly state: CitadelsState; readonly frames: number } => {
   const decide = scene.decide ?? auto;
   const ready = scene.until ?? ((): boolean => true);
-  let state = citadels.genesis({ cast: [...scene.cast] }, makeRoster(SEATS), makeRandom(SEED));
+  let state = citadels.genesis(
+    { cast: [...scene.cast], uniques: scene.uniques ?? DEFAULT_UNIQUES },
+    makeRoster(SEATS),
+    makeRandom(SEED),
+  );
   for (let frames = 0; frames < 4000; frames += 1) {
     if (openPurpose(state) === scene.purpose && ready(state)) return { state, frames };
     state = advance(state, decide);
