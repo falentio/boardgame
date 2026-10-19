@@ -8,8 +8,8 @@ import {
   type CitadelsState,
   type CitadelsView,
   type Rank,
-  type WindowPurpose,
 } from "#shared/core/lockstep/games/citadels/index.ts";
+import type { WindowPurpose } from "#shared/core/lockstep/games/citadels/state.ts";
 import {
   act,
   frameIndex,
