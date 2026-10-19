@@ -1,12 +1,15 @@
 import { castWith, type Scene } from "./kit.ts";
 
 /**
- * Blocked at the engine, not at the cast. A `queen-income` step is declared in
- * `citadels/state.ts` and resolved by `characters/queen.ts`, but nothing builds
- * one: the Queen's three gold lands inside `queen.ts` with no window, so this
- * fold throws the engine's own "reached no queen-income window". The fold's
- * three-seat roster walls it a second time, because the same ability returns
- * early below its five-player minimum.
+ * No fold reaches this purpose, and none can. The engine declares 30 window
+ * purposes and builds a window step for 29 of them; `queen-income` is the one
+ * purpose with no construction site anywhere under `citadels/`, so no cast and
+ * no policy can put it on the stack. The Queen's income is a windowless
+ * `addGold` in `characters/queen.ts`, gated on five live seats, which is the
+ * rulebook's own wall: the Queen cannot be used with 3 or 4 players. Her
+ * registered resolver only pops, and the engine's `queen.test.ts` asserts she
+ * opens no window. A scene names a cast, a deck, and a policy; the step this
+ * purpose needs is not one of them.
  */
 const scene: Scene = { purpose: "queen-income", cast: castWith("queen") };
 
